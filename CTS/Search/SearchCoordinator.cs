@@ -143,14 +143,12 @@ public sealed class SearchCoordinator
             {
                 var reason = result.Failure switch
                 {
-                    LensUploadFailure.UnexpectedStatus => $"Google answered HTTP {result.StatusCode} instead of a redirect (a consent page or rate limit).",
-                    LensUploadFailure.EmptyLocation => "Google answered without a results location.",
-                    LensUploadFailure.PolicyRejection => "Google answered with an unexpected results location.",
-                    LensUploadFailure.Timeout => "The upload timed out.",
-                    LensUploadFailure.NetworkError => "The upload failed: network error.",
-                    LensUploadFailure.ClipboardUnavailable => "Copying the image to the clipboard failed.",
-                    LensUploadFailure.BrowserLaunchFailed => "The browser could not be opened.",
-                    LensUploadFailure.Canceled => null,
+                    UploadFailure.UnexpectedStatus => $"Yandex answered HTTP {result.StatusCode} instead of 200.",
+                    UploadFailure.BadResponse => "Yandex answered with an unexpected response format.",
+                    UploadFailure.PolicyRejection => "Yandex answered with an unexpected results location.",
+                    UploadFailure.Timeout => "The upload timed out.",
+                    UploadFailure.NetworkError => "The upload failed: network error.",
+                    UploadFailure.Canceled => null,
                     _ => "The upload failed.",
                 };
                 if (reason is null)
@@ -163,17 +161,10 @@ public sealed class SearchCoordinator
                 return;
             }
 
-            if (result.ResultsUrl is { Length: > 0 } url)
-            {
-                if (!_openUrl(url))
-                    SurfaceError("Circle to Search", "The results URL could not be opened in the default browser.");
-                else
-                    _log.Info(nameof(SearchCoordinator), "results opened in the default browser");
-            }
+            if (!_openUrl(result.ResultsUrl!))
+                SurfaceError("Circle to Search", "The results URL could not be opened in the default browser.");
             else
-            {
-                _log.Info(nameof(SearchCoordinator), "results delivered by the provider");
-            }
+                _log.Info(nameof(SearchCoordinator), "results opened in the default browser");
         }
         catch (OperationCanceledException)
         {

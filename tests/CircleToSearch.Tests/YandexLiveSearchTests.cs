@@ -5,22 +5,22 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
-// Opt-in: runs against the live Google endpoint only with
+// Opt-in: runs against the live Yandex endpoint only with
 //   dotnet test --filter "Category=Live" -e CTS_LIVE=1
-public sealed class LiveLensUploadTests
+public sealed class YandexLiveSearchTests
 {
     [Fact]
     [Trait("Category", "Live")]
-    public async Task Upload_returns_a_google_lens_redirect()
+    public async Task Upload_returns_a_yandex_results_url()
     {
         if (Environment.GetEnvironmentVariable("CTS_LIVE") != "1") return;
 
         var png = EncodePng(NewGradientBitmap(64, 64));
 
-        var outcome = await new GoogleLensProvider().SearchAsync(png, CancellationToken.None);
+        var outcome = await new YandexImagesProvider().SearchAsync(png, CancellationToken.None);
 
         Assert.True(outcome.Success, $"upload failed: {outcome.Failure} status {outcome.StatusCode}");
-        Assert.True(RedirectUrlPolicy.IsAllowed(new Uri(outcome.ResultsUrl!)));
+        Assert.True(YandexResultUrlPolicy.IsAllowed(new Uri(outcome.ResultsUrl!)));
     }
 
     private static Bitmap NewGradientBitmap(int width, int height)

@@ -20,35 +20,11 @@ public static class CompositionRoot
         var pluginDirectory = context.CurrentPluginMetadata.PluginDirectory;
         var log = new PluginLog(pluginDirectory);
         var settings = api.LoadSettingJsonStorage<PluginSettings>();
-        var dataDirectory = api.GetDataDirectory();
-        if (string.IsNullOrWhiteSpace(dataDirectory)) dataDirectory = pluginDirectory;
         var iconPath = Path.Combine(pluginDirectory, "Images", "app.png");
 
         var hotkeyWindow = new HotkeyWindow(log);
         var registrar = new HotkeyRegistrar(hotkeyWindow, log);
-        var clipboardDispatcher = new StaDispatcher("CircleToSearch clipboard");
-        var pasteInjector = new BrowserPasteInjector(log);
-        var sessions = new LensSessionManager(
-            new LensSessionStore(dataDirectory),
-            () => WebView2SessionFarmer.FarmAsync(
-                pluginDirectory,
-                Path.Combine(dataDirectory, "WebView2Profile"),
-                log,
-                TimeSpan.FromSeconds(20)),
-            log);
-        var uploadProvider = new GoogleLensProvider(sessions, log);
-        var pasteProvider = new LensPasteProvider(
-            png => Task.Run(() => ClipboardImageService.TryCopy(clipboardDispatcher, png)),
-            OpenLens,
-            pasteInjector.RunWatchAsync,
-            pasteInjector,
-            log);
-        IVisualSearchProvider provider = settings.SearchMode switch
-        {
-            PluginSettings.UploadMode => uploadProvider,
-            PluginSettings.PasteMode => pasteProvider,
-            _ => new FallbackVisualSearchProvider(uploadProvider, pasteProvider),
-        };
+        var provider = new YandexImagesProvider(log);
         var coordinator = new SearchCoordinator(
             provider,
             cancel => OverlayWindow.SelectAsync(
@@ -83,24 +59,7 @@ public static class CompositionRoot
             queryTrigger,
             () => new SettingsPanel(settings, registrar.TryApply, api.SaveSettingJsonStorage<PluginSettings>),
             hotkeyWindow,
-            clipboardDispatcher,
             log);
-    }
-
-    private static Process? OpenLens(string url)
-    {
-        try
-        {
-            return Process.Start(new ProcessStartInfo
-            {
-                UseShellExecute = true,
-                FileName = url,
-            });
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private static bool OpenResultsUrl(string url)
@@ -125,7 +84,6 @@ public sealed class PluginRuntime : IDisposable
 {
     private readonly SearchCoordinator _coordinator;
     private readonly HotkeyWindow _hotkeyWindow;
-    private readonly StaDispatcher _clipboardDispatcher;
     private readonly PluginLog _log;
 
     public PluginRuntime(
@@ -133,7 +91,6 @@ public sealed class PluginRuntime : IDisposable
         QueryTrigger queryTrigger,
         Func<Control> createSettingPanel,
         HotkeyWindow hotkeyWindow,
-        StaDispatcher clipboardDispatcher,
         PluginLog log)
     {
         Coordinator = coordinator;
@@ -141,7 +98,6 @@ public sealed class PluginRuntime : IDisposable
         CreateSettingPanel = createSettingPanel;
         _coordinator = coordinator;
         _hotkeyWindow = hotkeyWindow;
-        _clipboardDispatcher = clipboardDispatcher;
         _log = log;
     }
 
@@ -158,6 +114,5 @@ public sealed class PluginRuntime : IDisposable
         _log.Info(nameof(PluginRuntime), "disposing: canceling the active session and unregistering the hotkey");
         _coordinator.CancelActiveSelection();
         _hotkeyWindow.Dispose();
-        _clipboardDispatcher.Dispose();
     }
 }

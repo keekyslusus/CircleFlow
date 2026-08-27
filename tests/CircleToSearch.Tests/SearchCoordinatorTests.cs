@@ -82,7 +82,7 @@ public sealed class SearchCoordinatorTests
     [Fact]
     public async Task Upload_failure_surfaces_an_error_and_does_not_throw()
     {
-        var provider = new FakeProvider { Outcome = VisualSearchOutcome.Fail(LensUploadFailure.Timeout) };
+        var provider = new FakeProvider { Outcome = VisualSearchOutcome.Fail(UploadFailure.Timeout) };
         var errors = new List<string>();
         var coordinator = NewCoordinator(provider, ImmediateSelection(), errors: errors);
 
@@ -121,21 +121,6 @@ public sealed class SearchCoordinatorTests
         Assert.Equal(SearchState.Idle, coordinator.State);
         Assert.Equal(0, provider.Calls);
         Assert.Single(errors);
-    }
-
-    [Fact]
-    public async Task Provider_handled_results_skip_the_browser_open()
-    {
-        var provider = new FakeProvider { Outcome = VisualSearchOutcome.Handled() };
-        var opened = new List<string>();
-        var errors = new List<string>();
-        var coordinator = NewCoordinator(provider, ImmediateSelection(), openUrl: url => { opened.Add(url); return true; }, errors: errors);
-
-        await coordinator.StartFromHotkeyAsync();
-
-        Assert.Equal(SearchState.Idle, coordinator.State);
-        Assert.Empty(opened);
-        Assert.Empty(errors);
     }
 
     [Fact]
