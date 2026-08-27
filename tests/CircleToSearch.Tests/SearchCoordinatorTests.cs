@@ -124,6 +124,21 @@ public sealed class SearchCoordinatorTests
     }
 
     [Fact]
+    public async Task Provider_handled_results_skip_the_browser_open()
+    {
+        var provider = new FakeProvider { Outcome = VisualSearchOutcome.Handled() };
+        var opened = new List<string>();
+        var errors = new List<string>();
+        var coordinator = NewCoordinator(provider, ImmediateSelection(), openUrl: url => { opened.Add(url); return true; }, errors: errors);
+
+        await coordinator.StartFromHotkeyAsync();
+
+        Assert.Equal(SearchState.Idle, coordinator.State);
+        Assert.Empty(opened);
+        Assert.Empty(errors);
+    }
+
+    [Fact]
     public async Task Cancel_while_idle_is_a_noop()
     {
         var coordinator = NewCoordinator(new FakeProvider(), ImmediateSelection());

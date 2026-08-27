@@ -63,6 +63,8 @@ internal static class NativeMethods
 
     public const uint WM_HOTKEY = 0x0312;
 
+    public const uint KEYEVENTF_KEYUP = 0x0002;
+
     public static readonly IntPtr HWND_MESSAGE = new(-3);
     public static readonly IntPtr DpiAwarenessPerMonitorV2 = new(-4);
 
@@ -116,4 +118,13 @@ internal static class NativeMethods
 
     [DllImport("gdi32.dll")]
     public static extern bool DeleteObject(IntPtr hObject);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
 }

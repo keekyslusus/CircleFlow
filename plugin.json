@@ -4,7 +4,7 @@
   "Name": "Circle to Search",
   "Description": "Select a screen area and search it with Google Lens",
   "Author": "keekys",
-  "Version": "0.1.0",
+  "Version": "0.3.0",
   "Language": "csharp",
   "ExecuteFileName": "CircleToSearch.dll",
   "IcoPath": "Images\\app.png"

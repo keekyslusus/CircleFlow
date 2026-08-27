@@ -148,6 +148,8 @@ public sealed class SearchCoordinator
                     LensUploadFailure.PolicyRejection => "Google answered with an unexpected results location.",
                     LensUploadFailure.Timeout => "The upload timed out.",
                     LensUploadFailure.NetworkError => "The upload failed: network error.",
+                    LensUploadFailure.ClipboardUnavailable => "Copying the image to the clipboard failed.",
+                    LensUploadFailure.BrowserLaunchFailed => "The browser could not be opened.",
                     LensUploadFailure.Canceled => null,
                     _ => "The upload failed.",
                 };
@@ -161,10 +163,17 @@ public sealed class SearchCoordinator
                 return;
             }
 
-            if (!_openUrl(result.ResultsUrl!))
-                SurfaceError("Circle to Search", "The results URL could not be opened in the default browser.");
+            if (result.ResultsUrl is { Length: > 0 } url)
+            {
+                if (!_openUrl(url))
+                    SurfaceError("Circle to Search", "The results URL could not be opened in the default browser.");
+                else
+                    _log.Info(nameof(SearchCoordinator), "results opened in the default browser");
+            }
             else
-                _log.Info(nameof(SearchCoordinator), "results opened in the default browser");
+            {
+                _log.Info(nameof(SearchCoordinator), "results delivered by the provider");
+            }
         }
         catch (OperationCanceledException)
         {

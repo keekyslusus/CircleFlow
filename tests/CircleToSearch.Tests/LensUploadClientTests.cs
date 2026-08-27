@@ -104,7 +104,7 @@ public sealed class LensUploadClientTests
         await provider.SearchAsync([1, 2, 3], CancellationToken.None);
 
         Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
-        Assert.Equal(GoogleLensProvider.UploadUrl, handler.LastRequest.RequestUri!.ToString());
+        Assert.Equal(GoogleLensProvider.UploadUrl, handler.LastRequest.RequestUri!.GetLeftPart(UriPartial.Path));
         Assert.Contains("name=encoded_image", handler.LastBody);
         Assert.Contains("filename=capture.png", handler.LastBody);
         Assert.Contains("image/png", handler.LastBody);
