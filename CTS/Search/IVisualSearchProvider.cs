@@ -14,6 +14,8 @@ public enum UploadFailure
     Timeout,
     NetworkError,
     Canceled,
+    BrowserRuntimeUnavailable,
+    BrowserAutomationFailed,
 }
 
 public sealed record VisualSearchOutcome(
@@ -23,6 +25,8 @@ public sealed record VisualSearchOutcome(
     int? StatusCode = null)
 {
     public static VisualSearchOutcome Ok(string url) => new(true, url);
+
+    public static VisualSearchOutcome Handled() => new(true, null);
 
     public static VisualSearchOutcome Fail(UploadFailure failure, int? statusCode = null)
         => new(false, null, failure, statusCode);

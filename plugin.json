@@ -2,9 +2,9 @@
   "ID": "32d4962d-b408-4f35-9246-6f4bce5aa8fd",
   "ActionKeyword": "cs",
   "Name": "Circle to Search",
-  "Description": "Select a screen area and search it with Yandex Images",
+  "Description": "Select a screen area and ask Google AI about it",
   "Author": "keekys",
-  "Version": "0.4.0",
+  "Version": "0.5.1",
   "Language": "csharp",
   "ExecuteFileName": "CircleToSearch.dll",
   "IcoPath": "Images\\app.png"

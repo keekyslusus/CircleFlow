@@ -107,6 +107,23 @@ public sealed class SearchCoordinatorTests
     }
 
     [Fact]
+    public async Task Provider_handled_result_does_not_open_an_external_url()
+    {
+        var provider = new FakeProvider { Outcome = VisualSearchOutcome.Handled() };
+        var opened = 0;
+        var coordinator = NewCoordinator(
+            provider,
+            ImmediateSelection(),
+            openUrl: _ => { opened++; return true; });
+
+        await coordinator.StartFromHotkeyAsync();
+
+        Assert.Equal(SearchState.Idle, coordinator.State);
+        Assert.Equal(0, opened);
+        Assert.Equal(1, provider.Calls);
+    }
+
+    [Fact]
     public async Task Selection_failure_is_contained()
     {
         var provider = new FakeProvider();

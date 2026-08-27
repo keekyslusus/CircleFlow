@@ -41,10 +41,14 @@ public sealed class StaDispatcher : IDisposable
     }
 
     public void Post(Action action)
+        => TryPost(action);
+
+    public bool TryPost(Action action)
     {
         var dispatcher = _dispatcher;
-        if (dispatcher is null || dispatcher.HasShutdownStarted) return;
+        if (dispatcher is null || dispatcher.HasShutdownStarted) return false;
         dispatcher.InvokeAsync(action, DispatcherPriority.Normal);
+        return true;
     }
 
     public void Send(Action action)

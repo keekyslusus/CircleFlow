@@ -8,8 +8,16 @@ public sealed class SettingsPanel : UserControl
     private const string PanelMarginResource = "SettingPanelMargin";
     private const string ItemMarginResource = "SettingPanelItemTopBottomMargin";
 
-    public SettingsPanel(PluginSettings settings, Func<string, bool> applyHotkey, Action save)
+    public SettingsPanel(
+        PluginSettings settings,
+        Func<string, bool> applyHotkey,
+        Action save,
+        string? webView2Version)
     {
+        var searchMode = CreateText("Search: Google Lens results in WebView2");
+        var runtime = CreateText(webView2Version is null
+            ? "WebView2 Runtime: not detected"
+            : $"WebView2 Runtime: {webView2Version}");
         var gestureLabel = CreateText("Hotkey (e.g. Ctrl+Alt+Space)");
         var gesture = CreateInput(settings.HotkeyGesture);
 
@@ -42,6 +50,8 @@ public sealed class SettingsPanel : UserControl
         {
             Children =
             {
+                searchMode,
+                runtime,
                 gestureLabel,
                 gesture,
                 maxSideLabel,

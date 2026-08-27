@@ -25,7 +25,7 @@ public sealed class QueryTrigger
             new Result
             {
                 Title = "Select screen area…",
-                SubTitle = $"Search the region with Yandex Images — hotkey: {_hotkeyStatus()}",
+                SubTitle = $"Search the region directly with Google Lens — hotkey: {_hotkeyStatus()}",
                 IcoPath = _iconPath,
                 Score = 80,
                 Action = context =>

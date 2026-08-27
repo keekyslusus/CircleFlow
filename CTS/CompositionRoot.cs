@@ -20,11 +20,21 @@ public static class CompositionRoot
         var pluginDirectory = context.CurrentPluginMetadata.PluginDirectory;
         var log = new PluginLog(pluginDirectory);
         var settings = api.LoadSettingJsonStorage<PluginSettings>();
+        var dataDirectory = api.GetDataDirectory();
+        if (string.IsNullOrWhiteSpace(dataDirectory)) dataDirectory = pluginDirectory;
         var iconPath = Path.Combine(pluginDirectory, "Images", "app.png");
+        var webView2Version = WebView2SearchWindow.GetRuntimeVersion(pluginDirectory);
+        log.Info(nameof(CompositionRoot), webView2Version is null
+            ? "WebView2 Runtime was not detected"
+            : $"WebView2 Runtime detected: {webView2Version}");
 
         var hotkeyWindow = new HotkeyWindow(log);
         var registrar = new HotkeyRegistrar(hotkeyWindow, log);
-        var provider = new YandexImagesProvider(log);
+        var searchWindow = new WebView2SearchWindow(
+            pluginDirectory,
+            Path.Combine(dataDirectory, "WebView2Profile"),
+            log);
+        var provider = new WebView2VisualSearchProvider(searchWindow);
         var coordinator = new SearchCoordinator(
             provider,
             cancel => OverlayWindow.SelectAsync(
@@ -57,8 +67,13 @@ public static class CompositionRoot
         return new PluginRuntime(
             coordinator,
             queryTrigger,
-            () => new SettingsPanel(settings, registrar.TryApply, api.SaveSettingJsonStorage<PluginSettings>),
+            () => new SettingsPanel(
+                settings,
+                registrar.TryApply,
+                api.SaveSettingJsonStorage<PluginSettings>,
+                webView2Version),
             hotkeyWindow,
+            searchWindow,
             log);
     }
 
@@ -84,6 +99,7 @@ public sealed class PluginRuntime : IDisposable
 {
     private readonly SearchCoordinator _coordinator;
     private readonly HotkeyWindow _hotkeyWindow;
+    private readonly WebView2SearchWindow _searchWindow;
     private readonly PluginLog _log;
 
     public PluginRuntime(
@@ -91,6 +107,7 @@ public sealed class PluginRuntime : IDisposable
         QueryTrigger queryTrigger,
         Func<Control> createSettingPanel,
         HotkeyWindow hotkeyWindow,
+        WebView2SearchWindow searchWindow,
         PluginLog log)
     {
         Coordinator = coordinator;
@@ -98,6 +115,7 @@ public sealed class PluginRuntime : IDisposable
         CreateSettingPanel = createSettingPanel;
         _coordinator = coordinator;
         _hotkeyWindow = hotkeyWindow;
+        _searchWindow = searchWindow;
         _log = log;
     }
 
@@ -114,5 +132,6 @@ public sealed class PluginRuntime : IDisposable
         _log.Info(nameof(PluginRuntime), "disposing: canceling the active session and unregistering the hotkey");
         _coordinator.CancelActiveSelection();
         _hotkeyWindow.Dispose();
+        _searchWindow.Dispose();
     }
 }

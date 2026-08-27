@@ -143,11 +143,13 @@ public sealed class SearchCoordinator
             {
                 var reason = result.Failure switch
                 {
-                    UploadFailure.UnexpectedStatus => $"Yandex answered HTTP {result.StatusCode} instead of 200.",
-                    UploadFailure.BadResponse => "Yandex answered with an unexpected response format.",
-                    UploadFailure.PolicyRejection => "Yandex answered with an unexpected results location.",
+                    UploadFailure.UnexpectedStatus => $"The search service answered HTTP {result.StatusCode}.",
+                    UploadFailure.BadResponse => "The search service answered with an unexpected response.",
+                    UploadFailure.PolicyRejection => "The search service returned an unexpected results location.",
                     UploadFailure.Timeout => "The upload timed out.",
                     UploadFailure.NetworkError => "The upload failed: network error.",
+                    UploadFailure.BrowserRuntimeUnavailable => "Microsoft Edge WebView2 Runtime is not installed.",
+                    UploadFailure.BrowserAutomationFailed => "Google opened, but the image could not be attached.",
                     UploadFailure.Canceled => null,
                     _ => "The upload failed.",
                 };
@@ -161,10 +163,17 @@ public sealed class SearchCoordinator
                 return;
             }
 
-            if (!_openUrl(result.ResultsUrl!))
-                SurfaceError("Circle to Search", "The results URL could not be opened in the default browser.");
+            if (result.ResultsUrl is { Length: > 0 } url)
+            {
+                if (!_openUrl(url))
+                    SurfaceError("Circle to Search", "The results URL could not be opened in the default browser.");
+                else
+                    _log.Info(nameof(SearchCoordinator), "results opened in the default browser");
+            }
             else
-                _log.Info(nameof(SearchCoordinator), "results opened in the default browser");
+            {
+                _log.Info(nameof(SearchCoordinator), "results delivered by the provider");
+            }
         }
         catch (OperationCanceledException)
         {
