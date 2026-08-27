@@ -1,0 +1,11 @@
+{
+  "ID": "32d4962d-b408-4f35-9246-6f4bce5aa8fd",
+  "ActionKeyword": "cs",
+  "Name": "Circle to Search",
+  "Description": "Select a screen area and search it with Google Lens",
+  "Author": "keekys",
+  "Version": "0.1.0",
+  "Language": "csharp",
+  "ExecuteFileName": "CircleToSearch.dll",
+  "IcoPath": "Images\\app.png"
+}
