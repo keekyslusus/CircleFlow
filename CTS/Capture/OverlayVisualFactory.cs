@@ -25,7 +25,8 @@ public sealed record OverlayVisual(
 public static class OverlayVisualFactory
 {
     private const double DimOpacity = 0.35;
-    private const double HaloThickness = 9;
+    private const double HaloThickness = 12;
+    private const double HaloBlurRadius = 8;
     private const double AccentThickness = 2.5;
     private const double DimBlurRadius = 28;
     // The reveal's outer figure must sit well past the window edges, or the blur softens
@@ -93,6 +94,8 @@ public static class OverlayVisualFactory
         if (HardwareEffectsEnabled()) sheen.Effect = new BlurEffect { Radius = SheenBlurRadius };
 
         var accentColor = SystemAccentColor.Read();
+        // Blurred so the halo reads as a soft light glow under the crisp accent line
+        // instead of a hard-edged band on the selection boundary.
         var halo = new Polyline
         {
             Stroke = Frozen(Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF)),
@@ -102,6 +105,7 @@ public static class OverlayVisualFactory
             StrokeEndLineCap = PenLineCap.Round,
             IsHitTestVisible = false,
         };
+        if (HardwareEffectsEnabled()) halo.Effect = new BlurEffect { Radius = HaloBlurRadius };
 
         var accent = new Polyline
         {
