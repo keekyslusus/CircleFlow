@@ -13,7 +13,7 @@ using Ellipse = System.Windows.Shapes.Ellipse;
 
 namespace CircleToSearch.Search;
 
-public sealed class WebView2SearchWindow : IDisposable
+public sealed class GoogleLensWindow : IDisposable
 {
     private static readonly Uri GoogleLensHome = new("https://lens.google.com/?hl=ru");
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
@@ -30,7 +30,7 @@ public sealed class WebView2SearchWindow : IDisposable
     private int _loadingGeneration;
     private bool _disposed;
 
-    public WebView2SearchWindow(string pluginDirectory, string userDataFolder, PluginLog log)
+    public GoogleLensWindow(string pluginDirectory, string userDataFolder, PluginLog log)
     {
         _pluginDirectory = pluginDirectory;
         _userDataFolder = userDataFolder;
@@ -50,25 +50,23 @@ public sealed class WebView2SearchWindow : IDisposable
         }
     }
 
-    public async Task<WebView2SearchStatus> ShowAsync(byte[] png, CancellationToken cancel)
+    public async Task<GoogleLensSearchStatus> ShowAsync(byte[] png, CancellationToken cancel)
     {
-        if (_disposed) return WebView2SearchStatus.Failed;
-        if (cancel.IsCancellationRequested) return WebView2SearchStatus.Canceled;
+        if (_disposed) return GoogleLensSearchStatus.Failed;
+        if (cancel.IsCancellationRequested) return GoogleLensSearchStatus.Canceled;
 
-        var completion = new TaskCompletionSource<WebView2SearchStatus>(
+        var completion = new TaskCompletionSource<GoogleLensSearchStatus>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         if (!_dispatcher.TryPost(() => _ = ShowOnUiThreadAsync(png, cancel, completion)))
-            return WebView2SearchStatus.Failed;
+            return GoogleLensSearchStatus.Failed;
 
-        using var registration = cancel.Register(
-            () => completion.TrySetResult(WebView2SearchStatus.Canceled));
         return await completion.Task.ConfigureAwait(false);
     }
 
     private async Task ShowOnUiThreadAsync(
         byte[] png,
         CancellationToken cancel,
-        TaskCompletionSource<WebView2SearchStatus> completion)
+        TaskCompletionSource<GoogleLensSearchStatus> completion)
     {
         try
         {
@@ -89,25 +87,25 @@ public sealed class WebView2SearchWindow : IDisposable
                 .ConfigureAwait(true);
             HideLoadingOverlay();
             completion.TrySetResult(resultsReady
-                ? WebView2SearchStatus.ResultsReady
-                : WebView2SearchStatus.Failed);
+                ? GoogleLensSearchStatus.ResultsReady
+                : GoogleLensSearchStatus.Failed);
         }
         catch (WebView2RuntimeNotFoundException exception)
         {
             HideLoadingOverlay();
-            _log.Error(nameof(WebView2SearchWindow), "WebView2 Runtime is unavailable", exception);
-            completion.TrySetResult(WebView2SearchStatus.RuntimeUnavailable);
+            _log.Error(nameof(GoogleLensWindow), "WebView2 Runtime is unavailable", exception);
+            completion.TrySetResult(GoogleLensSearchStatus.RuntimeUnavailable);
         }
         catch (OperationCanceledException)
         {
             HideLoadingOverlay();
-            completion.TrySetResult(WebView2SearchStatus.Canceled);
+            completion.TrySetResult(GoogleLensSearchStatus.Canceled);
         }
         catch (Exception exception)
         {
             HideLoadingOverlay();
-            _log.Error(nameof(WebView2SearchWindow), "opening Google Lens failed", exception);
-            completion.TrySetResult(WebView2SearchStatus.Failed);
+            _log.Error(nameof(GoogleLensWindow), "opening Google Lens failed", exception);
+            completion.TrySetResult(GoogleLensSearchStatus.Failed);
         }
     }
 
@@ -254,12 +252,12 @@ public sealed class WebView2SearchWindow : IDisposable
             cancel.ThrowIfCancellationRequested();
             if (finished != acknowledgement.Task)
             {
-                _log.Warn(nameof(WebView2SearchWindow), "Google Lens upload acknowledgement timed out");
+                _log.Warn(nameof(GoogleLensWindow), "Google Lens upload acknowledgement timed out");
                 return false;
             }
 
             var message = await acknowledgement.Task.ConfigureAwait(true);
-            _log.Info(nameof(WebView2SearchWindow), $"Google Lens upload response: {message}");
+            _log.Info(nameof(GoogleLensWindow), $"Google Lens upload response: {message}");
             if (!string.Equals(message, "CTS:submitted", StringComparison.Ordinal)) return false;
 
             var navigated = await Task.WhenAny(
@@ -270,7 +268,7 @@ public sealed class WebView2SearchWindow : IDisposable
             cancel.ThrowIfCancellationRequested();
             if (navigated != navigation.Task)
             {
-                _log.Warn(nameof(WebView2SearchWindow), "Google Lens results navigation timed out");
+                _log.Warn(nameof(GoogleLensWindow), "Google Lens results navigation timed out");
                 return false;
             }
 
@@ -278,12 +276,12 @@ public sealed class WebView2SearchWindow : IDisposable
             if (!result.IsSuccess)
             {
                 _log.Warn(
-                    nameof(WebView2SearchWindow),
+                    nameof(GoogleLensWindow),
                     $"Google Lens results navigation failed: {result.WebErrorStatus}");
                 return false;
             }
 
-            _log.Info(nameof(WebView2SearchWindow), "Google Lens results opened");
+            _log.Info(nameof(GoogleLensWindow), "Google Lens results opened");
             return IsGoogleLensResultsUrl(webView.Source);
         }
         finally

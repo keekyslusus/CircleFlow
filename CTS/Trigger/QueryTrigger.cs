@@ -1,4 +1,5 @@
 using CircleToSearch.Search;
+using CircleToSearch.Ui;
 using Flow.Launcher.Plugin;
 
 namespace CircleToSearch.Trigger;
@@ -25,7 +26,7 @@ public sealed class QueryTrigger
             new Result
             {
                 Title = "Select screen area…",
-                SubTitle = $"Search the region directly with Google Lens — hotkey: {_hotkeyStatus()}",
+                SubTitle = UiStrings.VisualSearchQuerySubtitle(_hotkeyStatus()),
                 IcoPath = _iconPath,
                 Score = 80,
                 Action = context =>

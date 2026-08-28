@@ -17,7 +17,8 @@ public sealed class YandexLiveSearchTests
 
         var png = EncodePng(NewGradientBitmap(64, 64));
 
-        var outcome = await new YandexImagesProvider().SearchAsync(png, CancellationToken.None);
+        using var provider = new YandexImagesProvider();
+        var outcome = await provider.SearchAsync(png, CancellationToken.None);
 
         Assert.True(outcome.Success, $"upload failed: {outcome.Failure} status {outcome.StatusCode}");
         Assert.True(YandexResultUrlPolicy.IsAllowed(new Uri(outcome.ResultsUrl!)));

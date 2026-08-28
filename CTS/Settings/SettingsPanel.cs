@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using CircleToSearch.Ui;
 
 namespace CircleToSearch.Settings;
 
@@ -12,12 +13,11 @@ public sealed class SettingsPanel : UserControl
         PluginSettings settings,
         Func<string, bool> applyHotkey,
         Action save,
-        string? webView2Version)
+        string? webView2Version,
+        string providerDisplayName)
     {
-        var searchMode = CreateText("Search: Google Lens results in WebView2");
-        var runtime = CreateText(webView2Version is null
-            ? "WebView2 Runtime: not detected"
-            : $"WebView2 Runtime: {webView2Version}");
+        var searchMode = CreateText(UiStrings.SearchProvider(providerDisplayName));
+        var runtime = CreateText(UiStrings.GoogleLensRuntime(webView2Version));
         var gestureLabel = CreateText("Hotkey (e.g. Ctrl+Alt+Space)");
         var gesture = CreateInput(settings.HotkeyGesture);
 

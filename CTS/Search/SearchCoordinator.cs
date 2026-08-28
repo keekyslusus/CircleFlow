@@ -15,7 +15,7 @@ public enum SearchState
 
 public sealed class SearchCoordinator
 {
-    private readonly IVisualSearchProvider _provider;
+    private readonly VisualSearchProviderRouter _providerRouter;
     private readonly Func<CancellationToken, Task<SelectionOutcome?>> _selection;
     private readonly Func<GdiBitmap, GdiRectangle, byte[]> _crop;
     private readonly Func<string, bool> _openUrl;
@@ -28,7 +28,7 @@ public sealed class SearchCoordinator
     private CancellationTokenSource? _cancellation;
 
     public SearchCoordinator(
-        IVisualSearchProvider provider,
+        VisualSearchProviderRouter providerRouter,
         Func<CancellationToken, Task<SelectionOutcome?>> selection,
         Func<GdiBitmap, GdiRectangle, byte[]> crop,
         Func<string, bool> openUrl,
@@ -37,7 +37,7 @@ public sealed class SearchCoordinator
         PluginSettings settings,
         PluginLog log)
     {
-        _provider = provider;
+        _providerRouter = providerRouter;
         _selection = selection;
         _crop = crop;
         _openUrl = openUrl;
@@ -104,8 +104,9 @@ public sealed class SearchCoordinator
             return;
         }
 
-        var cancellation = new CancellationTokenSource();
+        using var cancellation = new CancellationTokenSource();
         Volatile.Write(ref _cancellation, cancellation);
+        var requestedProviderId = _settings.SearchProviderId;
         try
         {
             SetState(SearchState.Selecting);
@@ -138,7 +139,15 @@ public sealed class SearchCoordinator
             }
 
             SetState(SearchState.Uploading);
-            var result = await _provider.SearchAsync(png, cancellation.Token).ConfigureAwait(false);
+            var selectedProvider = _providerRouter.GetEffectiveDescriptor(requestedProviderId);
+            _log.Info(nameof(SearchCoordinator), $"upload started with provider '{selectedProvider.Id}'");
+            var routed = await _providerRouter
+                .SearchAsync(requestedProviderId, png, cancellation.Token)
+                .ConfigureAwait(false);
+            var result = routed.Outcome;
+            _log.Info(
+                nameof(SearchCoordinator),
+                $"provider '{routed.ProviderId}' completed with {result.Failure}");
             if (!result.Success)
             {
                 var reason = result.Failure switch
@@ -148,8 +157,10 @@ public sealed class SearchCoordinator
                     UploadFailure.PolicyRejection => "The search service returned an unexpected results location.",
                     UploadFailure.Timeout => "The upload timed out.",
                     UploadFailure.NetworkError => "The upload failed: network error.",
-                    UploadFailure.BrowserRuntimeUnavailable => "Microsoft Edge WebView2 Runtime is not installed.",
-                    UploadFailure.BrowserAutomationFailed => "Google opened, but the image could not be attached.",
+                    UploadFailure.BrowserRuntimeUnavailable =>
+                        $"{routed.ProviderDisplayName} requires Microsoft Edge WebView2 Runtime.",
+                    UploadFailure.BrowserAutomationFailed =>
+                        $"{routed.ProviderDisplayName} opened, but the image could not be attached.",
                     UploadFailure.Canceled => null,
                     _ => "The upload failed.",
                 };
@@ -158,7 +169,9 @@ public sealed class SearchCoordinator
                     _log.Info(nameof(SearchCoordinator), "upload canceled");
                     return;
                 }
-                _log.Warn(nameof(SearchCoordinator), $"upload failed: {result.Failure} status {result.StatusCode}");
+                _log.Warn(
+                    nameof(SearchCoordinator),
+                    $"provider '{routed.ProviderId}' failed: {result.Failure} status {result.StatusCode}");
                 SurfaceError("Circle to Search", reason);
                 return;
             }
@@ -168,11 +181,15 @@ public sealed class SearchCoordinator
                 if (!_openUrl(url))
                     SurfaceError("Circle to Search", "The results URL could not be opened in the default browser.");
                 else
-                    _log.Info(nameof(SearchCoordinator), "results opened in the default browser");
+                    _log.Info(
+                        nameof(SearchCoordinator),
+                        $"provider '{routed.ProviderId}' results opened in the default browser");
             }
             else
             {
-                _log.Info(nameof(SearchCoordinator), "results delivered by the provider");
+                _log.Info(
+                    nameof(SearchCoordinator),
+                    $"results delivered by provider '{routed.ProviderId}'");
             }
         }
         catch (OperationCanceledException)

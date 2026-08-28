@@ -104,6 +104,18 @@ public sealed class YandexImagesProviderTests
         Assert.Equal(UploadFailure.Canceled, outcome.Failure);
     }
 
+    [Fact]
+    public void Dispose_releases_the_http_handler_once()
+    {
+        var handler = new TrackingHandler();
+        var provider = new YandexImagesProvider(handler);
+
+        provider.Dispose();
+        provider.Dispose();
+
+        Assert.Equal(1, handler.DisposeCalls);
+    }
+
     private static FakeHandler JsonHandler(string body, HttpStatusCode status = HttpStatusCode.OK)
         => new(() =>
         {
@@ -129,5 +141,21 @@ public sealed class YandexImagesProviderTests
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => Task.FromException<HttpResponseMessage>(exception);
+    }
+
+    private sealed class TrackingHandler : HttpMessageHandler
+    {
+        public int DisposeCalls { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) DisposeCalls++;
+            base.Dispose(disposing);
+        }
     }
 }

@@ -23,20 +23,29 @@ public static class CompositionRoot
         var dataDirectory = api.GetDataDirectory();
         if (string.IsNullOrWhiteSpace(dataDirectory)) dataDirectory = pluginDirectory;
         var iconPath = Path.Combine(pluginDirectory, "Images", "app.png");
-        var webView2Version = WebView2SearchWindow.GetRuntimeVersion(pluginDirectory);
+        var webView2Version = GoogleLensWindow.GetRuntimeVersion(pluginDirectory);
         log.Info(nameof(CompositionRoot), webView2Version is null
             ? "WebView2 Runtime was not detected"
             : $"WebView2 Runtime detected: {webView2Version}");
 
         var hotkeyWindow = new HotkeyWindow(log);
         var registrar = new HotkeyRegistrar(hotkeyWindow, log);
-        var searchWindow = new WebView2SearchWindow(
-            pluginDirectory,
-            Path.Combine(dataDirectory, "WebView2Profile"),
+        var providerRouter = new VisualSearchProviderRouter(
+            [
+                new VisualSearchProviderRegistration(
+                    new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens"),
+                    () => new GoogleLensProvider(new GoogleLensWindow(
+                        pluginDirectory,
+                        Path.Combine(dataDirectory, "WebView2Profile"),
+                        log))),
+                new VisualSearchProviderRegistration(
+                    new SearchProviderDescriptor(SearchProviderIds.YandexImages, "Yandex Images"),
+                    () => new YandexImagesProvider(log)),
+            ],
+            SearchProviderIds.GoogleLens,
             log);
-        var provider = new WebView2VisualSearchProvider(searchWindow);
         var coordinator = new SearchCoordinator(
-            provider,
+            providerRouter,
             cancel => OverlayWindow.SelectAsync(
                 log,
                 new OverlayOptions(settings.PaddingPx, settings.LassoMinDiagonalPx),
@@ -71,9 +80,10 @@ public static class CompositionRoot
                 settings,
                 registrar.TryApply,
                 api.SaveSettingJsonStorage<PluginSettings>,
-                webView2Version),
+                webView2Version,
+                providerRouter.GetEffectiveDescriptor(settings.SearchProviderId).DisplayName),
             hotkeyWindow,
-            searchWindow,
+            providerRouter,
             log);
     }
 
@@ -99,7 +109,7 @@ public sealed class PluginRuntime : IDisposable
 {
     private readonly SearchCoordinator _coordinator;
     private readonly HotkeyWindow _hotkeyWindow;
-    private readonly WebView2SearchWindow _searchWindow;
+    private readonly VisualSearchProviderRouter _providerRouter;
     private readonly PluginLog _log;
 
     public PluginRuntime(
@@ -107,7 +117,7 @@ public sealed class PluginRuntime : IDisposable
         QueryTrigger queryTrigger,
         Func<Control> createSettingPanel,
         HotkeyWindow hotkeyWindow,
-        WebView2SearchWindow searchWindow,
+        VisualSearchProviderRouter providerRouter,
         PluginLog log)
     {
         Coordinator = coordinator;
@@ -115,7 +125,7 @@ public sealed class PluginRuntime : IDisposable
         CreateSettingPanel = createSettingPanel;
         _coordinator = coordinator;
         _hotkeyWindow = hotkeyWindow;
-        _searchWindow = searchWindow;
+        _providerRouter = providerRouter;
         _log = log;
     }
 
@@ -132,6 +142,6 @@ public sealed class PluginRuntime : IDisposable
         _log.Info(nameof(PluginRuntime), "disposing: canceling the active session and unregistering the hotkey");
         _coordinator.CancelActiveSelection();
         _hotkeyWindow.Dispose();
-        _searchWindow.Dispose();
+        _providerRouter.Dispose();
     }
 }

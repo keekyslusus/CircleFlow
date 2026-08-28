@@ -5,7 +5,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
-public sealed class WebView2LiveSearchTests
+public sealed class GoogleLensLiveSearchTests
 {
     [Fact]
     [Trait("Category", "Live")]
@@ -14,7 +14,7 @@ public sealed class WebView2LiveSearchTests
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
 
         var dataDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.WebView2Live");
-        using var window = new WebView2SearchWindow(
+        using var window = new GoogleLensWindow(
             AppContext.BaseDirectory,
             Path.Combine(dataDirectory, "Profile"),
             new PluginLog(dataDirectory));
@@ -22,8 +22,8 @@ public sealed class WebView2LiveSearchTests
         var first = await window.ShowAsync(CreatePng(), CancellationToken.None);
         var second = await window.ShowAsync(CreatePng(), CancellationToken.None);
 
-        Assert.Equal(WebView2SearchStatus.ResultsReady, first);
-        Assert.Equal(WebView2SearchStatus.ResultsReady, second);
+        Assert.Equal(GoogleLensSearchStatus.ResultsReady, first);
+        Assert.Equal(GoogleLensSearchStatus.ResultsReady, second);
     }
 
     private static byte[] CreatePng()

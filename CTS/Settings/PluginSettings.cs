@@ -1,7 +1,11 @@
 namespace CircleToSearch.Settings;
 
+using CircleToSearch.Search;
+
 public sealed class PluginSettings
 {
+    public string SearchProviderId { get; set; } = SearchProviderIds.GoogleLens;
+
     public string HotkeyGesture { get; set; } = "Ctrl+Alt+Space";
 
     public int MaxLongSidePx { get; set; } = 1600;
