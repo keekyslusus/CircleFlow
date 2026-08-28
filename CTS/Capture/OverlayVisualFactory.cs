@@ -24,10 +24,16 @@ public static class OverlayVisualFactory
     private const double HaloThickness = 9;
     private const double AccentThickness = 2.5;
     private const double ChipEntranceLift = 24;
+
+    // Tweak point for the chip outline width, in DIPs.
+    private const double ChipBorderThicknessDips = 1;
     private static readonly TimeSpan EntranceDuration = TimeSpan.FromMilliseconds(200);
     private static readonly TimeSpan ExitDuration = TimeSpan.FromMilliseconds(160);
 
-    public static OverlayVisual CreateRoot(BitmapSource frame, Size size, double chipBottomMargin)
+    public static OverlayVisual CreateRoot(BitmapSource frame, Size size, double chipBottomMargin) =>
+        CreateRoot(frame, size, chipBottomMargin, SystemTheme.IsLight());
+
+    internal static OverlayVisual CreateRoot(BitmapSource frame, Size size, double chipBottomMargin, bool lightTheme)
     {
         var screenshot = new Image { Source = frame, Stretch = Stretch.Fill, IsHitTestVisible = true };
 
@@ -59,7 +65,7 @@ public static class OverlayVisualFactory
         };
 
         var lift = new TranslateTransform();
-        var chip = CreateChip(lift);
+        var chip = CreateChip(lift, lightTheme ? LightPalette : DarkPalette);
         chip.VerticalAlignment = VerticalAlignment.Bottom;
         chip.HorizontalAlignment = HorizontalAlignment.Center;
         chip.Margin = new Thickness(0, 0, 0, chipBottomMargin);
@@ -129,12 +135,12 @@ public static class OverlayVisualFactory
     private static bool AnimationsEnabled() =>
         SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
 
-    private static Border CreateChip(TranslateTransform lift)
+    private static Border CreateChip(TranslateTransform lift, ChipPalette palette)
     {
         var icon = new Path
         {
             Data = ChipIconGeometry,
-            Fill = Frozen(Color.FromRgb(0xF1, 0xF3, 0xF4)),
+            Fill = Frozen(palette.Icon),
             Width = 13,
             Height = 13,
             Stretch = Stretch.Uniform,
@@ -147,20 +153,20 @@ public static class OverlayVisualFactory
             FontSize = 14,
             FontWeight = FontWeights.Medium,
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground = Frozen(Color.FromRgb(0xF1, 0xF3, 0xF4)),
+            Foreground = Frozen(palette.Label),
         };
         var divider = new Rectangle
         {
             Width = 1,
             Height = 18,
-            Fill = Frozen(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF)),
+            Fill = Frozen(palette.Divider),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(10, 0, 10, 0),
         };
         var keycap = new Border
         {
-            Background = Frozen(Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF)),
-            BorderBrush = Frozen(Color.FromArgb(0x29, 0xFF, 0xFF, 0xFF)),
+            Background = Frozen(palette.KeycapBackground),
+            BorderBrush = Frozen(palette.KeycapBorder),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(7, 6, 7, 6),
@@ -170,7 +176,7 @@ public static class OverlayVisualFactory
                 Text = UiStrings.CancelKeyName,
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = Frozen(Color.FromRgb(0xE8, 0xEA, 0xED)),
+                Foreground = Frozen(palette.KeycapText),
             },
         };
         var hint = new TextBlock
@@ -179,7 +185,7 @@ public static class OverlayVisualFactory
             FontSize = 12,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 0, 0),
-            Foreground = Frozen(Color.FromRgb(0xC4, 0xC7, 0xC5)),
+            Foreground = Frozen(palette.Hint),
         };
 
         var row = new StackPanel
@@ -199,17 +205,17 @@ public static class OverlayVisualFactory
             MinHeight = 44,
             Padding = new Thickness(18, 8, 16, 8),
             VerticalAlignment = VerticalAlignment.Center,
-            Background = Frozen(Color.FromArgb(0xE6, 0x20, 0x21, 0x24)),
-            BorderBrush = ChipOutlineBrush(),
-            BorderThickness = new Thickness(1),
+            Background = Frozen(palette.Surface),
+            BorderBrush = ChipOutlineBrush(palette),
+            BorderThickness = new Thickness(ChipBorderThicknessDips),
             RenderTransform = lift,
             Effect = new DropShadowEffect
             {
                 Color = Colors.Black,
                 BlurRadius = 20,
-                ShadowDepth = 6,
+                ShadowDepth = palette.ShadowDepth,
                 Direction = -90,
-                Opacity = 0.35,
+                Opacity = palette.ShadowOpacity,
             },
         };
         // Font metrics vary by locale, so the height is not known until layout; WPF also does
@@ -219,10 +225,49 @@ public static class OverlayVisualFactory
         return chip;
     }
 
+    private sealed record ChipPalette(
+        Color Surface,
+        Color Label,
+        Color Hint,
+        Color Icon,
+        Color KeycapBackground,
+        Color KeycapBorder,
+        Color KeycapText,
+        Color Divider,
+        Color NeutralOutline,
+        double ShadowDepth,
+        double ShadowOpacity);
+
+    private static readonly ChipPalette DarkPalette = new(
+        Surface: Color.FromArgb(0xE6, 0x20, 0x21, 0x24),
+        Label: Color.FromRgb(0xF1, 0xF3, 0xF4),
+        Hint: Color.FromRgb(0xC4, 0xC7, 0xC5),
+        Icon: Color.FromRgb(0xF1, 0xF3, 0xF4),
+        KeycapBackground: Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF),
+        KeycapBorder: Color.FromArgb(0x29, 0xFF, 0xFF, 0xFF),
+        KeycapText: Color.FromRgb(0xE8, 0xEA, 0xED),
+        Divider: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
+        NeutralOutline: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
+        ShadowDepth: 6,
+        ShadowOpacity: 0.35);
+
+    private static readonly ChipPalette LightPalette = new(
+        Surface: Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD),
+        Label: Color.FromRgb(0x1F, 0x20, 0x23),
+        Hint: Color.FromRgb(0x5F, 0x63, 0x68),
+        Icon: Color.FromRgb(0x3C, 0x40, 0x43),
+        KeycapBackground: Color.FromArgb(0x0D, 0x20, 0x21, 0x24),
+        KeycapBorder: Color.FromArgb(0x24, 0x20, 0x21, 0x24),
+        KeycapText: Color.FromRgb(0x3C, 0x40, 0x43),
+        Divider: Color.FromArgb(0x29, 0x20, 0x21, 0x24),
+        NeutralOutline: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
+        ShadowDepth: 8,
+        ShadowOpacity: 0.3);
+
     // High Contrast themes suppress the accent; a neutral outline stays readable there.
-    private static Brush ChipOutlineBrush() =>
+    private static Brush ChipOutlineBrush(ChipPalette palette) =>
         SystemParameters.HighContrast
-            ? Frozen(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF))
+            ? Frozen(palette.NeutralOutline)
             : Frozen(SystemAccentColor.Read());
 
     // Material Symbols "ink_selection" (Apache-2.0); path data taken verbatim from

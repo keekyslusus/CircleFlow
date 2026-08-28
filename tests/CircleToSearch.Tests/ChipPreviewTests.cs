@@ -5,61 +5,58 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using Xunit;
-using GdiBitmap = System.Drawing.Bitmap;
-using GdiColor = System.Drawing.Color;
-using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Tests;
 
 public sealed class ChipPreviewTests
 {
-    // Renders the real overlay content to a PNG for visual checks without triggering
+    // Renders the real chip visual to PNGs for visual checks without triggering
     // a selection: CTS_CHIP_PREVIEW=1 dotnet test --filter ChipPreviewTests.
-    // The PNG lands at %TEMP%\cts-chip-preview.png (150% DPI, like a scaled laptop screen).
+    // Output: %TEMP%\cts-chip-preview.png (dark) and cts-chip-preview-light.png, 150% DPI.
     [Fact]
-    public void Renders_chip_preview_png()
+    public void Renders_chip_preview_pngs_for_both_themes()
     {
         if (Environment.GetEnvironmentVariable("CTS_CHIP_PREVIEW") != "1") return;
 
-        var path = Path.Combine(Path.GetTempPath(), "cts-chip-preview.png");
-        var failure = RunOnSta(() => Render(path));
-        Assert.Null(failure);
+        Assert.Null(RunOnSta(() => Render(
+            Path.Combine(Path.GetTempPath(), "cts-chip-preview.png"),
+            lightTheme: false)));
+        Assert.Null(RunOnSta(() => Render(
+            Path.Combine(Path.GetTempPath(), "cts-chip-preview-light.png"),
+            lightTheme: true)));
     }
 
-    private static void Render(string path)
+    private static void Render(string path, bool lightTheme)
     {
-        using var frame = new GdiBitmap(960, 600);
-        using (var graphics = System.Drawing.Graphics.FromImage(frame))
+        var visual = OverlayVisualFactory.CreateRoot(null, new Size(640, 400), 32, lightTheme);
+        // The screenshot layer is empty in the preview, so give the root a desktop-like gradient.
+        visual.Root.Background = new LinearGradientBrush(
+            Color.FromRgb(0xEA, 0xEE, 0xF3),
+            Color.FromRgb(0x22, 0x26, 0x32),
+            35);
+        var window = new Window
         {
-            using var gradient = new System.Drawing.Drawing2D.LinearGradientBrush(
-                new GdiRectangle(0, 0, 960, 600),
-                GdiColor.FromArgb(234, 238, 243),
-                GdiColor.FromArgb(34, 38, 50),
-                35f);
-            graphics.FillRectangle(gradient, 0, 0, 960, 600);
-        }
-
-        var monitor = new GdiRectangle(0, 0, 960, 600);
-        var overlay = new OverlayWindow(frame, monitor, monitor, 1.5, new OverlayOptions(8, 12));
-        overlay.Show();
+            Content = visual.Root,
+            Width = 640,
+            Height = 400,
+            WindowStyle = WindowStyle.None,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+        };
+        window.Show();
 
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
         timer.Tick += (_, _) =>
         {
             timer.Stop();
-            overlay.UpdateLayout();
-            var bitmap = new RenderTargetBitmap(
-                (int)Math.Ceiling(overlay.ActualWidth * 1.5),
-                (int)Math.Ceiling(overlay.ActualHeight * 1.5),
-                144,
-                144,
-                PixelFormats.Pbgra32);
-            bitmap.Render((Visual)overlay.Content);
+            visual.Root.UpdateLayout();
+            var bitmap = new RenderTargetBitmap(960, 600, 144, 144, PixelFormats.Pbgra32);
+            bitmap.Render(visual.Root);
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
             using var file = File.Create(path);
             encoder.Save(file);
-            overlay.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+            window.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
         };
         timer.Start();
         Dispatcher.Run();
