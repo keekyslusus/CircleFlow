@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using CircleToSearch.Ui;
 
 // Circle-to-search entrance: a translucent accent tint pulses in while particles twinkle
 // in a wave spreading from the trigger point. Plays once per selection; the layer removes
@@ -52,7 +53,7 @@ public static class OverlayEntrance
         {
             Width = size.Width,
             Height = size.Height,
-            Fill = Frozen(WithAlpha(accent, WashAlpha)),
+            Fill = Frozen(PluginPalette.WithAlpha(accent, WashAlpha)),
             IsHitTestVisible = false,
         };
         Canvas.SetLeft(tint, 0);
@@ -99,8 +100,8 @@ public static class OverlayEntrance
                 Height = dotSize,
                 Opacity = 0,
                 Fill = Frozen(useAccent
-                    ? WithAlpha(accent, 0.9)
-                    : Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF)),
+                    ? PluginPalette.WithAlpha(accent, 0.9)
+                    : PluginPalette.EntranceParticle),
             };
             Canvas.SetLeft(dot, x - dotSize / 2);
             Canvas.SetTop(dot, y - dotSize / 2);
@@ -129,9 +130,6 @@ public static class OverlayEntrance
         var y = Math.Max(origin.Y, size.Height - origin.Y);
         return Math.Sqrt(x * x + y * y);
     }
-
-    private static Color WithAlpha(Color color, double alpha) =>
-        Color.FromArgb((byte)Math.Round(255 * alpha), color.R, color.G, color.B);
 
     private static IEasingFunction EaseOut() => new CubicEase { EasingMode = EasingMode.EaseOut };
 

@@ -56,6 +56,9 @@ internal struct MONITORINFO
 
 internal static class NativeMethods
 {
+    public const int DwmwaUseImmersiveDarkModeBefore20H1 = 19;
+    public const int DwmwaUseImmersiveDarkMode = 20;
+
     public const uint MOD_ALT = 0x1;
     public const uint MOD_CONTROL = 0x2;
     public const uint MOD_SHIFT = 0x4;
@@ -125,4 +128,11 @@ internal static class NativeMethods
 
     [DllImport("gdi32.dll")]
     public static extern bool DeleteObject(IntPtr hObject);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmSetWindowAttribute(
+        IntPtr hwnd,
+        int attribute,
+        ref int value,
+        int valueSize);
 }

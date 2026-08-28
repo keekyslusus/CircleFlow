@@ -24,7 +24,6 @@ public sealed record OverlayVisual(
 // Composes the overlay visual tree layer by layer; the window only keeps references.
 public static class OverlayVisualFactory
 {
-    private const double DimOpacity = 0.35;
     private const double HaloThickness = 12;
     private const double HaloBlurRadius = 8;
     private const double AccentThickness = 2.5;
@@ -32,9 +31,7 @@ public static class OverlayVisualFactory
     // The reveal's outer figure must sit well past the window edges, or the blur softens
     // the screen borders instead of just the selection boundary.
     private const double RevealBleed = 96;
-    private const double SheenAlpha = 0x24;
     private const double SheenBlurRadius = 14;
-    private const double FrameFillAlpha = 0x2E;
     private const double FrameCornerRadius = 6;
     private const double FrameGlowRadius = 18;
     private const double ChipEntranceLift = 24;
@@ -65,7 +62,7 @@ public static class OverlayVisualFactory
         // and the revealed lasso interior into a wide gradient.
         var dim = new Path
         {
-            Fill = Frozen(Color.FromArgb((byte)(255 * DimOpacity), 0, 0, 0)),
+            Fill = Frozen(PluginPalette.SelectionDim),
             Data = BuildRevealGeometry(size, []),
             IsHitTestVisible = false,
         };
@@ -76,7 +73,7 @@ public static class OverlayVisualFactory
         // lasso outline to the rectangle reads as one seamless move.
         var dimRect = new Path
         {
-            Fill = Frozen(Color.FromArgb((byte)(255 * DimOpacity), 0, 0, 0)),
+            Fill = Frozen(PluginPalette.SelectionDim),
             Data = Geometry.Empty,
             Opacity = 0,
             IsHitTestVisible = false,
@@ -87,7 +84,7 @@ public static class OverlayVisualFactory
         // interior glows instead of showing a hard polygon edge.
         var sheen = new Path
         {
-            Fill = Frozen(Color.FromArgb((byte)SheenAlpha, 0xFF, 0xFF, 0xFF)),
+            Fill = Frozen(PluginPalette.SelectionSheen),
             Data = Geometry.Empty,
             IsHitTestVisible = false,
         };
@@ -98,7 +95,7 @@ public static class OverlayVisualFactory
         // instead of a hard-edged band on the selection boundary.
         var halo = new Polyline
         {
-            Stroke = Frozen(Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF)),
+            Stroke = Frozen(PluginPalette.SelectionHalo),
             StrokeThickness = HaloThickness,
             StrokeLineJoin = PenLineJoin.Round,
             StrokeStartLineCap = PenLineCap.Round,
@@ -119,7 +116,7 @@ public static class OverlayVisualFactory
 
         var selectionFrame = new Path
         {
-            Fill = Frozen(Color.FromArgb((byte)FrameFillAlpha, 0xFF, 0xFF, 0xFF)),
+            Fill = Frozen(PluginPalette.SelectionFrameFill),
             Stroke = Frozen(accentColor),
             StrokeThickness = AccentThickness,
             Opacity = 0,
@@ -134,7 +131,7 @@ public static class OverlayVisualFactory
         };
 
         var lift = new TranslateTransform();
-        var chip = CreateChip(lift, lightTheme ? LightPalette : DarkPalette, strings);
+        var chip = CreateChip(lift, PluginPalette.For(lightTheme).SelectionChip, strings);
         chip.VerticalAlignment = VerticalAlignment.Bottom;
         chip.HorizontalAlignment = HorizontalAlignment.Center;
         chip.Margin = new Thickness(0, 0, 0, chipBottomMargin);
@@ -263,7 +260,7 @@ public static class OverlayVisualFactory
     // A software-rendered blur rebuilds a full-screen bitmap on every mouse move.
     internal static bool HardwareEffectsEnabled() => RenderCapability.Tier >> 16 >= 2;
 
-    private static Border CreateChip(TranslateTransform lift, ChipPalette palette, UiStrings strings)
+    private static Border CreateChip(TranslateTransform lift, SelectionChipPalette palette, UiStrings strings)
     {
         var icon = new Path
         {
@@ -339,7 +336,7 @@ public static class OverlayVisualFactory
             RenderTransform = lift,
             Effect = new DropShadowEffect
             {
-                Color = Colors.Black,
+                Color = PluginPalette.OpaqueBlack,
                 BlurRadius = 20,
                 ShadowDepth = palette.ShadowDepth,
                 Direction = -90,
@@ -353,47 +350,8 @@ public static class OverlayVisualFactory
         return chip;
     }
 
-    private sealed record ChipPalette(
-        Color Surface,
-        Color Label,
-        Color Hint,
-        Color Icon,
-        Color KeycapBackground,
-        Color KeycapBorder,
-        Color KeycapText,
-        Color Divider,
-        Color NeutralOutline,
-        double ShadowDepth,
-        double ShadowOpacity);
-
-    private static readonly ChipPalette DarkPalette = new(
-        Surface: Color.FromArgb(0xE6, 0x20, 0x21, 0x24),
-        Label: Color.FromRgb(0xF1, 0xF3, 0xF4),
-        Hint: Color.FromRgb(0xC4, 0xC7, 0xC5),
-        Icon: Color.FromRgb(0xF1, 0xF3, 0xF4),
-        KeycapBackground: Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF),
-        KeycapBorder: Color.FromArgb(0x29, 0xFF, 0xFF, 0xFF),
-        KeycapText: Color.FromRgb(0xE8, 0xEA, 0xED),
-        Divider: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
-        NeutralOutline: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
-        ShadowDepth: 6,
-        ShadowOpacity: 0.35);
-
-    private static readonly ChipPalette LightPalette = new(
-        Surface: Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD),
-        Label: Color.FromRgb(0x1F, 0x20, 0x23),
-        Hint: Color.FromRgb(0x5F, 0x63, 0x68),
-        Icon: Color.FromRgb(0x3C, 0x40, 0x43),
-        KeycapBackground: Color.FromArgb(0x0D, 0x20, 0x21, 0x24),
-        KeycapBorder: Color.FromArgb(0x24, 0x20, 0x21, 0x24),
-        KeycapText: Color.FromRgb(0x3C, 0x40, 0x43),
-        Divider: Color.FromArgb(0x29, 0x20, 0x21, 0x24),
-        NeutralOutline: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
-        ShadowDepth: 8,
-        ShadowOpacity: 0.3);
-
     // High Contrast themes suppress the accent; a neutral outline stays readable there.
-    private static Brush ChipOutlineBrush(ChipPalette palette) =>
+    private static Brush ChipOutlineBrush(SelectionChipPalette palette) =>
         SystemParameters.HighContrast
             ? Frozen(palette.NeutralOutline)
             : Frozen(SystemAccentColor.Read());

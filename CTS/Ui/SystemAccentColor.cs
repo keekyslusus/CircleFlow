@@ -13,7 +13,7 @@ public static class SystemAccentColor
     {
         return TryRead(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent", "AccentColorMenu")
             ?? TryRead(@"Software\Microsoft\Windows\DWM", "AccentColor")
-            ?? Color.FromRgb(0x00, 0x78, 0xD4);
+            ?? PluginPalette.SystemAccentFallback;
     }
 
     internal static Color? FromDword(int raw) =>

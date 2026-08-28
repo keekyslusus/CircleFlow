@@ -101,11 +101,11 @@ public sealed class OverlayWindow : Window
         if (allowsTransparency)
         {
             AllowsTransparency = true;
-            Background = Brushes.Transparent;
+            Background = CreateFrozenSolidBrush(PluginPalette.Transparent);
         }
         else
         {
-            Background = CreateFrozenSolidBrush(Colors.Black);
+            Background = CreateFrozenSolidBrush(PluginPalette.OpaqueBlack);
         }
         if (overscan)
         {

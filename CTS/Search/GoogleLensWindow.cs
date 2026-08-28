@@ -4,12 +4,14 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using CircleToSearch.Interop;
 using CircleToSearch.Ui;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using DrawingColor = System.Drawing.Color;
 using Ellipse = System.Windows.Shapes.Ellipse;
 
 namespace CircleToSearch.Search;
@@ -29,6 +31,7 @@ public sealed class GoogleLensWindow : IDisposable
     private Window? _window;
     private WebView2? _webView;
     private Grid? _loadingOverlay;
+    private TextBlock? _loadingText;
     private int _loadingGeneration;
     private bool _disposed;
 
@@ -83,6 +86,7 @@ public sealed class GoogleLensWindow : IDisposable
 
             var window = _window!;
             var webView = _webView!;
+            ApplyTheme(SystemTheme.IsLight());
             ShowLoadingOverlay();
             window.Show();
             window.Activate();
@@ -126,9 +130,17 @@ public sealed class GoogleLensWindow : IDisposable
             .CreateAsync(userDataFolder: _userDataFolder)
             .ConfigureAwait(true);
 
-        var webView = new WebView2 { Visibility = Visibility.Hidden };
-        var loadingOverlay = CreateLoadingOverlay();
-        var content = new Grid();
+        var lightTheme = SystemTheme.IsLight();
+        var palette = PluginPalette.For(lightTheme);
+        var background = Frozen(palette.WindowSurface);
+        var webViewBackground = ToDrawingColor(palette.WindowSurface);
+        var webView = new WebView2
+        {
+            Visibility = Visibility.Hidden,
+            DefaultBackgroundColor = webViewBackground,
+        };
+        var loadingOverlay = CreateLoadingOverlay(palette, out var loadingText);
+        var content = new Grid { Background = background };
         content.Children.Add(webView);
         content.Children.Add(loadingOverlay);
         var closed = false;
@@ -140,8 +152,10 @@ public sealed class GoogleLensWindow : IDisposable
             MinWidth = 720,
             MinHeight = 520,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            Background = background,
             Content = content,
         };
+        window.SourceInitialized += (_, _) => ApplyWindowChromeTheme(window, lightTheme);
         window.Closed += (_, _) =>
         {
             closed = true;
@@ -151,6 +165,7 @@ public sealed class GoogleLensWindow : IDisposable
                 _window = null;
                 _webView = null;
                 _loadingOverlay = null;
+                _loadingText = null;
             }
         };
         window.PreviewKeyDown += OnWindowPreviewKeyDown;
@@ -158,16 +173,20 @@ public sealed class GoogleLensWindow : IDisposable
         _window = window;
         _webView = webView;
         _loadingOverlay = loadingOverlay;
+        _loadingText = loadingText;
 
         try
         {
             window.Show();
-            await webView.EnsureCoreWebView2Async(_environment).ConfigureAwait(true);
+            var controllerOptions = _environment.CreateCoreWebView2ControllerOptions();
+            controllerOptions.DefaultBackgroundColor = webViewBackground;
+            await webView.EnsureCoreWebView2Async(_environment, controllerOptions).ConfigureAwait(true);
             if (closed) throw new OperationCanceledException();
             webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
             webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
             webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
             webView.CoreWebView2.Settings.IsZoomControlEnabled = true;
+            ApplyTheme(lightTheme);
         }
         catch
         {
@@ -312,22 +331,23 @@ public sealed class GoogleLensWindow : IDisposable
             .Any(part => part is "?udm=26" or "udm=26");
     }
 
-    private Grid CreateLoadingOverlay()
+    private Grid CreateLoadingOverlay(
+        PluginThemePalette palette,
+        out TextBlock loadingText)
     {
         var dots = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Center,
         };
-        var colors = new[] { "#4285F4", "#A142F4", "#0B57D0" };
-        for (var index = 0; index < colors.Length; index++)
+        for (var index = 0; index < PluginPalette.GoogleLensLoadingDots.Count; index++)
         {
             var dot = new Ellipse
             {
                 Width = 10,
                 Height = 10,
                 Margin = new Thickness(5),
-                Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colors[index])),
+                Fill = Frozen(PluginPalette.GoogleLensLoadingDots[index]),
             };
             dot.BeginAnimation(
                 UIElement.OpacityProperty,
@@ -340,13 +360,13 @@ public sealed class GoogleLensWindow : IDisposable
             dots.Children.Add(dot);
         }
 
-        var text = new TextBlock
+        loadingText = new TextBlock
         {
             Text = _strings.GoogleLensLoading,
             Margin = new Thickness(0, 18, 0, 0),
             FontFamily = new FontFamily("Segoe UI Variable Text"),
             FontSize = 16,
-            Foreground = new SolidColorBrush(Color.FromRgb(48, 52, 58)),
+            Foreground = Frozen(palette.PrimaryText),
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         var center = new StackPanel
@@ -355,16 +375,72 @@ public sealed class GoogleLensWindow : IDisposable
             VerticalAlignment = VerticalAlignment.Center,
         };
         center.Children.Add(dots);
-        center.Children.Add(text);
+        center.Children.Add(loadingText);
 
         var overlay = new Grid
         {
-            Background = new SolidColorBrush(Color.FromRgb(247, 249, 252)),
+            Background = Frozen(palette.WindowSurface),
             IsHitTestVisible = true,
         };
         overlay.Children.Add(center);
         Panel.SetZIndex(overlay, 1);
         return overlay;
+    }
+
+    private void ApplyTheme(bool lightTheme)
+    {
+        var palette = PluginPalette.For(lightTheme);
+        var background = Frozen(palette.WindowSurface);
+        if (_window is not null)
+        {
+            _window.Background = background;
+            if (_window.Content is Panel content) content.Background = background;
+            ApplyWindowChromeTheme(_window, lightTheme);
+        }
+
+        if (_loadingOverlay is not null) _loadingOverlay.Background = background;
+        if (_loadingText is not null) _loadingText.Foreground = Frozen(palette.PrimaryText);
+        if (_webView is not null)
+        {
+            _webView.DefaultBackgroundColor = ToDrawingColor(palette.WindowSurface);
+            if (_webView.CoreWebView2 is { } coreWebView)
+            {
+                coreWebView.Profile.PreferredColorScheme = lightTheme
+                    ? CoreWebView2PreferredColorScheme.Light
+                    : CoreWebView2PreferredColorScheme.Dark;
+            }
+        }
+    }
+
+    private static SolidColorBrush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
+
+    private static DrawingColor ToDrawingColor(Color color) =>
+        DrawingColor.FromArgb(color.A, color.R, color.G, color.B);
+
+    private static void ApplyWindowChromeTheme(Window window, bool lightTheme)
+    {
+        var hwnd = new WindowInteropHelper(window).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        var useDarkMode = lightTheme ? 0 : 1;
+        var result = NativeMethods.DwmSetWindowAttribute(
+            hwnd,
+            NativeMethods.DwmwaUseImmersiveDarkMode,
+            ref useDarkMode,
+            sizeof(int));
+        if (result != 0)
+        {
+            NativeMethods.DwmSetWindowAttribute(
+                hwnd,
+                NativeMethods.DwmwaUseImmersiveDarkModeBefore20H1,
+                ref useDarkMode,
+                sizeof(int));
+        }
     }
 
     private void ShowLoadingOverlay()
