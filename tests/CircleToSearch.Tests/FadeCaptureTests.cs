@@ -75,6 +75,7 @@ public sealed class FadeCaptureTests
                 workArea,
                 scale,
                 new OverlayOptions(8, 12),
+                TestUiStrings.English,
                 allowsTransparency: true,
                 exitFade: OverlayExitFade.Root,
                 clickThroughOnCancel: true,

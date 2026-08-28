@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using CircleToSearch.Interop;
+using CircleToSearch.Ui;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Ellipse = System.Windows.Shapes.Ellipse;
@@ -15,12 +16,13 @@ namespace CircleToSearch.Search;
 
 public sealed class GoogleLensWindow : IDisposable
 {
-    private static readonly Uri GoogleLensHome = new("https://lens.google.com/?hl=ru");
+    private static readonly Uri GoogleLensHome = new("https://lens.google.com/?hl=en");
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan AttachmentTimeout = TimeSpan.FromSeconds(15);
 
     private readonly string _pluginDirectory;
     private readonly string _userDataFolder;
+    private readonly UiStrings _strings;
     private readonly PluginLog _log;
     private readonly StaDispatcher _dispatcher = new("CircleToSearch WebView2");
     private CoreWebView2Environment? _environment;
@@ -30,10 +32,15 @@ public sealed class GoogleLensWindow : IDisposable
     private int _loadingGeneration;
     private bool _disposed;
 
-    public GoogleLensWindow(string pluginDirectory, string userDataFolder, PluginLog log)
+    public GoogleLensWindow(
+        string pluginDirectory,
+        string userDataFolder,
+        UiStrings strings,
+        PluginLog log)
     {
         _pluginDirectory = pluginDirectory;
         _userDataFolder = userDataFolder;
+        _strings = strings;
         _log = log;
     }
 
@@ -127,7 +134,7 @@ public sealed class GoogleLensWindow : IDisposable
         var closed = false;
         var window = new Window
         {
-            Title = "Circle to Search — Google Lens",
+            Title = _strings.GoogleLensWindowTitle,
             Width = 1200,
             Height = 820,
             MinWidth = 720,
@@ -305,7 +312,7 @@ public sealed class GoogleLensWindow : IDisposable
             .Any(part => part is "?udm=26" or "udm=26");
     }
 
-    private static Grid CreateLoadingOverlay()
+    private Grid CreateLoadingOverlay()
     {
         var dots = new StackPanel
         {
@@ -335,7 +342,7 @@ public sealed class GoogleLensWindow : IDisposable
 
         var text = new TextBlock
         {
-            Text = "Ищем с помощью Google Lens…",
+            Text = _strings.GoogleLensLoading,
             Margin = new Thickness(0, 18, 0, 0),
             FontFamily = new FontFamily("Segoe UI Variable Text"),
             FontSize = 16,

@@ -15,7 +15,13 @@ public sealed class OverlayWindowTests
         {
             using var frame = new GdiBitmap(64, 48);
             var monitor = new GdiRectangle(0, 0, 64, 48);
-            var overlay = new OverlayWindow(frame, monitor, monitor, 1.0, new OverlayOptions(8, 12));
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1.0,
+                new OverlayOptions(8, 12),
+                TestUiStrings.English);
             overlay.Show();
             PumpUntilShutdown(overlay);
         });
@@ -31,7 +37,13 @@ public sealed class OverlayWindowTests
             using var frame = new GdiBitmap(100, 80);
             var monitor = new GdiRectangle(-1920, -80, 100, 80);
             var workArea = new GdiRectangle(-1920, -80, 100, 50);
-            var overlay = new OverlayWindow(frame, monitor, workArea, 1.25, new OverlayOptions(8, 12));
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                workArea,
+                1.25,
+                new OverlayOptions(8, 12),
+                TestUiStrings.English);
             overlay.Show();
             PumpUntilShutdown(overlay);
         });
@@ -46,7 +58,13 @@ public sealed class OverlayWindowTests
         {
             using var frame = new GdiBitmap(64, 48);
             var monitor = new GdiRectangle(0, 0, 64, 48);
-            var overlay = new OverlayWindow(frame, monitor, monitor, 1.0, new OverlayOptions(8, 12));
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1.0,
+                new OverlayOptions(8, 12),
+                TestUiStrings.English);
             overlay.Show();
             overlay.CancelFromCoordinator();
             Dispatcher.Run();

@@ -260,6 +260,7 @@ public sealed class SearchCoordinatorTests
                 () => Hidden++,
                 (_, message) => Errors.Add(message),
                 Settings,
+                TestUiStrings.English,
                 log);
         }
 

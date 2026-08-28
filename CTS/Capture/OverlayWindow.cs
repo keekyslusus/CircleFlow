@@ -7,6 +7,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Interop;
+using CircleToSearch.Ui;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiGraphics = System.Drawing.Graphics;
 using GdiPoint = System.Drawing.Point;
@@ -60,6 +61,7 @@ public sealed class OverlayWindow : Window
         GdiRectangle workArea,
         double scale,
         OverlayOptions options,
+        UiStrings strings,
         bool allowsTransparency = true,
         OverlayExitFade exitFade = OverlayExitFade.Root,
         bool clickThroughOnCancel = true,
@@ -75,7 +77,7 @@ public sealed class OverlayWindow : Window
         _overscan = overscan;
         _sampler = new LassoPathSampler(SampleDistanceDips * scale);
 
-        Title = "Circle to Search";
+        Title = strings.PluginTitle;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
@@ -111,7 +113,8 @@ public sealed class OverlayWindow : Window
         _visual = OverlayVisualFactory.CreateRoot(
             CreateFrozenFrame(frame),
             new Size(Width, Height),
-            ChipBottomMargin(monitor, workArea, scale) + (overscan ? 1 : 0));
+            ChipBottomMargin(monitor, workArea, scale) + (overscan ? 1 : 0),
+            strings);
         if (overscan) _visual.Screenshot.Margin = new Thickness(1);
         Content = _visual.Root;
         Loaded += OnLoaded;
@@ -126,14 +129,18 @@ public sealed class OverlayWindow : Window
 
     // Must not be called from an MTA thread: it creates the STA thread that owns the overlay.
     // A null outcome means the selection was canceled.
-    public static Task<SelectionOutcome?> SelectAsync(PluginLog log, OverlayOptions options, CancellationToken cancel)
+    public static Task<SelectionOutcome?> SelectAsync(
+        PluginLog log,
+        OverlayOptions options,
+        UiStrings strings,
+        CancellationToken cancel)
     {
         var completion = new TaskCompletionSource<SelectionOutcome?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
             try
             {
-                completion.SetResult(RunOnce(log, options, cancel));
+                completion.SetResult(RunOnce(log, options, strings, cancel));
             }
             catch (Exception exception)
             {
@@ -151,7 +158,11 @@ public sealed class OverlayWindow : Window
 
     public void CancelFromCoordinator() => Dispatcher.BeginInvoke(new Action(CancelInternal));
 
-    private static SelectionOutcome? RunOnce(PluginLog log, OverlayOptions options, CancellationToken cancel)
+    private static SelectionOutcome? RunOnce(
+        PluginLog log,
+        OverlayOptions options,
+        UiStrings strings,
+        CancellationToken cancel)
     {
         var previousContext = NativeMethods.SetThreadDpiAwarenessContext(NativeMethods.DpiAwarenessPerMonitorV2);
         try
@@ -171,7 +182,7 @@ public sealed class OverlayWindow : Window
             SelectionOutcome? outcome = null;
             try
             {
-                var window = new OverlayWindow(frame, monitor, workArea, scale, options);
+                var window = new OverlayWindow(frame, monitor, workArea, scale, options, strings);
                 window.Show();
                 using var registration = cancel.Register(window.CancelFromCoordinator);
                 Dispatcher.Run();

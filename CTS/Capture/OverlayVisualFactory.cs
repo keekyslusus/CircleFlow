@@ -31,10 +31,19 @@ public static class OverlayVisualFactory
     private static readonly TimeSpan EntranceDuration = TimeSpan.FromMilliseconds(200);
     private static readonly TimeSpan ExitDuration = TimeSpan.FromMilliseconds(160);
 
-    public static OverlayVisual CreateRoot(BitmapSource? frame, Size size, double chipBottomMargin) =>
-        CreateRoot(frame, size, chipBottomMargin, SystemTheme.IsLight());
+    public static OverlayVisual CreateRoot(
+        BitmapSource? frame,
+        Size size,
+        double chipBottomMargin,
+        UiStrings strings) =>
+        CreateRoot(frame, size, chipBottomMargin, SystemTheme.IsLight(), strings);
 
-    internal static OverlayVisual CreateRoot(BitmapSource frame, Size size, double chipBottomMargin, bool lightTheme)
+    internal static OverlayVisual CreateRoot(
+        BitmapSource? frame,
+        Size size,
+        double chipBottomMargin,
+        bool lightTheme,
+        UiStrings strings)
     {
         var screenshot = new Image { Source = frame, Stretch = Stretch.Fill, IsHitTestVisible = true };
 
@@ -66,7 +75,7 @@ public static class OverlayVisualFactory
         };
 
         var lift = new TranslateTransform();
-        var chip = CreateChip(lift, lightTheme ? LightPalette : DarkPalette);
+        var chip = CreateChip(lift, lightTheme ? LightPalette : DarkPalette, strings);
         chip.VerticalAlignment = VerticalAlignment.Bottom;
         chip.HorizontalAlignment = HorizontalAlignment.Center;
         chip.Margin = new Thickness(0, 0, 0, chipBottomMargin);
@@ -136,7 +145,7 @@ public static class OverlayVisualFactory
     internal static bool AnimationsEnabled() =>
         SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
 
-    private static Border CreateChip(TranslateTransform lift, ChipPalette palette)
+    private static Border CreateChip(TranslateTransform lift, ChipPalette palette, UiStrings strings)
     {
         var icon = new Path
         {
@@ -150,7 +159,7 @@ public static class OverlayVisualFactory
         };
         var label = new TextBlock
         {
-            Text = UiStrings.SelectionPrompt,
+            Text = strings.SelectionPrompt,
             FontSize = 14,
             FontWeight = FontWeights.Medium,
             VerticalAlignment = VerticalAlignment.Center,
@@ -174,7 +183,7 @@ public static class OverlayVisualFactory
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock
             {
-                Text = UiStrings.CancelKeyName,
+                Text = strings.CancelKeyName,
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = Frozen(palette.KeycapText),
@@ -182,7 +191,7 @@ public static class OverlayVisualFactory
         };
         var hint = new TextBlock
         {
-            Text = UiStrings.CancelAction,
+            Text = strings.CancelAction,
             FontSize = 12,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 0, 0),

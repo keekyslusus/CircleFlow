@@ -14,19 +14,20 @@ public sealed class SettingsPanel : UserControl
         Func<string, bool> applyHotkey,
         Action save,
         string? webView2Version,
-        string providerDisplayName)
+        string providerDisplayName,
+        UiStrings strings)
     {
-        var searchMode = CreateText(UiStrings.SearchProvider(providerDisplayName));
-        var runtime = CreateText(UiStrings.GoogleLensRuntime(webView2Version));
-        var gestureLabel = CreateText("Hotkey (e.g. Ctrl+Alt+Space)");
+        var searchMode = CreateText(strings.SearchProvider(providerDisplayName));
+        var runtime = CreateText(strings.GoogleLensRuntime(webView2Version));
+        var gestureLabel = CreateText(strings.SettingsHotkeyLabel);
         var gesture = CreateInput(settings.HotkeyGesture);
 
-        var maxSideLabel = CreateText("Max image long side (px)");
+        var maxSideLabel = CreateText(strings.SettingsMaxImageSideLabel);
         var maxSide = CreateInput(settings.MaxLongSidePx.ToString());
 
         var status = CreateText(string.Empty);
 
-        var apply = new Button { Content = "Apply" };
+        var apply = new Button { Content = strings.SettingsApply };
         apply.Click += (_, _) =>
         {
             try
@@ -36,12 +37,12 @@ public sealed class SettingsPanel : UserControl
                     settings.MaxLongSidePx = max;
                 save();
                 status.Text = applyHotkey(settings.HotkeyGesture)
-                    ? "Hotkey registered."
-                    : "Hotkey was not registered — the combination may already be in use.";
+                    ? strings.HotkeyRegistered
+                    : strings.HotkeyRegistrationFailed;
             }
             catch (Exception exception)
             {
-                status.Text = $"Saving failed: {exception.Message}";
+                status.Text = strings.SavingFailed(exception.Message);
             }
         };
         apply.SetResourceReference(MarginProperty, ItemMarginResource);

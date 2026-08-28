@@ -3,6 +3,7 @@ namespace CircleToSearch.Search;
 using System.Drawing;
 using CircleToSearch.Capture;
 using CircleToSearch.Settings;
+using CircleToSearch.Ui;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
 
@@ -22,6 +23,7 @@ public sealed class SearchCoordinator
     private readonly Action _hideMainWindow;
     private readonly Action<string, string> _showError;
     private readonly PluginSettings _settings;
+    private readonly UiStrings _strings;
     private readonly PluginLog _log;
     private readonly SemaphoreSlim _session = new(1, 1);
     private int _state;
@@ -35,6 +37,7 @@ public sealed class SearchCoordinator
         Action hideMainWindow,
         Action<string, string> showError,
         PluginSettings settings,
+        UiStrings strings,
         PluginLog log)
     {
         _providerRouter = providerRouter;
@@ -44,6 +47,7 @@ public sealed class SearchCoordinator
         _hideMainWindow = hideMainWindow;
         _showError = showError;
         _settings = settings;
+        _strings = strings;
         _log = log;
     }
 
@@ -62,7 +66,10 @@ public sealed class SearchCoordinator
         }
         catch (Exception exception)
         {
-            SurfaceFailure("starting the selection failed", exception);
+            SurfaceFailure(
+                "starting the selection failed",
+                _strings.StartingSelectionFailed(exception.Message),
+                exception);
             return Task.CompletedTask;
         }
     }
@@ -77,7 +84,10 @@ public sealed class SearchCoordinator
         }
         catch (Exception exception)
         {
-            SurfaceFailure("starting the selection failed", exception);
+            SurfaceFailure(
+                "starting the selection failed",
+                _strings.StartingSelectionFailed(exception.Message),
+                exception);
             return Task.CompletedTask;
         }
     }
@@ -152,17 +162,17 @@ public sealed class SearchCoordinator
             {
                 var reason = result.Failure switch
                 {
-                    UploadFailure.UnexpectedStatus => $"The search service answered HTTP {result.StatusCode}.",
-                    UploadFailure.BadResponse => "The search service answered with an unexpected response.",
-                    UploadFailure.PolicyRejection => "The search service returned an unexpected results location.",
-                    UploadFailure.Timeout => "The upload timed out.",
-                    UploadFailure.NetworkError => "The upload failed: network error.",
+                    UploadFailure.UnexpectedStatus => _strings.SearchUnexpectedStatus(result.StatusCode),
+                    UploadFailure.BadResponse => _strings.SearchUnexpectedResponse,
+                    UploadFailure.PolicyRejection => _strings.SearchUnexpectedResultsLocation,
+                    UploadFailure.Timeout => _strings.SearchTimedOut,
+                    UploadFailure.NetworkError => _strings.SearchNetworkError,
                     UploadFailure.BrowserRuntimeUnavailable =>
-                        $"{routed.ProviderDisplayName} requires Microsoft Edge WebView2 Runtime.",
+                        _strings.BrowserRuntimeRequired(routed.ProviderDisplayName),
                     UploadFailure.BrowserAutomationFailed =>
-                        $"{routed.ProviderDisplayName} opened, but the image could not be attached.",
+                        _strings.BrowserImageAttachmentFailed(routed.ProviderDisplayName),
                     UploadFailure.Canceled => null,
-                    _ => "The upload failed.",
+                    _ => _strings.SearchUploadFailed,
                 };
                 if (reason is null)
                 {
@@ -172,14 +182,14 @@ public sealed class SearchCoordinator
                 _log.Warn(
                     nameof(SearchCoordinator),
                     $"provider '{routed.ProviderId}' failed: {result.Failure} status {result.StatusCode}");
-                SurfaceError("Circle to Search", reason);
+                SurfaceError(_strings.PluginTitle, reason);
                 return;
             }
 
             if (result.ResultsUrl is { Length: > 0 } url)
             {
                 if (!_openUrl(url))
-                    SurfaceError("Circle to Search", "The results URL could not be opened in the default browser.");
+                    SurfaceError(_strings.PluginTitle, _strings.ResultsUrlOpenFailed);
                 else
                     _log.Info(
                         nameof(SearchCoordinator),
@@ -198,7 +208,7 @@ public sealed class SearchCoordinator
         }
         catch (Exception exception)
         {
-            SurfaceFailure("the search failed", exception);
+            SurfaceFailure("the search failed", _strings.SearchFailed(exception.Message), exception);
         }
         finally
         {
@@ -238,10 +248,10 @@ public sealed class SearchCoordinator
         }
     }
 
-    private void SurfaceFailure(string message, Exception exception)
+    private void SurfaceFailure(string logMessage, string userMessage, Exception exception)
     {
-        _log.Error(nameof(SearchCoordinator), message, exception);
-        SurfaceError("Circle to Search", $"{message}: {exception.Message}");
+        _log.Error(nameof(SearchCoordinator), logMessage, exception);
+        SurfaceError(_strings.PluginTitle, userMessage);
     }
 
     private void SetState(SearchState state) => Volatile.Write(ref _state, (int)state);

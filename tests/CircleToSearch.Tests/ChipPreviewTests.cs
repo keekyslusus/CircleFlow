@@ -30,7 +30,12 @@ public sealed class ChipPreviewTests
 
     private static void Render(string path, bool lightTheme)
     {
-        var visual = OverlayVisualFactory.CreateRoot(null, new Size(640, 400), 32, lightTheme);
+        var visual = OverlayVisualFactory.CreateRoot(
+            null,
+            new Size(640, 400),
+            32,
+            lightTheme,
+            TestUiStrings.English);
         // The screenshot layer is empty in the preview, so give the root a desktop-like gradient.
         visual.Root.Background = new LinearGradientBrush(
             Color.FromRgb(0xEA, 0xEE, 0xF3),

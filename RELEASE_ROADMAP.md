@@ -71,9 +71,6 @@ Captured hotkey применяется сразу:
 - Требовать хотя бы один modifier и одну non-modifier key.
 - Поддержать `A–Z`, `0–9`, `F1–F12`, Space, Insert, Delete, Home, End, PageUp, PageDown.
 
-## Milestone 5 - локализация (release blocker)
-- сделать локализацию(user visible strings) в едином месте
-- для релиза подходит english only
 
 ## Milestone 6 - допилить плагин в самом flow launcher при вызовые через keyword
 - сейчас при вызове через keyword,ничего нет,нужно сделать блок который открывает окно выделения при напечатанном keyword

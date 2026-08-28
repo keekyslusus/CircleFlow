@@ -7,6 +7,7 @@ using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Trigger;
+using CircleToSearch.Ui;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
 
@@ -14,7 +15,10 @@ namespace CircleToSearch;
 
 public static class CompositionRoot
 {
-    public static PluginRuntime Create(PluginInitContext context)
+    public static UiStrings CreateUiStrings(PluginInitContext context) =>
+        new(context.API.GetTranslation);
+
+    public static PluginRuntime Create(PluginInitContext context, UiStrings strings)
     {
         var api = context.API;
         var pluginDirectory = context.CurrentPluginMetadata.PluginDirectory;
@@ -29,17 +33,18 @@ public static class CompositionRoot
             : $"WebView2 Runtime detected: {webView2Version}");
 
         var hotkeyWindow = new HotkeyWindow(log);
-        var registrar = new HotkeyRegistrar(hotkeyWindow, log);
+        var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
         var providerRouter = new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(
-                    new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens"),
+                    new SearchProviderDescriptor(SearchProviderIds.GoogleLens, strings.GoogleLensProviderName),
                     () => new GoogleLensProvider(new GoogleLensWindow(
                         pluginDirectory,
                         Path.Combine(dataDirectory, "WebView2Profile"),
+                        strings,
                         log))),
                 new VisualSearchProviderRegistration(
-                    new SearchProviderDescriptor(SearchProviderIds.YandexImages, "Yandex Images"),
+                    new SearchProviderDescriptor(SearchProviderIds.YandexImages, strings.YandexImagesProviderName),
                     () => new YandexImagesProvider(log)),
             ],
             SearchProviderIds.GoogleLens,
@@ -49,14 +54,16 @@ public static class CompositionRoot
             cancel => OverlayWindow.SelectAsync(
                 log,
                 new OverlayOptions(settings.PaddingPx, settings.LassoMinDiagonalPx),
+                strings,
                 cancel),
             (frame, bounds) => ImageCropper.Encode(frame, bounds, settings.MaxLongSidePx),
             OpenResultsUrl,
             () => api.HideMainWindow(),
             (title, message) => api.ShowMsgError(title, message),
             settings,
+            strings,
             log);
-        var queryTrigger = new QueryTrigger(coordinator, iconPath, registrar.DescribeStatus);
+        var queryTrigger = new QueryTrigger(coordinator, iconPath, registrar.DescribeStatus, strings);
 
         hotkeyWindow.HotkeyPressed += () =>
         {
@@ -81,7 +88,8 @@ public static class CompositionRoot
                 registrar.TryApply,
                 api.SaveSettingJsonStorage<PluginSettings>,
                 webView2Version,
-                providerRouter.GetEffectiveDescriptor(settings.SearchProviderId).DisplayName),
+                providerRouter.GetEffectiveDescriptor(settings.SearchProviderId).DisplayName,
+                strings),
             hotkeyWindow,
             providerRouter,
             log);

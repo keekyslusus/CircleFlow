@@ -1,4 +1,5 @@
 using CircleToSearch.Interop;
+using CircleToSearch.Ui;
 
 namespace CircleToSearch.Trigger;
 
@@ -7,11 +8,13 @@ public sealed class HotkeyRegistrar
     private const int ErrorHotkeyAlreadyRegistered = 1409;
 
     private readonly HotkeyWindow _window;
+    private readonly UiStrings _strings;
     private readonly PluginLog _log;
 
-    public HotkeyRegistrar(HotkeyWindow window, PluginLog log)
+    public HotkeyRegistrar(HotkeyWindow window, UiStrings strings, PluginLog log)
     {
         _window = window;
+        _strings = strings;
         _log = log;
     }
 
@@ -59,8 +62,8 @@ public sealed class HotkeyRegistrar
 
     public string DescribeStatus()
         => Gesture.Length == 0
-            ? "none"
+            ? _strings.HotkeyStatusNone
             : IsActive
-                ? $"{Gesture} active"
-                : $"{Gesture} not registered (combination may be in use)";
+                ? _strings.HotkeyStatusActive(Gesture)
+                : _strings.HotkeyStatusUnavailable(Gesture);
 }

@@ -17,6 +17,7 @@ public sealed class GoogleLensLiveSearchTests
         using var window = new GoogleLensWindow(
             AppContext.BaseDirectory,
             Path.Combine(dataDirectory, "Profile"),
+            TestUiStrings.English,
             new PluginLog(dataDirectory));
 
         var first = await window.ShowAsync(CreatePng(), CancellationToken.None);

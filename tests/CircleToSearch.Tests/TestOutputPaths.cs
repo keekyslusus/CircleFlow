@@ -4,6 +4,8 @@ namespace CircleToSearch.Tests;
 // user profile temp so contributor machines stay clean; the folder is git-ignored.
 internal static class TestOutputPaths
 {
+    public static string RepoDirectory => RepoRoot();
+
     public static string TempDirectory => Path.Combine(RepoRoot(), "tests", "temp");
 
     public static string NewTempDirectory(string name)
