@@ -4,13 +4,15 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
+using CircleToSearch.Ui;
 using Xunit;
 
 namespace CircleToSearch.Tests;
 
-// Renders the lasso mid-draw and the finished selection rectangle to PNGs without running a
-// real selection: CTS_SELECTION_PREVIEW=1 dotnet test --filter SelectionPreviewTests.
-// Output: tests/temp/selection-preview-lasso.png and selection-preview-frame.png, 150% DPI.
+// Renders the lasso mid-draw, the finished selection rectangle, and two entrance-effect
+// frames to PNGs without running a real selection:
+// CTS_SELECTION_PREVIEW=1 dotnet test --filter SelectionPreviewTests.
+// Output: tests/temp/selection-preview-{lasso,frame,entrance-1,entrance-2}.png, 150% DPI.
 public sealed class SelectionPreviewTests
 {
     [Fact]
@@ -22,10 +24,12 @@ public sealed class SelectionPreviewTests
         Directory.CreateDirectory(directory);
         Assert.Null(RunOnSta(() => Render(
             Path.Combine(directory, "selection-preview-lasso.png"),
-            Path.Combine(directory, "selection-preview-frame.png"))));
+            Path.Combine(directory, "selection-preview-frame.png"),
+            Path.Combine(directory, "selection-preview-entrance-1.png"),
+            Path.Combine(directory, "selection-preview-entrance-2.png"))));
     }
 
-    private static void Render(string lassoPath, string framePath)
+    private static void Render(string lassoPath, string framePath, string entrancePath1, string entrancePath2)
     {
         const int width = 960;
         const int height = 600;
@@ -77,14 +81,35 @@ public sealed class SelectionPreviewTests
                     visual,
                     OverlayVisualFactory.BuildRevealGeometry(size, corners),
                     OverlayVisualFactory.BuildSelectionFrameGeometry(rect));
-                var settled = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
-                settled.Tick += (_, _) =>
+
+                // Entrance effect frames, captured mid-wave.
+                var framed = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+                framed.Tick += (_, _) =>
                 {
-                    settled.Stop();
+                    framed.Stop();
                     Capture(visual.Root, framePath);
-                    window.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                    OverlayEntrance.Begin(
+                        visual.Root,
+                        new Point(width * 0.42, height * 0.45),
+                        size,
+                        SystemAccentColor.Read());
+                    var wave1 = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(260) };
+                    wave1.Tick += (_, _) =>
+                    {
+                        wave1.Stop();
+                        Capture(visual.Root, entrancePath1);
+                        var wave2 = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(340) };
+                        wave2.Tick += (_, _) =>
+                        {
+                            wave2.Stop();
+                            Capture(visual.Root, entrancePath2);
+                            window.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                        };
+                        wave2.Start();
+                    };
+                    wave1.Start();
                 };
-                settled.Start();
+                framed.Start();
             };
             snapped.Start();
         };

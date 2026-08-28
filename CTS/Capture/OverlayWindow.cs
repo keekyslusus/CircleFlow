@@ -48,6 +48,7 @@ public sealed class OverlayWindow : Window
     private readonly OverlayExitFade _exitFade;
     private readonly bool _clickThroughOnCancel;
     private readonly bool _overscan;
+    private readonly Point? _entranceOrigin;
     private readonly List<Point> _stroke = [];
     private bool _drawing;
     private bool _finished;
@@ -66,7 +67,8 @@ public sealed class OverlayWindow : Window
         bool allowsTransparency = true,
         OverlayExitFade exitFade = OverlayExitFade.Root,
         bool clickThroughOnCancel = true,
-        bool overscan = true)
+        bool overscan = true,
+        GdiPoint? entranceOrigin = null)
     {
         _frame = frame;
         _monitor = monitor;
@@ -76,6 +78,11 @@ public sealed class OverlayWindow : Window
         _exitFade = exitFade;
         _clickThroughOnCancel = clickThroughOnCancel;
         _overscan = overscan;
+        _entranceOrigin = entranceOrigin is null
+            ? null
+            : new Point(
+                (entranceOrigin.Value.X - monitor.Left) / scale + (overscan ? 1 : 0),
+                (entranceOrigin.Value.Y - monitor.Top) / scale + (overscan ? 1 : 0));
         _sampler = new LassoPathSampler(SampleDistanceDips * scale);
 
         Title = strings.PluginTitle;
@@ -168,7 +175,7 @@ public sealed class OverlayWindow : Window
         var previousContext = NativeMethods.SetThreadDpiAwarenessContext(NativeMethods.DpiAwarenessPerMonitorV2);
         try
         {
-            if (!TryCapturePointerMonitor(out var monitor, out var workArea, out var frame, out var scale))
+            if (!TryCapturePointerMonitor(out var monitor, out var workArea, out var frame, out var scale, out var pointer))
             {
                 log.Warn(nameof(OverlayWindow), "capturing the pointer monitor failed; selection canceled");
                 return null;
@@ -183,7 +190,7 @@ public sealed class OverlayWindow : Window
             SelectionOutcome? outcome = null;
             try
             {
-                var window = new OverlayWindow(frame, monitor, workArea, scale, options, strings);
+                var window = new OverlayWindow(frame, monitor, workArea, scale, options, strings, entranceOrigin: pointer);
                 window.Show();
                 using var registration = cancel.Register(window.CancelFromCoordinator);
                 Dispatcher.Run();
@@ -205,15 +212,18 @@ public sealed class OverlayWindow : Window
         out GdiRectangle monitor,
         out GdiRectangle workArea,
         out GdiBitmap frame,
-        out double scale)
+        out double scale,
+        out GdiPoint pointer)
     {
         monitor = default;
         workArea = default;
         frame = null!;
         scale = 1.0;
+        pointer = default;
 
-        if (!NativeMethods.GetCursorPos(out var pointer)) return false;
-        var handle = NativeMethods.MonitorFromPoint(pointer, MonitorDefaultToNearest);
+        if (!NativeMethods.GetCursorPos(out var nativePointer)) return false;
+        pointer = new GdiPoint(nativePointer.X, nativePointer.Y);
+        var handle = NativeMethods.MonitorFromPoint(nativePointer, MonitorDefaultToNearest);
         if (handle == IntPtr.Zero) return false;
 
         var info = new MONITORINFO { CbSize = Marshal.SizeOf<MONITORINFO>() };
@@ -279,6 +289,14 @@ public sealed class OverlayWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (!_chipDismissed) OverlayVisualFactory.BeginChipEntrance(_visual);
+        if (_entranceOrigin is not null)
+        {
+            OverlayEntrance.Begin(
+                _visual.Root,
+                _entranceOrigin.Value,
+                new Size(Width, Height),
+                SystemAccentColor.Read());
+        }
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
