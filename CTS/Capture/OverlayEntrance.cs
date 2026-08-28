@@ -4,12 +4,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 
-// Circle-to-search entrance: a translucent accent ripple washes out from the trigger
-// point while particles twinkle along its wavefront. Plays once per selection; the
-// layer removes itself when the longest timeline ends.
+// Circle-to-search entrance: a translucent accent tint pulses in while particles twinkle
+// in a wave spreading from the trigger point. Plays once per selection; the layer removes
+// itself when the longest timeline ends.
 public static class OverlayEntrance
 {
     private static readonly TimeSpan WashExpand = TimeSpan.FromMilliseconds(550);
@@ -28,22 +27,27 @@ public static class OverlayEntrance
         root.Children.Insert(root.Children.Count - 1, canvas);
 
         var storyboard = new Storyboard();
-        AddRippleWash(storyboard, canvas, origin, size, accent);
+        AddWash(storyboard, canvas, size, accent);
         AddParticles(storyboard, canvas, origin, size, accent);
         storyboard.Completed += (_, _) => root.Children.Remove(canvas);
         storyboard.Begin(canvas, true);
     }
 
-    private static void AddRippleWash(
+    private static void AddFade(Storyboard storyboard, UIElement target, DoubleAnimation fade)
+    {
+        Storyboard.SetTarget(fade, target);
+        Storyboard.SetTargetProperty(fade, new PropertyPath(UIElement.OpacityProperty));
+        storyboard.Children.Add(fade);
+    }
+
+    private static void AddWash(
         Storyboard storyboard,
         Canvas canvas,
-        Point origin,
         Size size,
         Color accent)
     {
-        // Uniform tint plus a luminous ring: gradients and blurs on huge scaled surfaces
-        // band into rings under the software renderer, while halo-style elements render smooth.
-        var maxRadius = FarthestCornerDistance(origin, size);
+        // Uniform tint: gradients and blurs on huge scaled surfaces band into rings
+        // under the software renderer, so the wash stays a plain fill.
         var tint = new Rectangle
         {
             Width = size.Width,
@@ -57,45 +61,6 @@ public static class OverlayEntrance
 
         AddFade(storyboard, tint, new DoubleAnimation(0, 1, WashExpand) { EasingFunction = EaseOut() });
         AddFade(storyboard, tint, new DoubleAnimation(1, 0, WashFade) { BeginTime = WashExpand + WashHold });
-
-        var ring = new Ellipse
-        {
-            Width = 2,
-            Height = 2,
-            Stroke = Frozen(WithAlpha(accent, 0.5)),
-            StrokeThickness = 4,
-            Effect = new BlurEffect { Radius = 8 },
-            IsHitTestVisible = false,
-        };
-        canvas.Children.Add(ring);
-
-        AddRingAnimation(storyboard, ring, FrameworkElement.WidthProperty, 2 * maxRadius, null);
-        AddRingAnimation(storyboard, ring, FrameworkElement.HeightProperty, 2 * maxRadius, null);
-        AddRingAnimation(storyboard, ring, Canvas.LeftProperty, origin.X - maxRadius, origin.X - 1);
-        AddRingAnimation(storyboard, ring, Canvas.TopProperty, origin.Y - maxRadius, origin.Y - 1);
-        AddFade(storyboard, ring, new DoubleAnimation(1, 0, WashFade) { BeginTime = WashExpand + WashHold });
-    }
-
-    private static void AddFade(Storyboard storyboard, UIElement target, DoubleAnimation fade)
-    {
-        Storyboard.SetTarget(fade, target);
-        Storyboard.SetTargetProperty(fade, new PropertyPath(UIElement.OpacityProperty));
-        storyboard.Children.Add(fade);
-    }
-
-    private static void AddRingAnimation(
-        Storyboard storyboard,
-        Ellipse ring,
-        DependencyProperty property,
-        double toValue,
-        double? fromValue)
-    {
-        var expand = fromValue is null
-            ? new DoubleAnimation(toValue, WashExpand) { EasingFunction = EaseOut() }
-            : new DoubleAnimation(fromValue.Value, toValue, WashExpand) { EasingFunction = EaseOut() };
-        Storyboard.SetTarget(expand, ring);
-        Storyboard.SetTargetProperty(expand, new PropertyPath(property));
-        storyboard.Children.Add(expand);
     }
 
     private static void AddParticles(
