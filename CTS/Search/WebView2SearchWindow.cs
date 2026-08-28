@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using CircleToSearch.Interop;
@@ -125,6 +126,7 @@ public sealed class WebView2SearchWindow : IDisposable
         var content = new Grid();
         content.Children.Add(webView);
         content.Children.Add(loadingOverlay);
+        var closed = false;
         var window = new Window
         {
             Title = "Circle to Search — Google Lens",
@@ -137,6 +139,7 @@ public sealed class WebView2SearchWindow : IDisposable
         };
         window.Closed += (_, _) =>
         {
+            closed = true;
             webView.Dispose();
             if (ReferenceEquals(_window, window))
             {
@@ -145,11 +148,17 @@ public sealed class WebView2SearchWindow : IDisposable
                 _loadingOverlay = null;
             }
         };
+        window.PreviewKeyDown += OnWindowPreviewKeyDown;
+
+        _window = window;
+        _webView = webView;
+        _loadingOverlay = loadingOverlay;
 
         try
         {
             window.Show();
             await webView.EnsureCoreWebView2Async(_environment).ConfigureAwait(true);
+            if (closed) throw new OperationCanceledException();
             webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
             webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
             webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
@@ -157,14 +166,20 @@ public sealed class WebView2SearchWindow : IDisposable
         }
         catch
         {
-            window.Close();
-            webView.Dispose();
+            var wasClosed = closed;
+            if (!closed) window.Close();
+            if (wasClosed) throw new OperationCanceledException();
             throw;
         }
+    }
 
-        _window = window;
-        _webView = webView;
-        _loadingOverlay = loadingOverlay;
+    private static void OnWindowPreviewKeyDown(object sender, KeyEventArgs args)
+    {
+        var key = args.Key == Key.System ? args.SystemKey : args.Key;
+        if (key != Key.W || (args.KeyboardDevice.Modifiers & ModifierKeys.Control) == 0) return;
+
+        args.Handled = true;
+        ((Window)sender).Close();
     }
 
     private static async Task NavigateAsync(WebView2 webView, Uri target, CancellationToken cancel)
@@ -172,7 +187,10 @@ public sealed class WebView2SearchWindow : IDisposable
         var completion = new TaskCompletionSource<CoreWebView2NavigationCompletedEventArgs>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         void OnCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)
-            => completion.TrySetResult(args);
+        {
+            if (args.IsSuccess || args.WebErrorStatus != CoreWebView2WebErrorStatus.ConnectionAborted)
+                completion.TrySetResult(args);
+        }
 
         webView.NavigationCompleted += OnCompleted;
         try
@@ -211,7 +229,10 @@ public sealed class WebView2SearchWindow : IDisposable
 
         void OnClosed(object? sender, EventArgs args) => closed.TrySetResult();
         void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)
-            => navigation.TrySetResult(args);
+        {
+            if (args.IsSuccess || args.WebErrorStatus != CoreWebView2WebErrorStatus.ConnectionAborted)
+                navigation.TrySetResult(args);
+        }
 
         webView.CoreWebView2.WebMessageReceived += OnMessage;
         webView.NavigationCompleted += OnNavigationCompleted;
