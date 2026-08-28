@@ -42,16 +42,6 @@ Fixed Version Runtime размером 250+ МБ. Первый запуск до
 - Централизовать UI-строки. Для `0.6.0` сделать русский и английский по текущей UI-culture;
   английский — fallback для остальных языков.
 
-## Визуальное направление
-
-- Windows-native title bar, typography, focus cues, keyboard navigation и window controls.
-- Rounded cards/chips (`12–20 px`), спокойные отступы и одно очевидное primary action.
-- Светлый accent: Google blue `#0B57D0`; тёмный: `#A8C7FA`.
-- Градиент выделения: `#4285F4` → `#A142F4`; не использовать сразу все четыре цвета Google.
-- Surface/text брать из системной/Flow-темы. Не фиксировать белый/чёрный, кроме проверенного
-  полупрозрачного overlay.
-- Анимации `160–220 ms`, cubic ease-out. При выключенных Windows animations или High Contrast
-  состояние менять мгновенно.
 
 ## Milestone 1 — диалог отсутствующего WebView2 (release blocker)
 
@@ -107,53 +97,8 @@ Flow error показать отдельный центрированный ди
 
 ## Milestone 2 — новый selection overlay (release blocker)
 
-### Желаемое поведение
+- почти выполнено,осталось докрутить визуал выделения
 
-Замороженный экран остаётся узнаваемым, но слегка затемнён. Снизу по центру, минимум в `32 px` от
-края work area, с fade/slide-up появляется rounded chip:
-
-`Выделите область` / `Select an area`
-
-`Esc — отмена` / `Esc — cancel`
-
-Chip имеет полупрозрачную поверхность и лёгкую тень, не следует за курсором и исчезает при первом
-валидном pointer-down.
-
-Во время рисования:
-
-- Внутри free-form области возвращается полная яркость, остальной экран остаётся затемнённым.
-- Lasso: широкий полупрозрачный contrast halo и accent stroke `2–3 px` с градиентом blue → violet,
-  круглыми joins/caps.
-- Микродвижения отбрасываются/объединяются, чтобы drag не создавал тысячи geometry nodes.
-- Bounds, padding, minimum size, right-click cancel, повторный hotkey cancel и Escape работают как
-  сейчас.
-- После mouse-up нет анимации, задерживающей Lens более чем на `100 ms`.
-
-### План реализации
-
-- [ ] Вынести visual tree из `OverlayWindow` в composition helpers
-  `CTS/Capture/OverlayVisualFactory.cs`; не создавать иерархию custom controls.
-- [ ] Root `Grid`: frozen screenshot, even-odd dim/reveal `Path`, lasso halo, accent lasso,
-  instruction chip.
-- [ ] Добавить чистый `CTS/Capture/LassoPathSampler.cs`: принимать physical point после порога
-  расстояния, но всегда сохранять final mouse-up point. Bounds — physical pixels, visual — DIPs.
-- [ ] Reveal mask: even-odd geometry полного монитора и lasso polygon; обновлять максимум раз за
-  dispatcher render frame.
-- [ ] Storyboards входа/выхода chip учитывают High Contrast и Windows animation setting.
-- [ ] Использовать общие palette/string helpers; reusable brushes/geometries замораживать.
-- [ ] Сохранить `PerMonitorV2`; offsets и stroke width задавать в DIPs.
-- [ ] Crop по-прежнему рассчитывает `LassoBoundsCalculator`; PNG contract не меняется.
-
-### Тесты
-
-- [ ] `LassoPathSamplerTests`: jitter, быстрые сегменты, negative monitor coordinates, final point,
-  click без движения.
-- [ ] Сохранить `LassoBoundsCalculatorTests`; добавить соседние случаи при необходимости.
-- [ ] STA smoke: создать/закрыть overlay без dispatcher exception.
-- [ ] DPI matrix: 100/125/150/200%, монитор слева от primary, portrait-monitor.
-- [ ] Быстрый drag остаётся отзывчивым, reveal mask не отстаёт на несколько frames.
-- [ ] Accessibility: light/dark, High Contrast, animations off, Escape, right-click, deactivation,
-  отмена повторным hotkey.
 
 ## Milestone 3 — polish окна WebView2 (желательно; не blocker, если рискованно)
 

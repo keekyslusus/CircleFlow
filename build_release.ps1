@@ -31,8 +31,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Build of CircleToSearch failed.' }
 
     Write-Host ''
-    Write-Host "CircleToSearch built to $output" -ForegroundColor Green
-    Write-Host "Install: copy the contents of $output into %APPDATA%\FlowLauncher\Plugins\CircleToSearch\ then run 'Reload Plugin Data' in Flow Launcher." -ForegroundColor Green
+    Write-Host "CircleToSearch built to -> $output" -ForegroundColor Green
 }
 catch {
     $exitCode = 1

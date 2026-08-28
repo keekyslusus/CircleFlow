@@ -1,3 +1,4 @@
+using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
@@ -10,55 +11,62 @@ using GdiSize = System.Drawing.Size;
 
 namespace CircleToSearch.Tests;
 
-// Shows the real overlay on the live screen three times, cancels it with a different
-// exit strategy each time, and continuously photographs the screen so a human can see
-// what each strategy actually renders (black flash vs cross-fade).
-// CTS_FADE_CAPTURE=1 dotnet test --filter FadeCaptureTests
-// Frames: %TEMP%\cts-fade\NN.png, ~25 fps; phases are ~1.1s apart in capture order.
+// Opens/closes the real overlay twice (plain window vs 1 DIP overscan) while photographing
+// a desktop crop that contains window shadows as fast as GDI allows. log.csv records the
+// capture index and tick of every frame plus the show/cancel ticks of both phases, so the
+// shadow blink around the open/close transitions can be compared between the two variants.
+// CTS_FADE_CAPTURE=1 dotnet test --filter FadeCaptureTests   (the screen will flash twice)
+// Frames: tests/temp/cts-fade/, ~60+ fps; phases are ~1.1s apart in capture order.
 public sealed class FadeCaptureTests
 {
     [Fact]
-    public void Captures_exit_fade_frames_for_each_strategy()
+    public void Captures_open_close_frames_for_overscan_comparison()
     {
         if (Environment.GetEnvironmentVariable("CTS_FADE_CAPTURE") != "1") return;
 
-        var dir = Path.Combine(Path.GetTempPath(), "cts-fade");
-        if (Directory.Exists(dir)) Directory.Delete(dir, true);
-        Directory.CreateDirectory(dir);
-
-        using var stop = new CancellationTokenSource();
-        var capturer = new Thread(() => CaptureLoop(dir, stop.Token)) { IsBackground = true };
-        capturer.Start();
+        var dir = TestOutputPaths.NewTempDirectory("cts-fade");
 
         var monitor = GetPointerMonitor(out var workArea, out var scale);
         using var template = new GdiBitmap(monitor.Width, monitor.Height);
         DrawTestFrame(template);
 
-        RunPhase(monitor, workArea, scale, template, "a-window-opacity",
-            allowsTransparency: false, exitFade: OverlayExitFade.Window, clickThrough: true);
-        RunPhase(monitor, workArea, scale, template, "b-transparent-root",
-            allowsTransparency: true, exitFade: OverlayExitFade.Root, clickThrough: true);
-        RunPhase(monitor, workArea, scale, template, "c-dim-layers",
-            allowsTransparency: false, exitFade: OverlayExitFade.DimLayers, clickThrough: true);
-        RunPhase(monitor, workArea, scale, template, "d-window-opacity-no-clickthrough",
-            allowsTransparency: false, exitFade: OverlayExitFade.Window, clickThrough: false);
+        var log = new List<string>();
+        var frames = new List<GdiBitmap>();
+        var frameTicks = new List<long>();
+        using var stop = new CancellationTokenSource();
+        var capturer = new Thread(() => CaptureLoop(monitor, stop.Token, frames, frameTicks, log))
+        {
+            IsBackground = true,
+        };
+        capturer.Start();
+        Thread.Sleep(200);
+
+        RunPhase("a-plain", monitor, workArea, scale, template, oversize: false, log);
+        Thread.Sleep(400);
+        RunPhase("b-oversize", monitor, workArea, scale, template, oversize: true, log);
 
         stop.Cancel();
         capturer.Join(TimeSpan.FromSeconds(5));
+        for (var i = 0; i < frames.Count; i++)
+        {
+            var path = Path.Combine(dir, $"{i:000}.jpg");
+            SaveJpeg(frames[i], path);
+            frames[i].Dispose();
+        }
+        var lines = new List<string>(log);
+        lines.AddRange(frameTicks.Select(tick => $"frame,capture,{tick}"));
+        File.WriteAllLines(Path.Combine(dir, "log.csv"), lines);
     }
 
     private static void RunPhase(
+        string name,
         GdiRectangle monitor,
         GdiRectangle workArea,
         double scale,
         GdiBitmap template,
-        string name,
-        bool allowsTransparency,
-        OverlayExitFade exitFade,
-        bool clickThrough)
+        bool oversize,
+        List<string> log)
     {
-        Thread.Sleep(400);
-
         var failure = RunOnSta(() =>
         {
             var overlay = new OverlayWindow(
@@ -67,15 +75,18 @@ public sealed class FadeCaptureTests
                 workArea,
                 scale,
                 new OverlayOptions(8, 12),
-                allowsTransparency,
-                exitFade,
-                clickThrough);
+                allowsTransparency: true,
+                exitFade: OverlayExitFade.Root,
+                clickThroughOnCancel: true,
+                overscan: oversize);
             overlay.Show();
+            lock (log) log.Add($"{name},show,{Environment.TickCount}");
 
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(800) };
             timer.Tick += (_, _) =>
             {
                 timer.Stop();
+                lock (log) log.Add($"{name},cancel,{Environment.TickCount}");
                 overlay.CancelFromCoordinator();
             };
             timer.Start();
@@ -93,27 +104,41 @@ public sealed class FadeCaptureTests
             graphics.FillEllipse(white, i * 160 - 40, (i % 2) * 220 + 60, 220, 220);
     }
 
-    private static void CaptureLoop(string dir, CancellationToken stop)
+    private static void CaptureLoop(
+        GdiRectangle monitor,
+        CancellationToken stop,
+        List<GdiBitmap> frames,
+        List<long> frameTicks,
+        List<string> log)
     {
         var previous = NativeMethods.SetThreadDpiAwarenessContext(NativeMethods.DpiAwarenessPerMonitorV2);
         try
         {
-            var index = 0;
+            var crop = new GdiRectangle(monitor.Left + 40, monitor.Top + 30, 900, 560);
             while (!stop.IsCancellationRequested)
             {
-                var bounds = GetPointerMonitor(out _, out _);
-                using var bitmap = new GdiBitmap(bounds.Width, bounds.Height);
+                var bitmap = new GdiBitmap(crop.Width, crop.Height);
                 using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
-                    graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, new GdiSize(bounds.Width, bounds.Height));
-                bitmap.Save(Path.Combine(dir, $"{index:00}.png"), System.Drawing.Imaging.ImageFormat.Png);
-                index++;
-                Thread.Sleep(40);
+                    graphics.CopyFromScreen(crop.Left, crop.Top, 0, 0, new GdiSize(crop.Width, crop.Height));
+                lock (frames)
+                {
+                    frames.Add(bitmap);
+                    frameTicks.Add(Environment.TickCount);
+                }
             }
         }
         finally
         {
             NativeMethods.SetThreadDpiAwarenessContext(previous);
         }
+    }
+
+    private static void SaveJpeg(GdiBitmap bitmap, string path)
+    {
+        var codec = ImageCodecInfo.GetImageEncoders().First(c => c.FormatID == ImageFormat.Jpeg.Guid);
+        using var parameters = new EncoderParameters(1);
+        parameters.Param[0] = new EncoderParameter(Encoder.Quality, 70L);
+        bitmap.Save(path, codec, parameters);
     }
 
     private static GdiRectangle GetPointerMonitor(out GdiRectangle workArea, out double scale)

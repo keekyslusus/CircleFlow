@@ -4,3 +4,4 @@ obj/
 *.lnk
 /design
 *.sh
+tests/temp/

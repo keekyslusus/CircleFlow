@@ -12,17 +12,19 @@ public sealed class ChipPreviewTests
 {
     // Renders the real chip visual to PNGs for visual checks without triggering
     // a selection: CTS_CHIP_PREVIEW=1 dotnet test --filter ChipPreviewTests.
-    // Output: %TEMP%\cts-chip-preview.png (dark) and cts-chip-preview-light.png, 150% DPI.
+    // Output: tests/temp/chip-preview.png (dark) and chip-preview-light.png, 150% DPI.
     [Fact]
     public void Renders_chip_preview_pngs_for_both_themes()
     {
         if (Environment.GetEnvironmentVariable("CTS_CHIP_PREVIEW") != "1") return;
 
+        var directory = TestOutputPaths.TempDirectory;
+        Directory.CreateDirectory(directory);
         Assert.Null(RunOnSta(() => Render(
-            Path.Combine(Path.GetTempPath(), "cts-chip-preview.png"),
+            Path.Combine(directory, "chip-preview.png"),
             lightTheme: false)));
         Assert.Null(RunOnSta(() => Render(
-            Path.Combine(Path.GetTempPath(), "cts-chip-preview-light.png"),
+            Path.Combine(directory, "chip-preview-light.png"),
             lightTheme: true)));
     }
 

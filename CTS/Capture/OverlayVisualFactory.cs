@@ -11,6 +11,7 @@ using CircleToSearch.Ui;
 
 public sealed record OverlayVisual(
     Grid Root,
+    Image Screenshot,
     Path Dim,
     Polyline Halo,
     Polyline Accent,
@@ -77,7 +78,7 @@ public static class OverlayVisualFactory
         root.Children.Add(accent);
         root.Children.Add(chip);
 
-        return new OverlayVisual(root, dim, halo, accent, chip, lift);
+        return new OverlayVisual(root, screenshot, dim, halo, accent, chip, lift);
     }
 
     // Even-odd of the full monitor rectangle and the lasso polygon: the polygon interior

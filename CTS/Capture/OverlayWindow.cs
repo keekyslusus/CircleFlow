@@ -45,6 +45,7 @@ public sealed class OverlayWindow : Window
     private readonly LassoPathSampler _sampler;
     private readonly OverlayExitFade _exitFade;
     private readonly bool _clickThroughOnCancel;
+    private readonly bool _overscan;
     private readonly List<Point> _stroke = [];
     private bool _drawing;
     private bool _finished;
@@ -61,7 +62,8 @@ public sealed class OverlayWindow : Window
         OverlayOptions options,
         bool allowsTransparency = true,
         OverlayExitFade exitFade = OverlayExitFade.Root,
-        bool clickThroughOnCancel = true)
+        bool clickThroughOnCancel = true,
+        bool overscan = true)
     {
         _frame = frame;
         _monitor = monitor;
@@ -70,6 +72,7 @@ public sealed class OverlayWindow : Window
         _minDiagonalPx = options.MinDiagonalPx;
         _exitFade = exitFade;
         _clickThroughOnCancel = clickThroughOnCancel;
+        _overscan = overscan;
         _sampler = new LassoPathSampler(SampleDistanceDips * scale);
 
         Title = "Circle to Search";
@@ -94,11 +97,22 @@ public sealed class OverlayWindow : Window
         {
             Background = CreateFrozenSolidBrush(Colors.Black);
         }
+        if (overscan)
+        {
+            // The window rect then differs from the monitor rect, which keeps DWM's
+            // fullscreen-cover heuristics (global shadow disabling) idle; the 1 DIP
+            // overhang on each side hangs off the screen and is never visible.
+            Left -= 1;
+            Top -= 1;
+            Width += 2;
+            Height += 2;
+        }
 
         _visual = OverlayVisualFactory.CreateRoot(
             CreateFrozenFrame(frame),
             new Size(Width, Height),
-            ChipBottomMargin(monitor, workArea, scale));
+            ChipBottomMargin(monitor, workArea, scale) + (overscan ? 1 : 0));
+        if (overscan) _visual.Screenshot.Margin = new Thickness(1);
         Content = _visual.Root;
         Loaded += OnLoaded;
 
