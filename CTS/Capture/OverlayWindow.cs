@@ -1,11 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 using CircleToSearch.Interop;
 using GdiBitmap = System.Drawing.Bitmap;
@@ -20,32 +18,32 @@ public sealed class OverlayWindow : Window
 {
     private const uint MonitorDefaultToNearest = 2;
     private const int MonitorEffectiveDpi = 0;
+    private const double ChipEdgeMarginDips = 32;
+    private const double SampleDistanceDips = 3;
 
     private readonly GdiBitmap _frame;
     private readonly GdiRectangle _monitor;
     private readonly double _scale;
     private readonly int _paddingPx;
     private readonly int _minDiagonalPx;
-    private readonly Canvas _canvas = new();
-    private readonly Polyline _lasso = new()
-    {
-        Stroke = Brushes.Yellow,
-        StrokeThickness = 2,
-        StrokeLineJoin = PenLineJoin.Round,
-    };
-    private readonly List<GdiPoint> _path = [];
+    private readonly OverlayVisual _visual;
+    private readonly LassoPathSampler _sampler;
+    private readonly List<Point> _stroke = [];
     private bool _drawing;
     private bool _finished;
+    private bool _chipDismissed;
+    private bool _revealUpdateQueued;
 
     public SelectionOutcome? Outcome { get; private set; }
 
-    private OverlayWindow(GdiBitmap frame, GdiRectangle monitor, double scale, OverlayOptions options)
+    internal OverlayWindow(GdiBitmap frame, GdiRectangle monitor, GdiRectangle workArea, double scale, OverlayOptions options)
     {
         _frame = frame;
         _monitor = monitor;
         _scale = scale;
         _paddingPx = options.PaddingPx;
         _minDiagonalPx = options.MinDiagonalPx;
+        _sampler = new LassoPathSampler(SampleDistanceDips * scale);
 
         Title = "Circle to Search";
         WindowStyle = WindowStyle.None;
@@ -58,10 +56,14 @@ public sealed class OverlayWindow : Window
         Top = monitor.Top / scale;
         Width = monitor.Width / scale;
         Height = monitor.Height / scale;
-        Background = CreateFrozenBackground(frame);
+        Background = CreateFrozenSolidBrush(Colors.Black);
 
-        _canvas.Children.Add(_lasso);
-        Content = _canvas;
+        _visual = OverlayVisualFactory.CreateRoot(
+            CreateFrozenFrame(frame),
+            new Size(Width, Height),
+            ChipBottomMargin(monitor, workArea, scale));
+        Content = _visual.Root;
+        Loaded += OnLoaded;
 
         PreviewKeyDown += OnPreviewKeyDown;
         MouseLeftButtonDown += OnMouseLeftButtonDown;
@@ -103,7 +105,7 @@ public sealed class OverlayWindow : Window
         var previousContext = NativeMethods.SetThreadDpiAwarenessContext(NativeMethods.DpiAwarenessPerMonitorV2);
         try
         {
-            if (!TryCapturePointerMonitor(out var monitor, out var frame, out var scale))
+            if (!TryCapturePointerMonitor(out var monitor, out var workArea, out var frame, out var scale))
             {
                 log.Warn(nameof(OverlayWindow), "capturing the pointer monitor failed; selection canceled");
                 return null;
@@ -118,7 +120,7 @@ public sealed class OverlayWindow : Window
             SelectionOutcome? outcome = null;
             try
             {
-                var window = new OverlayWindow(frame, monitor, scale, options);
+                var window = new OverlayWindow(frame, monitor, workArea, scale, options);
                 window.Show();
                 using var registration = cancel.Register(window.CancelFromCoordinator);
                 Dispatcher.Run();
@@ -136,9 +138,14 @@ public sealed class OverlayWindow : Window
         }
     }
 
-    private static bool TryCapturePointerMonitor(out GdiRectangle monitor, out GdiBitmap frame, out double scale)
+    private static bool TryCapturePointerMonitor(
+        out GdiRectangle monitor,
+        out GdiRectangle workArea,
+        out GdiBitmap frame,
+        out double scale)
     {
         monitor = default;
+        workArea = default;
         frame = null!;
         scale = 1.0;
 
@@ -170,12 +177,14 @@ public sealed class OverlayWindow : Window
             throw;
         }
 
+        var work = info.Work;
         monitor = new GdiRectangle(bounds.Left, bounds.Top, width, height);
+        workArea = new GdiRectangle(work.Left, work.Top, work.Right - work.Left, work.Bottom - work.Top);
         frame = captured;
         return true;
     }
 
-    private static ImageBrush CreateFrozenBackground(GdiBitmap frame)
+    private static BitmapSource CreateFrozenFrame(GdiBitmap frame)
     {
         var hbmp = frame.GetHbitmap();
         try
@@ -186,12 +195,27 @@ public sealed class OverlayWindow : Window
                 Int32Rect.Empty,
                 BitmapSizeOptions.FromEmptyOptions());
             source.Freeze();
-            return new ImageBrush(source);
+            return source;
         }
         finally
         {
             NativeMethods.DeleteObject(hbmp);
         }
+    }
+
+    private static SolidColorBrush CreateFrozenSolidBrush(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
+
+    private static double ChipBottomMargin(GdiRectangle monitor, GdiRectangle workArea, double scale) =>
+        (monitor.Bottom - workArea.Bottom) / scale + ChipEdgeMarginDips;
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (!_chipDismissed) OverlayVisualFactory.BeginChipEntrance(_visual);
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
@@ -205,9 +229,11 @@ public sealed class OverlayWindow : Window
     {
         if (_finished) return;
         _drawing = true;
-        _path.Clear();
-        _lasso.Points.Clear();
-        AddLassoPoint(e);
+        _chipDismissed = true;
+        OverlayVisualFactory.BeginChipExit(_visual);
+        _sampler.Reset();
+        _stroke.Clear();
+        Track(e);
         CaptureMouse();
         e.Handled = true;
     }
@@ -215,7 +241,7 @@ public sealed class OverlayWindow : Window
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
         if (!_drawing || _finished) return;
-        AddLassoPoint(e);
+        Track(e);
         e.Handled = true;
     }
 
@@ -224,8 +250,8 @@ public sealed class OverlayWindow : Window
         if (!_drawing || _finished) return;
         _drawing = false;
         ReleaseMouseCapture();
-        AddLassoPoint(e);
-        var bounds = LassoBoundsCalculator.Calculate(_path, _monitor, _paddingPx, _minDiagonalPx);
+        Track(e, final: true);
+        var bounds = LassoBoundsCalculator.Calculate(_sampler.Points, _monitor, _paddingPx, _minDiagonalPx);
         if (bounds is null)
         {
             CancelInternal();
@@ -234,7 +260,7 @@ public sealed class OverlayWindow : Window
         {
             _finished = true;
             Outcome = new SelectionOutcome(bounds.Value, _frame);
-            Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+            FinishShutdown();
         }
         e.Handled = true;
     }
@@ -247,11 +273,38 @@ public sealed class OverlayWindow : Window
 
     private void OnDeactivated(object? sender, EventArgs e) => CancelInternal();
 
-    private void AddLassoPoint(MouseEventArgs e)
+    private void Track(MouseEventArgs e, bool final = false)
     {
         var dip = e.GetPosition(this);
-        _path.Add(ToPhysical(dip));
-        _lasso.Points.Add(dip);
+        var physical = ToPhysical(dip);
+        var accepted = final ? _sampler.AddFinal(physical) : _sampler.Add(physical);
+        if (!accepted) return;
+        _stroke.Add(dip);
+        _visual.Halo.Points.Add(dip);
+        _visual.Accent.Points.Add(dip);
+        QueueRevealUpdate();
+    }
+
+    private void QueueRevealUpdate()
+    {
+        if (_revealUpdateQueued) return;
+        _revealUpdateQueued = true;
+        CompositionTarget.Rendering += FlushReveal;
+    }
+
+    private void UnqueueRevealUpdate()
+    {
+        if (!_revealUpdateQueued) return;
+        _revealUpdateQueued = false;
+        CompositionTarget.Rendering -= FlushReveal;
+    }
+
+    // Runs at most once per render frame, so fast drags never rebuild the mask more often than displayed.
+    private void FlushReveal(object? sender, EventArgs e)
+    {
+        _revealUpdateQueued = false;
+        CompositionTarget.Rendering -= FlushReveal;
+        _visual.Dim.Data = OverlayVisualFactory.BuildRevealGeometry(new Size(ActualWidth, ActualHeight), _stroke);
     }
 
     private GdiPoint ToPhysical(Point dip)
@@ -260,7 +313,13 @@ public sealed class OverlayWindow : Window
     private void CancelInternal()
     {
         if (_finished) return;
+        FinishShutdown();
+    }
+
+    private void FinishShutdown()
+    {
         _finished = true;
+        UnqueueRevealUpdate();
         Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
     }
 }

@@ -33,4 +33,8 @@
     <Compile Remove="tests\**\*.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CircleToSearch.Tests" />
+  </ItemGroup>
+
 </Project>
