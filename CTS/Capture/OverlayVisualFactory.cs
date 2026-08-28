@@ -13,8 +13,11 @@ public sealed record OverlayVisual(
     Grid Root,
     Image Screenshot,
     Path Dim,
+    Path DimRect,
+    Path Sheen,
     Polyline Halo,
     Polyline Accent,
+    Path SelectionFrame,
     Border Chip,
     TranslateTransform ChipLift);
 
@@ -24,12 +27,22 @@ public static class OverlayVisualFactory
     private const double DimOpacity = 0.35;
     private const double HaloThickness = 9;
     private const double AccentThickness = 2.5;
+    private const double DimBlurRadius = 28;
+    // The reveal's outer figure must sit well past the window edges, or the blur softens
+    // the screen borders instead of just the selection boundary.
+    private const double RevealBleed = 96;
+    private const double SheenAlpha = 0x24;
+    private const double SheenBlurRadius = 14;
+    private const double FrameFillAlpha = 0x2E;
+    private const double FrameCornerRadius = 6;
+    private const double FrameGlowRadius = 18;
     private const double ChipEntranceLift = 24;
 
     // Tweak point for the chip outline width, in DIPs.
     private const double ChipBorderThicknessDips = 1;
     private static readonly TimeSpan EntranceDuration = TimeSpan.FromMilliseconds(200);
     private static readonly TimeSpan ExitDuration = TimeSpan.FromMilliseconds(160);
+    private static readonly TimeSpan RevealDuration = TimeSpan.FromMilliseconds(150);
 
     public static OverlayVisual CreateRoot(
         BitmapSource? frame,
@@ -47,13 +60,39 @@ public static class OverlayVisualFactory
     {
         var screenshot = new Image { Source = frame, Stretch = Stretch.Fill, IsHitTestVisible = true };
 
+        // Blurring the dim itself is what melts the boundary between the dimmed desktop
+        // and the revealed lasso interior into a wide gradient.
         var dim = new Path
         {
             Fill = Frozen(Color.FromArgb((byte)(255 * DimOpacity), 0, 0, 0)),
             Data = BuildRevealGeometry(size, []),
             IsHitTestVisible = false,
         };
+        if (HardwareEffectsEnabled()) dim.Effect = new BlurEffect { Radius = DimBlurRadius };
 
+        // Final-rectangle twin of the dim layer; the window cross-fades Dim into it on
+        // mouse-up. Linear opacities sum to a constant dim, so the retraction from the
+        // lasso outline to the rectangle reads as one seamless move.
+        var dimRect = new Path
+        {
+            Fill = Frozen(Color.FromArgb((byte)(255 * DimOpacity), 0, 0, 0)),
+            Data = Geometry.Empty,
+            Opacity = 0,
+            IsHitTestVisible = false,
+        };
+        if (HardwareEffectsEnabled()) dimRect.Effect = new BlurEffect { Radius = DimBlurRadius };
+
+        // Light translucent fill inside the lasso; the blur softens its contours so the
+        // interior glows instead of showing a hard polygon edge.
+        var sheen = new Path
+        {
+            Fill = Frozen(Color.FromArgb((byte)SheenAlpha, 0xFF, 0xFF, 0xFF)),
+            Data = Geometry.Empty,
+            IsHitTestVisible = false,
+        };
+        if (HardwareEffectsEnabled()) sheen.Effect = new BlurEffect { Radius = SheenBlurRadius };
+
+        var accentColor = SystemAccentColor.Read();
         var halo = new Polyline
         {
             Stroke = Frozen(Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF)),
@@ -66,12 +105,28 @@ public static class OverlayVisualFactory
 
         var accent = new Polyline
         {
-            Stroke = UiPalette.SelectionGradient,
+            Stroke = Frozen(accentColor),
             StrokeThickness = AccentThickness,
             StrokeLineJoin = PenLineJoin.Round,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap = PenLineCap.Round,
             IsHitTestVisible = false,
+        };
+
+        var selectionFrame = new Path
+        {
+            Fill = Frozen(Color.FromArgb((byte)FrameFillAlpha, 0xFF, 0xFF, 0xFF)),
+            Stroke = Frozen(accentColor),
+            StrokeThickness = AccentThickness,
+            Opacity = 0,
+            IsHitTestVisible = false,
+            Effect = new DropShadowEffect
+            {
+                Color = accentColor,
+                BlurRadius = FrameGlowRadius,
+                ShadowDepth = 0,
+                Opacity = 0.7,
+            },
         };
 
         var lift = new TranslateTransform();
@@ -83,23 +138,31 @@ public static class OverlayVisualFactory
         var root = new Grid();
         root.Children.Add(screenshot);
         root.Children.Add(dim);
+        root.Children.Add(dimRect);
+        root.Children.Add(sheen);
         root.Children.Add(halo);
         root.Children.Add(accent);
+        root.Children.Add(selectionFrame);
         root.Children.Add(chip);
 
-        return new OverlayVisual(root, screenshot, dim, halo, accent, chip, lift);
+        return new OverlayVisual(root, screenshot, dim, dimRect, sheen, halo, accent, selectionFrame, chip, lift);
     }
 
-    // Even-odd of the full monitor rectangle and the lasso polygon: the polygon interior
-    // gets its brightness back, everything else stays dimmed.
+    // Even-odd of an oversized monitor rectangle and the lasso polygon: the polygon
+    // interior gets its brightness back, everything else stays dimmed. The outer figure
+    // bleeds past the window so the blur only rounds the selection boundary.
     public static Geometry BuildRevealGeometry(Size size, IReadOnlyList<Point> polygon)
     {
         var geometry = new StreamGeometry { FillRule = FillRule.EvenOdd };
         using (var context = geometry.Open())
         {
-            context.BeginFigure(new Point(0, 0), true, true);
+            context.BeginFigure(new Point(-RevealBleed, -RevealBleed), true, true);
             context.PolyLineTo(
-                [new Point(size.Width, 0), new Point(size.Width, size.Height), new Point(0, size.Height)],
+                [
+                    new Point(size.Width + RevealBleed, -RevealBleed),
+                    new Point(size.Width + RevealBleed, size.Height + RevealBleed),
+                    new Point(-RevealBleed, size.Height + RevealBleed),
+                ],
                 true,
                 true);
             if (polygon.Count >= 2)
@@ -112,6 +175,54 @@ public static class OverlayVisualFactory
         }
         geometry.Freeze();
         return geometry;
+    }
+
+    // Closed fill of the lasso polygon; Nonzero keeps self-intersecting loops filled.
+    public static Geometry BuildPolygonGeometry(IReadOnlyList<Point> polygon)
+    {
+        if (polygon.Count < 2) return Geometry.Empty;
+        var geometry = new StreamGeometry { FillRule = FillRule.Nonzero };
+        using (var context = geometry.Open())
+        {
+            var rest = new Point[polygon.Count - 1];
+            for (var i = 1; i < polygon.Count; i++) rest[i - 1] = polygon[i];
+            context.BeginFigure(polygon[0], true, true);
+            context.PolyLineTo(rest, true, true);
+        }
+        geometry.Freeze();
+        return geometry;
+    }
+
+    public static Geometry BuildSelectionFrameGeometry(Rect rect)
+    {
+        var geometry = new RectangleGeometry(rect, FrameCornerRadius, FrameCornerRadius);
+        geometry.Freeze();
+        return geometry;
+    }
+
+    // Circle-to-search snap: the lasso layers melt into the rectangle that is actually
+    // sent, so the region leaves the screen exactly as it entered the provider.
+    public static void BeginSelectionReveal(OverlayVisual visual, Geometry revealGeometry, Geometry frameGeometry)
+    {
+        visual.DimRect.Data = revealGeometry;
+        visual.SelectionFrame.Data = frameGeometry;
+        if (!AnimationsEnabled())
+        {
+            visual.Dim.Opacity = 0;
+            visual.Sheen.Opacity = 0;
+            visual.Halo.Opacity = 0;
+            visual.Accent.Opacity = 0;
+            visual.DimRect.Opacity = 1;
+            visual.SelectionFrame.Opacity = 1;
+            return;
+        }
+
+        visual.Dim.BeginAnimation(UIElement.OpacityProperty, Animate(1, 0, RevealDuration));
+        visual.Sheen.BeginAnimation(UIElement.OpacityProperty, Animate(1, 0, RevealDuration));
+        visual.Halo.BeginAnimation(UIElement.OpacityProperty, Animate(1, 0, RevealDuration));
+        visual.Accent.BeginAnimation(UIElement.OpacityProperty, Animate(1, 0, RevealDuration));
+        visual.DimRect.BeginAnimation(UIElement.OpacityProperty, Animate(0, 1, RevealDuration));
+        visual.SelectionFrame.BeginAnimation(UIElement.OpacityProperty, Animate(0, 1, RevealDuration));
     }
 
     public static void BeginChipEntrance(OverlayVisual visual)
@@ -144,6 +255,9 @@ public static class OverlayVisualFactory
 
     internal static bool AnimationsEnabled() =>
         SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
+
+    // A software-rendered blur rebuilds a full-screen bitmap on every mouse move.
+    internal static bool HardwareEffectsEnabled() => RenderCapability.Tier >> 16 >= 2;
 
     private static Border CreateChip(TranslateTransform lift, ChipPalette palette, UiStrings strings)
     {
@@ -291,6 +405,7 @@ public static class OverlayVisualFactory
             "m-154 0v-60h60v60h-60Z" +
             "M180-780h-60q0-24.75 17.63-42.38Q155.25-840 180-840v60Z" +
             "m105 0v-60h60v60h-60Z" +
+            "m165 0v-60h60v60h-60Z" +
             "m165 0v-60h60v60h-60Z" +
             "m165 0v-60h60v60h-60Z" +
             "m165 0v-60q24.75 0 42.38 17.62Q840-804.75 840-780h-60Z" +

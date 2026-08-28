@@ -36,6 +36,7 @@ public sealed class OverlayWindow : Window
     private const double ChipEdgeMarginDips = 32;
     private const double SampleDistanceDips = 3;
     private static readonly TimeSpan ExitFadeDuration = TimeSpan.FromMilliseconds(160);
+    private static readonly TimeSpan SelectionHoldDuration = TimeSpan.FromMilliseconds(450);
 
     private readonly GdiBitmap _frame;
     private readonly GdiRectangle _monitor;
@@ -322,7 +323,7 @@ public sealed class OverlayWindow : Window
         {
             _finished = true;
             Outcome = new SelectionOutcome(bounds.Value, _frame);
-            FinishShutdown();
+            ShowSelectionFrame(bounds.Value);
         }
         e.Handled = true;
     }
@@ -366,7 +367,43 @@ public sealed class OverlayWindow : Window
     {
         _revealUpdateQueued = false;
         CompositionTarget.Rendering -= FlushReveal;
-        _visual.Dim.Data = OverlayVisualFactory.BuildRevealGeometry(new Size(ActualWidth, ActualHeight), _stroke);
+        var size = new Size(ActualWidth, ActualHeight);
+        _visual.Dim.Data = OverlayVisualFactory.BuildRevealGeometry(size, _stroke);
+        _visual.Sheen.Data = OverlayVisualFactory.BuildPolygonGeometry(_stroke);
+    }
+
+    // Circle-to-search style finish: the lasso snaps into the exact rectangle that will be
+    // sent, the frame holds for a beat so the region stays readable, then the window closes
+    // into the provider with no fade (the frozen frame matches the live desktop).
+    private void ShowSelectionFrame(GdiRectangle bounds)
+    {
+        UnqueueRevealUpdate();
+        var size = new Size(ActualWidth, ActualHeight);
+        var offset = _overscan ? 1 : 0;
+        var rect = new Rect(
+            bounds.Left / _scale + offset,
+            bounds.Top / _scale + offset,
+            bounds.Width / _scale,
+            bounds.Height / _scale);
+        Point[] corners =
+        [
+            new(rect.Left, rect.Top),
+            new(rect.Right, rect.Top),
+            new(rect.Right, rect.Bottom),
+            new(rect.Left, rect.Bottom),
+        ];
+        OverlayVisualFactory.BeginSelectionReveal(
+            _visual,
+            OverlayVisualFactory.BuildRevealGeometry(size, corners),
+            OverlayVisualFactory.BuildSelectionFrameGeometry(rect));
+
+        var hold = new DispatcherTimer { Interval = SelectionHoldDuration };
+        hold.Tick += (_, _) =>
+        {
+            hold.Stop();
+            FinishShutdown();
+        };
+        hold.Start();
     }
 
     private GdiPoint ToPhysical(Point dip)
@@ -385,7 +422,7 @@ public sealed class OverlayWindow : Window
         }
 
         // The frozen frame cross-fades into the live desktop; only the cancel path animates,
-        // the mouse-up path must reach Lens with no delay.
+        // the mouse-up path shows the selection rectangle and closes without a window fade.
         var fade = Fade(1, 0);
         switch (_exitFade)
         {
@@ -399,6 +436,7 @@ public sealed class OverlayWindow : Window
                 var completed = new DoubleAnimation(1, 0, ExitFadeDuration) { EasingFunction = EaseOut() };
                 completed.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
                 _visual.Dim.BeginAnimation(OpacityProperty, completed);
+                _visual.Sheen.BeginAnimation(OpacityProperty, Fade(1, 0));
                 _visual.Halo.BeginAnimation(OpacityProperty, Fade(1, 0));
                 _visual.Accent.BeginAnimation(OpacityProperty, Fade(1, 0));
                 OverlayVisualFactory.BeginChipExit(_visual);
