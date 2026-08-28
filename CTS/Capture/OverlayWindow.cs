@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Interop;
@@ -14,12 +15,26 @@ using GdiSize = System.Drawing.Size;
 
 namespace CircleToSearch.Capture;
 
+public enum OverlayExitFade
+{
+    // Window-level opacity: turns the window layered mid-flight, which composites black
+    // on some setups (reproduced in FadeCaptureTests). Kept only for the capture harness.
+    Window,
+
+    // Window created with AllowsTransparency; only the root grid fades. Production default.
+    Root,
+
+    // Opaque window; dim/lasso/chip fade away, the frozen frame stays until close.
+    DimLayers,
+}
+
 public sealed class OverlayWindow : Window
 {
     private const uint MonitorDefaultToNearest = 2;
     private const int MonitorEffectiveDpi = 0;
     private const double ChipEdgeMarginDips = 32;
     private const double SampleDistanceDips = 3;
+    private static readonly TimeSpan ExitFadeDuration = TimeSpan.FromMilliseconds(160);
 
     private readonly GdiBitmap _frame;
     private readonly GdiRectangle _monitor;
@@ -28,6 +43,8 @@ public sealed class OverlayWindow : Window
     private readonly int _minDiagonalPx;
     private readonly OverlayVisual _visual;
     private readonly LassoPathSampler _sampler;
+    private readonly OverlayExitFade _exitFade;
+    private readonly bool _clickThroughOnCancel;
     private readonly List<Point> _stroke = [];
     private bool _drawing;
     private bool _finished;
@@ -36,13 +53,23 @@ public sealed class OverlayWindow : Window
 
     public SelectionOutcome? Outcome { get; private set; }
 
-    internal OverlayWindow(GdiBitmap frame, GdiRectangle monitor, GdiRectangle workArea, double scale, OverlayOptions options)
+    internal OverlayWindow(
+        GdiBitmap frame,
+        GdiRectangle monitor,
+        GdiRectangle workArea,
+        double scale,
+        OverlayOptions options,
+        bool allowsTransparency = true,
+        OverlayExitFade exitFade = OverlayExitFade.Root,
+        bool clickThroughOnCancel = true)
     {
         _frame = frame;
         _monitor = monitor;
         _scale = scale;
         _paddingPx = options.PaddingPx;
         _minDiagonalPx = options.MinDiagonalPx;
+        _exitFade = exitFade;
+        _clickThroughOnCancel = clickThroughOnCancel;
         _sampler = new LassoPathSampler(SampleDistanceDips * scale);
 
         Title = "Circle to Search";
@@ -56,7 +83,17 @@ public sealed class OverlayWindow : Window
         Top = monitor.Top / scale;
         Width = monitor.Width / scale;
         Height = monitor.Height / scale;
-        Background = CreateFrozenSolidBrush(Colors.Black);
+        // Born transparent: a window that becomes layered later (window Opacity < 1) renders
+        // black on this setup; a transparent window fades its content cleanly into the desktop.
+        if (allowsTransparency)
+        {
+            AllowsTransparency = true;
+            Background = Brushes.Transparent;
+        }
+        else
+        {
+            Background = CreateFrozenSolidBrush(Colors.Black);
+        }
 
         _visual = OverlayVisualFactory.CreateRoot(
             CreateFrozenFrame(frame),
@@ -313,7 +350,57 @@ public sealed class OverlayWindow : Window
     private void CancelInternal()
     {
         if (_finished) return;
-        FinishShutdown();
+        _finished = true;
+        UnqueueRevealUpdate();
+        ReleaseMouseCapture();
+        if (!OverlayVisualFactory.AnimationsEnabled())
+        {
+            Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+            return;
+        }
+
+        // The frozen frame cross-fades into the live desktop; only the cancel path animates,
+        // the mouse-up path must reach Lens with no delay.
+        var fade = Fade(1, 0);
+        switch (_exitFade)
+        {
+            case OverlayExitFade.Root:
+                fade.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                _visual.Root.BeginAnimation(OpacityProperty, fade);
+                break;
+            case OverlayExitFade.DimLayers:
+                // No window transparency: the overlay layers melt away while the frozen
+                // frame (identical to the live desktop) stays until close.
+                var completed = new DoubleAnimation(1, 0, ExitFadeDuration) { EasingFunction = EaseOut() };
+                completed.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                _visual.Dim.BeginAnimation(OpacityProperty, completed);
+                _visual.Halo.BeginAnimation(OpacityProperty, Fade(1, 0));
+                _visual.Accent.BeginAnimation(OpacityProperty, Fade(1, 0));
+                OverlayVisualFactory.BeginChipExit(_visual);
+                break;
+            default:
+                fade.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                BeginAnimation(OpacityProperty, fade);
+                break;
+        }
+
+        if (_clickThroughOnCancel) MakeClickThrough();
+        IsHitTestVisible = false;
+    }
+
+    private DoubleAnimation Fade(double from, double to) =>
+        new(from, to, ExitFadeDuration) { EasingFunction = EaseOut() };
+
+    private static CubicEase EaseOut() => new() { EasingMode = EasingMode.EaseOut };
+
+    private void MakeClickThrough()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        var style = NativeMethods.GetWindowLongW(hwnd, NativeMethods.GwlExStyle);
+        // Transparent only: setting WS_EX_LAYERED by hand detaches WPF's DWM redirection
+        // surface and the window renders black; WPF enables layering itself for Opacity < 1.
+        NativeMethods.SetWindowLongW(hwnd, NativeMethods.GwlExStyle, style | NativeMethods.WsExTransparent);
     }
 
     private void FinishShutdown()

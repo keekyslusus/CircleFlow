@@ -30,7 +30,7 @@ public static class OverlayVisualFactory
     private static readonly TimeSpan EntranceDuration = TimeSpan.FromMilliseconds(200);
     private static readonly TimeSpan ExitDuration = TimeSpan.FromMilliseconds(160);
 
-    public static OverlayVisual CreateRoot(BitmapSource frame, Size size, double chipBottomMargin) =>
+    public static OverlayVisual CreateRoot(BitmapSource? frame, Size size, double chipBottomMargin) =>
         CreateRoot(frame, size, chipBottomMargin, SystemTheme.IsLight());
 
     internal static OverlayVisual CreateRoot(BitmapSource frame, Size size, double chipBottomMargin, bool lightTheme)
@@ -132,7 +132,7 @@ public static class OverlayVisualFactory
     private static DoubleAnimation Animate(double from, double to, TimeSpan duration) =>
         new(from, to, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
 
-    private static bool AnimationsEnabled() =>
+    internal static bool AnimationsEnabled() =>
         SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
 
     private static Border CreateChip(TranslateTransform lift, ChipPalette palette)

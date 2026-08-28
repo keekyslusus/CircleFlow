@@ -63,6 +63,9 @@ internal static class NativeMethods
 
     public const uint WM_HOTKEY = 0x0312;
 
+    public const int GwlExStyle = -20;
+    public const int WsExTransparent = 0x20;
+
     public static readonly IntPtr HWND_MESSAGE = new(-3);
     public static readonly IntPtr DpiAwarenessPerMonitorV2 = new(-4);
 
@@ -71,6 +74,12 @@ internal static class NativeMethods
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool UnregisterHotKey(IntPtr hwnd, int id);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int GetWindowLongW(IntPtr hwnd, int index);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int SetWindowLongW(IntPtr hwnd, int index, int style);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern ushort RegisterClassW(ref WNDCLASSW windowClass);

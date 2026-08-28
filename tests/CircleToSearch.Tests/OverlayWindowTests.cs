@@ -39,6 +39,23 @@ public sealed class OverlayWindowTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Cancel_from_coordinator_shuts_the_dispatcher_down()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(64, 48);
+            var monitor = new GdiRectangle(0, 0, 64, 48);
+            var overlay = new OverlayWindow(frame, monitor, monitor, 1.0, new OverlayOptions(8, 12));
+            overlay.Show();
+            overlay.CancelFromCoordinator();
+            Dispatcher.Run();
+            Assert.Null(overlay.Outcome);
+        });
+
+        Assert.Null(failure);
+    }
+
     private static void PumpUntilShutdown(OverlayWindow overlay)
     {
         overlay.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
