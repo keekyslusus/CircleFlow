@@ -2,9 +2,13 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using CircleToSearch.Interop;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using Ellipse = System.Windows.Shapes.Ellipse;
 
 namespace CircleToSearch.Search;
 
@@ -21,6 +25,8 @@ public sealed class WebView2SearchWindow : IDisposable
     private CoreWebView2Environment? _environment;
     private Window? _window;
     private WebView2? _webView;
+    private Grid? _loadingOverlay;
+    private int _loadingGeneration;
     private bool _disposed;
 
     public WebView2SearchWindow(string pluginDirectory, string userDataFolder, PluginLog log)
@@ -71,6 +77,7 @@ public sealed class WebView2SearchWindow : IDisposable
 
             var window = _window!;
             var webView = _webView!;
+            ShowLoadingOverlay();
             window.Show();
             window.Activate();
 
@@ -79,21 +86,25 @@ public sealed class WebView2SearchWindow : IDisposable
 
             var resultsReady = await OpenLensResultsAsync(webView, window, png, cancel)
                 .ConfigureAwait(true);
+            HideLoadingOverlay();
             completion.TrySetResult(resultsReady
                 ? WebView2SearchStatus.ResultsReady
                 : WebView2SearchStatus.Failed);
         }
         catch (WebView2RuntimeNotFoundException exception)
         {
+            HideLoadingOverlay();
             _log.Error(nameof(WebView2SearchWindow), "WebView2 Runtime is unavailable", exception);
             completion.TrySetResult(WebView2SearchStatus.RuntimeUnavailable);
         }
         catch (OperationCanceledException)
         {
+            HideLoadingOverlay();
             completion.TrySetResult(WebView2SearchStatus.Canceled);
         }
         catch (Exception exception)
         {
+            HideLoadingOverlay();
             _log.Error(nameof(WebView2SearchWindow), "opening Google Lens failed", exception);
             completion.TrySetResult(WebView2SearchStatus.Failed);
         }
@@ -109,7 +120,11 @@ public sealed class WebView2SearchWindow : IDisposable
             .CreateAsync(userDataFolder: _userDataFolder)
             .ConfigureAwait(true);
 
-        var webView = new WebView2();
+        var webView = new WebView2 { Visibility = Visibility.Hidden };
+        var loadingOverlay = CreateLoadingOverlay();
+        var content = new Grid();
+        content.Children.Add(webView);
+        content.Children.Add(loadingOverlay);
         var window = new Window
         {
             Title = "Circle to Search — Google Lens",
@@ -118,7 +133,7 @@ public sealed class WebView2SearchWindow : IDisposable
             MinWidth = 720,
             MinHeight = 520,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
-            Content = webView,
+            Content = content,
         };
         window.Closed += (_, _) =>
         {
@@ -127,6 +142,7 @@ public sealed class WebView2SearchWindow : IDisposable
             {
                 _window = null;
                 _webView = null;
+                _loadingOverlay = null;
             }
         };
 
@@ -148,6 +164,7 @@ public sealed class WebView2SearchWindow : IDisposable
 
         _window = window;
         _webView = webView;
+        _loadingOverlay = loadingOverlay;
     }
 
     private static async Task NavigateAsync(WebView2 webView, Uri target, CancellationToken cancel)
@@ -267,6 +284,90 @@ public sealed class WebView2SearchWindow : IDisposable
 
         return uri.Query.Split('&', StringSplitOptions.RemoveEmptyEntries)
             .Any(part => part is "?udm=26" or "udm=26");
+    }
+
+    private static Grid CreateLoadingOverlay()
+    {
+        var dots = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        var colors = new[] { "#4285F4", "#A142F4", "#0B57D0" };
+        for (var index = 0; index < colors.Length; index++)
+        {
+            var dot = new Ellipse
+            {
+                Width = 10,
+                Height = 10,
+                Margin = new Thickness(5),
+                Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colors[index])),
+            };
+            dot.BeginAnimation(
+                UIElement.OpacityProperty,
+                new DoubleAnimation(0.25, 1, TimeSpan.FromMilliseconds(520))
+                {
+                    AutoReverse = true,
+                    BeginTime = TimeSpan.FromMilliseconds(index * 140),
+                    RepeatBehavior = RepeatBehavior.Forever,
+                });
+            dots.Children.Add(dot);
+        }
+
+        var text = new TextBlock
+        {
+            Text = "Ищем с помощью Google Lens…",
+            Margin = new Thickness(0, 18, 0, 0),
+            FontFamily = new FontFamily("Segoe UI Variable Text"),
+            FontSize = 16,
+            Foreground = new SolidColorBrush(Color.FromRgb(48, 52, 58)),
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        var center = new StackPanel
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        center.Children.Add(dots);
+        center.Children.Add(text);
+
+        var overlay = new Grid
+        {
+            Background = new SolidColorBrush(Color.FromRgb(247, 249, 252)),
+            IsHitTestVisible = true,
+        };
+        overlay.Children.Add(center);
+        Panel.SetZIndex(overlay, 1);
+        return overlay;
+    }
+
+    private void ShowLoadingOverlay()
+    {
+        var overlay = _loadingOverlay;
+        if (overlay is null) return;
+        _loadingGeneration++;
+        overlay.BeginAnimation(UIElement.OpacityProperty, null);
+        overlay.Opacity = 1;
+        overlay.Visibility = Visibility.Visible;
+        if (_webView is not null) _webView.Visibility = Visibility.Hidden;
+    }
+
+    private void HideLoadingOverlay()
+    {
+        var overlay = _loadingOverlay;
+        if (overlay is null || overlay.Visibility != Visibility.Visible) return;
+        var generation = _loadingGeneration;
+
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(180));
+        fade.Completed += (_, _) =>
+        {
+            if (!ReferenceEquals(_loadingOverlay, overlay) || generation != _loadingGeneration) return;
+            if (_webView is not null) _webView.Visibility = Visibility.Visible;
+            overlay.Visibility = Visibility.Collapsed;
+            overlay.BeginAnimation(UIElement.OpacityProperty, null);
+            overlay.Opacity = 1;
+        };
+        overlay.BeginAnimation(UIElement.OpacityProperty, fade);
     }
 
     private const string AttachmentBridgeScript = """
