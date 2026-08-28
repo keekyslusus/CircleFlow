@@ -7,6 +7,8 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Automation;
+using System.Windows.Input;
 using CircleToSearch.Ui;
 
 public sealed record OverlayVisual(
@@ -18,8 +20,10 @@ public sealed record OverlayVisual(
     Polyline Halo,
     Polyline Accent,
     Path SelectionFrame,
+    StackPanel ActionTray,
     Border Chip,
-    TranslateTransform ChipLift);
+    Button MusicButton,
+    TranslateTransform ActionTrayLift);
 
 // Composes the overlay visual tree layer by layer; the window only keeps references.
 public static class OverlayVisualFactory
@@ -130,11 +134,20 @@ public static class OverlayVisualFactory
             },
         };
 
+        var palette = PluginPalette.For(lightTheme);
         var lift = new TranslateTransform();
-        var chip = CreateChip(lift, PluginPalette.For(lightTheme).SelectionChip, strings);
-        chip.VerticalAlignment = VerticalAlignment.Bottom;
-        chip.HorizontalAlignment = HorizontalAlignment.Center;
-        chip.Margin = new Thickness(0, 0, 0, chipBottomMargin);
+        var chip = CreateChip(palette.SelectionChip, strings);
+        var musicButton = CreateMusicButton(palette.MusicButton, strings);
+        var tray = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, chipBottomMargin),
+            RenderTransform = lift,
+        };
+        tray.Children.Add(chip);
+        tray.Children.Add(musicButton);
 
         var root = new Grid();
         root.Children.Add(screenshot);
@@ -144,9 +157,21 @@ public static class OverlayVisualFactory
         root.Children.Add(halo);
         root.Children.Add(accent);
         root.Children.Add(selectionFrame);
-        root.Children.Add(chip);
+        root.Children.Add(tray);
 
-        return new OverlayVisual(root, screenshot, dim, dimRect, sheen, halo, accent, selectionFrame, chip, lift);
+        return new OverlayVisual(
+            root,
+            screenshot,
+            dim,
+            dimRect,
+            sheen,
+            halo,
+            accent,
+            selectionFrame,
+            tray,
+            chip,
+            musicButton,
+            lift);
     }
 
     // Even-odd of an oversized monitor rectangle and the lasso polygon: the polygon
@@ -230,25 +255,25 @@ public static class OverlayVisualFactory
     {
         if (!AnimationsEnabled())
         {
-            visual.Chip.Opacity = 1;
-            visual.ChipLift.Y = 0;
+            visual.ActionTray.Opacity = 1;
+            visual.ActionTrayLift.Y = 0;
             return;
         }
 
-        visual.Chip.BeginAnimation(UIElement.OpacityProperty, Animate(0, 1, EntranceDuration));
-        visual.ChipLift.BeginAnimation(TranslateTransform.YProperty, Animate(ChipEntranceLift, 0, EntranceDuration));
+        visual.ActionTray.BeginAnimation(UIElement.OpacityProperty, Animate(0, 1, EntranceDuration));
+        visual.ActionTrayLift.BeginAnimation(TranslateTransform.YProperty, Animate(ChipEntranceLift, 0, EntranceDuration));
     }
 
     public static void BeginChipExit(OverlayVisual visual)
     {
-        visual.Chip.IsHitTestVisible = false;
+        visual.ActionTray.IsHitTestVisible = false;
         if (!AnimationsEnabled())
         {
-            visual.Chip.Opacity = 0;
+            visual.ActionTray.Opacity = 0;
             return;
         }
 
-        visual.Chip.BeginAnimation(UIElement.OpacityProperty, Animate(1, 0, ExitDuration));
+        visual.ActionTray.BeginAnimation(UIElement.OpacityProperty, Animate(1, 0, ExitDuration));
     }
 
     private static DoubleAnimation Animate(double from, double to, TimeSpan duration) =>
@@ -260,7 +285,7 @@ public static class OverlayVisualFactory
     // A software-rendered blur rebuilds a full-screen bitmap on every mouse move.
     internal static bool HardwareEffectsEnabled() => RenderCapability.Tier >> 16 >= 2;
 
-    private static Border CreateChip(TranslateTransform lift, SelectionChipPalette palette, UiStrings strings)
+    private static Border CreateChip(SelectionChipPalette palette, UiStrings strings)
     {
         var icon = new Path
         {
@@ -333,7 +358,6 @@ public static class OverlayVisualFactory
             Background = Frozen(palette.Surface),
             BorderBrush = ChipOutlineBrush(palette),
             BorderThickness = new Thickness(ChipBorderThicknessDips),
-            RenderTransform = lift,
             Effect = new DropShadowEffect
             {
                 Color = PluginPalette.OpaqueBlack,
@@ -350,6 +374,37 @@ public static class OverlayVisualFactory
         return chip;
     }
 
+    private static Button CreateMusicButton(MusicButtonPalette palette, UiStrings strings)
+    {
+        var icon = new Path
+        {
+            Data = MusicIconGeometry,
+            Fill = Frozen(palette.Foreground),
+            Width = 18,
+            Height = 18,
+            Stretch = Stretch.Uniform,
+            IsHitTestVisible = false,
+        };
+        var button = new Button
+        {
+            Content = icon,
+            Width = 44,
+            Height = 44,
+            Margin = new Thickness(8, 0, 0, 0),
+            Padding = new Thickness(10),
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = Frozen(palette.Surface),
+            Foreground = Frozen(palette.Foreground),
+            BorderBrush = Frozen(palette.Border),
+            BorderThickness = new Thickness(1),
+            ToolTip = strings.MusicRecognitionAction,
+            Focusable = true,
+            Cursor = Cursors.Hand,
+        };
+        AutomationProperties.SetName(button, strings.MusicRecognitionAction);
+        return button;
+    }
+
     // High Contrast themes suppress the accent; a neutral outline stays readable there.
     private static Brush ChipOutlineBrush(SelectionChipPalette palette) =>
         SystemParameters.HighContrast
@@ -359,6 +414,7 @@ public static class OverlayVisualFactory
     // Material Symbols "ink_selection" (Apache-2.0); path data taken verbatim from
     // Images/ink_selection.svg (fill icon, viewBox 0 -960 960 960).
     private static readonly Geometry ChipIconGeometry = CreateChipIconGeometry();
+    private static readonly Geometry MusicIconGeometry = CreateMusicIconGeometry();
 
     private static Geometry CreateChipIconGeometry()
     {
@@ -376,6 +432,13 @@ public static class OverlayVisualFactory
             "m0-165v-60h60v60h-60Z" +
             "m0-165v-60h60v60h-60Z" +
             "m660 0v-60h60v60h-60Z");
+        geometry.Freeze();
+        return geometry;
+    }
+
+    private static Geometry CreateMusicIconGeometry()
+    {
+        var geometry = Geometry.Parse("M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z");
         geometry.Freeze();
         return geometry;
     }

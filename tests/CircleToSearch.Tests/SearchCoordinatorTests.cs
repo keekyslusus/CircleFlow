@@ -1,5 +1,7 @@
 using System.Drawing;
 using CircleToSearch.Capture;
+using CircleToSearch.MusicRecognition;
+using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using GdiBitmap = System.Drawing.Bitmap;
@@ -52,7 +54,7 @@ public sealed class SearchCoordinatorTests
     [Fact]
     public async Task One_session_uses_a_snapshot_of_the_provider_setting()
     {
-        var gate = new TaskCompletionSource<SelectionOutcome?>(
+        var gate = new TaskCompletionSource<OverlayOutcome?>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         using var harness = new CoordinatorHarness(
             SearchProviderIds.GoogleLens,
@@ -61,7 +63,7 @@ public sealed class SearchCoordinatorTests
         var session = harness.Coordinator.StartFromHotkeyAsync();
         Assert.True(WaitForState(harness.Coordinator, SearchState.Selecting));
         harness.Settings.SearchProviderId = SearchProviderIds.YandexImages;
-        gate.SetResult(NewSelection());
+        gate.SetResult(NewVisualOutcome());
         await session;
 
         Assert.Equal(1, harness.Google.Calls);
@@ -71,9 +73,9 @@ public sealed class SearchCoordinatorTests
     [Fact]
     public async Task Repeated_hotkey_during_selection_cancels_without_creating_a_provider()
     {
-        var gate = new TaskCompletionSource<SelectionOutcome?>(
+        var gate = new TaskCompletionSource<OverlayOutcome?>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        Func<CancellationToken, Task<SelectionOutcome?>> selection = cancel =>
+        Func<CancellationToken, Task<OverlayOutcome?>> selection = cancel =>
         {
             cancel.Register(() => gate.TrySetResult(null));
             return gate.Task;
@@ -111,7 +113,7 @@ public sealed class SearchCoordinatorTests
     public async Task Canceled_selection_returns_to_idle_without_creating_a_provider()
     {
         using var harness = new CoordinatorHarness(
-            selection: _ => Task.FromResult<SelectionOutcome?>(null));
+            selection: _ => Task.FromResult<OverlayOutcome?>(null));
 
         await harness.Coordinator.StartFromHotkeyAsync();
 
@@ -170,8 +172,8 @@ public sealed class SearchCoordinatorTests
     {
         var bitmap = new GdiBitmap(2, 2);
         using var harness = new CoordinatorHarness(
-            selection: _ => Task.FromResult<SelectionOutcome?>(
-                new SelectionOutcome(new Rectangle(0, 0, 2, 2), bitmap)));
+            selection: _ => Task.FromResult<OverlayOutcome?>(
+                OverlayOutcome.VisualSelection(new SelectionOutcome(new Rectangle(0, 0, 2, 2), bitmap))));
         harness.Google.Exception = new InvalidOperationException("provider exploded");
 
         await harness.Coordinator.StartFromHotkeyAsync();
@@ -198,13 +200,92 @@ public sealed class SearchCoordinatorTests
     {
         using var harness = new CoordinatorHarness();
 
-        await harness.Coordinator.CancelActiveSelection();
+        await harness.Coordinator.CancelActiveSession();
 
         Assert.Equal(SearchState.Idle, harness.Coordinator.State);
     }
 
+    [Theory]
+    [InlineData(MusicRecognitionStatus.NoMatch, false, "matching track")]
+    [InlineData(MusicRecognitionStatus.NoAudio, false, "default Windows output")]
+    [InlineData(MusicRecognitionStatus.RateLimited, true, "rate-limited")]
+    [InlineData(MusicRecognitionStatus.ServiceError, true, "could not be reached")]
+    [InlineData(MusicRecognitionStatus.DeviceError, true, "could not be captured")]
+    public async Task Music_outcomes_map_to_the_expected_flow_message(
+        MusicRecognitionStatus status,
+        bool error,
+        string expected)
+    {
+        using var harness = new CoordinatorHarness(selection: _ =>
+            Task.FromResult<OverlayOutcome?>(OverlayOutcome.MusicRecognition()));
+        harness.Music.Outcome = MusicRecognitionOutcome.From(status);
+
+        await harness.Coordinator.StartFromHotkeyAsync();
+
+        var messages = error ? harness.Errors : harness.Messages;
+        Assert.Contains(expected, Assert.Single(messages));
+        Assert.Equal(0, harness.GoogleFactoryCalls);
+        Assert.Equal(1, harness.Music.Calls);
+    }
+
+    [Fact]
+    public async Task Match_with_safe_Shazam_url_shows_button_and_opens_on_action()
+    {
+        using var harness = new CoordinatorHarness(selection: _ =>
+            Task.FromResult<OverlayOutcome?>(OverlayOutcome.MusicRecognition()));
+        harness.Music.Outcome = MusicRecognitionOutcome.Matched(new ShazamRecognition(
+            "Track", "Artist", "Album", "Rock", null, null, "https://www.shazam.com/track/1"));
+
+        await harness.Coordinator.StartFromHotkeyAsync();
+
+        var button = Assert.Single(harness.Buttons);
+        Assert.Equal("Artist — Track", button.Title);
+        Assert.Contains("Album", button.Message);
+        button.Action();
+        Assert.Equal(["https://www.shazam.com/track/1"], harness.Opened);
+    }
+
+    [Theory]
+    [InlineData("http://www.shazam.com/track/1")]
+    [InlineData("https://evil.example/track/1")]
+    [InlineData("https://shazam.com.evil.example/track/1")]
+    [InlineData("not a url")]
+    public async Task Match_with_unsafe_url_still_shows_result_without_button(string url)
+    {
+        using var harness = new CoordinatorHarness(selection: _ =>
+            Task.FromResult<OverlayOutcome?>(OverlayOutcome.MusicRecognition()));
+        harness.Music.Outcome = MusicRecognitionOutcome.Matched(new ShazamRecognition(
+            "Track", "Artist", null, null, null, null, url));
+
+        await harness.Coordinator.StartFromHotkeyAsync();
+
+        Assert.Empty(harness.Buttons);
+        Assert.Single(harness.Messages);
+    }
+
+    [Fact]
+    public async Task Repeated_hotkey_during_recognition_cancels_without_a_late_message()
+    {
+        using var harness = new CoordinatorHarness(selection: _ =>
+            Task.FromResult<OverlayOutcome?>(OverlayOutcome.MusicRecognition()));
+        harness.Music.Gate = new TaskCompletionSource<MusicRecognitionOutcome>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var session = harness.Coordinator.StartFromHotkeyAsync();
+        Assert.True(WaitForState(harness.Coordinator, SearchState.RecognizingMusic));
+        await harness.Coordinator.StartFromHotkeyAsync();
+        await session;
+
+        Assert.Equal(SearchState.Idle, harness.Coordinator.State);
+        Assert.Empty(harness.Messages);
+        Assert.Empty(harness.Errors);
+        Assert.Empty(harness.Buttons);
+    }
+
     private static SelectionOutcome NewSelection()
         => new(new Rectangle(0, 0, 2, 2), new GdiBitmap(2, 2));
+
+    private static OverlayOutcome NewVisualOutcome() => OverlayOutcome.VisualSelection(NewSelection());
 
     private static bool WaitForState(SearchCoordinator coordinator, SearchState state)
         => SpinWait.SpinUntil(() => coordinator.State == state, TimeSpan.FromSeconds(5));
@@ -215,7 +296,7 @@ public sealed class SearchCoordinatorTests
 
         public CoordinatorHarness(
             string providerId = SearchProviderIds.GoogleLens,
-            Func<CancellationToken, Task<SelectionOutcome?>>? selection = null,
+            Func<CancellationToken, Task<OverlayOutcome?>>? selection = null,
             Func<string, bool>? openUrl = null)
         {
             var logDirectory = Path.Combine(
@@ -250,14 +331,17 @@ public sealed class SearchCoordinatorTests
                 log);
             Coordinator = new SearchCoordinator(
                 _router,
-                selection ?? (_ => Task.FromResult<SelectionOutcome?>(NewSelection())),
+                selection ?? (_ => Task.FromResult<OverlayOutcome?>(NewVisualOutcome())),
                 (_, _) => [1, 2, 3],
+                Music,
                 openUrl ?? (url =>
                 {
                     Opened.Add(url);
                     return true;
                 }),
                 () => Hidden++,
+                (_, message) => Messages.Add(message),
+                (title, message, button, action) => Buttons.Add((title, message, button, action)),
                 (_, message) => Errors.Add(message),
                 Settings,
                 TestUiStrings.English,
@@ -272,9 +356,15 @@ public sealed class SearchCoordinatorTests
 
         public FakeProvider Yandex { get; } = new();
 
+        public FakeMusicRecognizer Music { get; } = new();
+
         public List<string> Opened { get; } = [];
 
         public List<string> Errors { get; } = [];
+
+        public List<string> Messages { get; } = [];
+
+        public List<(string Title, string Message, string Button, Action Action)> Buttons { get; } = [];
 
         public int Hidden { get; private set; }
 
@@ -283,6 +373,23 @@ public sealed class SearchCoordinatorTests
         public int YandexFactoryCalls { get; private set; }
 
         public void Dispose() => _router.Dispose();
+    }
+
+    private sealed class FakeMusicRecognizer : IMusicRecognizer
+    {
+        public int Calls { get; private set; }
+        public MusicRecognitionOutcome Outcome { get; set; } =
+            MusicRecognitionOutcome.From(MusicRecognitionStatus.NoMatch);
+        public TaskCompletionSource<MusicRecognitionOutcome>? Gate { get; set; }
+
+        public Task<MusicRecognitionOutcome> RecognizeAsync(CancellationToken cancellationToken)
+        {
+            Calls++;
+            if (Gate is null) return Task.FromResult(Outcome);
+            cancellationToken.Register(() => Gate.TrySetResult(
+                MusicRecognitionOutcome.From(MusicRecognitionStatus.Canceled)));
+            return Gate.Task;
+        }
     }
 
     private sealed class FakeProvider : IVisualSearchProvider

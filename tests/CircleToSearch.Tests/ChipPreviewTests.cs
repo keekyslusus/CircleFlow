@@ -10,7 +10,7 @@ namespace CircleToSearch.Tests;
 
 public sealed class ChipPreviewTests
 {
-    // Renders the real chip visual to PNGs for visual checks without triggering
+    // Renders the real action tray to PNGs for visual checks without triggering
     // a selection: CTS_CHIP_PREVIEW=1 dotnet test --filter ChipPreviewTests.
     // Output: tests/temp/chip-preview.png (dark) and chip-preview-light.png, 150% DPI.
     [Fact]

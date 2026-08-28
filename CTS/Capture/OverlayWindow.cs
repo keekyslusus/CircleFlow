@@ -55,7 +55,7 @@ public sealed class OverlayWindow : Window
     private bool _chipDismissed;
     private bool _revealUpdateQueued;
 
-    public SelectionOutcome? Outcome { get; private set; }
+    public OverlayOutcome? Outcome { get; private set; }
 
     internal OverlayWindow(
         GdiBitmap frame,
@@ -128,6 +128,7 @@ public sealed class OverlayWindow : Window
         Loaded += OnLoaded;
 
         PreviewKeyDown += OnPreviewKeyDown;
+        _visual.MusicButton.Click += OnMusicButtonClick;
         MouseLeftButtonDown += OnMouseLeftButtonDown;
         MouseMove += OnMouseMove;
         MouseLeftButtonUp += OnMouseLeftButtonUp;
@@ -137,13 +138,13 @@ public sealed class OverlayWindow : Window
 
     // Must not be called from an MTA thread: it creates the STA thread that owns the overlay.
     // A null outcome means the selection was canceled.
-    public static Task<SelectionOutcome?> SelectAsync(
+    public static Task<OverlayOutcome?> SelectAsync(
         PluginLog log,
         OverlayOptions options,
         UiStrings strings,
         CancellationToken cancel)
     {
-        var completion = new TaskCompletionSource<SelectionOutcome?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<OverlayOutcome?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
             try
@@ -166,7 +167,7 @@ public sealed class OverlayWindow : Window
 
     public void CancelFromCoordinator() => Dispatcher.BeginInvoke(new Action(CancelInternal));
 
-    private static SelectionOutcome? RunOnce(
+    private static OverlayOutcome? RunOnce(
         PluginLog log,
         OverlayOptions options,
         UiStrings strings,
@@ -187,7 +188,7 @@ public sealed class OverlayWindow : Window
                 return null;
             }
 
-            SelectionOutcome? outcome = null;
+            OverlayOutcome? outcome = null;
             try
             {
                 var window = new OverlayWindow(frame, monitor, workArea, scale, options, strings, entranceOrigin: pointer);
@@ -199,7 +200,7 @@ public sealed class OverlayWindow : Window
             }
             finally
             {
-                if (outcome is null) frame.Dispose();
+                if (outcome?.Action != OverlayAction.VisualSelection) frame.Dispose();
             }
         }
         finally
@@ -308,7 +309,7 @@ public sealed class OverlayWindow : Window
 
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (_finished) return;
+        if (_finished || IsActionTrayInteraction(e.OriginalSource, e.GetPosition(this))) return;
         _drawing = true;
         _chipDismissed = true;
         OverlayVisualFactory.BeginChipExit(_visual);
@@ -340,7 +341,7 @@ public sealed class OverlayWindow : Window
         else
         {
             _finished = true;
-            Outcome = new SelectionOutcome(bounds.Value, _frame);
+            Outcome = OverlayOutcome.VisualSelection(new SelectionOutcome(bounds.Value, _frame));
             ShowSelectionFrame(bounds.Value);
         }
         e.Handled = true;
@@ -353,6 +354,40 @@ public sealed class OverlayWindow : Window
     }
 
     private void OnDeactivated(object? sender, EventArgs e) => CancelInternal();
+
+    private void OnMusicButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (_finished) return;
+        _finished = true;
+        _drawing = false;
+        UnqueueRevealUpdate();
+        ReleaseMouseCapture();
+        Outcome = OverlayOutcome.MusicRecognition();
+        IsHitTestVisible = false;
+        Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+        e.Handled = true;
+    }
+
+    internal bool IsActionTrayInteraction(object? originalSource, Point windowPoint)
+    {
+        var hit = InputHitTest(windowPoint) as DependencyObject;
+        return IsWithin(originalSource as DependencyObject, _visual.ActionTray) ||
+               IsWithin(hit, _visual.ActionTray) ||
+               _visual.ActionTray.IsMouseOver;
+    }
+
+    private static bool IsWithin(DependencyObject? source, DependencyObject ancestor)
+    {
+        var current = source;
+        while (current is not null)
+        {
+            if (ReferenceEquals(current, ancestor)) return true;
+            current = current is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(current)
+                : LogicalTreeHelper.GetParent(current);
+        }
+        return false;
+    }
 
     private void Track(MouseEventArgs e, bool final = false)
     {

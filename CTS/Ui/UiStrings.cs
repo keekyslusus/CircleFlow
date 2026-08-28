@@ -19,6 +19,13 @@ public sealed class UiStrings
     public string SelectionPrompt => Get("plugin_circletosearch_selection_prompt");
     public string CancelKeyName => Get("plugin_circletosearch_cancel_key_name");
     public string CancelAction => Get("plugin_circletosearch_cancel_action");
+    public string MusicRecognitionAction => Get("plugin_circletosearch_music_recognition_action");
+    public string MusicNoMatch => Get("plugin_circletosearch_music_no_match");
+    public string MusicNoAudio => Get("plugin_circletosearch_music_no_audio");
+    public string MusicRateLimited => Get("plugin_circletosearch_music_rate_limited");
+    public string MusicNetworkError => Get("plugin_circletosearch_music_network_error");
+    public string MusicDeviceError => Get("plugin_circletosearch_music_device_error");
+    public string OpenInShazam => Get("plugin_circletosearch_music_open_in_shazam");
     public string QueryTitle => Get("plugin_circletosearch_query_title");
     public string SettingsHotkeyLabel => Get("plugin_circletosearch_settings_hotkey_label");
     public string SettingsMaxImageSideLabel => Get("plugin_circletosearch_settings_max_image_side_label");
@@ -66,6 +73,17 @@ public sealed class UiStrings
         Get("plugin_circletosearch_starting_selection_failed", detail);
 
     public string SearchFailed(string detail) => Get("plugin_circletosearch_search_failed", detail);
+
+    public string MusicMatchSubtitle(string? album, string? genre)
+    {
+        if (!string.IsNullOrWhiteSpace(album) && !string.IsNullOrWhiteSpace(genre))
+            return Get("plugin_circletosearch_music_match_album_genre", album, genre);
+        if (!string.IsNullOrWhiteSpace(album))
+            return Get("plugin_circletosearch_music_match_album", album);
+        if (!string.IsNullOrWhiteSpace(genre))
+            return Get("plugin_circletosearch_music_match_genre", genre);
+        return Get("plugin_circletosearch_music_match");
+    }
 
     private string Get(string key, params object?[] arguments)
     {

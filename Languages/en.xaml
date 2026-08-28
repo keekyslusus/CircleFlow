@@ -3,12 +3,23 @@
                     xmlns:system="clr-namespace:System;assembly=mscorlib">
 
     <system:String x:Key="plugin_circletosearch_plugin_name">Circle to Search</system:String>
-    <system:String x:Key="plugin_circletosearch_plugin_description">Select a screen area and search for it visually</system:String>
+    <system:String x:Key="plugin_circletosearch_plugin_description">Search a screen area visually or recognize music from Windows output</system:String>
     <system:String x:Key="plugin_circletosearch_google_lens_provider_name">Google Lens</system:String>
     <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images</system:String>
     <system:String x:Key="plugin_circletosearch_selection_prompt">Select an area</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_key_name">Esc</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_action">cancel</system:String>
+    <system:String x:Key="plugin_circletosearch_music_recognition_action">Recognize music</system:String>
+    <system:String x:Key="plugin_circletosearch_music_no_match">No matching track was found.</system:String>
+    <system:String x:Key="plugin_circletosearch_music_no_audio">No usable audio was detected on the default Windows output.</system:String>
+    <system:String x:Key="plugin_circletosearch_music_rate_limited">Music recognition is temporarily rate-limited. Please try again later.</system:String>
+    <system:String x:Key="plugin_circletosearch_music_network_error">The music recognition service could not be reached.</system:String>
+    <system:String x:Key="plugin_circletosearch_music_device_error">The default Windows output could not be captured.</system:String>
+    <system:String x:Key="plugin_circletosearch_music_open_in_shazam">Open in Shazam</system:String>
+    <system:String x:Key="plugin_circletosearch_music_match">Music recognized</system:String>
+    <system:String x:Key="plugin_circletosearch_music_match_album">Album: {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_music_match_genre">Genre: {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_music_match_album_genre">Album: {0} · Genre: {1}</system:String>
     <system:String x:Key="plugin_circletosearch_query_title">Select screen area…</system:String>
     <system:String x:Key="plugin_circletosearch_query_subtitle">Visually search the selected region — hotkey: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_search_provider">Search provider: {0}</system:String>

@@ -40,7 +40,11 @@ internal static class PluginPalette
             Divider: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
             NeutralOutline: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
             ShadowDepth: 6,
-            ShadowOpacity: 0.35));
+            ShadowOpacity: 0.35),
+        MusicButton: new MusicButtonPalette(
+            Surface: Color.FromArgb(0xE6, 0x20, 0x21, 0x24),
+            Foreground: Color.FromRgb(0xF1, 0xF3, 0xF4),
+            Border: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF)));
 
     private static PluginThemePalette Light { get; } = new(
         WindowSurface: Color.FromRgb(0xF7, 0xF9, 0xFC),
@@ -56,13 +60,18 @@ internal static class PluginPalette
             Divider: Color.FromArgb(0x29, 0x20, 0x21, 0x24),
             NeutralOutline: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
             ShadowDepth: 8,
-            ShadowOpacity: 0.3));
+            ShadowOpacity: 0.3),
+        MusicButton: new MusicButtonPalette(
+            Surface: Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD),
+            Foreground: Color.FromRgb(0x3C, 0x40, 0x43),
+            Border: Color.FromArgb(0x2E, 0x20, 0x21, 0x24)));
 }
 
 internal sealed record PluginThemePalette(
     Color WindowSurface,
     Color PrimaryText,
-    SelectionChipPalette SelectionChip);
+    SelectionChipPalette SelectionChip,
+    MusicButtonPalette MusicButton);
 
 internal sealed record SelectionChipPalette(
     Color Surface,
@@ -76,3 +85,5 @@ internal sealed record SelectionChipPalette(
     Color NeutralOutline,
     double ShadowDepth,
     double ShadowOpacity);
+
+internal sealed record MusicButtonPalette(Color Surface, Color Foreground, Color Border);

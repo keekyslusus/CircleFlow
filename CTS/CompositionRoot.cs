@@ -1,9 +1,14 @@
 using System.Diagnostics;
 using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Windows.Controls;
 using Flow.Launcher.Plugin;
 using CircleToSearch.Capture;
 using CircleToSearch.Interop;
+using CircleToSearch.MusicRecognition;
+using CircleToSearch.MusicRecognition.Audio;
+using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Trigger;
@@ -34,6 +39,21 @@ public static class CompositionRoot
 
         var hotkeyWindow = new HotkeyWindow(log);
         var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
+        var musicClock = new SystemMusicRecognitionClock();
+        var musicThrottle = new ShazamRequestThrottle(musicClock);
+        var musicHttpClient = new HttpClient
+        {
+            Timeout = Timeout.InfiniteTimeSpan,
+            DefaultRequestVersion = HttpVersion.Version11,
+            DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact,
+        };
+        var shazamClient = new ShazamClient(musicHttpClient);
+        var musicRecognizer = new ProgressiveMusicRecognizer(
+            new LoopbackCaptureSessionFactory(),
+            shazamClient,
+            musicThrottle,
+            musicClock,
+            log);
         var providerRouter = new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(
@@ -57,8 +77,12 @@ public static class CompositionRoot
                 strings,
                 cancel),
             (frame, bounds) => ImageCropper.Encode(frame, bounds, settings.MaxLongSidePx),
+            musicRecognizer,
             OpenResultsUrl,
             () => api.HideMainWindow(),
+            (title, message) => api.ShowMsg(title, message, iconPath),
+            (title, message, button, action) =>
+                api.ShowMsgWithButton(title, button, action, message, iconPath),
             (title, message) => api.ShowMsgError(title, message),
             settings,
             strings,
@@ -92,6 +116,7 @@ public static class CompositionRoot
                 strings),
             hotkeyWindow,
             providerRouter,
+            [shazamClient, musicHttpClient, musicThrottle],
             log);
     }
 
@@ -118,6 +143,7 @@ public sealed class PluginRuntime : IDisposable
     private readonly SearchCoordinator _coordinator;
     private readonly HotkeyWindow _hotkeyWindow;
     private readonly VisualSearchProviderRouter _providerRouter;
+    private readonly IReadOnlyList<IDisposable> _musicResources;
     private readonly PluginLog _log;
 
     public PluginRuntime(
@@ -126,6 +152,7 @@ public sealed class PluginRuntime : IDisposable
         Func<Control> createSettingPanel,
         HotkeyWindow hotkeyWindow,
         VisualSearchProviderRouter providerRouter,
+        IReadOnlyList<IDisposable> musicResources,
         PluginLog log)
     {
         Coordinator = coordinator;
@@ -134,6 +161,7 @@ public sealed class PluginRuntime : IDisposable
         _coordinator = coordinator;
         _hotkeyWindow = hotkeyWindow;
         _providerRouter = providerRouter;
+        _musicResources = musicResources;
         _log = log;
     }
 
@@ -148,7 +176,8 @@ public sealed class PluginRuntime : IDisposable
         // logged so it is visible whether the host disposes the plugin on "Reload plugin data";
         // if this line never appears, every reload leaks a hotkey hook and an STA thread
         _log.Info(nameof(PluginRuntime), "disposing: canceling the active session and unregistering the hotkey");
-        _coordinator.CancelActiveSelection();
+        _coordinator.CancelActiveSession().GetAwaiter().GetResult();
+        foreach (var resource in _musicResources) resource.Dispose();
         _hotkeyWindow.Dispose();
         _providerRouter.Dispose();
     }
