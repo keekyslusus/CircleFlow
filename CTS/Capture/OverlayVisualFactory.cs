@@ -203,11 +203,12 @@ public static class OverlayVisualFactory
             selectedProviderId,
             palette.Provider,
             lightTheme,
-            strings,
-            chipBottomMargin);
+            strings);
+        var providerMenuLayer = new Canvas();
+        providerMenuLayer.Children.Add(providerMenu);
         var actionUiRoot = new Grid { IsHitTestVisible = true };
         actionUiRoot.Children.Add(tray);
-        actionUiRoot.Children.Add(providerMenu);
+        actionUiRoot.Children.Add(providerMenuLayer);
         Panel.SetZIndex(actionUiRoot, 2);
 
         var waveform = new AudioWaveformVisual(lightTheme);
@@ -449,14 +450,19 @@ public static class OverlayVisualFactory
         if (visual.ProviderButton is not null && visual.ProviderButton.IsLoaded)
         {
             visual.ProviderMenu.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var center = visual.ProviderButton.TransformToAncestor(visual.Root).Transform(
-                new Point(visual.ProviderButton.ActualWidth / 2, visual.ProviderButton.ActualHeight / 2));
-            visual.ProviderMenu.HorizontalAlignment = HorizontalAlignment.Left;
-            visual.ProviderMenu.Margin = new Thickness(
-                center.X - visual.ProviderMenu.DesiredSize.Width / 2,
+            var anchor = visual.ProviderButton.TranslatePoint(
+                new Point(visual.ProviderButton.ActualWidth / 2, 0),
+                visual.ActionUiRoot);
+            var left = Math.Clamp(
+                anchor.X - visual.ProviderMenu.DesiredSize.Width / 2,
                 0,
+                Math.Max(0, visual.ActionUiRoot.ActualWidth - visual.ProviderMenu.DesiredSize.Width));
+            var top = Math.Clamp(
+                anchor.Y - 10 - visual.ProviderMenu.DesiredSize.Height,
                 0,
-                visual.ProviderMenu.Margin.Bottom);
+                Math.Max(0, visual.ActionUiRoot.ActualHeight - visual.ProviderMenu.DesiredSize.Height));
+            Canvas.SetLeft(visual.ProviderMenu, left);
+            Canvas.SetTop(visual.ProviderMenu, top);
         }
         if (!AnimationsEnabled())
         {
@@ -624,9 +630,9 @@ public static class OverlayVisualFactory
         Action<string, Button> copy)
     {
         var row = new DockPanel { LastChildFill = true };
-        var close = IconButton(CloseIconGeometry, strings.Close, palette);
+        var close = IconButton(CloseIconGeometry, strings.Close, palette, iconSize: 12);
         close.Margin = new Thickness(0);
-        close.Click += (_, _) => publish(new CancelSession());
+        close.Click += (_, _) => publish(new DismissMusicResult());
         DockPanel.SetDock(close, Dock.Right);
         row.Children.Add(close);
 
@@ -680,11 +686,11 @@ public static class OverlayVisualFactory
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var close = IconButton(CloseIconGeometry, strings.Close, palette);
+        var close = IconButton(CloseIconGeometry, strings.Close, palette, iconSize: 12);
         close.HorizontalAlignment = HorizontalAlignment.Right;
         close.VerticalAlignment = VerticalAlignment.Top;
         close.Margin = new Thickness(0, -4, -6, 0);
-        close.Click += (_, _) => publish(new CancelSession());
+        close.Click += (_, _) => publish(new DismissMusicResult());
         Panel.SetZIndex(close, 1);
         root.Children.Add(close);
 
@@ -738,11 +744,15 @@ public static class OverlayVisualFactory
         return root;
     }
 
-    private static Button IconButton(Geometry geometry, string name, MusicOverlayPalette palette)
+    private static Button IconButton(
+        Geometry geometry,
+        string name,
+        MusicOverlayPalette palette,
+        double iconSize = 15)
     {
         var button = new Button
         {
-            Content = Icon(geometry, 15, palette.MutedText),
+            Content = Icon(geometry, iconSize, palette.MutedText),
             Width = 30,
             Height = 30,
             Margin = new Thickness(2, 0, 0, 0),
@@ -1064,8 +1074,7 @@ public static class OverlayVisualFactory
         string? selectedProviderId,
         ProviderPalette palette,
         bool lightTheme,
-        UiStrings strings,
-        double chipBottomMargin)
+        UiStrings strings)
     {
         var panel = new StackPanel();
         AddProviderMenuItems(panel, providers, selectedProviderId, lightTheme, strings);
@@ -1073,9 +1082,6 @@ public static class OverlayVisualFactory
         {
             Child = panel,
             Visibility = Visibility.Collapsed,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(0, 0, 0, chipBottomMargin + 52),
             Padding = new Thickness(6),
             Width = 220,
             CornerRadius = new CornerRadius(16),
@@ -1109,7 +1115,7 @@ public static class OverlayVisualFactory
             {
                 Tag = descriptor.Id,
                 Content = ProviderVisualCatalog.Create(descriptor, strings, lightTheme, includeFullName: true),
-                Padding = new Thickness(12, 6, 12, 6),
+                Padding = new Thickness(12, 5, 12, 5),
                 MinWidth = 206,
                 MinHeight = 36,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
@@ -1170,8 +1176,12 @@ public static class OverlayVisualFactory
         chrome.SetBinding(Border.PaddingProperty, TemplateBinding(Control.PaddingProperty));
 
         var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
-        presenter.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        presenter.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        presenter.SetBinding(
+            FrameworkElement.HorizontalAlignmentProperty,
+            TemplateBinding(Control.HorizontalContentAlignmentProperty));
+        presenter.SetBinding(
+            FrameworkElement.VerticalAlignmentProperty,
+            TemplateBinding(Control.VerticalContentAlignmentProperty));
         presenter.SetBinding(ContentPresenter.ContentProperty, TemplateBinding(ContentControl.ContentProperty));
         presenter.SetBinding(ContentPresenter.ContentTemplateProperty, TemplateBinding(ContentControl.ContentTemplateProperty));
         chrome.AppendChild(presenter);

@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -637,7 +638,11 @@ public sealed class OverlayWindow : Window
             _visual,
             outcome,
             _strings,
-            command => _publishCommand?.Invoke(command),
+            command =>
+            {
+                if (command is DismissMusicResult) DismissMusicResult();
+                _publishCommand?.Invoke(command);
+            },
             CopyTrackInfo);
         _controlRipples.AddRange(OverlayVisualFactory.AttachControlRipples(_visual.ResultHost));
         if (outcome.Status == MusicRecognitionStatus.Matched && OverlayVisualFactory.AnimationsEnabled())
@@ -651,6 +656,18 @@ public sealed class OverlayWindow : Window
                 _visual.SceneRipples.Emit(new SceneRippleRequest(origin, SceneRipplePreset.MusicMatch, 1));
             }, DispatcherPriority.Loaded);
         }
+    }
+
+    private void DismissMusicResult()
+    {
+        if (_finished || Mode != OverlayInteractionMode.MusicResult) return;
+        _visual.ResultHost.Visibility = Visibility.Collapsed;
+        _visual.ResultHost.Children.Clear();
+        Mode = OverlayInteractionMode.Selecting;
+        RestoreSelectionLayersAfterMusic();
+        _visual.MusicButton.ToolTip = _strings.MusicRecognitionAction;
+        AutomationProperties.SetName(_visual.MusicButton, _strings.MusicRecognitionAction);
+        Cursor = Cursors.Cross;
     }
 
     internal void CloseFromSession()
@@ -712,6 +729,30 @@ public sealed class OverlayWindow : Window
         var duration = TimeSpan.FromMilliseconds(200);
         foreach (var target in fadeTargets)
             target.BeginAnimation(OpacityProperty, new DoubleAnimation(target.Opacity, 0, duration)
+            {
+                EasingFunction = EaseOut(),
+            });
+    }
+
+    private void RestoreSelectionLayersAfterMusic()
+    {
+        UIElement[] restoreTargets =
+        [
+            _visual.Screenshot,
+            _visual.Sheen,
+            _visual.Halo,
+            _visual.Accent,
+        ];
+        _visual.SelectionFrame.BeginAnimation(OpacityProperty, null);
+        _visual.SelectionFrame.Opacity = 0;
+        if (!OverlayVisualFactory.AnimationsEnabled())
+        {
+            foreach (var target in restoreTargets) target.Opacity = 1;
+            return;
+        }
+        var duration = TimeSpan.FromMilliseconds(200);
+        foreach (var target in restoreTargets)
+            target.BeginAnimation(OpacityProperty, new DoubleAnimation(target.Opacity, 1, duration)
             {
                 EasingFunction = EaseOut(),
             });

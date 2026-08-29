@@ -4,6 +4,11 @@ using System.Windows.Media;
 
 internal static class PluginPalette
 {
+    private static Color DarkDockSurface { get; } = Color.FromArgb(0xE6, 0x20, 0x21, 0x24);
+    private static Color DarkDockHoverOverlay { get; } = Color.FromArgb(0x12, 0x00, 0x00, 0x00);
+    private static Color LightDockSurface { get; } = Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD);
+    private static Color LightDockHoverOverlay { get; } = Color.FromArgb(0x0D, 0x20, 0x21, 0x24);
+
     public static PluginThemePalette For(bool lightTheme) => lightTheme ? Light : Dark;
 
     public static Color SystemAccentFallback { get; } = Color.FromRgb(0x00, 0x78, 0xD4);
@@ -34,7 +39,7 @@ internal static class PluginPalette
         WindowSurface: Color.FromRgb(0x20, 0x21, 0x24),
         PrimaryText: Color.FromRgb(0xE8, 0xEA, 0xED),
         SelectionChip: new SelectionChipPalette(
-            Surface: Color.FromArgb(0xE6, 0x20, 0x21, 0x24),
+            Surface: DarkDockSurface,
             Label: Color.FromRgb(0xF1, 0xF3, 0xF4),
             Hint: Color.FromRgb(0xC4, 0xC7, 0xC5),
             Icon: Color.FromRgb(0xF1, 0xF3, 0xF4),
@@ -46,16 +51,16 @@ internal static class PluginPalette
             ShadowDepth: 6,
             ShadowOpacity: 0.35),
         MusicButton: new MusicButtonPalette(
-            Surface: Color.FromArgb(0xE6, 0x20, 0x21, 0x24),
+            Surface: DarkDockSurface,
             Foreground: Color.FromRgb(0xF1, 0xF3, 0xF4),
             Border: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
-            Hover: Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF)),
+            Hover: Composite(DarkDockSurface, DarkDockHoverOverlay)),
         Provider: new ProviderPalette(
-            Surface: Color.FromArgb(0xE6, 0x20, 0x21, 0x24),
+            Surface: DarkDockSurface,
             Text: Color.FromRgb(0xF1, 0xF3, 0xF4),
             Hint: Color.FromRgb(0xC4, 0xC7, 0xC5),
             Border: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
-            Hover: Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF),
+            Hover: Composite(DarkDockSurface, DarkDockHoverOverlay),
             MenuSurface: Color.FromRgb(0x21, 0x1F, 0x26),
             MenuText: Color.FromRgb(0xE6, 0xE1, 0xE5),
             MenuMutedText: Color.FromRgb(0xCA, 0xC4, 0xD0),
@@ -85,7 +90,7 @@ internal static class PluginPalette
         WindowSurface: Color.FromRgb(0xF7, 0xF9, 0xFC),
         PrimaryText: Color.FromRgb(0x30, 0x34, 0x3A),
         SelectionChip: new SelectionChipPalette(
-            Surface: Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD),
+            Surface: LightDockSurface,
             Label: Color.FromRgb(0x1F, 0x20, 0x23),
             Hint: Color.FromRgb(0x5F, 0x63, 0x68),
             Icon: Color.FromRgb(0x3C, 0x40, 0x43),
@@ -97,16 +102,16 @@ internal static class PluginPalette
             ShadowDepth: 8,
             ShadowOpacity: 0.3),
         MusicButton: new MusicButtonPalette(
-            Surface: Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD),
+            Surface: LightDockSurface,
             Foreground: Color.FromRgb(0x3C, 0x40, 0x43),
             Border: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
-            Hover: Color.FromArgb(0x0D, 0x20, 0x21, 0x24)),
+            Hover: Composite(LightDockSurface, LightDockHoverOverlay)),
         Provider: new ProviderPalette(
-            Surface: Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD),
+            Surface: LightDockSurface,
             Text: Color.FromRgb(0x3C, 0x40, 0x43),
             Hint: Color.FromRgb(0x5F, 0x63, 0x68),
             Border: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
-            Hover: Color.FromArgb(0x0D, 0x20, 0x21, 0x24),
+            Hover: Composite(LightDockSurface, LightDockHoverOverlay),
             MenuSurface: Color.FromRgb(0xF3, 0xF3, 0xFA),
             MenuText: Color.FromRgb(0x1C, 0x1B, 0x1F),
             MenuMutedText: Color.FromRgb(0x49, 0x45, 0x4F),
@@ -131,6 +136,22 @@ internal static class PluginPalette
             SecondaryContainer: Color.FromRgb(0xE8, 0xDE, 0xF8),
             OnSecondaryContainer: Color.FromRgb(0x1D, 0x19, 0x2B),
             ShadowOpacity: 0.12));
+
+    private static Color Composite(Color background, Color foreground)
+    {
+        var foregroundAlpha = foreground.A / 255d;
+        var backgroundAlpha = background.A / 255d;
+        var alpha = foregroundAlpha + backgroundAlpha * (1 - foregroundAlpha);
+        if (alpha == 0) return Transparent;
+        byte Blend(byte backgroundChannel, byte foregroundChannel) => (byte)Math.Round(
+            (foregroundChannel * foregroundAlpha +
+             backgroundChannel * backgroundAlpha * (1 - foregroundAlpha)) / alpha);
+        return Color.FromArgb(
+            (byte)Math.Round(alpha * 255),
+            Blend(background.R, foreground.R),
+            Blend(background.G, foreground.G),
+            Blend(background.B, foreground.B));
+    }
 }
 
 internal sealed record PluginThemePalette(

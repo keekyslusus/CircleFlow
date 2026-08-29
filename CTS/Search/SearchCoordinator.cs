@@ -316,6 +316,11 @@ public sealed class SearchCoordinator
                     case CopyMusicResult:
                         break;
 
+                    case DismissMusicResult:
+                        displayedOutcome = null;
+                        SetState(SearchState.Selecting);
+                        break;
+
                     case CancelSession:
                         return;
                 }

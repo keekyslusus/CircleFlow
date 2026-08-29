@@ -9,6 +9,7 @@ using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Shazam;
+using CircleToSearch.Ui;
 using Xunit;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
@@ -56,6 +57,71 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Contains(
                 "Yandex Images",
                 Descendants((DependencyObject)item.Content).OfType<TextBlock>().Select(text => text.Text));
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Provider_and_music_hover_keep_the_dock_surface_opaque()
+    {
+        foreach (var lightTheme in new[] { false, true })
+        {
+            var palette = PluginPalette.For(lightTheme);
+            Assert.True(palette.Provider.Hover.A >= palette.Provider.Surface.A);
+            Assert.True(palette.MusicButton.Hover.A >= palette.MusicButton.Surface.A);
+            Assert.NotEqual(palette.Provider.Surface, palette.Provider.Hover);
+            Assert.NotEqual(palette.MusicButton.Surface, palette.MusicButton.Hover);
+            Assert.True(palette.Provider.Hover.R < palette.Provider.Surface.R);
+            Assert.True(palette.MusicButton.Hover.R < palette.MusicButton.Surface.R);
+        }
+    }
+
+    [Fact]
+    public void Reopening_provider_menu_keeps_the_same_position()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                _ => { },
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+
+            var provider = overlay.VisualState.ProviderButton!;
+            provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            overlay.UpdateLayout();
+            var firstLeft = Canvas.GetLeft(overlay.VisualState.ProviderMenu);
+            var firstTop = Canvas.GetTop(overlay.VisualState.ProviderMenu);
+            Assert.InRange(overlay.VisualState.ProviderMenu.ActualHeight, 55, 57);
+            var menuItem = Assert.Single(
+                ((StackPanel)overlay.VisualState.ProviderMenu.Child).Children.OfType<Button>());
+            var itemContent = Assert.IsAssignableFrom<FrameworkElement>(menuItem.Content);
+            var contentLeft = itemContent.TranslatePoint(
+                new Point(),
+                overlay.VisualState.ProviderMenu).X;
+
+            provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            overlay.UpdateLayout();
+
+            Assert.Equal(firstLeft, Canvas.GetLeft(overlay.VisualState.ProviderMenu));
+            Assert.Equal(firstTop, Canvas.GetTop(overlay.VisualState.ProviderMenu));
+            Assert.InRange(contentLeft, 18, 20);
+            Assert.Equal(Visibility.Visible, overlay.VisualState.ProviderMenu.Visibility);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
         });
 
         Assert.Null(failure);
@@ -222,6 +288,7 @@ public sealed class ProviderMusicOverlayUiTests
         {
             using var frame = new GdiBitmap(640, 400);
             var monitor = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
             var overlay = new OverlayWindow(
                 frame,
                 monitor,
@@ -232,7 +299,7 @@ public sealed class ProviderMusicOverlayUiTests
                     TestUiStrings.English,
                     Providers,
                     SearchProviderIds.GoogleLens),
-                _ => { },
+                commands.Add,
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -264,8 +331,55 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.All(
                 Descendants(overlay.VisualState.ResultHost).OfType<Button>(),
                 button => Assert.Equal(30, button.Width));
+            var close = Descendants(overlay.VisualState.ResultHost).OfType<Button>()
+                .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.Close);
+            Assert.Equal(12, Assert.IsType<System.Windows.Shapes.Path>(close.Content).Width);
+            close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.IsType<DismissMusicResult>(Assert.Single(commands));
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            Assert.Equal(Visibility.Collapsed, overlay.VisualState.ResultHost.Visibility);
+            Assert.False(overlay.Dispatcher.HasShutdownStarted);
             overlay.CloseFromSession();
             Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Theory]
+    [InlineData(MusicRecognitionStatus.NoMatch)]
+    [InlineData(MusicRecognitionStatus.NoAudio)]
+    [InlineData(MusicRecognitionStatus.RateLimited)]
+    [InlineData(MusicRecognitionStatus.ServiceError)]
+    [InlineData(MusicRecognitionStatus.DeviceError)]
+    public void Every_music_state_close_action_dismisses_only_the_result(
+        MusicRecognitionStatus status)
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = OverlayVisualFactory.CreateRoot(
+                null,
+                new Size(640, 400),
+                32,
+                lightTheme: false,
+                TestUiStrings.English,
+                Providers,
+                SearchProviderIds.GoogleLens);
+            var commands = new List<IOverlayCommand>();
+            OverlayVisualFactory.PresentMusicResult(
+                visual,
+                MusicRecognitionOutcome.From(status),
+                TestUiStrings.English,
+                commands.Add,
+                (_, _) => { });
+            var close = Descendants(visual.ResultHost).OfType<Button>()
+                .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.Close);
+
+            close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.IsType<DismissMusicResult>(Assert.Single(commands));
+            Assert.Equal(12, Assert.IsType<System.Windows.Shapes.Path>(close.Content).Width);
         });
 
         Assert.Null(failure);

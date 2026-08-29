@@ -106,6 +106,22 @@ public sealed class ProviderMusicOverlayCoordinatorTests
         Assert.Equal(1, harness.Google.Calls);
     }
 
+    [Fact]
+    public async Task Dismissing_music_result_returns_to_selection_in_the_same_overlay()
+    {
+        using var harness = new Harness();
+        harness.Overlay.CommandsAfterResult.Add(new DismissMusicResult());
+        harness.Overlay.CommandsAfterResult.Add(
+            new VisualSelection(NewSelection(), SearchProviderIds.GoogleLens));
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+
+        await harness.Coordinator.StartFromHotkeyAsync();
+
+        Assert.Equal(MusicRecognitionStatus.NoMatch, harness.Overlay.Result?.Status);
+        Assert.Equal(1, harness.Google.Calls);
+        Assert.Equal(SearchState.Idle, harness.Coordinator.State);
+    }
+
     private static SelectionOutcome NewSelection() =>
         new(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2));
 
@@ -183,6 +199,7 @@ public sealed class ProviderMusicOverlayCoordinatorTests
         public void Enqueue(IOverlayCommand command) => _commands.Writer.TryWrite(command);
         public MusicRecognitionOutcome? Result { get; private set; }
         public bool CloseAfterResult { get; set; }
+        public List<IOverlayCommand> CommandsAfterResult { get; } = [];
         public Task<IOverlayCommand> ReadCommandAsync(CancellationToken cancellationToken) =>
             _commands.Reader.ReadAsync(cancellationToken).AsTask();
         public Task ShowListeningAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -190,6 +207,7 @@ public sealed class ProviderMusicOverlayCoordinatorTests
         public Task ShowMusicResultAsync(MusicRecognitionOutcome outcome, CancellationToken cancellationToken)
         {
             Result = outcome;
+            foreach (var command in CommandsAfterResult) Enqueue(command);
             if (CloseAfterResult) Enqueue(new CancelSession());
             return Task.CompletedTask;
         }
