@@ -5,6 +5,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Ui;
+using CircleToSearch.Ui.Effects;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -88,11 +89,10 @@ public sealed class SelectionPreviewTests
                 {
                     framed.Stop();
                     Capture(visual.Root, framePath);
-                    OverlayEntrance.Begin(
-                        visual.Root,
+                    visual.SceneRipples.Emit(new SceneRippleRequest(
                         new Point(width * 0.42, height * 0.45),
-                        size,
-                        SystemAccentColor.Read());
+                        SceneRipplePreset.Entrance,
+                        1));
                     var wave1 = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(260) };
                     wave1.Tick += (_, _) =>
                     {

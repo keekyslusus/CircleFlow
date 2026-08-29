@@ -1,4 +1,5 @@
 using CircleToSearch.MusicRecognition.Shazam;
+using CircleToSearch.MusicRecognition.Audio;
 
 namespace CircleToSearch.MusicRecognition;
 
@@ -24,4 +25,8 @@ public sealed record MusicRecognitionOutcome(MusicRecognitionStatus Status, Shaz
 public interface IMusicRecognizer
 {
     Task<MusicRecognitionOutcome> RecognizeAsync(CancellationToken cancellationToken);
+
+    Task<MusicRecognitionOutcome> RecognizeAsync(
+        IMusicVisualizationProgress? progress,
+        CancellationToken cancellationToken) => RecognizeAsync(cancellationToken);
 }

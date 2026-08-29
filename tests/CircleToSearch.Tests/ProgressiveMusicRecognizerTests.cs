@@ -58,6 +58,24 @@ public sealed class ProgressiveMusicRecognizerTests
     }
 
     [Fact]
+    public async Task Visualization_progress_preserves_four_eight_twelve_schedule()
+    {
+        using var harness = new Harness();
+        harness.Client.Results.Enqueue(null);
+        harness.Client.Results.Enqueue(null);
+        harness.Client.Results.Enqueue(null);
+        var progress = new RecordingProgress();
+
+        var outcome = await harness.Recognizer.RecognizeAsync(progress, CancellationToken.None);
+
+        Assert.Equal(MusicRecognitionStatus.NoMatch, outcome.Status);
+        Assert.Equal(
+            [TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(8), TimeSpan.FromSeconds(12)],
+            harness.Client.RequestStarts);
+        Assert.NotEmpty(progress.Frames);
+    }
+
+    [Fact]
     public async Task Silent_snapshots_skip_the_network_and_return_no_audio()
     {
         using var harness = new Harness(silent: true);
@@ -248,6 +266,13 @@ public sealed class ProgressiveMusicRecognizerTests
             if (ThrowOnStart) throw new InvalidOperationException("device unavailable");
         }
 
+        public void Start(Action<AudioLevelFrame>? progress, CancellationToken cancellationToken)
+        {
+            Start(cancellationToken);
+            progress?.Invoke(new AudioLevelFrame(TimeSpan.Zero, 0, 0));
+            progress?.Invoke(new AudioLevelFrame(TimeSpan.FromMilliseconds(100), 0.05, 0.1));
+        }
+
         public CapturedAudio Snapshot()
         {
             SnapshotCalls++;
@@ -276,6 +301,12 @@ public sealed class ProgressiveMusicRecognizerTests
             }
             return samples;
         }
+    }
+
+    private sealed class RecordingProgress : IMusicVisualizationProgress
+    {
+        public List<MusicVisualizationFrame> Frames { get; } = [];
+        public void Report(MusicVisualizationFrame frame) => Frames.Add(frame);
     }
 
     private sealed class FakeClient(FakeClock clock) : IShazamClient

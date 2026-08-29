@@ -20,6 +20,16 @@ public sealed class UiStrings
     public string CancelKeyName => Get("plugin_circletosearch_cancel_key_name");
     public string CancelAction => Get("plugin_circletosearch_cancel_action");
     public string MusicRecognitionAction => Get("plugin_circletosearch_music_recognition_action");
+    public string CancelMusicRecognition => Get("plugin_circletosearch_music_cancel_action");
+    public string GoogleProviderShortLabel => Get("plugin_circletosearch_google_provider_short_label");
+    public string YandexProviderShortLabel => Get("plugin_circletosearch_yandex_provider_short_label");
+    public string Listening => Get("plugin_circletosearch_music_listening");
+    public string TryAgain => Get("plugin_circletosearch_music_try_again");
+    public string Retry => Get("plugin_circletosearch_music_retry");
+    public string CopyTrackInfo => Get("plugin_circletosearch_music_copy_track_info");
+    public string Copied => Get("plugin_circletosearch_music_copied");
+    public string Close => Get("plugin_circletosearch_close");
+    public string MusicResultTitle => Get("plugin_circletosearch_music_result_title");
     public string MusicNoMatch => Get("plugin_circletosearch_music_no_match");
     public string MusicNoAudio => Get("plugin_circletosearch_music_no_audio");
     public string MusicRateLimited => Get("plugin_circletosearch_music_rate_limited");
@@ -47,6 +57,9 @@ public sealed class UiStrings
 
     public string SearchProvider(string displayName) =>
         Get("plugin_circletosearch_search_provider", displayName);
+
+    public string SelectSearchProvider(string displayName) =>
+        Get("plugin_circletosearch_select_search_provider", displayName);
 
     public string GoogleLensRuntime(string? version) => version is null
         ? Get("plugin_circletosearch_google_lens_runtime_not_detected")

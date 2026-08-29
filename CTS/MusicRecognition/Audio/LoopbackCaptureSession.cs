@@ -6,6 +6,7 @@ namespace CircleToSearch.MusicRecognition.Audio;
 public interface IAudioCaptureSession : IAsyncDisposable
 {
     void Start(CancellationToken cancellationToken);
+    void Start(Action<AudioLevelFrame>? progress, CancellationToken cancellationToken) => Start(cancellationToken);
     CapturedAudio Snapshot();
 }
 
@@ -16,7 +17,11 @@ public interface IAudioCaptureSessionFactory
 
 public sealed class LoopbackCaptureSessionFactory : IAudioCaptureSessionFactory
 {
-    public IAudioCaptureSession Create() => new LoopbackCaptureSession();
+    private readonly PluginLog? _log;
+
+    public LoopbackCaptureSessionFactory(PluginLog? log = null) => _log = log;
+
+    public IAudioCaptureSession Create() => new LoopbackCaptureSession(_log);
 }
 
 public sealed class LoopbackCaptureSession : IAudioCaptureSession
@@ -26,23 +31,30 @@ public sealed class LoopbackCaptureSession : IAudioCaptureSession
     private readonly WasapiRecorder _recorder;
     private readonly MemoryStream _buffer;
     private readonly int _maximumBytes;
+    private readonly PluginLog? _log;
     private CancellationTokenSource? _captureCancellation;
     private Task? _captureTask;
     private int _disposed;
+    private long _capturedBytes;
+    private TimeSpan _lastProgress;
 
-    public LoopbackCaptureSession()
+    public LoopbackCaptureSession(PluginLog? log = null)
     {
+        _log = log;
         _recorder = new WasapiRecorderBuilder().WithLoopbackCapture().Build();
         _maximumBytes = checked(_recorder.WaveFormat.AverageBytesPerSecond * MaximumCaptureSeconds);
         _buffer = new MemoryStream(_maximumBytes);
     }
 
     public void Start(CancellationToken cancellationToken)
+        => Start(null, cancellationToken);
+
+    public void Start(Action<AudioLevelFrame>? progress, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         if (_captureTask is not null) throw new InvalidOperationException("Capture has already started.");
         _captureCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _captureTask = CaptureAsync(_captureCancellation.Token);
+        _captureTask = CaptureAsync(progress, _captureCancellation.Token);
     }
 
     public CapturedAudio Snapshot()
@@ -75,18 +87,36 @@ public sealed class LoopbackCaptureSession : IAudioCaptureSession
         _buffer.Dispose();
     }
 
-    private async Task CaptureAsync(CancellationToken cancellationToken)
+    private async Task CaptureAsync(Action<AudioLevelFrame>? progress, CancellationToken cancellationToken)
     {
         await foreach (var audioBuffer in _recorder.CaptureAsync(cancellationToken).ConfigureAwait(false))
         {
+            var data = audioBuffer.Data.Span;
+            var elapsed = TimeSpan.FromSeconds(
+                Interlocked.Add(ref _capturedBytes, data.Length) /
+                (double)_recorder.WaveFormat.AverageBytesPerSecond);
+            AudioLevelFrame? level = null;
+            if (progress is not null && elapsed - _lastProgress >= TimeSpan.FromMilliseconds(33))
+            {
+                _lastProgress = elapsed;
+                level = AudioLevelMeter.Measure(data, _recorder.WaveFormat, elapsed);
+            }
             var reachedLimit = false;
             lock (_sync)
             {
                 var remaining = _maximumBytes - (int)_buffer.Length;
                 if (remaining <= 0) continue;
-                var data = audioBuffer.Data.Span;
                 _buffer.Write(data[..Math.Min(remaining, data.Length)]);
                 reachedLimit = _buffer.Length >= _maximumBytes;
+            }
+            if (level is { } report)
+            {
+                try { progress!(report); }
+                catch (Exception exception)
+                {
+                    _log?.Warn(nameof(LoopbackCaptureSession),
+                        $"reporting audio visualization progress failed: {exception.Message}");
+                }
             }
             if (reachedLimit) _captureCancellation?.Cancel();
         }

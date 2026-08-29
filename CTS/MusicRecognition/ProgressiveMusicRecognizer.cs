@@ -47,6 +47,11 @@ public sealed class ProgressiveMusicRecognizer : IMusicRecognizer
     }
 
     public async Task<MusicRecognitionOutcome> RecognizeAsync(CancellationToken cancellationToken)
+        => await RecognizeAsync(null, cancellationToken).ConfigureAwait(false);
+
+    public async Task<MusicRecognitionOutcome> RecognizeAsync(
+        IMusicVisualizationProgress? progress,
+        CancellationToken cancellationToken)
     {
         if (_throttle.TryGetCooldownRemaining(out var cooldown))
         {
@@ -58,7 +63,16 @@ public sealed class ProgressiveMusicRecognizer : IMusicRecognizer
         try
         {
             capture = _captureFactory.Create();
-            capture.Start(cancellationToken);
+            var detector = new AudioTransientDetector();
+            capture.Start(frame =>
+            {
+                if (progress is null || cancellationToken.IsCancellationRequested) return;
+                try { progress.Report(detector.Process(frame)); }
+                catch (Exception exception)
+                {
+                    _log.Warn(nameof(ProgressiveMusicRecognizer), $"reporting visualization progress failed: {exception.Message}");
+                }
+            }, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

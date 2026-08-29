@@ -57,6 +57,7 @@ public sealed class UiStringsTests
         Assert.All(values, Assert.NotEmpty);
         Assert.NotEmpty(strings.VisualSearchQuerySubtitle("status"));
         Assert.NotEmpty(strings.SearchProvider("provider"));
+        Assert.NotEmpty(strings.SelectSearchProvider("provider"));
         Assert.NotEmpty(strings.GoogleLensRuntime(null));
         Assert.NotEmpty(strings.GoogleLensRuntime("1.0"));
         Assert.NotEmpty(strings.SavingFailed("detail"));

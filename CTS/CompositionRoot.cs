@@ -49,7 +49,7 @@ public static class CompositionRoot
         };
         var shazamClient = new ShazamClient(musicHttpClient);
         var musicRecognizer = new ProgressiveMusicRecognizer(
-            new LoopbackCaptureSessionFactory(),
+            new LoopbackCaptureSessionFactory(log),
             shazamClient,
             musicThrottle,
             musicClock,
@@ -71,11 +71,7 @@ public static class CompositionRoot
             log);
         var coordinator = new SearchCoordinator(
             providerRouter,
-            cancel => OverlayWindow.SelectAsync(
-                log,
-                new OverlayOptions(settings.PaddingPx, settings.LassoMinDiagonalPx),
-                strings,
-                cancel),
+            new OverlaySessionFactory(log),
             (frame, bounds) => ImageCropper.Encode(frame, bounds, settings.MaxLongSidePx),
             musicRecognizer,
             OpenResultsUrl,
@@ -84,6 +80,7 @@ public static class CompositionRoot
             (title, message, button, action) =>
                 api.ShowMsgWithButton(title, button, action, message, iconPath),
             (title, message) => api.ShowMsgError(title, message),
+            () => api.SaveSettingJsonStorage<PluginSettings>(),
             settings,
             strings,
             log);

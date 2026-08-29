@@ -14,6 +14,10 @@ internal static class PluginPalette
     public static Color SelectionHalo { get; } = Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF);
     public static Color SelectionFrameFill { get; } = Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF);
     public static Color EntranceParticle { get; } = Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF);
+    public static Color ControlRipple { get; } = Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF);
+    public static Color SceneRippleEntrance { get; } = Color.FromRgb(0x8A, 0xB4, 0xF8);
+    public static Color SceneRippleAudio { get; } = Color.FromRgb(0xC5, 0x9B, 0xFF);
+    public static Color SceneRippleMatch { get; } = Color.FromRgb(0x71, 0xDC, 0xA1);
 
     public static IReadOnlyList<Color> GoogleLensLoadingDots { get; } = Array.AsReadOnly(
         new[]
@@ -44,7 +48,38 @@ internal static class PluginPalette
         MusicButton: new MusicButtonPalette(
             Surface: Color.FromArgb(0xE6, 0x20, 0x21, 0x24),
             Foreground: Color.FromRgb(0xF1, 0xF3, 0xF4),
-            Border: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF)));
+            Border: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
+            Hover: Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF)),
+        Provider: new ProviderPalette(
+            Surface: Color.FromArgb(0xE6, 0x20, 0x21, 0x24),
+            Text: Color.FromRgb(0xF1, 0xF3, 0xF4),
+            Hint: Color.FromRgb(0xC4, 0xC7, 0xC5),
+            Border: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
+            Hover: Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF),
+            MenuSurface: Color.FromRgb(0x21, 0x1F, 0x26),
+            MenuText: Color.FromRgb(0xE6, 0xE1, 0xE5),
+            MenuMutedText: Color.FromRgb(0xCA, 0xC4, 0xD0),
+            MenuHover: Color.FromRgb(0x4A, 0x44, 0x58),
+            MenuHoverText: Color.FromRgb(0xE8, 0xDE, 0xF8),
+            MenuBorder: Color.FromRgb(0x44, 0x47, 0x46),
+            MenuShadowOpacity: 0.35,
+            Google: Color.FromRgb(0x42, 0x85, 0xF4),
+            GoogleRed: Color.FromRgb(0xEA, 0x43, 0x35),
+            GoogleYellow: Color.FromRgb(0xFB, 0xBC, 0x05),
+            GoogleGreen: Color.FromRgb(0x34, 0xA8, 0x53),
+            Yandex: Color.FromRgb(0xFC, 0x3F, 0x1D),
+            Neutral: Color.FromRgb(0xBD, 0xC1, 0xC6)),
+        MusicOverlay: new MusicOverlayPalette(
+            Surface: Color.FromRgb(0x21, 0x1F, 0x26),
+            Text: Color.FromRgb(0xE6, 0xE1, 0xE5),
+            MutedText: Color.FromRgb(0xCA, 0xC4, 0xD0),
+            Border: Color.FromRgb(0x44, 0x47, 0x46),
+            Primary: Color.FromRgb(0xD0, 0xBC, 0xFF),
+            PrimaryContainer: Color.FromRgb(0x4F, 0x37, 0x8B),
+            OnPrimaryContainer: Color.FromRgb(0xEA, 0xDD, 0xFF),
+            SecondaryContainer: Color.FromRgb(0x4A, 0x44, 0x58),
+            OnSecondaryContainer: Color.FromRgb(0xE8, 0xDE, 0xF8),
+            ShadowOpacity: 0.35));
 
     private static PluginThemePalette Light { get; } = new(
         WindowSurface: Color.FromRgb(0xF7, 0xF9, 0xFC),
@@ -64,14 +99,47 @@ internal static class PluginPalette
         MusicButton: new MusicButtonPalette(
             Surface: Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD),
             Foreground: Color.FromRgb(0x3C, 0x40, 0x43),
-            Border: Color.FromArgb(0x2E, 0x20, 0x21, 0x24)));
+            Border: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
+            Hover: Color.FromArgb(0x0D, 0x20, 0x21, 0x24)),
+        Provider: new ProviderPalette(
+            Surface: Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD),
+            Text: Color.FromRgb(0x3C, 0x40, 0x43),
+            Hint: Color.FromRgb(0x5F, 0x63, 0x68),
+            Border: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
+            Hover: Color.FromArgb(0x0D, 0x20, 0x21, 0x24),
+            MenuSurface: Color.FromRgb(0xF3, 0xF3, 0xFA),
+            MenuText: Color.FromRgb(0x1C, 0x1B, 0x1F),
+            MenuMutedText: Color.FromRgb(0x49, 0x45, 0x4F),
+            MenuHover: Color.FromRgb(0xE8, 0xDE, 0xF8),
+            MenuHoverText: Color.FromRgb(0x1D, 0x19, 0x2B),
+            MenuBorder: Color.FromRgb(0xC4, 0xC7, 0xC5),
+            MenuShadowOpacity: 0.12,
+            Google: Color.FromRgb(0x42, 0x85, 0xF4),
+            GoogleRed: Color.FromRgb(0xEA, 0x43, 0x35),
+            GoogleYellow: Color.FromRgb(0xFB, 0xBC, 0x05),
+            GoogleGreen: Color.FromRgb(0x34, 0xA8, 0x53),
+            Yandex: Color.FromRgb(0xFC, 0x3F, 0x1D),
+            Neutral: Color.FromRgb(0x5F, 0x63, 0x68)),
+        MusicOverlay: new MusicOverlayPalette(
+            Surface: Color.FromRgb(0xF3, 0xF3, 0xFA),
+            Text: Color.FromRgb(0x1C, 0x1B, 0x1F),
+            MutedText: Color.FromRgb(0x49, 0x45, 0x4F),
+            Border: Color.FromRgb(0xC4, 0xC7, 0xC5),
+            Primary: Color.FromRgb(0x67, 0x50, 0xA4),
+            PrimaryContainer: Color.FromRgb(0xEA, 0xDD, 0xFF),
+            OnPrimaryContainer: Color.FromRgb(0x21, 0x00, 0x5D),
+            SecondaryContainer: Color.FromRgb(0xE8, 0xDE, 0xF8),
+            OnSecondaryContainer: Color.FromRgb(0x1D, 0x19, 0x2B),
+            ShadowOpacity: 0.12));
 }
 
 internal sealed record PluginThemePalette(
     Color WindowSurface,
     Color PrimaryText,
     SelectionChipPalette SelectionChip,
-    MusicButtonPalette MusicButton);
+    MusicButtonPalette MusicButton,
+    ProviderPalette Provider,
+    MusicOverlayPalette MusicOverlay);
 
 internal sealed record SelectionChipPalette(
     Color Surface,
@@ -86,4 +154,36 @@ internal sealed record SelectionChipPalette(
     double ShadowDepth,
     double ShadowOpacity);
 
-internal sealed record MusicButtonPalette(Color Surface, Color Foreground, Color Border);
+internal sealed record MusicButtonPalette(Color Surface, Color Foreground, Color Border, Color Hover);
+
+internal sealed record ProviderPalette(
+    Color Surface,
+    Color Text,
+    Color Hint,
+    Color Border,
+    Color Hover,
+    Color MenuSurface,
+    Color MenuText,
+    Color MenuMutedText,
+    Color MenuHover,
+    Color MenuHoverText,
+    Color MenuBorder,
+    double MenuShadowOpacity,
+    Color Google,
+    Color GoogleRed,
+    Color GoogleYellow,
+    Color GoogleGreen,
+    Color Yandex,
+    Color Neutral);
+
+internal sealed record MusicOverlayPalette(
+    Color Surface,
+    Color Text,
+    Color MutedText,
+    Color Border,
+    Color Primary,
+    Color PrimaryContainer,
+    Color OnPrimaryContainer,
+    Color SecondaryContainer,
+    Color OnSecondaryContainer,
+    double ShadowOpacity);

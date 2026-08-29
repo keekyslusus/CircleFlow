@@ -157,6 +157,31 @@ public sealed class OverlayWindowTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Session_close_forces_shutdown_after_cancel_has_already_started()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(64, 48);
+            var monitor = new GdiRectangle(0, 0, 64, 48);
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1.0,
+                new OverlayOptions(8, 12),
+                TestUiStrings.English);
+            overlay.Show();
+            overlay.CancelFromCoordinator();
+            overlay.Dispatcher.BeginInvoke(overlay.CloseFromSession, DispatcherPriority.Background);
+            Dispatcher.Run();
+
+            Assert.True(overlay.Dispatcher.HasShutdownFinished);
+        });
+
+        Assert.Null(failure);
+    }
+
     private static void PumpUntilShutdown(OverlayWindow overlay)
     {
         overlay.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);

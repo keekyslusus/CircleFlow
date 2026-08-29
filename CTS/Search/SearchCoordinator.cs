@@ -1,19 +1,23 @@
 using CircleToSearch.Capture;
 using CircleToSearch.MusicRecognition;
+using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Settings;
 using CircleToSearch.Ui;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
+using System.Threading.Channels;
 
 namespace CircleToSearch.Search;
 
-public enum SearchState { Idle, Selecting, Uploading, RecognizingMusic }
+public enum SearchState { Idle, Selecting, Uploading, RecognizingMusic, ShowingMusicResult }
 
 public sealed class SearchCoordinator
 {
     private readonly VisualSearchProviderRouter _providerRouter;
     private readonly Func<CancellationToken, Task<OverlayOutcome?>> _selection;
+    private readonly IOverlaySessionFactory? _overlaySessionFactory;
+    private readonly Action? _saveSettings;
     private readonly Func<GdiBitmap, GdiRectangle, byte[]> _crop;
     private readonly IMusicRecognizer _musicRecognizer;
     private readonly Func<string, bool> _openUrl;
@@ -57,6 +61,38 @@ public sealed class SearchCoordinator
         _log = log;
     }
 
+    public SearchCoordinator(
+        VisualSearchProviderRouter providerRouter,
+        IOverlaySessionFactory overlaySessionFactory,
+        Func<GdiBitmap, GdiRectangle, byte[]> crop,
+        IMusicRecognizer musicRecognizer,
+        Func<string, bool> openUrl,
+        Action hideMainWindow,
+        Action<string, string> showMessage,
+        Action<string, string, string, Action> showMessageWithButton,
+        Action<string, string> showError,
+        Action saveSettings,
+        PluginSettings settings,
+        UiStrings strings,
+        PluginLog log)
+        : this(
+            providerRouter,
+            _ => Task.FromResult<OverlayOutcome?>(null),
+            crop,
+            musicRecognizer,
+            openUrl,
+            hideMainWindow,
+            showMessage,
+            showMessageWithButton,
+            showError,
+            settings,
+            strings,
+            log)
+    {
+        _overlaySessionFactory = overlaySessionFactory ?? throw new ArgumentNullException(nameof(overlaySessionFactory));
+        _saveSettings = saveSettings ?? throw new ArgumentNullException(nameof(saveSettings));
+    }
+
     public SearchState State => (SearchState)Volatile.Read(ref _state);
 
     public Task StartFromHotkeyAsync()
@@ -65,7 +101,7 @@ public sealed class SearchCoordinator
         {
             return State switch
             {
-                SearchState.Selecting or SearchState.RecognizingMusic => CancelActiveSession(),
+                SearchState.Selecting or SearchState.RecognizingMusic or SearchState.ShowingMusicResult => CancelActiveSession(),
                 SearchState.Uploading => IgnoreTrigger("upload in progress"),
                 _ => StartSession("hotkey"),
             };
@@ -136,6 +172,12 @@ public sealed class SearchCoordinator
                 return;
             }
 
+            if (_overlaySessionFactory is not null)
+            {
+                await RunOverlaySessionAsync(_overlaySessionFactory, cancellation.Token).ConfigureAwait(false);
+                return;
+            }
+
             var outcome = await _selection(cancellation.Token).ConfigureAwait(false);
             if (outcome is null)
             {
@@ -165,6 +207,173 @@ public sealed class SearchCoordinator
             SetState(SearchState.Idle);
             Volatile.Write(ref _cancellation, null);
             _session.Release();
+        }
+    }
+
+    private async Task RunOverlaySessionAsync(
+        IOverlaySessionFactory factory,
+        CancellationToken cancellationToken)
+    {
+        var effective = _providerRouter.GetEffectiveDescriptor(_settings.SearchProviderId);
+        var launch = new OverlayLaunchOptions(
+            new OverlayOptions(_settings.PaddingPx, _settings.LassoMinDiagonalPx),
+            _strings,
+            _providerRouter.Providers,
+            effective.Id);
+        await using var overlay = await factory.OpenAsync(launch, cancellationToken).ConfigureAwait(false);
+        if (overlay is null) return;
+
+        CancellationTokenSource? recognitionCancellation = null;
+        Task<MusicRecognitionOutcome>? recognitionTask = null;
+        MusicRecognitionOutcome? displayedOutcome = null;
+        Task<IOverlayCommand>? commandTask = null;
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                commandTask ??= overlay.ReadCommandAsync(cancellationToken);
+                if (recognitionTask is not null)
+                {
+                    var completed = await Task.WhenAny(commandTask, recognitionTask).ConfigureAwait(false);
+                    if (ReferenceEquals(completed, recognitionTask))
+                    {
+                        var outcome = await recognitionTask.ConfigureAwait(false);
+                        recognitionTask = null;
+                        recognitionCancellation?.Cancel();
+                        recognitionCancellation?.Dispose();
+                        recognitionCancellation = null;
+                        if (cancellationToken.IsCancellationRequested || outcome.Status == MusicRecognitionStatus.Canceled)
+                            continue;
+                        displayedOutcome = outcome;
+                        SetState(SearchState.ShowingMusicResult);
+                        try
+                        {
+                            await overlay.ShowMusicResultAsync(outcome, cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+                        {
+                            _log.Error(nameof(SearchCoordinator), "showing the music result in the overlay failed", exception);
+                            PresentMusicOutcomeFallback(outcome);
+                            return;
+                        }
+                        continue;
+                    }
+                }
+
+                var command = await commandTask.ConfigureAwait(false);
+                commandTask = null;
+                switch (command)
+                {
+                    case ProviderSelected provider:
+                        PersistProviderSelection(provider.ProviderId);
+                        break;
+
+                    case VisualSelection visual when recognitionTask is null:
+                        await RunVisualSearchAsync(
+                            visual.Selection,
+                            visual.ProviderId,
+                            cancellationToken).ConfigureAwait(false);
+                        return;
+
+                    case StartMusicRecognition when recognitionTask is null:
+                        displayedOutcome = null;
+                        await overlay.ShowListeningAsync(cancellationToken).ConfigureAwait(false);
+                        recognitionTask = StartRecognitionAsync(overlay, cancellationToken, out recognitionCancellation);
+                        break;
+
+                    case RetryMusicRecognition when recognitionTask is null:
+                        displayedOutcome = null;
+                        await overlay.ShowListeningAsync(cancellationToken).ConfigureAwait(false);
+                        recognitionTask = StartRecognitionAsync(overlay, cancellationToken, out recognitionCancellation);
+                        break;
+
+                    case OpenMusicResult:
+                        if (displayedOutcome?.Recognition is { } match && IsSafeShazamUrl(match.ShazamUrl))
+                        {
+                            await overlay.CloseAsync().ConfigureAwait(false);
+                            if (!_openUrl(match.ShazamUrl!)) SurfaceError(_strings.PluginTitle, _strings.ResultsUrlOpenFailed);
+                            return;
+                        }
+                        break;
+
+                    case CopyMusicResult:
+                        break;
+
+                    case CancelSession:
+                        return;
+                }
+            }
+        }
+        catch (ChannelClosedException)
+        {
+            _log.Info(nameof(SearchCoordinator), "overlay command channel closed");
+        }
+        finally
+        {
+            if (recognitionCancellation is not null)
+            {
+                recognitionCancellation.Cancel();
+                if (recognitionTask is not null)
+                {
+                    try { await recognitionTask.ConfigureAwait(false); }
+                    catch (OperationCanceledException) { }
+                }
+                recognitionCancellation.Dispose();
+            }
+            await overlay.CloseAsync().ConfigureAwait(false);
+        }
+    }
+
+    private Task<MusicRecognitionOutcome> StartRecognitionAsync(
+        IOverlaySession overlay,
+        CancellationToken sessionCancellation,
+        out CancellationTokenSource recognitionCancellation)
+    {
+        recognitionCancellation = CancellationTokenSource.CreateLinkedTokenSource(sessionCancellation);
+        SetState(SearchState.RecognizingMusic);
+        _log.Info(nameof(SearchCoordinator), "music recognition started");
+        var progress = new OverlayVisualizationProgress(overlay, recognitionCancellation.Token, _log);
+        return _musicRecognizer.RecognizeAsync(progress, recognitionCancellation.Token);
+    }
+
+    private void PersistProviderSelection(string requestedProviderId)
+    {
+        var selected = _providerRouter.GetEffectiveDescriptor(requestedProviderId);
+        _settings.SearchProviderId = selected.Id;
+        try
+        {
+            _saveSettings?.Invoke();
+            _log.Info(nameof(SearchCoordinator), $"visual search provider changed to '{selected.Id}'");
+        }
+        catch (Exception exception)
+        {
+            _log.Error(nameof(SearchCoordinator), "saving the visual search provider failed", exception);
+            SurfaceError(_strings.PluginTitle, _strings.SavingFailed(exception.Message));
+        }
+    }
+
+    private void PresentMusicOutcomeFallback(MusicRecognitionOutcome outcome)
+    {
+        switch (outcome.Status)
+        {
+            case MusicRecognitionStatus.Matched when outcome.Recognition is { } match:
+                ShowMusicMatch(match);
+                break;
+            case MusicRecognitionStatus.NoMatch:
+                SurfaceMessage(_strings.PluginTitle, _strings.MusicNoMatch);
+                break;
+            case MusicRecognitionStatus.NoAudio:
+                SurfaceMessage(_strings.PluginTitle, _strings.MusicNoAudio);
+                break;
+            case MusicRecognitionStatus.RateLimited:
+                SurfaceError(_strings.PluginTitle, _strings.MusicRateLimited);
+                break;
+            case MusicRecognitionStatus.DeviceError:
+                SurfaceError(_strings.PluginTitle, _strings.MusicDeviceError);
+                break;
+            case MusicRecognitionStatus.ServiceError:
+                SurfaceError(_strings.PluginTitle, _strings.MusicNetworkError);
+                break;
         }
     }
 
@@ -299,4 +508,20 @@ public sealed class SearchCoordinator
     }
 
     private void SetState(SearchState state) => Volatile.Write(ref _state, (int)state);
+
+    private sealed class OverlayVisualizationProgress(
+        IOverlaySession overlay,
+        CancellationToken cancellationToken,
+        PluginLog log) : IMusicVisualizationProgress
+    {
+        public void Report(MusicVisualizationFrame frame)
+        {
+            if (cancellationToken.IsCancellationRequested) return;
+            try { _ = overlay.ReportAudioAsync(frame, cancellationToken); }
+            catch (Exception exception)
+            {
+                log.Warn(nameof(SearchCoordinator), $"forwarding audio visualization failed: {exception.Message}");
+            }
+        }
+    }
 }
