@@ -69,13 +69,20 @@ public sealed class HotkeyWindow : IDisposable
         {
             _dispatcher.Send(() =>
             {
-                registered = NativeMethods.RegisterHotKey(_hwnd, HotkeyId, modifiers, virtualKey);
+                registered = NativeMethods.RegisterHotKey(
+                    _hwnd,
+                    HotkeyId,
+                    RegistrationModifiers(modifiers),
+                    virtualKey);
                 if (!registered) lastError = Marshal.GetLastWin32Error();
             });
         }
         errorCode = lastError;
         return registered;
     }
+
+    internal static uint RegistrationModifiers(uint modifiers) =>
+        modifiers | NativeMethods.MOD_NOREPEAT;
 
     public void TryUnregister()
     {

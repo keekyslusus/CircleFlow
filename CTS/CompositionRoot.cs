@@ -173,7 +173,17 @@ public sealed class PluginRuntime : IDisposable
         // logged so it is visible whether the host disposes the plugin on "Reload plugin data";
         // if this line never appears, every reload leaks a hotkey hook and an STA thread
         _log.Info(nameof(PluginRuntime), "disposing: canceling the active session and unregistering the hotkey");
-        _coordinator.CancelActiveSession().GetAwaiter().GetResult();
+        try
+        {
+            _coordinator.CancelActiveSession()
+                .WaitAsync(TimeSpan.FromSeconds(2))
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (TimeoutException)
+        {
+            _log.Warn(nameof(PluginRuntime), "active session did not stop within the shutdown timeout");
+        }
         foreach (var resource in _musicResources) resource.Dispose();
         _hotkeyWindow.Dispose();
         _providerRouter.Dispose();

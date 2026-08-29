@@ -30,6 +30,10 @@ internal sealed class OverlaySession : IOverlaySession
     private int _audioPostPending;
     private int _disposed;
 
+    private readonly PluginLog _log;
+
+    public OverlaySession(PluginLog log) => _log = log;
+
     public void Attach(OverlayWindow window)
     {
         _window = window;
@@ -38,7 +42,9 @@ internal sealed class OverlaySession : IOverlaySession
 
     public void Publish(IOverlayCommand command)
     {
-        if (Volatile.Read(ref _disposed) == 0) _commands.Writer.TryWrite(command);
+        if (Volatile.Read(ref _disposed) != 0) return;
+        if (_commands.Writer.TryWrite(command))
+            _log.Info(nameof(OverlaySession), $"command '{command.GetType().Name}' published");
     }
 
     public Task<IOverlayCommand> ReadCommandAsync(CancellationToken cancellationToken) =>
@@ -97,9 +103,12 @@ internal sealed class OverlaySession : IOverlaySession
         return window.Dispatcher.InvokeAsync(() => action(window), DispatcherPriority.Normal, cancellationToken).Task;
     }
 
-    private void Complete()
+    internal void Complete(Exception? exception = null)
     {
-        _commands.Writer.TryComplete();
+        if (_commands.Writer.TryComplete(exception))
+            _log.Info(nameof(OverlaySession), exception is null
+                ? "command channel completed"
+                : $"command channel faulted: {exception.GetType().Name}");
         _closed.TrySetResult();
     }
 }

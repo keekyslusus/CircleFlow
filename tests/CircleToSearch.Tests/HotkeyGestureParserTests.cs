@@ -1,3 +1,4 @@
+using CircleToSearch.Interop;
 using CircleToSearch.Trigger;
 using Xunit;
 
@@ -13,6 +14,14 @@ public sealed class HotkeyGestureParserTests
         Assert.True(parsed);
         Assert.Equal((uint)(0x2 | 0x1), modifiers);
         Assert.Equal(0x20u, virtualKey);
+    }
+
+    [Fact]
+    public void Global_registration_suppresses_key_auto_repeat()
+    {
+        var modifiers = HotkeyWindow.RegistrationModifiers(0x2 | 0x1);
+
+        Assert.Equal(0x4003u, modifiers);
     }
 
     [Fact]

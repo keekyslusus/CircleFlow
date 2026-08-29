@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using CircleToSearch.Capture;
 using Xunit;
 using GdiBitmap = System.Drawing.Bitmap;
+using GdiPoint = System.Drawing.Point;
 using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Tests;
@@ -91,6 +92,46 @@ public sealed class OverlayWindowTests
 
         Assert.Null(failure);
     }
+
+    [Fact]
+    public void Entrance_ripple_starts_on_a_rendered_scene_layer()
+    {
+        var failure = RunOnSta(() =>
+        {
+            if (!OverlayVisualFactory.AnimationsEnabled()) return;
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayOptions(8, 12),
+                TestUiStrings.English,
+                overscan: false,
+                entranceOrigin: new GdiPoint(320, 200));
+            overlay.Show();
+
+            var renderFrame = new DispatcherFrame();
+            var timeout = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(160) };
+            timeout.Tick += (_, _) =>
+            {
+                timeout.Stop();
+                renderFrame.Continue = false;
+            };
+            timeout.Start();
+            Dispatcher.PushFrame(renderFrame);
+
+            Assert.True(overlay.VisualState.SceneRippleLayer.ActualWidth > 0);
+            Assert.True(overlay.VisualState.SceneRippleLayer.ActualHeight > 0);
+            Assert.Equal(1, overlay.VisualState.SceneRipples.ActiveCount);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
     [Fact]
     public void Overlay_opens_and_shuts_down_without_dispatcher_exception()
     {

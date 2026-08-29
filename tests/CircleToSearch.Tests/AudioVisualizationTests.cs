@@ -3,6 +3,8 @@ using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.Ui.Effects;
 using NAudio.Wave;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Shapes;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -72,7 +74,7 @@ public sealed class AudioVisualizationTests
     [InlineData(50, 50, 100, 100, 70.710678)]
     [InlineData(0, 0, 100, 100, 141.421356)]
     [InlineData(-10, -20, 100, 100, 162.788206)]
-    public void Scene_ripple_radius_reaches_farthest_corner(
+    public void Entrance_particle_wave_reaches_farthest_corner(
         double x,
         double y,
         double width,
@@ -86,11 +88,91 @@ public sealed class AudioVisualizationTests
     }
 
     [Fact]
+    public void Entrance_scene_effect_contains_a_wash_and_particles_without_a_ring()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var canvas = new Canvas { Width = 640, Height = 400 };
+            canvas.Measure(new Size(640, 400));
+            canvas.Arrange(new Rect(0, 0, 640, 400));
+            using var host = new SceneRippleHost(canvas, animationsEnabled: true);
+
+            host.Emit(new SceneRippleRequest(
+                new Point(320, 200),
+                SceneRipplePreset.Entrance,
+                1));
+
+            var effect = Assert.Single(canvas.Children.OfType<Canvas>());
+            Assert.Single(effect.Children.OfType<Rectangle>());
+            var particles = effect.Children.OfType<Ellipse>().ToArray();
+            Assert.True(particles.Length > 20);
+            Assert.All(particles, particle => Assert.Null(particle.Stroke));
+            Assert.Equal(1, host.ActiveCount);
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Theory]
+    [InlineData(SceneRipplePreset.AudioTransient, 0.5)]
+    [InlineData(SceneRipplePreset.MusicMatch, 1)]
+    public void Music_scene_effects_are_fullscreen_particle_waves_without_rings(
+        SceneRipplePreset preset,
+        double intensity)
+    {
+        var failure = RunOnSta(() =>
+        {
+            var canvas = new Canvas { Width = 640, Height = 400 };
+            canvas.Measure(new Size(640, 400));
+            canvas.Arrange(new Rect(0, 0, 640, 400));
+            using var host = new SceneRippleHost(canvas, animationsEnabled: true);
+
+            host.Emit(new SceneRippleRequest(new Point(320, 200), preset, intensity));
+
+            var effect = Assert.Single(canvas.Children.OfType<Canvas>());
+            var wash = Assert.Single(effect.Children.OfType<Rectangle>());
+            Assert.NotNull(wash.Fill);
+            Assert.True(wash.HasAnimatedProperties);
+            var particles = effect.Children.OfType<Ellipse>().ToArray();
+            Assert.True(particles.Length >= 25);
+            Assert.All(particles, particle =>
+            {
+                Assert.Null(particle.Stroke);
+                Assert.NotNull(particle.Fill);
+                Assert.True(particle.HasAnimatedProperties);
+            });
+            Assert.True(
+                particles.Max(Canvas.GetLeft) - particles.Min(Canvas.GetLeft) > canvas.ActualWidth * 0.65,
+                "particles should span most of the overlay width");
+            Assert.True(
+                particles.Max(Canvas.GetTop) - particles.Min(Canvas.GetTop) > canvas.ActualHeight * 0.65,
+                "particles should span most of the overlay height");
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Provider_aware_visual_command_rejects_blank_provider()
     {
         using var bitmap = new System.Drawing.Bitmap(1, 1);
         var selection = new SelectionOutcome(new System.Drawing.Rectangle(0, 0, 1, 1), bitmap);
 
         Assert.Throws<ArgumentException>(() => new VisualSelection(selection, " "));
+    }
+
+    private static Exception? RunOnSta(Action action)
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try { action(); }
+            catch (Exception exception) { failure = exception; }
+        }) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join(TimeSpan.FromSeconds(10));
+        Assert.False(thread.IsAlive, "the STA thread did not finish in time");
+        return failure;
     }
 }

@@ -33,6 +33,7 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
         TaskCompletionSource<IOverlaySession?> ready)
     {
         var previousContext = NativeMethods.SetThreadDpiAwarenessContext(NativeMethods.DpiAwarenessPerMonitorV2);
+        OverlaySession? session = null;
         try
         {
             if (!OverlayWindow.TryCapturePointerMonitor(
@@ -50,7 +51,7 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
                 return;
             }
 
-            var session = new OverlaySession();
+            session = new OverlaySession(_log);
             var transferred = false;
             try
             {
@@ -71,10 +72,15 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
         }
         catch (Exception exception)
         {
+            _log.Error(nameof(OverlaySessionFactory), "overlay session thread failed", exception);
+            session?.Complete(exception);
             ready.TrySetException(exception);
         }
         finally
         {
+            session?.Complete();
+            if (session is not null)
+                _log.Info(nameof(OverlaySessionFactory), "overlay session thread stopped");
             NativeMethods.SetThreadDpiAwarenessContext(previousContext);
         }
     }

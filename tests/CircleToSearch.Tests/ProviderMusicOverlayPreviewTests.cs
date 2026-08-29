@@ -8,6 +8,7 @@ using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
+using CircleToSearch.Ui.Effects;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -72,12 +73,16 @@ public sealed class ProviderMusicOverlayPreviewTests
         visual.Waveform.Report(new MusicVisualizationFrame(
             TimeSpan.FromSeconds(1), 0.62, 0.86, IsTransient: true));
         visual.Waveform.Start();
-        Pump(TimeSpan.FromMilliseconds(140));
+        visual.SceneRipples.Emit(new SceneRippleRequest(
+            new Point(width / 2.0, height * 0.45),
+            SceneRipplePreset.AudioTransient,
+            0.86));
+        Pump(TimeSpan.FromMilliseconds(340));
         Capture(visual.Root, $"provider-music-{themeName}-listening.png");
         visual.Waveform.Stop();
         OverlayVisualFactory.SetListeningState(visual, listening: false);
 
-        OverlayVisualFactory.PresentMusicResult(
+        var matchCard = OverlayVisualFactory.PresentMusicResult(
             visual,
             MusicRecognitionOutcome.Matched(new ShazamRecognition(
                 "Midnight Signal", "The Satellites", null, null, null, null,
@@ -86,6 +91,13 @@ public sealed class ProviderMusicOverlayPreviewTests
             _ => { },
             (_, _) => { });
         window.UpdateLayout();
+        var matchOrigin = matchCard.TransformToAncestor(visual.Root).Transform(
+            new Point(matchCard.ActualWidth / 2, matchCard.ActualHeight / 2));
+        visual.SceneRipples.Emit(new SceneRippleRequest(
+            matchOrigin,
+            SceneRipplePreset.MusicMatch,
+            1));
+        Pump(TimeSpan.FromMilliseconds(420));
         Capture(visual.Root, $"provider-music-{themeName}-match.png");
 
         OverlayVisualFactory.PresentMusicResult(

@@ -73,6 +73,7 @@ public sealed class OverlayWindow : Window
     private bool _revealUpdateQueued;
     private bool _providerMenuOpen;
     private bool _cancelPublished;
+    private bool _entranceRipplePending;
 
     internal OverlayInteractionMode Mode { get; private set; } = OverlayInteractionMode.Selecting;
 
@@ -171,9 +172,9 @@ public sealed class OverlayWindow : Window
         _visual.MusicButton.Click += OnMusicButtonClick;
         if (_visual.ProviderButton is not null) _visual.ProviderButton.Click += OnProviderButtonClick;
         AttachProviderMenuHandlers();
-        MouseLeftButtonDown += OnMouseLeftButtonDown;
-        MouseMove += OnMouseMove;
-        MouseLeftButtonUp += OnMouseLeftButtonUp;
+        _visual.SelectionInputSurface.MouseLeftButtonDown += OnMouseLeftButtonDown;
+        _visual.SelectionInputSurface.MouseMove += OnMouseMove;
+        _visual.SelectionInputSurface.MouseLeftButtonUp += OnMouseLeftButtonUp;
         MouseRightButtonDown += OnMouseRightButtonDown;
         Deactivated += OnDeactivated;
         Closed += (_, _) => DisposeVisualResources();
@@ -364,14 +365,37 @@ public sealed class OverlayWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (!_chipDismissed) OverlayVisualFactory.BeginChipEntrance(_visual);
-        if (_entranceOrigin is not null)
-        {
-            _visual.SceneRipples.Emit(new SceneRippleRequest(
-                _entranceOrigin.Value,
-                SceneRipplePreset.Entrance,
-                1));
-        }
+        QueueEntranceRipple();
         _controlRipples.AddRange(OverlayVisualFactory.AttachControlRipples(_visual));
+    }
+
+    private void QueueEntranceRipple()
+    {
+        if (_entranceOrigin is null || _entranceRipplePending) return;
+        _entranceRipplePending = true;
+        CompositionTarget.Rendering += EmitEntranceRippleOnFirstFrame;
+    }
+
+    private void EmitEntranceRippleOnFirstFrame(object? sender, EventArgs e)
+    {
+        if (_finished)
+        {
+            UnqueueEntranceRipple();
+            return;
+        }
+        if (_visual.SceneRippleLayer.ActualWidth <= 0 || _visual.SceneRippleLayer.ActualHeight <= 0) return;
+        UnqueueEntranceRipple();
+        _visual.SceneRipples.Emit(new SceneRippleRequest(
+            _entranceOrigin!.Value,
+            SceneRipplePreset.Entrance,
+            1));
+    }
+
+    private void UnqueueEntranceRipple()
+    {
+        if (!_entranceRipplePending) return;
+        _entranceRipplePending = false;
+        CompositionTarget.Rendering -= EmitEntranceRippleOnFirstFrame;
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
@@ -403,7 +427,7 @@ public sealed class OverlayWindow : Window
         _sampler.Reset();
         _stroke.Clear();
         Track(e);
-        CaptureMouse();
+        _visual.SelectionInputSurface.CaptureMouse();
         e.Handled = true;
     }
 
@@ -418,7 +442,7 @@ public sealed class OverlayWindow : Window
     {
         if (!_drawing || _finished || Mode != OverlayInteractionMode.Selecting) return;
         _drawing = false;
-        ReleaseMouseCapture();
+        ReleaseSelectionInput();
         Track(e, final: true);
         var bounds = LassoBoundsCalculator.Calculate(_sampler.Points, _monitor, _paddingPx, _minDiagonalPx);
         if (bounds is null)
@@ -448,7 +472,7 @@ public sealed class OverlayWindow : Window
         Dispatcher.BeginInvoke(() =>
         {
             if (_finished || IsActive) return;
-            if (_visual.ActionUiRoot.IsMouseOver || _visual.ResultHost.IsMouseOver) return;
+            if (IsActionTrayInteraction(null, Mouse.GetPosition(this))) return;
             CancelInternal();
         }, DispatcherPriority.ContextIdle);
     }
@@ -512,7 +536,7 @@ public sealed class OverlayWindow : Window
         _finished = true;
         _drawing = false;
         UnqueueRevealUpdate();
-        ReleaseMouseCapture();
+        ReleaseSelectionInput();
         Outcome = OverlayOutcome.MusicRecognition();
         IsHitTestVisible = false;
         Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
@@ -535,7 +559,7 @@ public sealed class OverlayWindow : Window
         Mode = OverlayInteractionMode.Listening;
         _drawing = false;
         UnqueueRevealUpdate();
-        ReleaseMouseCapture();
+        ReleaseSelectionInput();
         _visual.ResultHost.Visibility = Visibility.Collapsed;
         OverlayVisualFactory.SetListeningState(_visual, listening: true);
         _visual.Waveform.Start();
@@ -589,6 +613,8 @@ public sealed class OverlayWindow : Window
     internal void CloseFromSession()
     {
         _finished = true;
+        _drawing = false;
+        ReleaseSelectionInput();
         DisposeVisualResources();
         if (!Dispatcher.HasShutdownStarted)
             Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
@@ -605,6 +631,12 @@ public sealed class OverlayWindow : Window
                 : LogicalTreeHelper.GetParent(current);
         }
         return false;
+    }
+
+    private void ReleaseSelectionInput()
+    {
+        if (ReferenceEquals(Mouse.Captured, _visual.SelectionInputSurface))
+            Mouse.Capture(null);
     }
 
     private void Track(MouseEventArgs e, bool final = false)
@@ -730,7 +762,7 @@ public sealed class OverlayWindow : Window
         if (publish && _publishCommand is not null) PublishCancel();
         _finished = true;
         UnqueueRevealUpdate();
-        ReleaseMouseCapture();
+        ReleaseSelectionInput();
         if (!OverlayVisualFactory.AnimationsEnabled())
         {
             Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
@@ -799,6 +831,7 @@ public sealed class OverlayWindow : Window
 
     private void DisposeVisualResources()
     {
+        UnqueueEntranceRipple();
         _visual.Waveform.Dispose();
         _visual.SceneRipples.Dispose();
         foreach (var ripple in _controlRipples) ripple.Dispose();

@@ -12,28 +12,35 @@ namespace CircleToSearch.Ui.Effects;
 public sealed class ControlRippleHost : IDisposable
 {
     private readonly Control _control;
+    private readonly bool _animationsEnabled;
     private RippleAdorner? _adorner;
 
-    private ControlRippleHost(Control control)
+    private ControlRippleHost(Control control, bool animationsEnabled)
     {
         _control = control;
+        _animationsEnabled = animationsEnabled;
         control.PreviewMouseLeftButtonDown += OnPointerDown;
         control.Unloaded += OnUnloaded;
     }
 
-    public static ControlRippleHost Attach(Control control) => new(control);
+    public static ControlRippleHost Attach(Control control) =>
+        new(control, Capture.OverlayVisualFactory.AnimationsEnabled());
+
+    internal static ControlRippleHost AttachForTest(Control control) => new(control, true);
 
     private void OnPointerDown(object sender, MouseButtonEventArgs e)
     {
-        if (!Capture.OverlayVisualFactory.AnimationsEnabled()) return;
+        if (!_animationsEnabled) return;
         var layer = AdornerLayer.GetAdornerLayer(_control);
         if (layer is null) return;
         if (_adorner is not null) layer.Remove(_adorner);
-        _adorner = new RippleAdorner(_control, e.GetPosition(_control));
-        layer.Add(_adorner);
-        _adorner.Begin(() =>
+        var adorner = new RippleAdorner(_control, e.GetPosition(_control));
+        _adorner = adorner;
+        layer.Add(adorner);
+        adorner.Begin(() =>
         {
-            layer.Remove(_adorner);
+            if (!ReferenceEquals(_adorner, adorner)) return;
+            layer.Remove(adorner);
             _adorner = null;
         });
     }
@@ -56,6 +63,7 @@ public sealed class ControlRippleHost : IDisposable
 
         public RippleAdorner(UIElement adornedElement, Point origin) : base(adornedElement)
         {
+            _visuals = new VisualCollection(this);
             IsHitTestVisible = false;
             ClipToBounds = true;
             _ellipse = new Ellipse
@@ -70,7 +78,7 @@ public sealed class ControlRippleHost : IDisposable
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
             };
-            _visuals = new VisualCollection(this) { _ellipse };
+            _visuals.Add(_ellipse);
         }
 
         public void Begin(Action completed)

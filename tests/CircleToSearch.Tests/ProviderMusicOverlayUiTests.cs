@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Search;
@@ -37,6 +38,9 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Same(visual.Chip, visual.ActionTray.Children[0]);
             Assert.Same(visual.ProviderButton, visual.ActionTray.Children[1]);
             Assert.Same(visual.MusicButton, visual.ActionTray.Children[2]);
+            Assert.True(visual.Root.Children.IndexOf(visual.SelectionInputSurface) <
+                        visual.Root.Children.IndexOf(visual.ActionUiRoot));
+            Assert.False(visual.Screenshot.IsHitTestVisible);
             Assert.Equal(44, visual.ProviderButton!.Height);
             Assert.Equal(44, visual.MusicButton.Height);
             Assert.NotNull(visual.ProviderChevron);
@@ -50,6 +54,53 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Contains(
                 "Yandex Images",
                 Descendants((DependencyObject)item.Content).OfType<TextBlock>().Select(text => text.Text));
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Action_buttons_are_separate_from_the_surface_that_captures_lasso_input()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                _ => { },
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+
+            var provider = overlay.VisualState.ProviderButton!;
+            provider.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+                Source = provider,
+            });
+
+            Assert.NotSame(overlay.VisualState.SelectionInputSurface, Mouse.Captured);
+            Assert.False(overlay.Dispatcher.HasShutdownStarted);
+
+            overlay.VisualState.SelectionInputSurface.RaiseEvent(
+                new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+                    Source = overlay.VisualState.SelectionInputSurface,
+                });
+
+            Assert.Same(overlay.VisualState.SelectionInputSurface, Mouse.Captured);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
         });
 
         Assert.Null(failure);

@@ -26,6 +26,7 @@ public sealed record OverlayVisual(
     Polyline Halo,
     Polyline Accent,
     Path SelectionFrame,
+    Grid SelectionInputSurface,
     Canvas SceneRippleLayer,
     SceneRippleHost SceneRipples,
     StackPanel ListeningLayer,
@@ -87,7 +88,7 @@ public static class OverlayVisualFactory
         IReadOnlyList<SearchProviderDescriptor> providers,
         string? selectedProviderId)
     {
-        var screenshot = new Image { Source = frame, Stretch = Stretch.Fill, IsHitTestVisible = true };
+        var screenshot = new Image { Source = frame, Stretch = Stretch.Fill, IsHitTestVisible = false };
 
         // Blurring the dim itself is what melts the boundary between the dimmed desktop
         // and the revealed lasso interior into a wide gradient.
@@ -238,6 +239,11 @@ public static class OverlayVisualFactory
 
         var sceneRippleLayer = new Canvas { IsHitTestVisible = false };
         var sceneRipples = new SceneRippleHost(sceneRippleLayer);
+        var selectionInputSurface = new Grid
+        {
+            Background = Frozen(PluginPalette.Transparent),
+            IsHitTestVisible = true,
+        };
         var resultHost = new Grid
         {
             Visibility = Visibility.Collapsed,
@@ -255,6 +261,7 @@ public static class OverlayVisualFactory
         root.Children.Add(halo);
         root.Children.Add(accent);
         root.Children.Add(selectionFrame);
+        root.Children.Add(selectionInputSurface);
         root.Children.Add(sceneRippleLayer);
         root.Children.Add(listeningLayer);
         root.Children.Add(actionUiRoot);
@@ -270,6 +277,7 @@ public static class OverlayVisualFactory
             halo,
             accent,
             selectionFrame,
+            selectionInputSurface,
             sceneRippleLayer,
             sceneRipples,
             listeningLayer,
