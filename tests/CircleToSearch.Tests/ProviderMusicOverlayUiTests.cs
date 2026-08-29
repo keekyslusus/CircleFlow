@@ -3,7 +3,9 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Runtime.InteropServices;
 using CircleToSearch.Capture;
+using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Shazam;
@@ -157,6 +159,63 @@ public sealed class ProviderMusicOverlayUiTests
     }
 
     [Fact]
+    public void Real_pointer_click_on_shown_debug_and_music_buttons_publishes_commands_without_dispatcher_crash()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+            overlay.Activate();
+            Assert.True(NativeMethods.GetCursorPos(out var originalPointer));
+            try
+            {
+                Assert.Equal(Visibility.Collapsed, overlay.VisualState.DebugPanel.Visibility);
+                overlay.SetDebugPanelOpen(true);
+                overlay.UpdateLayout();
+                Assert.Equal(Visibility.Visible, overlay.VisualState.DebugPanel.Visibility);
+
+                var noAudio = overlay.VisualState.DebugScenarioButtons.Children
+                    .OfType<Button>()
+                    .Single(button => Equals(button.Tag, MusicDebugScenario.NoAudio));
+                ClickWithRealPointer(noAudio);
+                PumpUntil(() => commands.Count >= 1);
+                ClickWithRealPointer(overlay.VisualState.MusicButton);
+                PumpUntil(() => commands.Count >= 2);
+
+                Assert.Equal(
+                    MusicDebugScenario.NoAudio,
+                    Assert.IsType<MusicDebugScenarioSelected>(commands[0]).Scenario);
+                Assert.IsType<StartMusicRecognition>(commands[1]);
+                Assert.Equal(Visibility.Collapsed, overlay.VisualState.DebugPanel.Visibility);
+                Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
+            }
+            finally
+            {
+                SetCursorPos(originalPointer.X, originalPointer.Y);
+                overlay.CloseFromSession();
+                Dispatcher.Run();
+            }
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Match_result_stops_waveform_keeps_dim_and_exposes_actions()
     {
         var failure = RunOnSta(() =>
@@ -226,6 +285,50 @@ public sealed class ProviderMusicOverlayUiTests
         Assert.False(thread.IsAlive, "the STA thread did not finish in time");
         return failure;
     }
+
+    private static void ClickWithRealPointer(FrameworkElement element)
+    {
+        element.UpdateLayout();
+        var center = element.PointToScreen(new Point(element.ActualWidth / 2, element.ActualHeight / 2));
+        if (!SetCursorPos((int)Math.Round(center.X), (int)Math.Round(center.Y)))
+            throw new InvalidOperationException("SetCursorPos failed.");
+        mouse_event(MouseEventLeftDown, 0, 0, 0, UIntPtr.Zero);
+        mouse_event(MouseEventLeftUp, 0, 0, 0, UIntPtr.Zero);
+    }
+
+    private static void PumpUntil(Func<bool> condition)
+    {
+        if (condition()) return;
+        var frame = new DispatcherFrame();
+        var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        timeout.Tick += (_, _) =>
+        {
+            timeout.Stop();
+            frame.Continue = false;
+        };
+        var poll = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+        poll.Tick += (_, _) =>
+        {
+            if (!condition()) return;
+            poll.Stop();
+            timeout.Stop();
+            frame.Continue = false;
+        };
+        timeout.Start();
+        poll.Start();
+        Dispatcher.PushFrame(frame);
+        poll.Stop();
+        Assert.True(condition(), "The real pointer click was not delivered to the WPF button.");
+    }
+
+    private const uint MouseEventLeftDown = 0x0002;
+    private const uint MouseEventLeftUp = 0x0004;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {

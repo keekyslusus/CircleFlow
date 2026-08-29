@@ -41,6 +41,8 @@ public sealed record OverlayVisual(
     Button MusicButton,
     Path MusicIcon,
     Grid ResultHost,
+    Border DebugPanel,
+    StackPanel DebugScenarioButtons,
     TranslateTransform ActionTrayLift);
 
 // Composes the overlay visual tree layer by layer; the window only keeps references.
@@ -252,6 +254,8 @@ public static class OverlayVisualFactory
             Margin = new Thickness(0, 0, 0, chipBottomMargin + 60),
         };
         Panel.SetZIndex(resultHost, 1);
+        var (debugPanel, debugScenarioButtons) = CreateMusicDebugPanel(palette.MusicOverlay, strings);
+        Panel.SetZIndex(debugPanel, 3);
 
         var root = new Grid();
         root.Children.Add(screenshot);
@@ -266,6 +270,7 @@ public static class OverlayVisualFactory
         root.Children.Add(listeningLayer);
         root.Children.Add(actionUiRoot);
         root.Children.Add(resultHost);
+        root.Children.Add(debugPanel);
 
         return new OverlayVisual(
             lightTheme,
@@ -292,7 +297,107 @@ public static class OverlayVisualFactory
             musicButton,
             musicIcon,
             resultHost,
+            debugPanel,
+            debugScenarioButtons,
             lift);
+    }
+
+    private static (Border Panel, StackPanel Buttons) CreateMusicDebugPanel(
+        MusicOverlayPalette palette,
+        UiStrings strings)
+    {
+        (MusicDebugScenario Scenario, string Label)[] scenarios =
+        [
+            (MusicDebugScenario.Live, strings.DebugMusicLive),
+            (MusicDebugScenario.Matched, strings.DebugMusicMatched),
+            (MusicDebugScenario.NoMatch, strings.DebugMusicNoMatch),
+            (MusicDebugScenario.NoAudio, strings.DebugMusicNoAudio),
+            (MusicDebugScenario.DeviceError, strings.DebugMusicDeviceError),
+            (MusicDebugScenario.ServiceError, strings.DebugMusicServiceError),
+            (MusicDebugScenario.RateLimited, strings.DebugMusicRateLimited),
+        ];
+        var buttons = new StackPanel();
+        foreach (var (scenario, label) in scenarios)
+        {
+            var button = new Button
+            {
+                Content = label,
+                Tag = scenario,
+                Foreground = Frozen(palette.Text),
+                Background = Frozen(PluginPalette.Transparent),
+                BorderBrush = Frozen(PluginPalette.Transparent),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(10, 6, 10, 6),
+                Margin = new Thickness(0, 1, 0, 1),
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                FontFamily = OverlayFont,
+                FontSize = 12,
+                Cursor = Cursors.Hand,
+            };
+            ApplyButtonTemplate(button, 6, palette.SecondaryContainer, palette.OnSecondaryContainer);
+            AutomationProperties.SetName(button, label);
+            buttons.Children.Add(button);
+        }
+
+        var content = new StackPanel();
+        content.Children.Add(new TextBlock
+        {
+            Text = strings.DebugMusicTitle,
+            Foreground = Frozen(palette.Text),
+            FontFamily = OverlayFont,
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 8),
+        });
+        content.Children.Add(buttons);
+
+        var panel = new Border
+        {
+            Child = content,
+            Visibility = Visibility.Collapsed,
+            Width = 240,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(24),
+            Padding = new Thickness(12),
+            CornerRadius = new CornerRadius(10),
+            Background = Frozen(palette.Surface),
+            BorderBrush = Frozen(palette.Border),
+            BorderThickness = new Thickness(1),
+            Effect = new DropShadowEffect
+            {
+                Color = PluginPalette.OpaqueBlack,
+                BlurRadius = 16,
+                ShadowDepth = 6,
+                Direction = -90,
+                Opacity = palette.ShadowOpacity,
+            },
+        };
+        SetMusicDebugScenario(buttons, palette, MusicDebugScenario.Live);
+        return (panel, buttons);
+    }
+
+    internal static void SetMusicDebugScenario(OverlayVisual visual, MusicDebugScenario scenario) =>
+        SetMusicDebugScenario(
+            visual.DebugScenarioButtons,
+            PluginPalette.For(visual.LightTheme).MusicOverlay,
+            scenario);
+
+    private static void SetMusicDebugScenario(
+        StackPanel buttons,
+        MusicOverlayPalette palette,
+        MusicDebugScenario scenario)
+    {
+        foreach (var button in buttons.Children.OfType<Button>())
+        {
+            var selected = Equals(button.Tag, scenario);
+            button.Background = Frozen(selected
+                ? palette.PrimaryContainer
+                : PluginPalette.Transparent);
+            button.Foreground = Frozen(selected
+                ? palette.OnPrimaryContainer
+                : palette.Text);
+        }
     }
 
     internal static void UpdateProvider(

@@ -20,6 +20,7 @@ public sealed class SearchCoordinator
     private readonly Action? _saveSettings;
     private readonly Func<GdiBitmap, GdiRectangle, byte[]> _crop;
     private readonly IMusicRecognizer _musicRecognizer;
+    private readonly IMusicRecognitionSimulator? _musicSimulator;
     private readonly Func<string, bool> _openUrl;
     private readonly Action _hideMainWindow;
     private readonly Action<string, string> _showMessage;
@@ -66,6 +67,7 @@ public sealed class SearchCoordinator
         IOverlaySessionFactory overlaySessionFactory,
         Func<GdiBitmap, GdiRectangle, byte[]> crop,
         IMusicRecognizer musicRecognizer,
+        IMusicRecognitionSimulator musicSimulator,
         Func<string, bool> openUrl,
         Action hideMainWindow,
         Action<string, string> showMessage,
@@ -90,6 +92,7 @@ public sealed class SearchCoordinator
             log)
     {
         _overlaySessionFactory = overlaySessionFactory ?? throw new ArgumentNullException(nameof(overlaySessionFactory));
+        _musicSimulator = musicSimulator ?? throw new ArgumentNullException(nameof(musicSimulator));
         _saveSettings = saveSettings ?? throw new ArgumentNullException(nameof(saveSettings));
     }
 
@@ -226,6 +229,7 @@ public sealed class SearchCoordinator
         CancellationTokenSource? recognitionCancellation = null;
         Task<MusicRecognitionOutcome>? recognitionTask = null;
         MusicRecognitionOutcome? displayedOutcome = null;
+        var debugScenario = MusicDebugScenario.Live;
         Task<IOverlayCommand>? commandTask = null;
         try
         {
@@ -268,6 +272,11 @@ public sealed class SearchCoordinator
                         PersistProviderSelection(provider.ProviderId);
                         break;
 
+                    case MusicDebugScenarioSelected selected:
+                        debugScenario = selected.Scenario;
+                        _log.Info(nameof(SearchCoordinator), $"music debug scenario changed to '{debugScenario}'");
+                        break;
+
                     case VisualSelection visual when recognitionTask is null:
                         await RunVisualSearchAsync(
                             visual.Selection,
@@ -278,13 +287,21 @@ public sealed class SearchCoordinator
                     case StartMusicRecognition when recognitionTask is null:
                         displayedOutcome = null;
                         await overlay.ShowListeningAsync(cancellationToken).ConfigureAwait(false);
-                        recognitionTask = StartRecognitionAsync(overlay, cancellationToken, out recognitionCancellation);
+                        recognitionTask = StartRecognitionAsync(
+                            overlay,
+                            debugScenario,
+                            cancellationToken,
+                            out recognitionCancellation);
                         break;
 
                     case RetryMusicRecognition when recognitionTask is null:
                         displayedOutcome = null;
                         await overlay.ShowListeningAsync(cancellationToken).ConfigureAwait(false);
-                        recognitionTask = StartRecognitionAsync(overlay, cancellationToken, out recognitionCancellation);
+                        recognitionTask = StartRecognitionAsync(
+                            overlay,
+                            debugScenario,
+                            cancellationToken,
+                            out recognitionCancellation);
                         break;
 
                     case OpenMusicResult:
@@ -326,14 +343,20 @@ public sealed class SearchCoordinator
 
     private Task<MusicRecognitionOutcome> StartRecognitionAsync(
         IOverlaySession overlay,
+        MusicDebugScenario debugScenario,
         CancellationToken sessionCancellation,
         out CancellationTokenSource recognitionCancellation)
     {
         recognitionCancellation = CancellationTokenSource.CreateLinkedTokenSource(sessionCancellation);
         SetState(SearchState.RecognizingMusic);
-        _log.Info(nameof(SearchCoordinator), "music recognition started");
+        _log.Info(nameof(SearchCoordinator), debugScenario == MusicDebugScenario.Live
+            ? "music recognition started"
+            : $"simulated music recognition started with '{debugScenario}'");
         var progress = new OverlayVisualizationProgress(overlay, recognitionCancellation.Token, _log);
-        return _musicRecognizer.RecognizeAsync(progress, recognitionCancellation.Token);
+        return debugScenario == MusicDebugScenario.Live
+            ? _musicRecognizer.RecognizeAsync(progress, recognitionCancellation.Token)
+            : (_musicSimulator ?? throw new InvalidOperationException("The music simulator is not configured."))
+                .RecognizeAsync(debugScenario, progress, recognitionCancellation.Token);
     }
 
     private void PersistProviderSelection(string requestedProviderId)

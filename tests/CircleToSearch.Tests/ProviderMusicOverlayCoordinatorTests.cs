@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using CircleToSearch.Capture;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
+using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using Xunit;
@@ -55,7 +56,24 @@ public sealed class ProviderMusicOverlayCoordinatorTests
         Assert.Equal(SearchProviderIds.YandexImages, harness.Settings.SearchProviderId);
         Assert.Equal(1, harness.SaveCalls);
         Assert.Equal(1, harness.Music.Calls);
+        Assert.Equal(0, harness.Simulator.Calls);
         Assert.Equal(1, harness.Music.CanceledCalls);
+    }
+
+    [Fact]
+    public async Task Debug_scenario_uses_simulator_without_calling_live_recognizer()
+    {
+        using var harness = new Harness();
+        harness.Overlay.CloseAfterResult = true;
+        harness.Overlay.Enqueue(new MusicDebugScenarioSelected(MusicDebugScenario.Matched));
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+
+        await harness.Coordinator.StartFromHotkeyAsync();
+
+        Assert.Equal(0, harness.Music.Calls);
+        Assert.Equal(1, harness.Simulator.Calls);
+        Assert.Equal(MusicDebugScenario.Matched, harness.Simulator.LastScenario);
+        Assert.Equal(MusicRecognitionStatus.Matched, harness.Overlay.Result?.Status);
     }
 
     [Fact]
@@ -119,6 +137,7 @@ public sealed class ProviderMusicOverlayCoordinatorTests
                 Factory,
                 (_, _) => [1],
                 Music,
+                Simulator,
                 _ => true,
                 () => { },
                 (_, _) => { },
@@ -141,6 +160,7 @@ public sealed class ProviderMusicOverlayCoordinatorTests
         public FakeProvider Google { get; } = new();
         public FakeProvider Yandex { get; } = new();
         public FakeMusicRecognizer Music { get; } = new();
+        public FakeMusicSimulator Simulator { get; } = new();
         public List<string> Errors { get; } = [];
         public int SaveCalls { get; private set; }
 
@@ -161,11 +181,18 @@ public sealed class ProviderMusicOverlayCoordinatorTests
     {
         private readonly Channel<IOverlayCommand> _commands = Channel.CreateUnbounded<IOverlayCommand>();
         public void Enqueue(IOverlayCommand command) => _commands.Writer.TryWrite(command);
+        public MusicRecognitionOutcome? Result { get; private set; }
+        public bool CloseAfterResult { get; set; }
         public Task<IOverlayCommand> ReadCommandAsync(CancellationToken cancellationToken) =>
             _commands.Reader.ReadAsync(cancellationToken).AsTask();
         public Task ShowListeningAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task ReportAudioAsync(MusicVisualizationFrame frame, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task ShowMusicResultAsync(MusicRecognitionOutcome outcome, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task ShowMusicResultAsync(MusicRecognitionOutcome outcome, CancellationToken cancellationToken)
+        {
+            Result = outcome;
+            if (CloseAfterResult) Enqueue(new CancelSession());
+            return Task.CompletedTask;
+        }
         public Task CloseAsync() => Task.CompletedTask;
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
@@ -196,6 +223,23 @@ public sealed class ProviderMusicOverlayCoordinatorTests
                 Gate.TrySetResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.Canceled));
             });
             return Gate.Task;
+        }
+    }
+
+    private sealed class FakeMusicSimulator : IMusicRecognitionSimulator
+    {
+        public int Calls { get; private set; }
+        public MusicDebugScenario? LastScenario { get; private set; }
+
+        public Task<MusicRecognitionOutcome> RecognizeAsync(
+            MusicDebugScenario scenario,
+            IMusicVisualizationProgress? progress,
+            CancellationToken cancellationToken)
+        {
+            Calls++;
+            LastScenario = scenario;
+            return Task.FromResult(MusicRecognitionOutcome.Matched(new ShazamRecognition(
+                "Track", "Artist", null, null, null, null, null)));
         }
     }
 }

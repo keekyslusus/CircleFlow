@@ -51,7 +51,9 @@ public sealed class OverlayWindowTests
                 new OverlayOptions(8, 12),
                 TestUiStrings.English);
             overlay.Show();
-            var musicButton = Assert.Single(Descendants((DependencyObject)overlay.Content).OfType<Button>());
+            var musicButton = Assert.Single(
+                Descendants((DependencyObject)overlay.Content).OfType<Button>(),
+                button => AutomationProperties.GetName(button) == TestUiStrings.English.MusicRecognitionAction);
             musicButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Dispatcher.Run();
 
@@ -79,7 +81,9 @@ public sealed class OverlayWindowTests
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
-            var musicButton = Assert.Single(Descendants((DependencyObject)overlay.Content).OfType<Button>());
+            var musicButton = Assert.Single(
+                Descendants((DependencyObject)overlay.Content).OfType<Button>(),
+                button => AutomationProperties.GetName(button) == TestUiStrings.English.MusicRecognitionAction);
             var center = musicButton.TransformToAncestor(overlay).Transform(
                 new Point(musicButton.ActualWidth / 2, musicButton.ActualHeight / 2));
 

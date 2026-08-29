@@ -1,4 +1,5 @@
 using CircleToSearch.Search;
+using CircleToSearch.MusicRecognition;
 
 namespace CircleToSearch.Capture;
 
@@ -29,6 +30,7 @@ public sealed record VisualSelection : IOverlayCommand
 }
 
 public sealed record StartMusicRecognition : IOverlayCommand;
+public sealed record MusicDebugScenarioSelected(MusicDebugScenario Scenario) : IOverlayCommand;
 public sealed record CancelSession : IOverlayCommand;
 public sealed record RetryMusicRecognition : IOverlayCommand;
 public sealed record OpenMusicResult : IOverlayCommand;

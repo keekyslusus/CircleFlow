@@ -54,6 +54,7 @@ public static class CompositionRoot
             musicThrottle,
             musicClock,
             log);
+        var musicSimulator = new MusicRecognitionSimulator(strings);
         var providerRouter = new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(
@@ -74,6 +75,7 @@ public static class CompositionRoot
             new OverlaySessionFactory(log),
             (frame, bounds) => ImageCropper.Encode(frame, bounds, settings.MaxLongSidePx),
             musicRecognizer,
+            musicSimulator,
             OpenResultsUrl,
             () => api.HideMainWindow(),
             (title, message) => api.ShowMsg(title, message, iconPath),

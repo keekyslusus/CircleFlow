@@ -22,7 +22,7 @@ public interface IOverlaySessionFactory
 internal sealed class OverlaySession : IOverlaySession
 {
     private readonly Channel<IOverlayCommand> _commands = Channel.CreateUnbounded<IOverlayCommand>(
-        new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
+        new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
     private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private OverlayWindow? _window;
     private MusicVisualizationFrame _latestFrame;
@@ -37,7 +37,6 @@ internal sealed class OverlaySession : IOverlaySession
     public void Attach(OverlayWindow window)
     {
         _window = window;
-        window.Dispatcher.ShutdownFinished += (_, _) => Complete();
     }
 
     public void Publish(IOverlayCommand command)
@@ -78,11 +77,17 @@ internal sealed class OverlaySession : IOverlaySession
     public Task ShowMusicResultAsync(MusicRecognitionOutcome outcome, CancellationToken cancellationToken) =>
         InvokeAsync(window => window.ShowMusicResult(outcome), cancellationToken);
 
-    public Task CloseAsync()
+    public async Task CloseAsync()
     {
         var window = _window;
-        if (window is null || window.Dispatcher.HasShutdownStarted) return Task.CompletedTask;
-        return window.Dispatcher.InvokeAsync(window.CloseFromSession, DispatcherPriority.Send).Task;
+        if (window is null || _closed.Task.IsCompleted) return;
+        var dispatcher = window.Dispatcher;
+        if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished) return;
+        await InvokeWhileDispatcherAliveAsync(
+            dispatcher,
+            window.CloseFromSession,
+            DispatcherPriority.Send,
+            CancellationToken.None).ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()
@@ -98,17 +103,56 @@ internal sealed class OverlaySession : IOverlaySession
     private Task InvokeAsync(Action<OverlayWindow> action, CancellationToken cancellationToken)
     {
         var window = _window ?? throw new InvalidOperationException("The overlay session is not ready.");
-        if (Volatile.Read(ref _disposed) != 0 || window.Dispatcher.HasShutdownStarted)
+        if (Volatile.Read(ref _disposed) != 0 ||
+            _closed.Task.IsCompleted ||
+            window.Dispatcher.HasShutdownStarted ||
+            window.Dispatcher.HasShutdownFinished)
             return Task.CompletedTask;
-        return window.Dispatcher.InvokeAsync(() => action(window), DispatcherPriority.Normal, cancellationToken).Task;
+        return InvokeWhileDispatcherAliveAsync(
+            window.Dispatcher,
+            () => action(window),
+            DispatcherPriority.Normal,
+            cancellationToken);
+    }
+
+    private async Task InvokeWhileDispatcherAliveAsync(
+        Dispatcher dispatcher,
+        Action action,
+        DispatcherPriority priority,
+        CancellationToken cancellationToken)
+    {
+        DispatcherOperation operation;
+        try
+        {
+            operation = dispatcher.InvokeAsync(action, priority, cancellationToken);
+        }
+        catch (InvalidOperationException) when (
+            _closed.Task.IsCompleted || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        await Task.WhenAny(operation.Task, _closed.Task).ConfigureAwait(false);
+        if (operation.Task.IsCompleted)
+        {
+            await operation.Task.ConfigureAwait(false);
+            return;
+        }
+
+        _ = operation.Task.ContinueWith(
+            task => _ = task.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     internal void Complete(Exception? exception = null)
     {
-        if (_commands.Writer.TryComplete(exception))
+        var channelCompleted = _commands.Writer.TryComplete(exception);
+        _closed.TrySetResult();
+        if (channelCompleted)
             _log.Info(nameof(OverlaySession), exception is null
                 ? "command channel completed"
                 : $"command channel faulted: {exception.GetType().Name}");
-        _closed.TrySetResult();
     }
 }

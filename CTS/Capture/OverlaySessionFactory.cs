@@ -34,6 +34,7 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
     {
         var previousContext = NativeMethods.SetThreadDpiAwarenessContext(NativeMethods.DpiAwarenessPerMonitorV2);
         OverlaySession? session = null;
+        Exception? failure = null;
         try
         {
             if (!OverlayWindow.TryCapturePointerMonitor(
@@ -62,7 +63,7 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
                 using var registration = cancellationToken.Register(
                     () => session.Publish(new CancelSession()));
                 ready.TrySetResult(session);
-                Dispatcher.Run();
+                RunDispatcherLoop(session);
                 transferred = window.FrameTransferred;
             }
             finally
@@ -72,16 +73,34 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
         }
         catch (Exception exception)
         {
+            failure = exception;
             _log.Error(nameof(OverlaySessionFactory), "overlay session thread failed", exception);
-            session?.Complete(exception);
             ready.TrySetException(exception);
         }
         finally
         {
-            session?.Complete();
+            session?.Complete(failure);
             if (session is not null)
                 _log.Info(nameof(OverlaySessionFactory), "overlay session thread stopped");
             NativeMethods.SetThreadDpiAwarenessContext(previousContext);
+        }
+    }
+
+    internal static void RunDispatcherLoop(OverlaySession session)
+    {
+        Exception? failure = null;
+        try
+        {
+            Dispatcher.Run();
+        }
+        catch (Exception exception)
+        {
+            failure = exception;
+            throw;
+        }
+        finally
+        {
+            session.Complete(failure);
         }
     }
 }

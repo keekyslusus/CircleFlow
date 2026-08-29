@@ -72,6 +72,7 @@ public sealed class OverlayWindow : Window
     private bool _chipDismissed;
     private bool _revealUpdateQueued;
     private bool _providerMenuOpen;
+    private bool _debugPanelOpen;
     private bool _cancelPublished;
     private bool _entranceRipplePending;
 
@@ -170,6 +171,7 @@ public sealed class OverlayWindow : Window
 
         PreviewKeyDown += OnPreviewKeyDown;
         _visual.MusicButton.Click += OnMusicButtonClick;
+        AttachDebugScenarioHandlers();
         if (_visual.ProviderButton is not null) _visual.ProviderButton.Click += OnProviderButtonClick;
         AttachProviderMenuHandlers();
         _visual.SelectionInputSurface.MouseLeftButtonDown += OnMouseLeftButtonDown;
@@ -400,7 +402,22 @@ public sealed class OverlayWindow : Window
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (_publishCommand is not null &&
+            e.Key == Key.D &&
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Control) &&
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            SetDebugPanelOpen(!_debugPanelOpen);
+            e.Handled = true;
+            return;
+        }
         if (e.Key != Key.Escape) return;
+        if (_debugPanelOpen)
+        {
+            SetDebugPanelOpen(false);
+            e.Handled = true;
+            return;
+        }
         if (_providerMenuOpen)
         {
             SetProviderMenuOpen(false);
@@ -509,6 +526,27 @@ public sealed class OverlayWindow : Window
         e.Handled = true;
     }
 
+    private void AttachDebugScenarioHandlers()
+    {
+        foreach (var button in _visual.DebugScenarioButtons.Children.OfType<Button>())
+            button.Click += OnDebugScenarioClick;
+    }
+
+    private void OnDebugScenarioClick(object sender, RoutedEventArgs e)
+    {
+        if (_finished || sender is not Button { Tag: MusicDebugScenario scenario }) return;
+        OverlayVisualFactory.SetMusicDebugScenario(_visual, scenario);
+        _publishCommand?.Invoke(new MusicDebugScenarioSelected(scenario));
+    }
+
+    internal void SetDebugPanelOpen(bool open)
+    {
+        if (_finished || _publishCommand is null) return;
+        _debugPanelOpen = open;
+        _visual.DebugPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        if (open) SetProviderMenuOpen(false);
+    }
+
     private void SetProviderMenuOpen(bool open)
     {
         _providerMenuOpen = open;
@@ -522,6 +560,7 @@ public sealed class OverlayWindow : Window
         {
             if (Mode == OverlayInteractionMode.Selecting)
             {
+                SetDebugPanelOpen(false);
                 ShowListening();
                 _publishCommand(new StartMusicRecognition());
             }
@@ -548,9 +587,13 @@ public sealed class OverlayWindow : Window
         var hit = InputHitTest(windowPoint) as DependencyObject;
         return IsWithin(originalSource as DependencyObject, _visual.ActionUiRoot) ||
                IsWithin(originalSource as DependencyObject, _visual.ResultHost) ||
+               IsWithin(originalSource as DependencyObject, _visual.DebugPanel) ||
                IsWithin(hit, _visual.ActionUiRoot) ||
                IsWithin(hit, _visual.ResultHost) ||
-               _visual.ActionUiRoot.IsMouseOver || _visual.ResultHost.IsMouseOver;
+               IsWithin(hit, _visual.DebugPanel) ||
+               _visual.ActionUiRoot.IsMouseOver ||
+               _visual.ResultHost.IsMouseOver ||
+               _visual.DebugPanel.IsMouseOver;
     }
 
     internal void ShowListening()
