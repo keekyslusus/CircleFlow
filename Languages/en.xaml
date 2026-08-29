@@ -4,8 +4,8 @@
 
     <system:String x:Key="plugin_circletosearch_plugin_name">Circle to Search</system:String>
     <system:String x:Key="plugin_circletosearch_plugin_description">Search a screen area visually or recognize music from Windows output</system:String>
-    <system:String x:Key="plugin_circletosearch_google_lens_provider_name">Google Lens</system:String>
-    <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images</system:String>
+    <system:String x:Key="plugin_circletosearch_google_lens_provider_name">Google Lens - WebView window</system:String>
+    <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images - Browser tab</system:String>
     <system:String x:Key="plugin_circletosearch_selection_prompt">Select an area</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_key_name">Esc</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_action">cancel</system:String>
