@@ -31,11 +31,54 @@ public sealed class ControlRippleHostTests
                 Source = button,
             });
 
-            Assert.NotEmpty(AdornerLayer.GetAdornerLayer(button)!.GetAdorners(button)!);
+            window.UpdateLayout();
+            var layer = AdornerLayer.GetAdornerLayer(button)!;
+            var adorner = Assert.Single(layer.GetAdorners(button)!);
+            var rippleLayer = Assert.IsType<Canvas>(System.Windows.Media.VisualTreeHelper.GetChild(adorner, 0));
+            var rippleEllipse = Assert.Single(rippleLayer.Children.OfType<System.Windows.Shapes.Ellipse>());
+            Assert.IsType<System.Windows.Media.RadialGradientBrush>(rippleEllipse.Fill);
+            Assert.True(rippleEllipse.Width > button.ActualWidth);
+            button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent,
+                Source = button,
+            });
+            PumpUntil(() => layer.GetAdorners(button) is null);
             window.Close();
         });
 
         Assert.Null(failure);
+    }
+
+    private static void PumpUntil(Func<bool> condition)
+    {
+        if (condition()) return;
+        var frame = new System.Windows.Threading.DispatcherFrame();
+        var timeout = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2),
+        };
+        timeout.Tick += (_, _) =>
+        {
+            timeout.Stop();
+            frame.Continue = false;
+        };
+        var poll = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(10),
+        };
+        poll.Tick += (_, _) =>
+        {
+            if (!condition()) return;
+            poll.Stop();
+            timeout.Stop();
+            frame.Continue = false;
+        };
+        timeout.Start();
+        poll.Start();
+        System.Windows.Threading.Dispatcher.PushFrame(frame);
+        poll.Stop();
+        Assert.True(condition(), "the control ripple did not finish in time");
     }
 
     private static Exception? RunOnSta(Action action)

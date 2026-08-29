@@ -13,7 +13,7 @@
     <system:String x:Key="plugin_circletosearch_music_cancel_action">Cancel music recognition</system:String>
     <system:String x:Key="plugin_circletosearch_google_provider_short_label">Google</system:String>
     <system:String x:Key="plugin_circletosearch_yandex_provider_short_label">Yandex</system:String>
-    <system:String x:Key="plugin_circletosearch_select_search_provider">Search with {0}; choose provider</system:String>
+    <system:String x:Key="plugin_circletosearch_select_search_provider">Search with {0}, choose provider</system:String>
     <system:String x:Key="plugin_circletosearch_music_listening">Listening…</system:String>
     <system:String x:Key="plugin_circletosearch_music_try_again">Try again</system:String>
     <system:String x:Key="plugin_circletosearch_music_retry">Retry</system:String>
@@ -44,15 +44,15 @@
     <system:String x:Key="plugin_circletosearch_music_match_genre">Genre: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_music_match_album_genre">Album: {0} · Genre: {1}</system:String>
     <system:String x:Key="plugin_circletosearch_query_title">Select screen area…</system:String>
-    <system:String x:Key="plugin_circletosearch_query_subtitle">Visually search the selected region — hotkey: {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_query_subtitle">Visually search the selected region - hotkey: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_search_provider">Search provider: {0}</system:String>
-    <system:String x:Key="plugin_circletosearch_google_lens_runtime_not_detected">Google Lens WebView2 Runtime: not detected</system:String>
+    <system:String x:Key="plugin_circletosearch_google_lens_runtime_not_detected">WebView2 Runtime: not detected</system:String>
     <system:String x:Key="plugin_circletosearch_google_lens_runtime">Google Lens WebView2 Runtime: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_settings_hotkey_label">Hotkey (for example, Ctrl+Alt+Space)</system:String>
     <system:String x:Key="plugin_circletosearch_settings_max_image_side_label">Maximum image long side (px)</system:String>
     <system:String x:Key="plugin_circletosearch_settings_apply">Apply</system:String>
     <system:String x:Key="plugin_circletosearch_hotkey_registered">Hotkey registered.</system:String>
-    <system:String x:Key="plugin_circletosearch_hotkey_registration_failed">Hotkey was not registered — the combination may already be in use.</system:String>
+    <system:String x:Key="plugin_circletosearch_hotkey_registration_failed">Hotkey was not registered - the combination may already be in use.</system:String>
     <system:String x:Key="plugin_circletosearch_saving_failed">Saving failed: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_hotkey_status_none">none</system:String>
     <system:String x:Key="plugin_circletosearch_hotkey_status_active">{0} active</system:String>
@@ -68,6 +68,6 @@
     <system:String x:Key="plugin_circletosearch_results_url_open_failed">The results URL could not be opened in the default browser.</system:String>
     <system:String x:Key="plugin_circletosearch_starting_selection_failed">Starting the selection failed: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_search_failed">The search failed: {0}</system:String>
-    <system:String x:Key="plugin_circletosearch_google_lens_window_title">Circle to Search — Google Lens</system:String>
+    <system:String x:Key="plugin_circletosearch_google_lens_window_title">Circle to Search - Google Lens</system:String>
     <system:String x:Key="plugin_circletosearch_google_lens_loading">Searching with Google Lens…</system:String>
 </ResourceDictionary>

@@ -137,7 +137,7 @@ internal static class PluginPalette
             OnSecondaryContainer: Color.FromRgb(0x1D, 0x19, 0x2B),
             ShadowOpacity: 0.12));
 
-    private static Color Composite(Color background, Color foreground)
+    internal static Color Composite(Color background, Color foreground)
     {
         var foregroundAlpha = foreground.A / 255d;
         var backgroundAlpha = background.A / 255d;

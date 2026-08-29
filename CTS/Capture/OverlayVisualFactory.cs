@@ -499,7 +499,9 @@ public static class OverlayVisualFactory
         var theme = PluginPalette.For(visual.LightTheme);
         var accent = SystemAccentColor.Read();
         visual.MusicButton.Background = Frozen(listening
-            ? PluginPalette.WithAlpha(accent, 0.16)
+            ? PluginPalette.Composite(
+                theme.MusicButton.Surface,
+                PluginPalette.WithAlpha(accent, 0.16))
             : theme.MusicButton.Surface);
         visual.MusicButton.BorderBrush = Frozen(listening
             ? PluginPalette.WithAlpha(accent, 0.4)
@@ -1034,23 +1036,31 @@ public static class OverlayVisualFactory
         var chevron = new Path
         {
             Data = ChevronIconGeometry,
-            Width = 14,
-            Height = 14,
+            Width = 6,
+            Height = 6,
             Stretch = Stretch.Uniform,
             Fill = Frozen(palette.Hint),
-            Margin = new Thickness(7, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
             RenderTransformOrigin = new Point(0.5, 0.5),
             RenderTransform = new RotateTransform(),
             IsHitTestVisible = false,
         };
+        var chevronSlot = new Grid
+        {
+            Width = 14,
+            Height = 14,
+            Margin = new Thickness(7, 0, 0, 0),
+            IsHitTestVisible = false,
+        };
+        chevronSlot.Children.Add(chevron);
         var row = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center,
         };
         row.Children.Add(content);
-        row.Children.Add(chevron);
+        row.Children.Add(chevronSlot);
         var button = new Button
         {
             Content = row,
@@ -1058,6 +1068,7 @@ public static class OverlayVisualFactory
             Margin = new Thickness(8, 0, 0, 0),
             Padding = new Thickness(12, 0, 13, 0),
             Background = Frozen(palette.Surface),
+            Foreground = Frozen(palette.Text),
             BorderBrush = Frozen(palette.Border),
             BorderThickness = new Thickness(1),
             Cursor = Cursors.Hand,
@@ -1119,6 +1130,7 @@ public static class OverlayVisualFactory
                 MinWidth = 206,
                 MinHeight = 36,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
+                Foreground = Frozen(palette.MenuText),
                 Background = Frozen(PluginPalette.Transparent),
                 BorderThickness = new Thickness(0),
                 Cursor = Cursors.Hand,
@@ -1194,11 +1206,22 @@ public static class OverlayVisualFactory
         var pressed = new Trigger { Property = ButtonBase.IsPressedProperty, Value = true };
         pressed.Setters.Add(new Setter(UIElement.OpacityProperty, 0.82));
         template.Triggers.Add(pressed);
-        var focused = new Trigger { Property = UIElement.IsKeyboardFocusedProperty, Value = true };
-        focused.Setters.Add(new Setter(Border.BorderBrushProperty, Frozen(SystemAccentColor.Read()), "Chrome"));
-        focused.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(2), "Chrome"));
-        template.Triggers.Add(focused);
         button.Template = template;
+        button.FocusVisualStyle = CreateFocusVisualStyle(radius);
+    }
+
+    private static Style CreateFocusVisualStyle(double radius)
+    {
+        var ring = new FrameworkElementFactory(typeof(Border));
+        ring.SetValue(Border.BorderBrushProperty, Frozen(SystemAccentColor.Read()));
+        ring.SetValue(Border.BorderThicknessProperty, new Thickness(2));
+        ring.SetValue(Border.CornerRadiusProperty, new CornerRadius(radius + 2));
+        ring.SetValue(FrameworkElement.MarginProperty, new Thickness(-2));
+        ring.SetValue(UIElement.IsHitTestVisibleProperty, false);
+        var template = new ControlTemplate(typeof(Control)) { VisualTree = ring };
+        var style = new Style(typeof(Control));
+        style.Setters.Add(new Setter(Control.TemplateProperty, template));
+        return style;
     }
 
     private static Binding TemplateBinding(DependencyProperty property) => new()

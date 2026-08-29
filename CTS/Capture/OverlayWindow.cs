@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -167,7 +168,7 @@ public sealed class OverlayWindow : Window
                 _providers,
                 _selectedProviderId);
         if (overscan) _visual.Screenshot.Margin = new Thickness(1);
-        Content = _visual.Root;
+        Content = new AdornerDecorator { Child = _visual.Root };
         Loaded += OnLoaded;
 
         PreviewKeyDown += OnPreviewKeyDown;
