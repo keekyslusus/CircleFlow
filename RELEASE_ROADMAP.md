@@ -83,6 +83,8 @@ Captured hotkey применяется сразу:
 
 ## Milestone 7 - music recognition
 - надо убрать захардкоженные данные useragent, location (ShazamClient.cs), в иделе сделать рандомно генериуемый,или хотя бы список из 10-20
+- hardcoded useragent исчез
+- теперь осталось: location и timezone
 
 ## Если оверлей исчез, а Flow Launcher зависает при выходе — что сказать агенту
 

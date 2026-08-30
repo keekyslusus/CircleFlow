@@ -21,22 +21,20 @@ public sealed class ShazamRateLimitException : HttpRequestException
     public TimeSpan? RetryAfter { get; }
 }
 
-public sealed class ShazamClient : IShazamClient, IDisposable
+public sealed class ShazamClient : IShazamClient
 {
-    private const string UserAgent = "Dalvik/2.1.0 (Linux; U; Android 6.0.1; SM-G920F Build/MMB29K)";
     private readonly HttpClient _httpClient;
-    private readonly bool _ownsClient;
+    private readonly string _userAgent;
 
-    public ShazamClient(HttpClient? httpClient = null)
+    public ShazamClient(HttpClient httpClient, IShazamUserAgentProvider userAgentProvider)
     {
-        _ownsClient = httpClient is null;
-        _httpClient = httpClient ?? new HttpClient
-        {
-            Timeout = Timeout.InfiniteTimeSpan,
-            DefaultRequestVersion = HttpVersion.Version11,
-            DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact,
-        };
+        ArgumentNullException.ThrowIfNull(httpClient);
+        ArgumentNullException.ThrowIfNull(userAgentProvider);
+        _httpClient = httpClient;
+        _userAgent = userAgentProvider.Select();
     }
+
+    internal string UserAgent => _userAgent;
 
     public async Task<ShazamRecognition?> RecognizeAsync(
         ShazamSignature signature,
@@ -66,7 +64,7 @@ public sealed class ShazamClient : IShazamClient, IDisposable
             VersionPolicy = HttpVersionPolicy.RequestVersionExact,
             Content = JsonContent.Create(payload),
         };
-        request.Headers.TryAddWithoutValidation("User-Agent", UserAgent);
+        request.Headers.TryAddWithoutValidation("User-Agent", _userAgent);
         request.Headers.TryAddWithoutValidation("Content-Language", "en_US");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -93,11 +91,6 @@ public sealed class ShazamClient : IShazamClient, IDisposable
             GetString(track, "key"),
             GetNestedString(track, "images", "coverart"),
             GetNestedString(track, "share", "href"));
-    }
-
-    public void Dispose()
-    {
-        if (_ownsClient) _httpClient.Dispose();
     }
 
     private static TimeSpan? ReadRetryAfter(HttpResponseMessage response)

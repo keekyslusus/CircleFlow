@@ -7,7 +7,7 @@ public sealed class PluginLog
 {
     private const string FileName = "plugin.log";
     private const string PreviousFileName = "plugin.log.old";
-    private const long MaxBytes = 256 * 1024;
+    private const long MaxBytes = 50 * 1024;
     private static readonly Encoding FileEncoding = new UTF8Encoding(false);
 
     private readonly string _path;

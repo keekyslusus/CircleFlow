@@ -47,7 +47,8 @@ public static class CompositionRoot
             DefaultRequestVersion = HttpVersion.Version11,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact,
         };
-        var shazamClient = new ShazamClient(musicHttpClient);
+        var shazamClient = new ShazamClient(musicHttpClient, new PixelUserAgentProvider());
+        log.Info(nameof(ShazamClient), $"using User-Agent: {shazamClient.UserAgent}");
         var musicRecognizer = new ProgressiveMusicRecognizer(
             new LoopbackCaptureSessionFactory(log),
             shazamClient,
@@ -115,7 +116,7 @@ public static class CompositionRoot
                 strings),
             hotkeyWindow,
             providerRouter,
-            [shazamClient, musicHttpClient, musicThrottle],
+            [musicHttpClient, musicThrottle],
             log);
     }
 
