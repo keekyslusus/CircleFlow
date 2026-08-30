@@ -24,13 +24,13 @@ public sealed class OverlayWindowTests
                 lightTheme: false,
                 TestUiStrings.English);
 
-            Assert.Same(visual.Chip, visual.ActionTray.Children[0]);
-            Assert.Same(visual.MusicButton, visual.ActionTray.Children[1]);
-            Assert.DoesNotContain(visual.MusicButton, Descendants(visual.Chip));
-            Assert.Equal(TestUiStrings.English.MusicRecognitionAction, visual.MusicButton.ToolTip);
+            Assert.Same(visual.Actions.Chip, visual.Actions.Tray.Children[0]);
+            Assert.Same(visual.Music.Button, visual.Actions.Tray.Children[1]);
+            Assert.DoesNotContain(visual.Music.Button, Descendants(visual.Actions.Chip));
+            Assert.Equal(TestUiStrings.English.MusicRecognitionAction, visual.Music.Button.ToolTip);
             Assert.Equal(
                 TestUiStrings.English.MusicRecognitionAction,
-                AutomationProperties.GetName(visual.MusicButton));
+                AutomationProperties.GetName(visual.Music.Button));
         });
 
         Assert.Null(failure);
@@ -102,7 +102,7 @@ public sealed class OverlayWindowTests
     {
         var failure = RunOnSta(() =>
         {
-            if (!OverlayVisualFactory.AnimationsEnabled()) return;
+            if (!OverlayVisualResources.AnimationsEnabled()) return;
             using var frame = new GdiBitmap(640, 400);
             var monitor = new GdiRectangle(0, 0, 640, 400);
             var overlay = new OverlayWindow(
@@ -126,9 +126,9 @@ public sealed class OverlayWindowTests
             timeout.Start();
             Dispatcher.PushFrame(renderFrame);
 
-            Assert.True(overlay.VisualState.SceneRippleLayer.ActualWidth > 0);
-            Assert.True(overlay.VisualState.SceneRippleLayer.ActualHeight > 0);
-            Assert.Equal(1, overlay.VisualState.SceneRipples.ActiveCount);
+            Assert.True(overlay.VisualState.Effects.SceneRippleLayer.ActualWidth > 0);
+            Assert.True(overlay.VisualState.Effects.SceneRippleLayer.ActualHeight > 0);
+            Assert.Equal(1, overlay.VisualState.Effects.SceneRipples.ActiveCount);
             overlay.CloseFromSession();
             Dispatcher.Run();
         });

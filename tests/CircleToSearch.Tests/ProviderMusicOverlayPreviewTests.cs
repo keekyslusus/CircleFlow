@@ -60,50 +60,52 @@ public sealed class ProviderMusicOverlayPreviewTests
         window.Show();
         window.UpdateLayout();
 
-        OverlayVisualFactory.SetProviderMenuOpen(visual, true);
+        ProviderMenuVisualPresenter.SetOpen(visual.Provider!, visual.Actions.Root, true);
         Pump(TimeSpan.FromMilliseconds(220));
         Capture(visual.Root, $"provider-music-{themeName}-provider.png");
-        OverlayVisualFactory.SetProviderMenuOpen(visual, false);
+        ProviderMenuVisualPresenter.SetOpen(visual.Provider!, visual.Actions.Root, false);
 
-        visual.Screenshot.Opacity = 0;
-        visual.Sheen.Opacity = 0;
-        visual.Halo.Opacity = 0;
-        visual.Accent.Opacity = 0;
-        OverlayVisualFactory.SetListeningState(visual, listening: true);
-        visual.Waveform.Report(new MusicVisualizationFrame(
+        visual.Selection.Screenshot.Opacity = 0;
+        visual.Selection.Sheen.Opacity = 0;
+        visual.Selection.Halo.Opacity = 0;
+        visual.Selection.Accent.Opacity = 0;
+        MusicOverlayVisualPresenter.SetListeningState(visual.Music, listening: true, lightTheme);
+        visual.Music.Waveform.Report(new MusicVisualizationFrame(
             TimeSpan.FromSeconds(1), 0.62, 0.86, IsTransient: true));
-        visual.Waveform.Start();
-        visual.SceneRipples.Emit(new SceneRippleRequest(
+        visual.Music.Waveform.Start();
+        visual.Effects.SceneRipples.Emit(new SceneRippleRequest(
             new Point(width / 2.0, height * 0.45),
             SceneRipplePreset.AudioTransient,
             0.86));
         Pump(TimeSpan.FromMilliseconds(340));
         Capture(visual.Root, $"provider-music-{themeName}-listening.png");
-        visual.Waveform.Stop();
-        OverlayVisualFactory.SetListeningState(visual, listening: false);
+        visual.Music.Waveform.Stop();
+        MusicOverlayVisualPresenter.SetListeningState(visual.Music, listening: false, lightTheme);
 
-        var matchCard = OverlayVisualFactory.PresentMusicResult(
-            visual,
+        var matchCard = MusicOverlayVisualPresenter.PresentResult(
+            visual.Music,
             MusicRecognitionOutcome.Matched(new ShazamRecognition(
                 "Midnight Signal", "The Satellites", null, null, null, null,
                 "https://www.shazam.com/track/1")),
             TestUiStrings.English,
+            lightTheme,
             _ => { },
             (_, _) => { });
         window.UpdateLayout();
         var matchOrigin = matchCard.TransformToAncestor(visual.Root).Transform(
             new Point(matchCard.ActualWidth / 2, matchCard.ActualHeight / 2));
-        visual.SceneRipples.Emit(new SceneRippleRequest(
+        visual.Effects.SceneRipples.Emit(new SceneRippleRequest(
             matchOrigin,
             SceneRipplePreset.MusicMatch,
             1));
         Pump(TimeSpan.FromMilliseconds(420));
         Capture(visual.Root, $"provider-music-{themeName}-match.png");
 
-        OverlayVisualFactory.PresentMusicResult(
-            visual,
+        MusicOverlayVisualPresenter.PresentResult(
+            visual.Music,
             MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio),
             TestUiStrings.English,
+            lightTheme,
             _ => { },
             (_, _) => { });
         window.UpdateLayout();

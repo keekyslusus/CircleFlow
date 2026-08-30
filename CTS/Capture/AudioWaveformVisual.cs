@@ -25,7 +25,7 @@ public sealed class AudioWaveformVisual : FrameworkElement, IDisposable
 
     public void Start()
     {
-        if (_rendering || !OverlayVisualFactory.AnimationsEnabled())
+        if (_rendering || !OverlayVisualResources.AnimationsEnabled())
         {
             InvalidateVisual();
             return;
@@ -62,7 +62,7 @@ public sealed class AudioWaveformVisual : FrameworkElement, IDisposable
         {
             var x = (index + 0.5) * RenderSize.Width / 5;
             var phase = index * 0.85;
-            var motion = OverlayVisualFactory.AnimationsEnabled()
+            var motion = OverlayVisualResources.AnimationsEnabled()
                 ? Math.Sin(time * 5.6 + phase) * (RenderSize.Height * 0.18 + _level * 5 + _impulse * 3)
                 : 0;
             var radius = Math.Max(2.2, RenderSize.Height * 0.095) + _level * 1.5 + _impulse;

@@ -58,10 +58,10 @@ public sealed class SelectionPreviewTests
         {
             drawn.Stop();
             var stroke = EllipseStroke(new Point(width / 2.0, height / 2.0), 210, 130, 48);
-            visual.Dim.Data = OverlayVisualFactory.BuildRevealGeometry(size, stroke);
-            visual.Sheen.Data = OverlayVisualFactory.BuildPolygonGeometry(stroke);
-            visual.Halo.Points = new PointCollection(stroke);
-            visual.Accent.Points = new PointCollection(stroke);
+            visual.Selection.Dim.Data = SelectionOverlayTransitions.BuildRevealGeometry(size, stroke);
+            visual.Selection.Sheen.Data = SelectionOverlayTransitions.BuildPolygonGeometry(stroke);
+            visual.Selection.Halo.Points = new PointCollection(stroke);
+            visual.Selection.Accent.Points = new PointCollection(stroke);
             Capture(visual.Root, lassoPath);
 
             // Finished state: same snap the window performs on mouse-up.
@@ -78,10 +78,10 @@ public sealed class SelectionPreviewTests
                     new(rect.Right, rect.Bottom),
                     new(rect.Left, rect.Bottom),
                 ];
-                OverlayVisualFactory.BeginSelectionReveal(
-                    visual,
-                    OverlayVisualFactory.BuildRevealGeometry(size, corners),
-                    OverlayVisualFactory.BuildSelectionFrameGeometry(rect));
+                SelectionOverlayTransitions.BeginSelectionReveal(
+                    visual.Selection,
+                    SelectionOverlayTransitions.BuildRevealGeometry(size, corners),
+                    SelectionOverlayTransitions.BuildSelectionFrameGeometry(rect));
 
                 // Entrance effect frames, captured mid-wave.
                 var framed = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
@@ -89,7 +89,7 @@ public sealed class SelectionPreviewTests
                 {
                     framed.Stop();
                     Capture(visual.Root, framePath);
-                    visual.SceneRipples.Emit(new SceneRippleRequest(
+                    visual.Effects.SceneRipples.Emit(new SceneRippleRequest(
                         new Point(width * 0.42, height * 0.45),
                         SceneRipplePreset.Entrance,
                         1));

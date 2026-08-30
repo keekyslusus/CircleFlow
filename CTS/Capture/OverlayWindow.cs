@@ -167,18 +167,18 @@ public sealed class OverlayWindow : Window
                 strings,
                 _providers,
                 _selectedProviderId);
-        if (overscan) _visual.Screenshot.Margin = new Thickness(1);
+        if (overscan) _visual.Selection.Screenshot.Margin = new Thickness(1);
         Content = new AdornerDecorator { Child = _visual.Root };
         Loaded += OnLoaded;
 
         PreviewKeyDown += OnPreviewKeyDown;
-        _visual.MusicButton.Click += OnMusicButtonClick;
+        _visual.Music.Button.Click += OnMusicButtonClick;
         AttachDebugScenarioHandlers();
-        if (_visual.ProviderButton is not null) _visual.ProviderButton.Click += OnProviderButtonClick;
+        if (_visual.Provider is not null) _visual.Provider.Button.Click += OnProviderButtonClick;
         AttachProviderMenuHandlers();
-        _visual.SelectionInputSurface.MouseLeftButtonDown += OnMouseLeftButtonDown;
-        _visual.SelectionInputSurface.MouseMove += OnMouseMove;
-        _visual.SelectionInputSurface.MouseLeftButtonUp += OnMouseLeftButtonUp;
+        _visual.Selection.InputSurface.MouseLeftButtonDown += OnMouseLeftButtonDown;
+        _visual.Selection.InputSurface.MouseMove += OnMouseMove;
+        _visual.Selection.InputSurface.MouseLeftButtonUp += OnMouseLeftButtonUp;
         MouseRightButtonDown += OnMouseRightButtonDown;
         Deactivated += OnDeactivated;
         Closed += (_, _) => DisposeVisualResources();
@@ -297,9 +297,9 @@ public sealed class OverlayWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (!_chipDismissed) OverlayVisualFactory.BeginChipEntrance(_visual);
+        if (!_chipDismissed) ActionTrayTransitions.BeginEntrance(_visual.Actions);
         QueueEntranceRipple();
-        _controlRipples.AddRange(OverlayVisualFactory.AttachControlRipples(_visual));
+        _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.Actions.Root));
     }
 
     private void QueueEntranceRipple()
@@ -316,9 +316,9 @@ public sealed class OverlayWindow : Window
             UnqueueEntranceRipple();
             return;
         }
-        if (_visual.SceneRippleLayer.ActualWidth <= 0 || _visual.SceneRippleLayer.ActualHeight <= 0) return;
+        if (_visual.Effects.SceneRippleLayer.ActualWidth <= 0 || _visual.Effects.SceneRippleLayer.ActualHeight <= 0) return;
         UnqueueEntranceRipple();
-        _visual.SceneRipples.Emit(new SceneRippleRequest(
+        _visual.Effects.SceneRipples.Emit(new SceneRippleRequest(
             _entranceOrigin!.Value,
             SceneRipplePreset.Entrance,
             1));
@@ -371,11 +371,11 @@ public sealed class OverlayWindow : Window
         if (_finished || Mode != OverlayInteractionMode.Selecting || actionInteraction) return;
         _drawing = true;
         _chipDismissed = true;
-        OverlayVisualFactory.BeginChipExit(_visual);
+        ActionTrayTransitions.BeginExit(_visual.Actions);
         _sampler.Reset();
         _stroke.Clear();
         Track(e);
-        _visual.SelectionInputSurface.CaptureMouse();
+        _visual.Selection.InputSurface.CaptureMouse();
         e.Handled = true;
     }
 
@@ -434,7 +434,7 @@ public sealed class OverlayWindow : Window
 
     private void AttachProviderMenuHandlers()
     {
-        if (_visual.ProviderMenu.Child is not StackPanel panel) return;
+        if (_visual.Provider?.Menu.Child is not StackPanel panel) return;
         foreach (var item in panel.Children.OfType<Button>()) item.Click += OnProviderMenuItemClick;
     }
 
@@ -445,8 +445,8 @@ public sealed class OverlayWindow : Window
             string.Equals(provider.Id, providerId, StringComparison.OrdinalIgnoreCase));
         if (descriptor is null) return;
         _selectedProviderId = descriptor.Id;
-        OverlayVisualFactory.UpdateProvider(
-            _visual,
+        ProviderMenuVisualPresenter.UpdateProvider(
+            _visual.Provider!,
             _providers,
             _selectedProviderId,
             _strings,
@@ -459,14 +459,14 @@ public sealed class OverlayWindow : Window
 
     private void AttachDebugScenarioHandlers()
     {
-        foreach (var button in _visual.DebugScenarioButtons.Children.OfType<Button>())
+        foreach (var button in _visual.Music.DebugScenarioButtons.Children.OfType<Button>())
             button.Click += OnDebugScenarioClick;
     }
 
     private void OnDebugScenarioClick(object sender, RoutedEventArgs e)
     {
         if (_finished || sender is not Button { Tag: MusicDebugScenario scenario }) return;
-        OverlayVisualFactory.SetMusicDebugScenario(_visual, scenario);
+        MusicOverlayVisualPresenter.SetDebugScenario(_visual.Music, scenario, _visual.LightTheme);
         _publishCommand?.Invoke(new MusicDebugScenarioSelected(scenario));
     }
 
@@ -474,14 +474,15 @@ public sealed class OverlayWindow : Window
     {
         if (_finished || _publishCommand is null) return;
         _debugPanelOpen = open;
-        _visual.DebugPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        _visual.Music.DebugPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         if (open) SetProviderMenuOpen(false);
     }
 
     private void SetProviderMenuOpen(bool open)
     {
         _providerMenuOpen = open;
-        OverlayVisualFactory.SetProviderMenuOpen(_visual, open);
+        if (_visual.Provider is not null)
+            ProviderMenuVisualPresenter.SetOpen(_visual.Provider, _visual.Actions.Root, open);
     }
 
     private void OnMusicButtonClick(object sender, RoutedEventArgs e)
@@ -516,15 +517,15 @@ public sealed class OverlayWindow : Window
     internal bool IsActionTrayInteraction(object? originalSource, Point windowPoint)
     {
         var hit = InputHitTest(windowPoint) as DependencyObject;
-        return IsWithin(originalSource as DependencyObject, _visual.ActionUiRoot) ||
-               IsWithin(originalSource as DependencyObject, _visual.ResultHost) ||
-               IsWithin(originalSource as DependencyObject, _visual.DebugPanel) ||
-               IsWithin(hit, _visual.ActionUiRoot) ||
-               IsWithin(hit, _visual.ResultHost) ||
-               IsWithin(hit, _visual.DebugPanel) ||
-               _visual.ActionUiRoot.IsMouseOver ||
-               _visual.ResultHost.IsMouseOver ||
-               _visual.DebugPanel.IsMouseOver;
+        return IsWithin(originalSource as DependencyObject, _visual.Actions.Root) ||
+               IsWithin(originalSource as DependencyObject, _visual.Music.ResultHost) ||
+               IsWithin(originalSource as DependencyObject, _visual.Music.DebugPanel) ||
+               IsWithin(hit, _visual.Actions.Root) ||
+               IsWithin(hit, _visual.Music.ResultHost) ||
+               IsWithin(hit, _visual.Music.DebugPanel) ||
+               _visual.Actions.Root.IsMouseOver ||
+               _visual.Music.ResultHost.IsMouseOver ||
+               _visual.Music.DebugPanel.IsMouseOver;
     }
 
     internal void ShowListening()
@@ -534,12 +535,12 @@ public sealed class OverlayWindow : Window
         _drawing = false;
         UnqueueRevealUpdate();
         ReleaseSelectionInput();
-        _visual.ResultHost.Visibility = Visibility.Collapsed;
-        OverlayVisualFactory.SetListeningState(_visual, listening: true);
-        _visual.Waveform.Start();
-        _visual.MusicButton.ToolTip = _strings.CancelMusicRecognition;
+        _visual.Music.ResultHost.Visibility = Visibility.Collapsed;
+        MusicOverlayVisualPresenter.SetListeningState(_visual.Music, listening: true, _visual.LightTheme);
+        _visual.Music.Waveform.Start();
+        _visual.Music.Button.ToolTip = _strings.CancelMusicRecognition;
         System.Windows.Automation.AutomationProperties.SetName(
-            _visual.MusicButton,
+            _visual.Music.Button,
             _strings.CancelMusicRecognition);
         Cursor = Cursors.Arrow;
         FadeSelectionLayersForListening();
@@ -548,11 +549,11 @@ public sealed class OverlayWindow : Window
     internal void ReportAudio(MusicVisualizationFrame frame)
     {
         if (_finished || Mode != OverlayInteractionMode.Listening) return;
-        _visual.Waveform.Report(frame);
-        if (!frame.IsTransient || !OverlayVisualFactory.AnimationsEnabled()) return;
-        var center = _visual.Waveform.TransformToAncestor(_visual.Root).Transform(
-            new Point(_visual.Waveform.ActualWidth / 2, _visual.Waveform.ActualHeight / 2));
-        _visual.SceneRipples.Emit(new SceneRippleRequest(
+        _visual.Music.Waveform.Report(frame);
+        if (!frame.IsTransient || !OverlayVisualResources.AnimationsEnabled()) return;
+        var center = _visual.Music.Waveform.TransformToAncestor(_visual.Root).Transform(
+            new Point(_visual.Music.Waveform.ActualWidth / 2, _visual.Music.Waveform.ActualHeight / 2));
+        _visual.Effects.SceneRipples.Emit(new SceneRippleRequest(
             center,
             SceneRipplePreset.AudioTransient,
             frame.NormalizedPeak));
@@ -562,20 +563,21 @@ public sealed class OverlayWindow : Window
     {
         if (_finished || outcome.Status == MusicRecognitionStatus.Canceled) return;
         Mode = OverlayInteractionMode.MusicResult;
-        _visual.Waveform.Stop();
-        OverlayVisualFactory.SetListeningState(_visual, listening: false);
-        var card = OverlayVisualFactory.PresentMusicResult(
-            _visual,
+        _visual.Music.Waveform.Stop();
+        MusicOverlayVisualPresenter.SetListeningState(_visual.Music, listening: false, _visual.LightTheme);
+        var card = MusicOverlayVisualPresenter.PresentResult(
+            _visual.Music,
             outcome,
             _strings,
+            _visual.LightTheme,
             command =>
             {
                 if (command is DismissMusicResult) DismissMusicResult();
                 _publishCommand?.Invoke(command);
             },
             CopyTrackInfo);
-        _controlRipples.AddRange(OverlayVisualFactory.AttachControlRipples(_visual.ResultHost));
-        if (outcome.Status == MusicRecognitionStatus.Matched && OverlayVisualFactory.AnimationsEnabled())
+        _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.Music.ResultHost));
+        if (outcome.Status == MusicRecognitionStatus.Matched && OverlayVisualResources.AnimationsEnabled())
         {
             Dispatcher.BeginInvoke(() =>
             {
@@ -583,7 +585,7 @@ public sealed class OverlayWindow : Window
                 card.UpdateLayout();
                 var origin = card.TransformToAncestor(_visual.Root).Transform(
                     new Point(card.ActualWidth / 2, card.ActualHeight / 2));
-                _visual.SceneRipples.Emit(new SceneRippleRequest(origin, SceneRipplePreset.MusicMatch, 1));
+                _visual.Effects.SceneRipples.Emit(new SceneRippleRequest(origin, SceneRipplePreset.MusicMatch, 1));
             }, DispatcherPriority.Loaded);
         }
     }
@@ -591,12 +593,12 @@ public sealed class OverlayWindow : Window
     private void DismissMusicResult()
     {
         if (_finished || Mode != OverlayInteractionMode.MusicResult) return;
-        _visual.ResultHost.Visibility = Visibility.Collapsed;
-        _visual.ResultHost.Children.Clear();
+        _visual.Music.ResultHost.Visibility = Visibility.Collapsed;
+        _visual.Music.ResultHost.Children.Clear();
         Mode = OverlayInteractionMode.Selecting;
         RestoreSelectionLayersAfterMusic();
-        _visual.MusicButton.ToolTip = _strings.MusicRecognitionAction;
-        AutomationProperties.SetName(_visual.MusicButton, _strings.MusicRecognitionAction);
+        _visual.Music.Button.ToolTip = _strings.MusicRecognitionAction;
+        AutomationProperties.SetName(_visual.Music.Button, _strings.MusicRecognitionAction);
         Cursor = Cursors.Cross;
     }
 
@@ -625,7 +627,7 @@ public sealed class OverlayWindow : Window
 
     private void ReleaseSelectionInput()
     {
-        if (ReferenceEquals(Mouse.Captured, _visual.SelectionInputSurface))
+        if (ReferenceEquals(Mouse.Captured, _visual.Selection.InputSurface))
             Mouse.Capture(null);
     }
 
@@ -636,8 +638,8 @@ public sealed class OverlayWindow : Window
         var accepted = final ? _sampler.AddFinal(physical) : _sampler.Add(physical);
         if (!accepted) return;
         _stroke.Add(dip);
-        _visual.Halo.Points.Add(dip);
-        _visual.Accent.Points.Add(dip);
+        _visual.Selection.Halo.Points.Add(dip);
+        _visual.Selection.Accent.Points.Add(dip);
         QueueRevealUpdate();
     }
 
@@ -645,13 +647,13 @@ public sealed class OverlayWindow : Window
     {
         UIElement[] fadeTargets =
         [
-            _visual.Screenshot,
-            _visual.Sheen,
-            _visual.Halo,
-            _visual.Accent,
-            _visual.SelectionFrame,
+            _visual.Selection.Screenshot,
+            _visual.Selection.Sheen,
+            _visual.Selection.Halo,
+            _visual.Selection.Accent,
+            _visual.Selection.SelectionFrame,
         ];
-        if (!OverlayVisualFactory.AnimationsEnabled())
+        if (!OverlayVisualResources.AnimationsEnabled())
         {
             foreach (var target in fadeTargets) target.Opacity = 0;
             return;
@@ -668,14 +670,14 @@ public sealed class OverlayWindow : Window
     {
         UIElement[] restoreTargets =
         [
-            _visual.Screenshot,
-            _visual.Sheen,
-            _visual.Halo,
-            _visual.Accent,
+            _visual.Selection.Screenshot,
+            _visual.Selection.Sheen,
+            _visual.Selection.Halo,
+            _visual.Selection.Accent,
         ];
-        _visual.SelectionFrame.BeginAnimation(OpacityProperty, null);
-        _visual.SelectionFrame.Opacity = 0;
-        if (!OverlayVisualFactory.AnimationsEnabled())
+        _visual.Selection.SelectionFrame.BeginAnimation(OpacityProperty, null);
+        _visual.Selection.SelectionFrame.Opacity = 0;
+        if (!OverlayVisualResources.AnimationsEnabled())
         {
             foreach (var target in restoreTargets) target.Opacity = 1;
             return;
@@ -693,19 +695,19 @@ public sealed class OverlayWindow : Window
         try
         {
             Clipboard.SetText(text);
-            OverlayVisualFactory.SetCopyConfirmed(button, confirmed: true, _strings, _visual.LightTheme);
+            MusicOverlayVisualPresenter.SetCopyConfirmed(button, confirmed: true, _strings, _visual.LightTheme);
             var restore = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1300) };
             restore.Tick += (_, _) =>
             {
                 restore.Stop();
                 if (_finished) return;
-                OverlayVisualFactory.SetCopyConfirmed(button, confirmed: false, _strings, _visual.LightTheme);
+                MusicOverlayVisualPresenter.SetCopyConfirmed(button, confirmed: false, _strings, _visual.LightTheme);
             };
             restore.Start();
         }
         catch
         {
-            OverlayVisualFactory.SetCopyConfirmed(button, confirmed: false, _strings, _visual.LightTheme);
+            MusicOverlayVisualPresenter.SetCopyConfirmed(button, confirmed: false, _strings, _visual.LightTheme);
         }
     }
 
@@ -729,8 +731,8 @@ public sealed class OverlayWindow : Window
         _revealUpdateQueued = false;
         CompositionTarget.Rendering -= FlushReveal;
         var size = new Size(ActualWidth, ActualHeight);
-        _visual.Dim.Data = OverlayVisualFactory.BuildRevealGeometry(size, _stroke);
-        _visual.Sheen.Data = OverlayVisualFactory.BuildPolygonGeometry(_stroke);
+        _visual.Selection.Dim.Data = SelectionOverlayTransitions.BuildRevealGeometry(size, _stroke);
+        _visual.Selection.Sheen.Data = SelectionOverlayTransitions.BuildPolygonGeometry(_stroke);
     }
 
     // Circle-to-search style finish: the lasso snaps into the exact rectangle that will be
@@ -753,10 +755,10 @@ public sealed class OverlayWindow : Window
             new(rect.Right, rect.Bottom),
             new(rect.Left, rect.Bottom),
         ];
-        OverlayVisualFactory.BeginSelectionReveal(
-            _visual,
-            OverlayVisualFactory.BuildRevealGeometry(size, corners),
-            OverlayVisualFactory.BuildSelectionFrameGeometry(rect));
+        SelectionOverlayTransitions.BeginSelectionReveal(
+            _visual.Selection,
+            SelectionOverlayTransitions.BuildRevealGeometry(size, corners),
+            SelectionOverlayTransitions.BuildSelectionFrameGeometry(rect));
 
         var hold = new DispatcherTimer { Interval = SelectionHoldDuration };
         hold.Tick += (_, _) =>
@@ -777,7 +779,7 @@ public sealed class OverlayWindow : Window
         _finished = true;
         UnqueueRevealUpdate();
         ReleaseSelectionInput();
-        if (!OverlayVisualFactory.AnimationsEnabled())
+        if (!OverlayVisualResources.AnimationsEnabled())
         {
             Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
             return;
@@ -797,11 +799,11 @@ public sealed class OverlayWindow : Window
                 // frame (identical to the live desktop) stays until close.
                 var completed = new DoubleAnimation(1, 0, ExitFadeDuration) { EasingFunction = EaseOut() };
                 completed.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
-                _visual.Dim.BeginAnimation(OpacityProperty, completed);
-                _visual.Sheen.BeginAnimation(OpacityProperty, Fade(1, 0));
-                _visual.Halo.BeginAnimation(OpacityProperty, Fade(1, 0));
-                _visual.Accent.BeginAnimation(OpacityProperty, Fade(1, 0));
-                OverlayVisualFactory.BeginChipExit(_visual);
+                _visual.Selection.Dim.BeginAnimation(OpacityProperty, completed);
+                _visual.Selection.Sheen.BeginAnimation(OpacityProperty, Fade(1, 0));
+                _visual.Selection.Halo.BeginAnimation(OpacityProperty, Fade(1, 0));
+                _visual.Selection.Accent.BeginAnimation(OpacityProperty, Fade(1, 0));
+                ActionTrayTransitions.BeginExit(_visual.Actions);
                 break;
             default:
                 fade.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
@@ -846,8 +848,8 @@ public sealed class OverlayWindow : Window
     private void DisposeVisualResources()
     {
         UnqueueEntranceRipple();
-        _visual.Waveform.Dispose();
-        _visual.SceneRipples.Dispose();
+        _visual.Music.Waveform.Dispose();
+        _visual.Effects.SceneRipples.Dispose();
         foreach (var ripple in _controlRipples) ripple.Dispose();
         _controlRipples.Clear();
         UnqueueRevealUpdate();

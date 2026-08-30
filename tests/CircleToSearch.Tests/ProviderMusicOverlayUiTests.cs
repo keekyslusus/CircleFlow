@@ -39,33 +39,32 @@ public sealed class ProviderMusicOverlayUiTests
                 Providers,
                 SearchProviderIds.GoogleLens);
 
-            Assert.Same(visual.Chip, visual.ActionTray.Children[0]);
-            Assert.Same(visual.ProviderButton, visual.ActionTray.Children[1]);
-            Assert.Same(visual.MusicButton, visual.ActionTray.Children[2]);
-            Assert.True(visual.Root.Children.IndexOf(visual.SelectionInputSurface) <
-                        visual.Root.Children.IndexOf(visual.ActionUiRoot));
-            Assert.False(visual.Screenshot.IsHitTestVisible);
-            Assert.Equal(44, visual.ProviderButton!.Height);
-            Assert.Equal(44, visual.MusicButton.Height);
-            Assert.NotNull(visual.ProviderChevron);
-            Assert.Equal(6, visual.ProviderChevron.Width);
-            Assert.Equal(6, visual.ProviderChevron.Height);
-            var chevronSlot = Assert.IsType<Grid>(visual.ProviderChevron.Parent);
+            Assert.Same(visual.Actions.Chip, visual.Actions.Tray.Children[0]);
+            Assert.Same(visual.Provider!.Button, visual.Actions.Tray.Children[1]);
+            Assert.Same(visual.Music.Button, visual.Actions.Tray.Children[2]);
+            Assert.True(visual.Root.Children.IndexOf(visual.Selection.InputSurface) <
+                        visual.Root.Children.IndexOf(visual.Actions.Root));
+            Assert.False(visual.Selection.Screenshot.IsHitTestVisible);
+            Assert.Equal(44, visual.Provider.Button.Height);
+            Assert.Equal(44, visual.Music.Button.Height);
+            Assert.Equal(6, visual.Provider.Chevron.Width);
+            Assert.Equal(6, visual.Provider.Chevron.Height);
+            var chevronSlot = Assert.IsType<Grid>(visual.Provider.Chevron.Parent);
             Assert.Equal(14, chevronSlot.Width);
             Assert.Equal(14, chevronSlot.Height);
-            Assert.Equal(170, visual.Waveform.Width);
-            Assert.Equal(40, visual.Waveform.Height);
-            OverlayVisualFactory.SetListeningState(visual, listening: true);
+            Assert.Equal(170, visual.Music.Waveform.Width);
+            Assert.Equal(40, visual.Music.Waveform.Height);
+            MusicOverlayVisualPresenter.SetListeningState(visual.Music, listening: true, lightTheme: false);
             var listeningBackground = Assert.IsType<System.Windows.Media.SolidColorBrush>(
-                visual.MusicButton.Background).Color;
+                visual.Music.Button.Background).Color;
             Assert.True(listeningBackground.A >= PluginPalette.For(lightTheme: false).MusicButton.Surface.A);
             Assert.NotEqual(
                 PluginPalette.WithAlpha(SystemAccentColor.Read(), 0.16),
                 listeningBackground);
-            OverlayVisualFactory.SetListeningState(visual, listening: false);
-            Assert.Equal(220, visual.ProviderMenu.Width);
-            Assert.Equal(new CornerRadius(16), visual.ProviderMenu.CornerRadius);
-            var item = Assert.Single(((StackPanel)visual.ProviderMenu.Child).Children.OfType<Button>());
+            MusicOverlayVisualPresenter.SetListeningState(visual.Music, listening: false, lightTheme: false);
+            Assert.Equal(220, visual.Provider.Menu.Width);
+            Assert.Equal(new CornerRadius(16), visual.Provider.Menu.CornerRadius);
+            var item = Assert.Single(((StackPanel)visual.Provider.Menu.Child).Children.OfType<Button>());
             Assert.Equal(SearchProviderIds.YandexImages, item.Tag);
             Assert.Equal(36, item.MinHeight);
             Assert.Contains(
@@ -113,46 +112,46 @@ public sealed class ProviderMusicOverlayUiTests
             overlay.Show();
             overlay.UpdateLayout();
 
-            var provider = overlay.VisualState.ProviderButton!;
+            var provider = overlay.VisualState.Provider!.Button;
             var providerWidth = provider.ActualWidth;
-            var chipLeft = overlay.VisualState.Chip.TranslatePoint(
+            var chipLeft = overlay.VisualState.Actions.Chip.TranslatePoint(
                 new Point(),
-                overlay.VisualState.ActionTray).X;
-            var musicLeft = overlay.VisualState.MusicButton.TranslatePoint(
+                overlay.VisualState.Actions.Tray).X;
+            var musicLeft = overlay.VisualState.Music.Button.TranslatePoint(
                 new Point(),
-                overlay.VisualState.ActionTray).X;
+                overlay.VisualState.Actions.Tray).X;
             Assert.True(provider.Focus());
             overlay.UpdateLayout();
             var providerChrome = Assert.IsType<Border>(provider.Template.FindName("Chrome", provider));
 
             Assert.Equal(new Thickness(1), providerChrome.BorderThickness);
             Assert.Equal(providerWidth, provider.ActualWidth);
-            Assert.Equal(chipLeft, overlay.VisualState.Chip.TranslatePoint(
+            Assert.Equal(chipLeft, overlay.VisualState.Actions.Chip.TranslatePoint(
                 new Point(),
-                overlay.VisualState.ActionTray).X);
-            Assert.Equal(musicLeft, overlay.VisualState.MusicButton.TranslatePoint(
+                overlay.VisualState.Actions.Tray).X);
+            Assert.Equal(musicLeft, overlay.VisualState.Music.Button.TranslatePoint(
                 new Point(),
-                overlay.VisualState.ActionTray).X);
+                overlay.VisualState.Actions.Tray).X);
             provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             overlay.UpdateLayout();
-            var firstLeft = Canvas.GetLeft(overlay.VisualState.ProviderMenu);
-            var firstTop = Canvas.GetTop(overlay.VisualState.ProviderMenu);
-            Assert.InRange(overlay.VisualState.ProviderMenu.ActualHeight, 55, 57);
+            var firstLeft = Canvas.GetLeft(overlay.VisualState.Provider.Menu);
+            var firstTop = Canvas.GetTop(overlay.VisualState.Provider.Menu);
+            Assert.InRange(overlay.VisualState.Provider.Menu.ActualHeight, 55, 57);
             var menuItem = Assert.Single(
-                ((StackPanel)overlay.VisualState.ProviderMenu.Child).Children.OfType<Button>());
+                ((StackPanel)overlay.VisualState.Provider.Menu.Child).Children.OfType<Button>());
             var itemContent = Assert.IsAssignableFrom<FrameworkElement>(menuItem.Content);
             var contentLeft = itemContent.TranslatePoint(
                 new Point(),
-                overlay.VisualState.ProviderMenu).X;
+                overlay.VisualState.Provider.Menu).X;
 
             provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             overlay.UpdateLayout();
 
-            Assert.Equal(firstLeft, Canvas.GetLeft(overlay.VisualState.ProviderMenu));
-            Assert.Equal(firstTop, Canvas.GetTop(overlay.VisualState.ProviderMenu));
+            Assert.Equal(firstLeft, Canvas.GetLeft(overlay.VisualState.Provider.Menu));
+            Assert.Equal(firstTop, Canvas.GetTop(overlay.VisualState.Provider.Menu));
             Assert.InRange(contentLeft, 18, 20);
-            Assert.Equal(Visibility.Visible, overlay.VisualState.ProviderMenu.Visibility);
+            Assert.Equal(Visibility.Visible, overlay.VisualState.Provider.Menu.Visibility);
             overlay.CloseFromSession();
             Dispatcher.Run();
         });
@@ -182,7 +181,7 @@ public sealed class ProviderMusicOverlayUiTests
             overlay.Show();
             overlay.UpdateLayout();
 
-            var provider = overlay.VisualState.ProviderButton!;
+            var provider = overlay.VisualState.Provider!.Button;
             var rippleLayer = AdornerLayer.GetAdornerLayer(provider);
             Assert.NotNull(rippleLayer);
             provider.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
@@ -197,17 +196,17 @@ public sealed class ProviderMusicOverlayUiTests
                 Source = provider,
             });
 
-            Assert.NotSame(overlay.VisualState.SelectionInputSurface, Mouse.Captured);
+            Assert.NotSame(overlay.VisualState.Selection.InputSurface, Mouse.Captured);
             Assert.False(overlay.Dispatcher.HasShutdownStarted);
 
-            overlay.VisualState.SelectionInputSurface.RaiseEvent(
+            overlay.VisualState.Selection.InputSurface.RaiseEvent(
                 new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
                 {
                     RoutedEvent = UIElement.MouseLeftButtonDownEvent,
-                    Source = overlay.VisualState.SelectionInputSurface,
+                    Source = overlay.VisualState.Selection.InputSurface,
                 });
 
-            Assert.Same(overlay.VisualState.SelectionInputSurface, Mouse.Captured);
+            Assert.Same(overlay.VisualState.Selection.InputSurface, Mouse.Captured);
             overlay.CloseFromSession();
             Dispatcher.Run();
         });
@@ -257,6 +256,15 @@ public sealed class ProviderMusicOverlayUiTests
 
             Assert.Equal(SearchProviderIds.YandexImages,
                 Assert.IsType<ProviderSelected>(commands[1]).ProviderId);
+            provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            overlay.UpdateLayout();
+            var google = Descendants((DependencyObject)overlay.Content).OfType<Button>()
+                .Single(button => Equals(button.Tag, SearchProviderIds.GoogleLens));
+            google.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal(3, commands.Count);
+            Assert.Equal(SearchProviderIds.GoogleLens,
+                Assert.IsType<ProviderSelected>(commands[2]).ProviderId);
             Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
             overlay.CloseFromSession();
             Dispatcher.Run();
@@ -291,24 +299,24 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.True(NativeMethods.GetCursorPos(out var originalPointer));
             try
             {
-                Assert.Equal(Visibility.Collapsed, overlay.VisualState.DebugPanel.Visibility);
+                Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.DebugPanel.Visibility);
                 overlay.SetDebugPanelOpen(true);
                 overlay.UpdateLayout();
-                Assert.Equal(Visibility.Visible, overlay.VisualState.DebugPanel.Visibility);
+                Assert.Equal(Visibility.Visible, overlay.VisualState.Music.DebugPanel.Visibility);
 
-                var noAudio = overlay.VisualState.DebugScenarioButtons.Children
+                var noAudio = overlay.VisualState.Music.DebugScenarioButtons.Children
                     .OfType<Button>()
                     .Single(button => Equals(button.Tag, MusicDebugScenario.NoAudio));
                 ClickWithRealPointer(noAudio);
                 PumpUntil(() => commands.Count >= 1);
-                ClickWithRealPointer(overlay.VisualState.MusicButton);
+                ClickWithRealPointer(overlay.VisualState.Music.Button);
                 PumpUntil(() => commands.Count >= 2);
 
                 Assert.Equal(
                     MusicDebugScenario.NoAudio,
                     Assert.IsType<MusicDebugScenarioSelected>(commands[0]).Scenario);
                 Assert.IsType<StartMusicRecognition>(commands[1]);
-                Assert.Equal(Visibility.Collapsed, overlay.VisualState.DebugPanel.Visibility);
+                Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.DebugPanel.Visibility);
                 Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
             }
             finally
@@ -346,37 +354,37 @@ public sealed class ProviderMusicOverlayUiTests
             overlay.UpdateLayout();
 
             overlay.ShowListening();
-            Assert.Equal(Visibility.Visible, overlay.VisualState.ListeningLayer.Visibility);
-            Assert.Equal(1, overlay.VisualState.Dim.Opacity);
-            if (OverlayVisualFactory.AnimationsEnabled())
-                Assert.True(overlay.VisualState.Screenshot.HasAnimatedProperties);
+            Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ListeningLayer.Visibility);
+            Assert.Equal(1, overlay.VisualState.Selection.Dim.Opacity);
+            if (OverlayVisualResources.AnimationsEnabled())
+                Assert.True(overlay.VisualState.Selection.Screenshot.HasAnimatedProperties);
 
             overlay.ShowMusicResult(MusicRecognitionOutcome.Matched(new ShazamRecognition(
                 "Track", "Artist", null, null, null, null, "https://www.shazam.com/track/1")));
             overlay.UpdateLayout();
 
             Assert.Equal(OverlayInteractionMode.MusicResult, overlay.Mode);
-            Assert.False(overlay.VisualState.Waveform.IsRendering);
-            Assert.Equal(Visibility.Collapsed, overlay.VisualState.ListeningLayer.Visibility);
-            Assert.Equal(Visibility.Visible, overlay.VisualState.ResultHost.Visibility);
-            Assert.Equal(VerticalAlignment.Bottom, overlay.VisualState.ResultHost.VerticalAlignment);
-            var card = Assert.Single(overlay.VisualState.ResultHost.Children.OfType<Border>());
+            Assert.False(overlay.VisualState.Music.Waveform.IsRendering);
+            Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.ListeningLayer.Visibility);
+            Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ResultHost.Visibility);
+            Assert.Equal(VerticalAlignment.Bottom, overlay.VisualState.Music.ResultHost.VerticalAlignment);
+            var card = Assert.Single(overlay.VisualState.Music.ResultHost.Children.OfType<Border>());
             Assert.Equal(48, card.Height);
             Assert.Equal(new CornerRadius(24), card.CornerRadius);
-            var actionNames = Descendants(overlay.VisualState.ResultHost).OfType<Button>()
+            var actionNames = Descendants(overlay.VisualState.Music.ResultHost).OfType<Button>()
                 .Select(AutomationProperties.GetName)
                 .ToArray();
             Assert.Contains(TestUiStrings.English.CopyTrackInfo, actionNames);
             Assert.Contains(TestUiStrings.English.OpenInShazam, actionNames);
             Assert.Contains(TestUiStrings.English.Close, actionNames);
             Assert.All(
-                Descendants(overlay.VisualState.ResultHost).OfType<Button>(),
+                Descendants(overlay.VisualState.Music.ResultHost).OfType<Button>(),
                 button => Assert.Equal(30, button.Width));
-            var copy = Descendants(overlay.VisualState.ResultHost).OfType<Button>()
+            var copy = Descendants(overlay.VisualState.Music.ResultHost).OfType<Button>()
                 .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.CopyTrackInfo);
             Assert.True(copy.Focus());
-            OverlayVisualFactory.SetCopyConfirmed(copy, confirmed: true, TestUiStrings.English, lightTheme: false);
-            OverlayVisualFactory.SetCopyConfirmed(copy, confirmed: false, TestUiStrings.English, lightTheme: false);
+            MusicOverlayVisualPresenter.SetCopyConfirmed(copy, confirmed: true, TestUiStrings.English, lightTheme: false);
+            MusicOverlayVisualPresenter.SetCopyConfirmed(copy, confirmed: false, TestUiStrings.English, lightTheme: false);
             overlay.UpdateLayout();
             var copyChrome = Assert.IsType<Border>(copy.Template.FindName("Chrome", copy));
             var restoredCopyIcon = Assert.IsType<System.Windows.Shapes.Path>(copy.Content);
@@ -387,14 +395,14 @@ public sealed class ProviderMusicOverlayUiTests
             var copyIconOrigin = restoredCopyIcon.TranslatePoint(new Point(), copy);
             Assert.InRange(copyIconOrigin.X, 0, copy.ActualWidth - restoredCopyIcon.ActualWidth);
             Assert.InRange(copyIconOrigin.Y, 0, copy.ActualHeight - restoredCopyIcon.ActualHeight);
-            var close = Descendants(overlay.VisualState.ResultHost).OfType<Button>()
+            var close = Descendants(overlay.VisualState.Music.ResultHost).OfType<Button>()
                 .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.Close);
             Assert.Equal(12, Assert.IsType<System.Windows.Shapes.Path>(close.Content).Width);
             close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
             Assert.IsType<DismissMusicResult>(Assert.Single(commands));
             Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
-            Assert.Equal(Visibility.Collapsed, overlay.VisualState.ResultHost.Visibility);
+            Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.ResultHost.Visibility);
             Assert.False(overlay.Dispatcher.HasShutdownStarted);
             overlay.CloseFromSession();
             Dispatcher.Run();
@@ -423,13 +431,14 @@ public sealed class ProviderMusicOverlayUiTests
                 Providers,
                 SearchProviderIds.GoogleLens);
             var commands = new List<IOverlayCommand>();
-            OverlayVisualFactory.PresentMusicResult(
-                visual,
+            MusicOverlayVisualPresenter.PresentResult(
+                visual.Music,
                 MusicRecognitionOutcome.From(status),
                 TestUiStrings.English,
+                lightTheme: false,
                 commands.Add,
                 (_, _) => { });
-            var close = Descendants(visual.ResultHost).OfType<Button>()
+            var close = Descendants(visual.Music.ResultHost).OfType<Button>()
                 .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.Close);
 
             close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

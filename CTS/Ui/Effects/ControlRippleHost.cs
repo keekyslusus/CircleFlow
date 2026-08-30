@@ -29,7 +29,7 @@ public sealed class ControlRippleHost : IDisposable
     }
 
     public static ControlRippleHost Attach(Control control) =>
-        new(control, Capture.OverlayVisualFactory.AnimationsEnabled());
+        new(control, Capture.OverlayVisualResources.AnimationsEnabled());
 
     internal static ControlRippleHost AttachForTest(Control control) => new(control, true);
 

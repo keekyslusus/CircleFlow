@@ -17,7 +17,7 @@ public sealed class SceneRippleHost : ISceneRippleSink, IDisposable
     private bool _disposed;
 
     public SceneRippleHost(Canvas canvas) :
-        this(canvas, Capture.OverlayVisualFactory.AnimationsEnabled())
+        this(canvas, Capture.OverlayVisualResources.AnimationsEnabled())
     {
     }
 
@@ -101,7 +101,7 @@ public sealed class SceneRippleHost : ISceneRippleSink, IDisposable
 
     private static void AddEntranceParticles(Canvas effect, Point origin, Size size, Color accent)
     {
-        var hardware = Capture.OverlayVisualFactory.HardwareEffectsEnabled();
+        var hardware = Capture.OverlayVisualResources.HardwareEffectsEnabled();
         var maximum = hardware ? MaximumParticles : 100;
         var minimum = hardware ? 80 : 48;
         var count = (int)Math.Clamp(size.Width * size.Height * ParticleDensity * 1.15, minimum, maximum);
