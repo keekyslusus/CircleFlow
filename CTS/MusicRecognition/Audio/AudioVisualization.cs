@@ -16,6 +16,11 @@ public interface IMusicVisualizationProgress
     void Report(MusicVisualizationFrame frame);
 }
 
+public static class MusicVisualizationSettings
+{
+    public const double RippleSensitivity = 0.64;
+}
+
 public static class AudioLevelMeter
 {
     public static AudioLevelFrame Measure(ReadOnlySpan<byte> bytes, WaveFormat format, TimeSpan elapsed)
@@ -84,14 +89,18 @@ public static class AudioLevelNormalizer
 }
 
 public sealed record AudioTransientOptions(
+    double Sensitivity = MusicVisualizationSettings.RippleSensitivity,
     double FastTimeConstantSeconds = 0.035,
     double SlowTimeConstantSeconds = 0.3,
     double MinimumLevel = 0.16,
-    double TriggerRatio = 1.55,
-    double RearmRatio = 1.18,
     TimeSpan? RefractoryInterval = null)
 {
     public TimeSpan EffectiveRefractoryInterval => RefractoryInterval ?? TimeSpan.FromMilliseconds(225);
+
+    public double EffectiveOnsetThreshold =>
+        0.018 + (1 - Math.Clamp(Sensitivity, 0, 1)) * 0.1;
+
+    public double EffectiveRearmThreshold => EffectiveOnsetThreshold * 0.45;
 }
 
 public sealed class AudioTransientDetector
@@ -125,14 +134,15 @@ public sealed class AudioTransientDetector
         _lastElapsed = frame.Elapsed;
         _fast += Alpha(seconds, _options.FastTimeConstantSeconds) * (level - _fast);
         _slow += Alpha(seconds, _options.SlowTimeConstantSeconds) * (level - _slow);
+        var onset = Math.Max(0, _fast - _slow);
 
-        if (!_armed && _fast <= Math.Max(_options.MinimumLevel, _slow * _options.RearmRatio))
+        if (!_armed && onset <= _options.EffectiveRearmThreshold)
             _armed = true;
 
         var outsideRefractory = _lastTransient == TimeSpan.MinValue ||
                                 frame.Elapsed - _lastTransient >= _options.EffectiveRefractoryInterval;
         var transient = _armed && outsideRefractory && level >= _options.MinimumLevel &&
-                        _fast >= Math.Max(_options.MinimumLevel, _slow * _options.TriggerRatio);
+                        onset >= _options.EffectiveOnsetThreshold;
         if (transient)
         {
             _armed = false;

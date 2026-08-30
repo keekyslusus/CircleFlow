@@ -76,6 +76,26 @@ public sealed class MusicRecognitionSimulatorTests
         Assert.Null(outcome.Recognition);
     }
 
+    [Theory]
+    [InlineData(MusicDebugScenario.RippleSoft)]
+    [InlineData(MusicDebugScenario.RippleMedium)]
+    [InlineData(MusicDebugScenario.RippleStrong)]
+    public async Task Ripple_scenarios_run_locally_until_canceled_and_emit_beats(
+        MusicDebugScenario scenario)
+    {
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var progress = new CancelOnTransientProgress(cancellation);
+        var simulator = new MusicRecognitionSimulator(
+            TestUiStrings.English,
+            frameInterval: TimeSpan.FromMilliseconds(40));
+
+        var outcome = await simulator.RecognizeAsync(scenario, progress, cancellation.Token);
+
+        Assert.Equal(MusicRecognitionStatus.Canceled, outcome.Status);
+        Assert.Contains(progress.Frames, frame => frame.IsTransient);
+        Assert.All(progress.Frames, frame => Assert.InRange(frame.NormalizedLevel, 0, 1));
+    }
+
     [Fact]
     public async Task Live_scenario_is_rejected_by_simulator()
     {
@@ -92,5 +112,17 @@ public sealed class MusicRecognitionSimulatorTests
         public List<MusicVisualizationFrame> Frames { get; } = [];
 
         public void Report(MusicVisualizationFrame frame) => Frames.Add(frame);
+    }
+
+    private sealed class CancelOnTransientProgress(CancellationTokenSource cancellation)
+        : IMusicVisualizationProgress
+    {
+        public List<MusicVisualizationFrame> Frames { get; } = [];
+
+        public void Report(MusicVisualizationFrame frame)
+        {
+            Frames.Add(frame);
+            if (frame.IsTransient) cancellation.Cancel();
+        }
     }
 }

@@ -23,6 +23,9 @@ public sealed class MusicRecognitionWorkflowTests
     }
 
     [Theory]
+    [InlineData(MusicDebugScenario.RippleSoft)]
+    [InlineData(MusicDebugScenario.RippleMedium)]
+    [InlineData(MusicDebugScenario.RippleStrong)]
     [InlineData(MusicDebugScenario.Matched)]
     [InlineData(MusicDebugScenario.NoMatch)]
     [InlineData(MusicDebugScenario.NoAudio)]

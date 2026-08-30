@@ -38,6 +38,9 @@ public sealed class UiStrings
     public string OpenInShazam => Get("plugin_circletosearch_music_open_in_shazam");
     public string DebugMusicTitle => Get("plugin_circletosearch_debug_music_title");
     public string DebugMusicLive => Get("plugin_circletosearch_debug_music_live");
+    public string DebugMusicRippleSoft => Get("plugin_circletosearch_debug_music_ripple_soft");
+    public string DebugMusicRippleMedium => Get("plugin_circletosearch_debug_music_ripple_medium");
+    public string DebugMusicRippleStrong => Get("plugin_circletosearch_debug_music_ripple_strong");
     public string DebugMusicMatched => Get("plugin_circletosearch_debug_music_matched");
     public string DebugMusicNoMatch => Get("plugin_circletosearch_debug_music_no_match");
     public string DebugMusicNoAudio => Get("plugin_circletosearch_debug_music_no_audio");

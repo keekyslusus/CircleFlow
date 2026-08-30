@@ -29,6 +29,9 @@
     <system:String x:Key="plugin_circletosearch_music_open_in_shazam">Open in Shazam</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_title">Music debug · Ctrl+Shift+D</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_live">Live Shazam</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_music_ripple_soft">Ripple · soft beat</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_music_ripple_medium">Ripple · medium beat</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_music_ripple_strong">Ripple · strong beat</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_matched">Music found</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_no_match">Music not found</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_no_audio">No system audio</system:String>

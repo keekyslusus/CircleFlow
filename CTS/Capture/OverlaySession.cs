@@ -54,25 +54,53 @@ internal sealed class OverlaySession : IOverlaySession
 
     public Task ReportAudioAsync(MusicVisualizationFrame frame, CancellationToken cancellationToken)
     {
-        lock (_audioGate) _latestFrame = frame;
         var window = _window;
-        if (window is null || Volatile.Read(ref _disposed) != 0 ||
-            Interlocked.Exchange(ref _audioPostPending, 1) != 0)
+        if (window is null || Volatile.Read(ref _disposed) != 0)
             return Task.CompletedTask;
+
+        lock (_audioGate)
+        {
+            if (_audioPostPending != 0)
+            {
+                _latestFrame = CoalesceAudioFrames(_latestFrame, frame);
+                return Task.CompletedTask;
+            }
+
+            _latestFrame = frame;
+            _audioPostPending = 1;
+        }
 
         _ = window.Dispatcher.InvokeAsync(() =>
         {
-            Interlocked.Exchange(ref _audioPostPending, 0);
             MusicVisualizationFrame latest;
-            lock (_audioGate) latest = _latestFrame;
+            lock (_audioGate)
+            {
+                latest = _latestFrame;
+                _audioPostPending = 0;
+            }
             if (Volatile.Read(ref _disposed) == 0) window.ReportAudio(latest);
         }, DispatcherPriority.Render, cancellationToken).Task.ContinueWith(
-            _ => Interlocked.Exchange(ref _audioPostPending, 0),
+            task =>
+            {
+                if (task.IsCompletedSuccessfully) return;
+                lock (_audioGate) _audioPostPending = 0;
+            },
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
         return Task.CompletedTask;
     }
+
+    internal static MusicVisualizationFrame CoalesceAudioFrames(
+        MusicVisualizationFrame pending,
+        MusicVisualizationFrame latest) =>
+        latest with
+        {
+            NormalizedPeak = pending.IsTransient
+                ? Math.Max(pending.NormalizedPeak, latest.NormalizedPeak)
+                : latest.NormalizedPeak,
+            IsTransient = pending.IsTransient || latest.IsTransient,
+        };
 
     public Task ShowMusicResultAsync(MusicRecognitionOutcome outcome, CancellationToken cancellationToken) =>
         InvokeAsync(window => window.ShowMusicResult(outcome), cancellationToken);

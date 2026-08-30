@@ -56,11 +56,10 @@ public sealed class AudioVisualizationTests
     public void Transient_detector_ignores_silence_and_steady_energy_then_rearms()
     {
         var detector = new AudioTransientDetector(new AudioTransientOptions(
+            Sensitivity: 0.7,
             FastTimeConstantSeconds: 0.001,
             SlowTimeConstantSeconds: 1,
             MinimumLevel: 0.1,
-            TriggerRatio: 1.5,
-            RearmRatio: 1.1,
             RefractoryInterval: TimeSpan.FromMilliseconds(225)));
 
         Assert.False(detector.Process(new AudioLevelFrame(TimeSpan.Zero, 0, 0)).IsTransient);
@@ -68,6 +67,39 @@ public sealed class AudioVisualizationTests
         Assert.False(detector.Process(new AudioLevelFrame(TimeSpan.FromMilliseconds(150), 0.02, 0.04)).IsTransient);
         Assert.False(detector.Process(new AudioLevelFrame(TimeSpan.FromMilliseconds(400), 0, 0)).IsTransient);
         Assert.True(detector.Process(new AudioLevelFrame(TimeSpan.FromMilliseconds(500), 0.02, 0.04)).IsTransient);
+    }
+
+    [Fact]
+    public void Transient_detector_follows_beats_when_music_is_already_playing()
+    {
+        var detector = new AudioTransientDetector(new AudioTransientOptions(Sensitivity: 0.78));
+        var elapsed = TimeSpan.Zero;
+
+        for (var index = 0; index < 12; index++)
+            Assert.False(ProcessNormalized(detector, ref elapsed, 0.72).IsTransient);
+
+        Assert.True(ProcessNormalized(detector, ref elapsed, 0.9).IsTransient);
+        for (var index = 0; index < 8; index++)
+            Assert.False(ProcessNormalized(detector, ref elapsed, 0.72).IsTransient);
+        Assert.True(ProcessNormalized(detector, ref elapsed, 0.9).IsTransient);
+    }
+
+    [Fact]
+    public void Higher_sensitivity_detects_smaller_level_changes()
+    {
+        var sensitive = new AudioTransientDetector(new AudioTransientOptions(Sensitivity: 0.9));
+        var selective = new AudioTransientDetector(new AudioTransientOptions(Sensitivity: 0.2));
+        var sensitiveElapsed = TimeSpan.Zero;
+        var selectiveElapsed = TimeSpan.Zero;
+
+        for (var index = 0; index < 12; index++)
+        {
+            ProcessNormalized(sensitive, ref sensitiveElapsed, 0.72);
+            ProcessNormalized(selective, ref selectiveElapsed, 0.72);
+        }
+
+        Assert.True(ProcessNormalized(sensitive, ref sensitiveElapsed, 0.8).IsTransient);
+        Assert.False(ProcessNormalized(selective, ref selectiveElapsed, 0.8).IsTransient);
     }
 
     [Theory]
@@ -174,5 +206,16 @@ public sealed class AudioVisualizationTests
         thread.Join(TimeSpan.FromSeconds(10));
         Assert.False(thread.IsAlive, "the STA thread did not finish in time");
         return failure;
+    }
+
+    private static MusicVisualizationFrame ProcessNormalized(
+        AudioTransientDetector detector,
+        ref TimeSpan elapsed,
+        double normalizedLevel)
+    {
+        elapsed += TimeSpan.FromMilliseconds(40);
+        var decibels = -60 + Math.Clamp(normalizedLevel, 0, 1) * 54;
+        var amplitude = Math.Pow(10, decibels / 20);
+        return detector.Process(new AudioLevelFrame(elapsed, amplitude, amplitude));
     }
 }

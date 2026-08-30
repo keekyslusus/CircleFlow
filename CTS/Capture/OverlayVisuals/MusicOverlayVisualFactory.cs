@@ -3,6 +3,7 @@ namespace CircleToSearch.Capture;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -96,13 +97,16 @@ internal static class MusicOverlayVisualFactory
             button, icon, listeningLayer, waveform, resultHost, debugPanel, debugScenarioButtons);
     }
 
-    private static (Border Panel, StackPanel Buttons) CreateDebugPanel(
+    private static (Border Panel, Panel Buttons) CreateDebugPanel(
         MusicOverlayPalette palette,
         UiStrings strings)
     {
         (MusicDebugScenario Scenario, string Label)[] scenarios =
         [
             (MusicDebugScenario.Live, strings.DebugMusicLive),
+            (MusicDebugScenario.RippleSoft, strings.DebugMusicRippleSoft),
+            (MusicDebugScenario.RippleMedium, strings.DebugMusicRippleMedium),
+            (MusicDebugScenario.RippleStrong, strings.DebugMusicRippleStrong),
             (MusicDebugScenario.Matched, strings.DebugMusicMatched),
             (MusicDebugScenario.NoMatch, strings.DebugMusicNoMatch),
             (MusicDebugScenario.NoAudio, strings.DebugMusicNoAudio),
@@ -110,7 +114,7 @@ internal static class MusicOverlayVisualFactory
             (MusicDebugScenario.ServiceError, strings.DebugMusicServiceError),
             (MusicDebugScenario.RateLimited, strings.DebugMusicRateLimited),
         ];
-        var buttons = new StackPanel();
+        var buttons = new UniformGrid { Columns = 2 };
         foreach (var (scenario, label) in scenarios)
         {
             var button = new Button
@@ -150,7 +154,7 @@ internal static class MusicOverlayVisualFactory
         {
             Child = content,
             Visibility = Visibility.Collapsed,
-            Width = 240,
+            Width = 340,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(24),

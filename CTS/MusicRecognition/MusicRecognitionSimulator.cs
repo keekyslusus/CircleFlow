@@ -7,6 +7,9 @@ namespace CircleToSearch.MusicRecognition;
 public enum MusicDebugScenario
 {
     Live,
+    RippleSoft,
+    RippleMedium,
+    RippleStrong,
     Matched,
     NoMatch,
     NoAudio,
@@ -48,6 +51,9 @@ public sealed class MusicRecognitionSimulator : IMusicRecognitionSimulator
     {
         if (scenario == MusicDebugScenario.Live)
             throw new ArgumentException("The live scenario must use the real recognizer.", nameof(scenario));
+
+        if (IsRippleScenario(scenario))
+            return await SimulateRippleAsync(scenario, progress, cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -101,5 +107,50 @@ public sealed class MusicRecognitionSimulator : IMusicRecognitionSimulator
         var transient = frame > 0 && frame % 6 == 0;
         var peak = Math.Min(1, level + (transient ? 0.24 : 0.1));
         return new MusicVisualizationFrame(elapsed, level, peak, transient);
+    }
+
+    private async Task<MusicRecognitionOutcome> SimulateRippleAsync(
+        MusicDebugScenario scenario,
+        IMusicVisualizationProgress? progress,
+        CancellationToken cancellationToken)
+    {
+        var detector = new AudioTransientDetector();
+        var elapsed = TimeSpan.Zero;
+        var frame = 0;
+        try
+        {
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var normalizedLevel = RippleLevel(scenario, frame);
+                var decibels = -60 + normalizedLevel * 54;
+                var amplitude = Math.Pow(10, decibels / 20);
+                progress?.Report(detector.Process(new AudioLevelFrame(elapsed, amplitude, amplitude)));
+                await Task.Delay(_frameInterval, cancellationToken).ConfigureAwait(false);
+                elapsed += _frameInterval;
+                frame++;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return MusicRecognitionOutcome.From(MusicRecognitionStatus.Canceled);
+        }
+    }
+
+    private static bool IsRippleScenario(MusicDebugScenario scenario) =>
+        scenario is MusicDebugScenario.RippleSoft or
+            MusicDebugScenario.RippleMedium or
+            MusicDebugScenario.RippleStrong;
+
+    private static double RippleLevel(MusicDebugScenario scenario, int frame)
+    {
+        var (baseline, beat, cycleFrames) = scenario switch
+        {
+            MusicDebugScenario.RippleSoft => (0.66, 0.76, 8),
+            MusicDebugScenario.RippleMedium => (0.58, 0.82, 6),
+            MusicDebugScenario.RippleStrong => (0.48, 0.96, 5),
+            _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
+        };
+        return frame % cycleFrames == 2 ? beat : baseline;
     }
 }

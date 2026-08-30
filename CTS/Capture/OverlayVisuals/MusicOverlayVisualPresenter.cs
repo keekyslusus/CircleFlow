@@ -35,7 +35,7 @@ internal static class MusicOverlayVisualPresenter
             scenario);
 
     internal static void SetDebugScenario(
-        StackPanel buttons,
+        Panel buttons,
         MusicOverlayPalette palette,
         MusicDebugScenario scenario)
     {
