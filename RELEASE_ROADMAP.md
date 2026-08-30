@@ -7,9 +7,6 @@ Fixed Version Runtime размером 250+ МБ. Первый запуск до
 приятным, окно Lens — аккуратным, а глобальная горячая клавиша — настраиваемой без ручного ввода
 строки вида `Ctrl+Alt+Space`.
 
-## Milestone 0 — Определиться с названием (release blocker)
-- потом поменять везде где только можно в user visible strings
-- сделать иконку
 
 ## Milestone 1 — диалог отсутствующего WebView2 (release blocker)
 
@@ -81,10 +78,6 @@ Captured hotkey применяется сразу:
 ## Milestone 6 - допилить плагин в самом flow launcher при вызовые через keyword
 - сейчас при вызове через keyword,ничего нет,нужно сделать блок который открывает окно выделения при напечатанном keyword
 
-## Milestone 7 - music recognition
-- надо убрать захардкоженные данные useragent, location (ShazamClient.cs), в иделе сделать рандомно генериуемый,или хотя бы список из 10-20
-- hardcoded useragent исчез
-- теперь осталось: location и timezone
 
 ## Если оверлей исчез, а Flow Launcher зависает при выходе — что сказать агенту
 

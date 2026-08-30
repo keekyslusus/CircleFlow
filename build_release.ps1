@@ -27,11 +27,11 @@ $exitCode = 0
 $output = Join-Path $PSScriptRoot 'bin\Release'
 
 try {
-    dotnet build .\CircleToSearch.csproj --configuration Release --output $output
-    if ($LASTEXITCODE -ne 0) { throw 'Build of CircleToSearch failed.' }
+    dotnet build .\CircleFlow.csproj --configuration Release --output $output
+    if ($LASTEXITCODE -ne 0) { throw 'Build of CircleFlow failed.' }
 
     Write-Host ''
-    Write-Host "CircleToSearch built to -> $output" -ForegroundColor Green
+    Write-Host "CircleFlow built to -> $output" -ForegroundColor Green
 }
 catch {
     $exitCode = 1

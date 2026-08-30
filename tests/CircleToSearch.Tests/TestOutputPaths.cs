@@ -19,7 +19,7 @@ internal static class TestOutputPaths
     private static string RepoRoot()
     {
         var candidate = new DirectoryInfo(AppContext.BaseDirectory);
-        while (candidate is not null && !File.Exists(Path.Combine(candidate.FullName, "CircleToSearch.csproj")))
+        while (candidate is not null && !File.Exists(Path.Combine(candidate.FullName, "CircleFlow.csproj")))
             candidate = candidate.Parent;
         return candidate?.FullName ?? AppContext.BaseDirectory;
     }

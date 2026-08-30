@@ -1,7 +1,7 @@
 {
   "ID": "32d4962d-b408-4f35-9246-6f4bce5aa8fd",
   "ActionKeyword": "cs",
-  "Name": "Circle to Search",
+  "Name": "CircleFlow",
   "Description": "Search a screen area visually or recognize music from Windows output",
   "Author": "keekys",
   "Version": "0.5.1",

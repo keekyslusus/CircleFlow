@@ -10,7 +10,7 @@ public sealed class UiStringsTests
     {
         var strings = TestUiStrings.English;
 
-        Assert.Equal("Circle to Search", strings.PluginTitle);
+        Assert.Equal("CircleFlow", strings.PluginTitle);
         Assert.Equal("Select an area", strings.SelectionPrompt);
         Assert.Equal("Searching with Google Lens…", strings.GoogleLensLoading);
         Assert.Equal(

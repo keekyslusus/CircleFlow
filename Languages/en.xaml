@@ -2,7 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:system="clr-namespace:System;assembly=mscorlib">
 
-    <system:String x:Key="plugin_circletosearch_plugin_name">Circle to Search</system:String>
+    <system:String x:Key="plugin_circletosearch_plugin_name">CircleFlow</system:String>
     <system:String x:Key="plugin_circletosearch_plugin_description">Search a screen area visually or recognize music from Windows output</system:String>
     <system:String x:Key="plugin_circletosearch_google_lens_provider_name">Google Lens - WebView window</system:String>
     <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images - Browser tab</system:String>
@@ -36,7 +36,7 @@
     <system:String x:Key="plugin_circletosearch_debug_music_service_error">Network error</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_rate_limited">Rate limited</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_track_title">Midnight Debug</system:String>
-    <system:String x:Key="plugin_circletosearch_debug_music_track_artist">Circle to Search</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_music_track_artist">CircleFlow</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_track_album">Local Simulation</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_track_genre">Electronic</system:String>
     <system:String x:Key="plugin_circletosearch_music_match">Music recognized</system:String>
@@ -68,6 +68,6 @@
     <system:String x:Key="plugin_circletosearch_results_url_open_failed">The results URL could not be opened in the default browser.</system:String>
     <system:String x:Key="plugin_circletosearch_starting_selection_failed">Starting the selection failed: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_search_failed">The search failed: {0}</system:String>
-    <system:String x:Key="plugin_circletosearch_google_lens_window_title">Circle to Search - Google Lens</system:String>
+    <system:String x:Key="plugin_circletosearch_google_lens_window_title">CircleFlow - Google Lens</system:String>
     <system:String x:Key="plugin_circletosearch_google_lens_loading">Searching with Google Lens…</system:String>
 </ResourceDictionary>
