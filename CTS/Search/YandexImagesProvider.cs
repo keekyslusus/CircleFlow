@@ -5,7 +5,7 @@ namespace CircleToSearch.Search;
 
 // Yandex reverse image search: the raw image is POSTed to the images-apphost upload endpoint and
 // the JSON answer carries a cbir_id whose avatars.mds.yandex.net URL feeds the results page.
-// Anonymous, no API key, no cookies; PNG is accepted as-is (verified 2026-08-28).
+// Anonymous, no API key, no cookies, png is accepted
 public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
 {
     public const string UploadUrl = "https://yandex.ru/images-apphost/image-download";

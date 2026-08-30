@@ -47,8 +47,15 @@ public static class CompositionRoot
             DefaultRequestVersion = HttpVersion.Version11,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact,
         };
-        var shazamClient = new ShazamClient(musicHttpClient, new PixelUserAgentProvider());
-        log.Info(nameof(ShazamClient), $"using User-Agent: {shazamClient.UserAgent}");
+        var shazamClient = new ShazamClient(
+            musicHttpClient,
+            new PixelUserAgentProvider(),
+            new ShazamLocationProvider());
+        var shazamLocation = shazamClient.Location;
+        var shazamLocationDescription = FormattableString.Invariant(
+            $"latitude={shazamLocation.Latitude}, longitude={shazamLocation.Longitude}, altitude={shazamLocation.Altitude} m, timezone={shazamLocation.Timezone}");
+        log.Info(nameof(ShazamClient),
+            $"using User-Agent: {shazamClient.UserAgent}, location: {shazamLocationDescription}");
         var musicRecognizer = new ProgressiveMusicRecognizer(
             new LoopbackCaptureSessionFactory(log),
             shazamClient,

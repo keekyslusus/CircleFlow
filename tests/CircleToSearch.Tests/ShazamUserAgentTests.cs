@@ -33,7 +33,8 @@ public sealed class ShazamUserAgentTests
         var handler = new RecordingHandler();
         using var httpClient = new HttpClient(handler);
         var provider = new SequenceUserAgentProvider("pixel-one", "pixel-two");
-        var client = new ShazamClient(httpClient, provider);
+        var client = new ShazamClient(httpClient, provider, new SequenceLocationProvider(
+            new ShazamLocation(10, 40.7128, -74.0060, "America/New_York")));
         var signature = new ShazamSignature(ShazamSignature.RequiredSampleRate);
 
         Assert.Equal(1, provider.Calls);
@@ -56,6 +57,13 @@ public sealed class ShazamUserAgentTests
             Calls++;
             return _userAgents.Dequeue();
         }
+    }
+
+    private sealed class SequenceLocationProvider(params ShazamLocation[] locations) : IShazamLocationProvider
+    {
+        private readonly Queue<ShazamLocation> _locations = new(locations);
+
+        public ShazamLocation Select() => _locations.Dequeue();
     }
 
     private sealed class RecordingHandler : HttpMessageHandler

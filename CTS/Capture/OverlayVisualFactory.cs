@@ -1236,8 +1236,6 @@ public static class OverlayVisualFactory
             ? Frozen(palette.NeutralOutline)
             : Frozen(SystemAccentColor.Read());
 
-    // Material Symbols "ink_selection" (Apache-2.0); path data taken verbatim from
-    // Images/ink_selection.svg (fill icon, viewBox 0 -960 960 960).
     private static readonly Geometry ChipIconGeometry = CreateChipIconGeometry();
     private static readonly Geometry MusicIconGeometry = CreateMusicIconGeometry();
     private static readonly Geometry ChevronIconGeometry = FrozenGeometry("M7 10l5 5 5-5Z");

@@ -25,16 +25,24 @@ public sealed class ShazamClient : IShazamClient
 {
     private readonly HttpClient _httpClient;
     private readonly string _userAgent;
+    private readonly ShazamLocation _location;
 
-    public ShazamClient(HttpClient httpClient, IShazamUserAgentProvider userAgentProvider)
+    public ShazamClient(
+        HttpClient httpClient,
+        IShazamUserAgentProvider userAgentProvider,
+        IShazamLocationProvider locationProvider)
     {
         ArgumentNullException.ThrowIfNull(httpClient);
         ArgumentNullException.ThrowIfNull(userAgentProvider);
+        ArgumentNullException.ThrowIfNull(locationProvider);
         _httpClient = httpClient;
         _userAgent = userAgentProvider.Select();
+        _location = locationProvider.Select();
     }
 
     internal string UserAgent => _userAgent;
+
+    internal ShazamLocation Location => _location;
 
     public async Task<ShazamRecognition?> RecognizeAsync(
         ShazamSignature signature,
@@ -47,7 +55,12 @@ public sealed class ShazamClient : IShazamClient
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var payload = new
         {
-            geolocation = new { altitude = 300, latitude = 45, longitude = 2 },
+            geolocation = new
+            {
+                altitude = _location.Altitude,
+                latitude = _location.Latitude,
+                longitude = _location.Longitude,
+            },
             signature = new
             {
                 samplems = signature.DurationMilliseconds,
@@ -55,7 +68,7 @@ public sealed class ShazamClient : IShazamClient
                 uri = ShazamSignatureCodec.EncodeToUri(signature),
             },
             timestamp,
-            timezone = "Europe/Paris",
+            timezone = _location.Timezone,
         };
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
