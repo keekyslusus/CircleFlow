@@ -20,6 +20,9 @@ namespace CircleToSearch;
 
 public static class CompositionRoot
 {
+    internal const string HotkeyThreadName = "CircleToSearch hotkey";
+    internal const string GoogleLensThreadName = "CircleToSearch WebView2";
+
     public static UiStrings CreateUiStrings(PluginInitContext context) =>
         new(context.API.GetTranslation);
 
@@ -51,7 +54,8 @@ public static class CompositionRoot
                         pluginDirectory,
                         Path.Combine(dataDirectory, "WebView2Profile"),
                         strings,
-                        log))),
+                        log,
+                        new StaDispatcher(GoogleLensThreadName)))),
                 new VisualSearchProviderRegistration(
                     new SearchProviderDescriptor(SearchProviderIds.YandexImages, strings.YandexImagesProviderName),
                     () => new YandexImagesProvider(log)),
@@ -114,7 +118,7 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
-        var hotkeyWindow = new HotkeyWindow(log);
+        var hotkeyWindow = new HotkeyWindow(new StaDispatcher(HotkeyThreadName), log);
         var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
         var queryTrigger = new QueryTrigger(coordinator, iconPath, registrar.DescribeStatus, strings);
 

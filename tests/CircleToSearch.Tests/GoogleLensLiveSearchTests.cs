@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Imaging;
+using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using Xunit;
 
@@ -18,7 +19,8 @@ public sealed class GoogleLensLiveSearchTests
             AppContext.BaseDirectory,
             Path.Combine(dataDirectory, "Profile"),
             TestUiStrings.English,
-            new PluginLog(dataDirectory));
+            new PluginLog(dataDirectory),
+            new StaDispatcher(CompositionRoot.GoogleLensThreadName));
 
         var first = await window.ShowAsync(CreatePng(), CancellationToken.None);
         var second = await window.ShowAsync(CreatePng(), CancellationToken.None);

@@ -5,7 +5,7 @@ namespace CircleToSearch.Interop;
 // dedicated STA thread with a running message pump. The hotkey window and the overlay window
 // each need such a thread: RegisterHotKey delivers WM_HOTKEY to the creating thread's queue and
 // WPF windows must live on STA.
-public sealed class StaDispatcher : IDisposable
+internal sealed class StaDispatcher : IStaDispatcher
 {
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(2);
 

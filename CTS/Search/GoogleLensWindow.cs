@@ -26,7 +26,7 @@ public sealed class GoogleLensWindow : IDisposable
     private readonly string _userDataFolder;
     private readonly UiStrings _strings;
     private readonly PluginLog _log;
-    private readonly StaDispatcher _dispatcher = new("CircleToSearch WebView2");
+    private readonly IStaDispatcher _dispatcher;
     private CoreWebView2Environment? _environment;
     private Window? _window;
     private WebView2? _webView;
@@ -35,16 +35,18 @@ public sealed class GoogleLensWindow : IDisposable
     private int _loadingGeneration;
     private bool _disposed;
 
-    public GoogleLensWindow(
+    internal GoogleLensWindow(
         string pluginDirectory,
         string userDataFolder,
         UiStrings strings,
-        PluginLog log)
+        PluginLog log,
+        IStaDispatcher dispatcher)
     {
         _pluginDirectory = pluginDirectory;
         _userDataFolder = userDataFolder;
         _strings = strings;
         _log = log;
+        _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
     public static string? GetRuntimeVersion(string pluginDirectory)

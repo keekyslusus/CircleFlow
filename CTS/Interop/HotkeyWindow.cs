@@ -14,17 +14,17 @@ public sealed class HotkeyWindow : IDisposable
     private static readonly Dictionary<IntPtr, HotkeyWindow> Windows = [];
     private static WndProc? _windowProc;
 
-    private readonly StaDispatcher _dispatcher;
+    private readonly IStaDispatcher _dispatcher;
     private readonly PluginLog _log;
     private readonly IntPtr _hwnd;
     private bool _disposed;
 
     public event Action? HotkeyPressed;
 
-    public HotkeyWindow(PluginLog log)
+    internal HotkeyWindow(IStaDispatcher dispatcher, PluginLog log)
     {
-        _log = log;
-        _dispatcher = new StaDispatcher("CircleToSearch hotkey");
+        _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _log = log ?? throw new ArgumentNullException(nameof(log));
         if (!EnsureWindowClass())
         {
             _log.Warn(nameof(HotkeyWindow), "window class registration failed; the global hotkey is unavailable");
