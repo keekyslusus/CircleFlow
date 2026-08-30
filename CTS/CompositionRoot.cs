@@ -37,8 +37,34 @@ public static class CompositionRoot
             ? "WebView2 Runtime was not detected"
             : $"WebView2 Runtime detected: {webView2Version}");
 
-        var hotkeyWindow = new HotkeyWindow(log);
-        var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
+        var notifier = new PluginNotifier(
+            (title, message) => api.ShowMsg(title, message, iconPath),
+            (title, message, button, action) =>
+                api.ShowMsgWithButton(title, button, action, message, iconPath),
+            (title, message) => api.ShowMsgError(title, message),
+            log);
+        var providerRouter = new VisualSearchProviderRouter(
+            [
+                new VisualSearchProviderRegistration(
+                    new SearchProviderDescriptor(SearchProviderIds.GoogleLens, strings.GoogleLensProviderName),
+                    () => new GoogleLensProvider(new GoogleLensWindow(
+                        pluginDirectory,
+                        Path.Combine(dataDirectory, "WebView2Profile"),
+                        strings,
+                        log))),
+                new VisualSearchProviderRegistration(
+                    new SearchProviderDescriptor(SearchProviderIds.YandexImages, strings.YandexImagesProviderName),
+                    () => new YandexImagesProvider(log)),
+            ],
+            SearchProviderIds.GoogleLens,
+            log);
+        var visualSearch = new VisualSearchWorkflow(
+            providerRouter,
+            (frame, bounds) => ImageCropper.Encode(frame, bounds, settings.MaxLongSidePx),
+            OpenResultsUrl,
+            notifier,
+            strings,
+            log);
         var musicClock = new SystemMusicRecognitionClock();
         var musicThrottle = new ShazamRequestThrottle(musicClock);
         var musicHttpClient = new HttpClient
@@ -63,37 +89,33 @@ public static class CompositionRoot
             musicClock,
             log);
         var musicSimulator = new MusicRecognitionSimulator(strings);
-        var providerRouter = new VisualSearchProviderRouter(
-            [
-                new VisualSearchProviderRegistration(
-                    new SearchProviderDescriptor(SearchProviderIds.GoogleLens, strings.GoogleLensProviderName),
-                    () => new GoogleLensProvider(new GoogleLensWindow(
-                        pluginDirectory,
-                        Path.Combine(dataDirectory, "WebView2Profile"),
-                        strings,
-                        log))),
-                new VisualSearchProviderRegistration(
-                    new SearchProviderDescriptor(SearchProviderIds.YandexImages, strings.YandexImagesProviderName),
-                    () => new YandexImagesProvider(log)),
-            ],
-            SearchProviderIds.GoogleLens,
-            log);
-        var coordinator = new SearchCoordinator(
+        var musicRecognition = new MusicRecognitionWorkflow(musicRecognizer, musicSimulator, log);
+        var musicResultPresenter = new MusicResultPresenter(OpenResultsUrl, notifier, strings);
+        var providerSelection = new ProviderSelectionStore(
             providerRouter,
-            new OverlaySessionFactory(log),
-            (frame, bounds) => ImageCropper.Encode(frame, bounds, settings.MaxLongSidePx),
-            musicRecognizer,
-            musicSimulator,
-            OpenResultsUrl,
-            () => api.HideMainWindow(),
-            (title, message) => api.ShowMsg(title, message, iconPath),
-            (title, message, button, action) =>
-                api.ShowMsgWithButton(title, button, action, message, iconPath),
-            (title, message) => api.ShowMsgError(title, message),
+            settings,
             () => api.SaveSettingJsonStorage<PluginSettings>(),
+            notifier,
+            strings,
+            log);
+        var workflow = new OverlaySessionWorkflow(
+            new OverlaySessionFactory(log),
+            visualSearch,
+            musicRecognition,
+            musicResultPresenter,
+            providerSelection,
             settings,
             strings,
             log);
+        var coordinator = new SearchCoordinator(
+            workflow,
+            () => api.HideMainWindow(),
+            settings,
+            notifier,
+            strings,
+            log);
+        var hotkeyWindow = new HotkeyWindow(log);
+        var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
         var queryTrigger = new QueryTrigger(coordinator, iconPath, registrar.DescribeStatus, strings);
 
         hotkeyWindow.HotkeyPressed += () =>

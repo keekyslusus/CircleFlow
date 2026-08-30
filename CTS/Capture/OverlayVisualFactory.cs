@@ -638,7 +638,7 @@ public static class OverlayVisualFactory
         DockPanel.SetDock(close, Dock.Right);
         row.Children.Add(close);
 
-        if (Search.SearchCoordinator.IsSafeShazamUrl(recognition.ShazamUrl))
+        if (Search.MusicResultPresenter.IsSafeShazamUrl(recognition.ShazamUrl))
         {
             var open = IconButton(LinkIconGeometry, strings.OpenInShazam, palette);
             open.Click += (_, _) => publish(new OpenMusicResult());

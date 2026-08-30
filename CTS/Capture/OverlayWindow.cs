@@ -215,78 +215,7 @@ public sealed class OverlayWindow : Window
     {
     }
 
-    // Must not be called from an MTA thread: it creates the STA thread that owns the overlay.
-    // A null outcome means the selection was canceled.
-    public static Task<OverlayOutcome?> SelectAsync(
-        PluginLog log,
-        OverlayOptions options,
-        UiStrings strings,
-        CancellationToken cancel)
-    {
-        var completion = new TaskCompletionSource<OverlayOutcome?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                completion.SetResult(RunOnce(log, options, strings, cancel));
-            }
-            catch (Exception exception)
-            {
-                completion.SetException(exception);
-            }
-        })
-        {
-            IsBackground = true,
-            Name = "CircleToSearch overlay",
-        };
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        return completion.Task;
-    }
-
     public void CancelFromCoordinator() => Dispatcher.BeginInvoke(new Action(() => CancelInternal()));
-
-    private static OverlayOutcome? RunOnce(
-        PluginLog log,
-        OverlayOptions options,
-        UiStrings strings,
-        CancellationToken cancel)
-    {
-        var previousContext = NativeMethods.SetThreadDpiAwarenessContext(NativeMethods.DpiAwarenessPerMonitorV2);
-        try
-        {
-            if (!TryCapturePointerMonitor(out var monitor, out var workArea, out var frame, out var scale, out var pointer))
-            {
-                log.Warn(nameof(OverlayWindow), "capturing the pointer monitor failed; selection canceled");
-                return null;
-            }
-
-            if (cancel.IsCancellationRequested)
-            {
-                frame.Dispose();
-                return null;
-            }
-
-            OverlayOutcome? outcome = null;
-            try
-            {
-                var window = new OverlayWindow(frame, monitor, workArea, scale, options, strings, entranceOrigin: pointer);
-                window.Show();
-                using var registration = cancel.Register(window.CancelFromCoordinator);
-                Dispatcher.Run();
-                outcome = window.Outcome;
-                return outcome;
-            }
-            finally
-            {
-                if (outcome?.Action != OverlayAction.VisualSelection) frame.Dispose();
-            }
-        }
-        finally
-        {
-            NativeMethods.SetThreadDpiAwarenessContext(previousContext);
-        }
-    }
 
     internal static bool TryCapturePointerMonitor(
         out GdiRectangle monitor,
