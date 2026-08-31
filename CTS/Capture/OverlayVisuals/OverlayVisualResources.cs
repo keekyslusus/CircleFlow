@@ -63,10 +63,20 @@ internal static class OverlayVisualResources
         Button button,
         double radius,
         Color hoverBackground,
-        Color hoverForeground)
+        Color hoverForeground) =>
+        ApplyButtonTemplate(button, radius, hoverBackground, hoverForeground, AnimationsEnabled());
+
+    internal static void ApplyButtonTemplate(
+        Button button,
+        double radius,
+        Color hoverBackground,
+        Color hoverForeground,
+        bool animationsEnabled)
     {
         var chrome = new FrameworkElementFactory(typeof(Border), "Chrome");
         chrome.SetValue(Border.CornerRadiusProperty, new CornerRadius(radius));
+        chrome.SetValue(UIElement.RenderTransformOriginProperty, new Point(0.5, 0.5));
+        chrome.SetValue(UIElement.RenderTransformProperty, new ScaleTransform(1, 1));
         chrome.SetBinding(Border.BackgroundProperty, TemplateBinding(Control.BackgroundProperty));
         chrome.SetBinding(Border.BorderBrushProperty, TemplateBinding(Control.BorderBrushProperty));
         chrome.SetBinding(Border.BorderThicknessProperty, TemplateBinding(Control.BorderThicknessProperty));
@@ -90,6 +100,11 @@ internal static class OverlayVisualResources
         template.Triggers.Add(hover);
         var pressed = new Trigger { Property = ButtonBase.IsPressedProperty, Value = true };
         pressed.Setters.Add(new Setter(UIElement.OpacityProperty, 0.82));
+        if (animationsEnabled)
+        {
+            pressed.EnterActions.Add(BeginScaleAnimation(0.96, TimeSpan.FromMilliseconds(80)));
+            pressed.ExitActions.Add(BeginScaleAnimation(1, TimeSpan.FromMilliseconds(140)));
+        }
         template.Triggers.Add(pressed);
         button.Template = template;
         button.FocusVisualStyle = CreateFocusVisualStyle(radius);
@@ -110,6 +125,33 @@ internal static class OverlayVisualResources
         var style = new Style(typeof(Control));
         style.Setters.Add(new Setter(Control.TemplateProperty, template));
         return style;
+    }
+
+    private static BeginStoryboard BeginScaleAnimation(double to, TimeSpan duration)
+    {
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(ScaleAnimation(ScaleTransform.ScaleXProperty, to, duration));
+        storyboard.Children.Add(ScaleAnimation(ScaleTransform.ScaleYProperty, to, duration));
+        return new BeginStoryboard
+        {
+            Storyboard = storyboard,
+            HandoffBehavior = HandoffBehavior.SnapshotAndReplace,
+        };
+    }
+
+    private static DoubleAnimation ScaleAnimation(DependencyProperty property, double to, TimeSpan duration)
+    {
+        var animation = new DoubleAnimation
+        {
+            To = to,
+            Duration = duration,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        Storyboard.SetTargetName(animation, "Chrome");
+        Storyboard.SetTargetProperty(
+            animation,
+            new PropertyPath("(0).(1)", UIElement.RenderTransformProperty, property));
+        return animation;
     }
 
     private static Binding TemplateBinding(DependencyProperty property) => new()
