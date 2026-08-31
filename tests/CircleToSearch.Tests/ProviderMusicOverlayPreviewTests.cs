@@ -60,10 +60,10 @@ public sealed class ProviderMusicOverlayPreviewTests
         window.Show();
         window.UpdateLayout();
 
-        ProviderMenuVisualPresenter.SetOpen(visual.Provider!, visual.Actions.Root, true);
+        ProviderMenuVisualPresenter.SetOpen(visual.Provider!, visual.Bottom.Root, true);
         Pump(TimeSpan.FromMilliseconds(220));
         Capture(visual.Root, $"provider-music-{themeName}-provider.png");
-        ProviderMenuVisualPresenter.SetOpen(visual.Provider!, visual.Actions.Root, false);
+        ProviderMenuVisualPresenter.SetOpen(visual.Provider!, visual.Bottom.Root, false);
 
         visual.Selection.Screenshot.Opacity = 0;
         visual.Selection.Sheen.Opacity = 0;

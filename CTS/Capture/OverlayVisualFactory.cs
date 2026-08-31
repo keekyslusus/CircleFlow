@@ -36,13 +36,13 @@ public static class OverlayVisualFactory
         var palette = PluginPalette.For(lightTheme);
         var selection = SelectionOverlayVisualFactory.Create(frame, size);
         var provider = ProviderMenuVisualFactory.Create(providers, selectedProviderId, lightTheme, strings);
-        var music = MusicOverlayVisualFactory.Create(size, chipBottomMargin, lightTheme, strings);
+        var music = MusicOverlayVisualFactory.Create(size, lightTheme, strings);
         var actions = ActionTrayVisualFactory.Create(
-            chipBottomMargin,
             palette.SelectionChip,
             strings,
             provider,
             music);
+        var bottom = BottomOverlayVisualFactory.Create(chipBottomMargin, actions, provider, music);
         var sceneRippleLayer = new Canvas { IsHitTestVisible = false };
         var effects = new OverlayEffectsVisual(
             sceneRippleLayer,
@@ -59,10 +59,9 @@ public static class OverlayVisualFactory
         root.Children.Add(selection.InputSurface);
         root.Children.Add(effects.SceneRippleLayer);
         root.Children.Add(music.ListeningLayer);
-        root.Children.Add(actions.Root);
-        root.Children.Add(music.ResultHost);
+        root.Children.Add(bottom.Root);
         root.Children.Add(music.DebugPanel);
 
-        return new OverlayVisual(lightTheme, root, selection, actions, provider, music, effects);
+        return new OverlayVisual(lightTheme, root, selection, actions, provider, music, bottom, effects);
     }
 }

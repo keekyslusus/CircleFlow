@@ -24,7 +24,7 @@ internal static class ProviderMenuVisualPresenter
         ProviderMenuVisualFactory.PopulateMenuItems(visual, providers, selectedProviderId, lightTheme, strings);
     }
 
-    internal static void SetOpen(ProviderMenuVisual visual, Grid actionRoot, bool open)
+    internal static void SetOpen(ProviderMenuVisual visual, Grid coordinateRoot, bool open)
     {
         if (!open)
         {
@@ -60,15 +60,15 @@ internal static class ProviderMenuVisualPresenter
         if (visual.Button.IsLoaded)
         {
             visual.Menu.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var anchor = visual.Button.TranslatePoint(new Point(visual.Button.ActualWidth / 2, 0), actionRoot);
+            var anchor = visual.Button.TranslatePoint(new Point(visual.Button.ActualWidth / 2, 0), coordinateRoot);
             var left = Math.Clamp(
                 anchor.X - visual.Menu.DesiredSize.Width / 2,
                 0,
-                Math.Max(0, actionRoot.ActualWidth - visual.Menu.DesiredSize.Width));
+                Math.Max(0, coordinateRoot.ActualWidth - visual.Menu.DesiredSize.Width));
             var top = Math.Clamp(
                 anchor.Y - 10 - visual.Menu.DesiredSize.Height,
                 0,
-                Math.Max(0, actionRoot.ActualHeight - visual.Menu.DesiredSize.Height));
+                Math.Max(0, coordinateRoot.ActualHeight - visual.Menu.DesiredSize.Height));
             Canvas.SetLeft(visual.Menu, left);
             Canvas.SetTop(visual.Menu, top);
         }

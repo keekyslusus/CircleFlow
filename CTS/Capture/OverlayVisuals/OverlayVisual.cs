@@ -12,6 +12,7 @@ public sealed record OverlayVisual(
     ActionTrayVisual Actions,
     ProviderMenuVisual? Provider,
     MusicOverlayVisual Music,
+    BottomOverlayVisual Bottom,
     OverlayEffectsVisual Effects);
 
 public sealed record SelectionOverlayVisual(
@@ -25,10 +26,14 @@ public sealed record SelectionOverlayVisual(
     Grid InputSurface);
 
 public sealed record ActionTrayVisual(
-    Grid Root,
     StackPanel Tray,
     Border Chip,
     TranslateTransform Lift);
+
+public sealed record BottomOverlayVisual(
+    Grid Root,
+    StackPanel Stack,
+    Canvas ProviderMenuLayer);
 
 public sealed record ProviderMenuVisual(
     Button Button,

@@ -189,14 +189,11 @@ public sealed class OverlayWindow : Window
     internal bool IsActionTrayInteraction(object? originalSource, Point windowPoint)
     {
         var hit = InputHitTest(windowPoint) as DependencyObject;
-        return IsWithin(originalSource as DependencyObject, _visual.Actions.Root) ||
-               IsWithin(originalSource as DependencyObject, _visual.Music.ResultHost) ||
+        return IsWithin(originalSource as DependencyObject, _visual.Bottom.Root) ||
                IsWithin(originalSource as DependencyObject, _visual.Music.DebugPanel) ||
-               IsWithin(hit, _visual.Actions.Root) ||
-               IsWithin(hit, _visual.Music.ResultHost) ||
+               IsWithin(hit, _visual.Bottom.Root) ||
                IsWithin(hit, _visual.Music.DebugPanel) ||
-               _visual.Actions.Root.IsMouseOver ||
-               _visual.Music.ResultHost.IsMouseOver ||
+               _visual.Bottom.Root.IsMouseOver ||
                _visual.Music.DebugPanel.IsMouseOver;
     }
 
@@ -257,7 +254,7 @@ public sealed class OverlayWindow : Window
     {
         if (!_chipDismissed) ActionTrayTransitions.BeginEntrance(_visual.Actions);
         QueueEntranceRipple();
-        _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.Actions.Root));
+        _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.Bottom.Root));
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)

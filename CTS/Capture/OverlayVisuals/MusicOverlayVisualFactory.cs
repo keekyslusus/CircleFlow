@@ -17,7 +17,6 @@ internal static class MusicOverlayVisualFactory
 
     internal static MusicOverlayVisual Create(
         Size size,
-        double chipBottomMargin,
         bool lightTheme,
         UiStrings strings)
     {
@@ -87,8 +86,6 @@ internal static class MusicOverlayVisualFactory
         {
             Visibility = Visibility.Collapsed,
             HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(0, 0, 0, chipBottomMargin + 60),
         };
         Panel.SetZIndex(resultHost, 1);
         var (debugPanel, debugScenarioButtons) = CreateDebugPanel(palette.MusicOverlay, strings);

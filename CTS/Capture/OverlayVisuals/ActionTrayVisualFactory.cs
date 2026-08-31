@@ -13,7 +13,6 @@ internal static class ActionTrayVisualFactory
     private static readonly Geometry ChipIconGeometry = CreateChipIconGeometry();
 
     internal static ActionTrayVisual Create(
-        double chipBottomMargin,
         SelectionChipPalette palette,
         UiStrings strings,
         ProviderMenuVisual? provider,
@@ -26,20 +25,13 @@ internal static class ActionTrayVisualFactory
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Bottom,
             HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 0, 0, chipBottomMargin),
             RenderTransform = lift,
         };
         tray.Children.Add(chip);
         if (provider is not null) tray.Children.Add(provider.Button);
         tray.Children.Add(music.Button);
 
-        var providerMenuLayer = new Canvas();
-        if (provider is not null) providerMenuLayer.Children.Add(provider.Menu);
-        var root = new Grid { IsHitTestVisible = true };
-        root.Children.Add(tray);
-        root.Children.Add(providerMenuLayer);
-        Panel.SetZIndex(root, 2);
-        return new ActionTrayVisual(root, tray, chip, lift);
+        return new ActionTrayVisual(tray, chip, lift);
     }
 
     private static Border CreateChip(SelectionChipPalette palette, UiStrings strings)

@@ -8,7 +8,7 @@ namespace CircleToSearch.Capture.OverlayInteractions;
 internal sealed class ProviderMenuController : IDisposable
 {
     private readonly ProviderMenuVisual? _visual;
-    private readonly Grid _actionRoot;
+    private readonly Grid _coordinateRoot;
     private readonly IReadOnlyList<SearchProviderDescriptor> _providers;
     private readonly UiStrings _strings;
     private readonly bool _lightTheme;
@@ -19,7 +19,7 @@ internal sealed class ProviderMenuController : IDisposable
 
     internal ProviderMenuController(
         ProviderMenuVisual? visual,
-        Grid actionRoot,
+        Grid coordinateRoot,
         IReadOnlyList<SearchProviderDescriptor> providers,
         string selectedProviderId,
         UiStrings strings,
@@ -28,7 +28,7 @@ internal sealed class ProviderMenuController : IDisposable
         Action<string> providerSelected)
     {
         _visual = visual;
-        _actionRoot = actionRoot;
+        _coordinateRoot = coordinateRoot;
         _providers = providers;
         _strings = strings;
         _lightTheme = lightTheme;
@@ -49,7 +49,7 @@ internal sealed class ProviderMenuController : IDisposable
     {
         if (_disposed || _visual is null) return;
         IsOpen = open;
-        ProviderMenuVisualPresenter.SetOpen(_visual, _actionRoot, open);
+        ProviderMenuVisualPresenter.SetOpen(_visual, _coordinateRoot, open);
     }
 
     public void Dispose()

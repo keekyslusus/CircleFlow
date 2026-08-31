@@ -97,7 +97,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.SelectionHoldCompleted);
             provider = new ProviderMenuController(
                 context.Visual.Provider,
-                context.Visual.Actions.Root,
+                context.Visual.Bottom.Root,
                 context.Providers,
                 context.SelectedProviderId,
                 context.Strings,
