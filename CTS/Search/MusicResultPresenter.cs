@@ -52,7 +52,7 @@ internal sealed class MusicResultPresenter(
 
     private void ShowMatch(ShazamRecognition match)
     {
-        var title = $"{match.Artist} — {match.Title}";
+        var title = $"{match.Artist} - {match.Title}";
         var subtitle = strings.MusicMatchSubtitle(match.Album, match.Genre);
         if (CanOpen(match))
         {

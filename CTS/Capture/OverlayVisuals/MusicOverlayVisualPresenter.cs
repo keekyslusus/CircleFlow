@@ -198,7 +198,7 @@ internal static class MusicOverlayVisualPresenter
             row.Children.Add(open);
         }
         var copyButton = IconButton(CopyIconGeometry, strings.CopyTrackInfo, palette);
-        copyButton.Click += (_, _) => copy($"{recognition.Title} — {recognition.Artist}", copyButton);
+        copyButton.Click += (_, _) => copy($"{recognition.Title} - {recognition.Artist}", copyButton);
         DockPanel.SetDock(copyButton, Dock.Right);
         row.Children.Add(copyButton);
         var note = OverlayVisualResources.Icon(MusicOverlayVisualFactory.MusicIconGeometry, 16, palette.Primary);
@@ -216,7 +216,7 @@ internal static class MusicOverlayVisualPresenter
             Margin = new Thickness(0, 0, 4, 0),
         };
         text.Inlines.Add(new System.Windows.Documents.Run(recognition.Title) { FontWeight = FontWeights.SemiBold });
-        text.Inlines.Add(new System.Windows.Documents.Run($" — {recognition.Artist}")
+        text.Inlines.Add(new System.Windows.Documents.Run($" - {recognition.Artist}")
         {
             Foreground = OverlayVisualResources.Frozen(palette.MutedText),
         });

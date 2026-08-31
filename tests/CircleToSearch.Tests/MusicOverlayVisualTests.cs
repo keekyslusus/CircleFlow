@@ -61,6 +61,7 @@ public sealed class MusicOverlayVisualTests
             MusicOverlayVisualPresenter.SetListeningState(root.Music, listening: false, lightTheme: false);
             Assert.Equal(Visibility.Collapsed, root.Music.ListeningLayer.Visibility);
 
+            string? copiedTrack = null;
             var card = MusicOverlayVisualPresenter.PresentResult(
                 root.Music,
                 MusicRecognitionOutcome.Matched(new ShazamRecognition(
@@ -68,16 +69,24 @@ public sealed class MusicOverlayVisualTests
                 TestUiStrings.English,
                 lightTheme: false,
                 _ => { },
-                (_, _) => { });
+                (track, _) => copiedTrack = track);
 
             Assert.Equal(Visibility.Visible, root.Music.ResultHost.Visibility);
             Assert.Equal(48, card.Height);
+            var trackText = Assert.Single(Descendants(card).OfType<TextBlock>());
+            Assert.Equal(
+                "Track - Artist",
+                string.Concat(trackText.Inlines.OfType<System.Windows.Documents.Run>().Select(run => run.Text)));
             var names = Descendants(root.Music.ResultHost).OfType<Button>()
                 .Select(AutomationProperties.GetName)
                 .ToArray();
             Assert.Contains(TestUiStrings.English.Close, names);
             Assert.Contains(TestUiStrings.English.CopyTrackInfo, names);
             Assert.Contains(TestUiStrings.English.OpenInShazam, names);
+            Descendants(root.Music.ResultHost).OfType<Button>()
+                .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.CopyTrackInfo)
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal("Track - Artist", copiedTrack);
             root.Music.Waveform.Dispose();
             root.Effects.SceneRipples.Dispose();
         });

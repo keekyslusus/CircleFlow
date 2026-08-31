@@ -41,7 +41,7 @@ public sealed class MusicResultPresenterTests
         presenter.PresentFallback(MusicRecognitionOutcome.Matched(match));
 
         var button = Assert.Single(notifier.Buttons);
-        Assert.Equal("Artist — Track", button.Title);
+        Assert.Equal("Artist - Track", button.Title);
         Assert.Empty(opened);
         button.Action();
         Assert.Equal([match.ShazamUrl], opened);
