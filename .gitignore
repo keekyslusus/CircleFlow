@@ -2,7 +2,9 @@ bin/
 obj/
 *.user
 *.lnk
-/design
-*.sh
 tests/temp/
+/design
+
+# REMOVE THESE BEFORE PUBLIC RELEASE!!!:
+RELEASE_ROADMAP.md
 /poc
