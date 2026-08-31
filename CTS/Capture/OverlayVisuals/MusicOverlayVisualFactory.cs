@@ -68,7 +68,7 @@ internal static class MusicOverlayVisualFactory
         listeningLayer.Children.Add(new TextBlock
         {
             Text = strings.Listening,
-            Foreground = OverlayVisualResources.Frozen(palette.MusicOverlay.Text),
+            Foreground = OverlayVisualResources.Frozen(PluginPalette.ListeningText),
             HorizontalAlignment = HorizontalAlignment.Center,
             FontSize = 14,
             FontWeight = FontWeights.Medium,

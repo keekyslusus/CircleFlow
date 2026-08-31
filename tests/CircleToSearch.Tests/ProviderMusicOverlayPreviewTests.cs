@@ -70,9 +70,9 @@ public sealed class ProviderMusicOverlayPreviewTests
         visual.Selection.Halo.Opacity = 0;
         visual.Selection.Accent.Opacity = 0;
         MusicOverlayVisualPresenter.SetListeningState(visual.Music, listening: true, lightTheme);
-        visual.Music.Waveform.Report(new MusicVisualizationFrame(
-            TimeSpan.FromSeconds(1), 0.62, 0.86, IsTransient: true));
         visual.Music.Waveform.Start();
+        visual.Music.Waveform.Report(new MusicVisualizationFrame(
+            TimeSpan.FromMilliseconds(33), 0.68, 0, IsTransient: false));
         visual.Effects.SceneRipples.Emit(new SceneRippleRequest(
             new Point(width / 2.0, height * 0.45),
             SceneRipplePreset.AudioTransient,

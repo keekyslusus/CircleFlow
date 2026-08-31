@@ -19,6 +19,7 @@ internal static class PluginPalette
     public static Color SelectionHalo { get; } = Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF);
     public static Color SelectionFrameFill { get; } = Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF);
     public static Color EntranceParticle { get; } = Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF);
+    public static Color ListeningText { get; } = Color.FromRgb(0xF4, 0xF5, 0xF8);
     public static Color ControlRipple { get; } = Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF);
     public static Color SceneRippleEntrance { get; } = Color.FromRgb(0x8A, 0xB4, 0xF8);
     public static Color SceneRippleAudio { get; } = Color.FromRgb(0xC5, 0x9B, 0xFF);

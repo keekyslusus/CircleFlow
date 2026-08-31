@@ -2,15 +2,43 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using CircleToSearch.Capture;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Shazam;
+using CircleToSearch.Ui;
 using Xunit;
 
 namespace CircleToSearch.Tests;
 
 public sealed class MusicOverlayVisualTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Listening_label_stays_light_with_a_dark_shadow_in_both_themes(bool lightTheme)
+    {
+        var failure = RunOnSta(() =>
+        {
+            var root = OverlayVisualFactory.CreateRoot(
+                null,
+                new Size(640, 400),
+                32,
+                lightTheme,
+                TestUiStrings.English);
+            var label = Assert.Single(root.Music.ListeningLayer.Children.OfType<TextBlock>());
+            var foreground = Assert.IsType<SolidColorBrush>(label.Foreground);
+            var shadow = Assert.IsType<DropShadowEffect>(label.Effect);
+
+            Assert.Equal(PluginPalette.ListeningText, foreground.Color);
+            Assert.Equal(PluginPalette.OpaqueBlack, shadow.Color);
+            root.Music.Waveform.Dispose();
+            root.Effects.SceneRipples.Dispose();
+        });
+
+        Assert.Null(failure);
+    }
+
     [Fact]
     public void Listening_and_matched_result_states_are_owned_by_the_music_visual()
     {
