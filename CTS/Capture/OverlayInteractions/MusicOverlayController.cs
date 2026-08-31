@@ -22,10 +22,12 @@ internal sealed class MusicOverlayController : IDisposable
     private readonly Action _startRequested;
     private readonly Action _cancelRequested;
     private readonly Action<MusicDebugScenario> _debugScenarioSelected;
+    private readonly Action<ToastNotification> _showToast;
     private readonly Action<IOverlayCommand> _resultCommandRequested;
     private readonly Action<string> _setClipboard;
     private readonly Func<bool> _animationsEnabled;
-    private readonly List<Button> _debugButtons = [];
+    private readonly List<Button> _debugScenarioButtons = [];
+    private readonly List<Button> _debugToastButtons = [];
     private readonly List<DispatcherTimer> _copyTimers = [];
     private readonly List<IDisposable> _resultRipples = [];
     private DispatcherOperation? _matchRippleOperation;
@@ -53,6 +55,7 @@ internal sealed class MusicOverlayController : IDisposable
         Action startRequested,
         Action cancelRequested,
         Action<MusicDebugScenario> debugScenarioSelected,
+        Action<ToastNotification> showToast,
         Action<IOverlayCommand> resultCommandRequested,
         Action<string> setClipboard,
         Func<bool> animationsEnabled)
@@ -68,6 +71,7 @@ internal sealed class MusicOverlayController : IDisposable
         _startRequested = startRequested;
         _cancelRequested = cancelRequested;
         _debugScenarioSelected = debugScenarioSelected;
+        _showToast = showToast;
         _resultCommandRequested = resultCommandRequested;
         _setClipboard = setClipboard;
         _animationsEnabled = animationsEnabled;
@@ -76,7 +80,12 @@ internal sealed class MusicOverlayController : IDisposable
         foreach (var button in _visual.DebugScenarioButtons.Children.OfType<Button>())
         {
             button.Click += OnDebugScenarioClick;
-            _debugButtons.Add(button);
+            _debugScenarioButtons.Add(button);
+        }
+        foreach (var button in _visual.DebugToastButtons.Children.OfType<Button>())
+        {
+            button.Click += OnDebugToastClick;
+            _debugToastButtons.Add(button);
         }
     }
 
@@ -169,8 +178,10 @@ internal sealed class MusicOverlayController : IDisposable
         if (_disposed) return;
         _disposed = true;
         _visual.Button.Click -= OnMusicButtonClick;
-        foreach (var button in _debugButtons) button.Click -= OnDebugScenarioClick;
-        _debugButtons.Clear();
+        foreach (var button in _debugScenarioButtons) button.Click -= OnDebugScenarioClick;
+        _debugScenarioButtons.Clear();
+        foreach (var button in _debugToastButtons) button.Click -= OnDebugToastClick;
+        _debugToastButtons.Clear();
         foreach (var timer in _copyTimers)
         {
             timer.Stop();
@@ -199,6 +210,13 @@ internal sealed class MusicOverlayController : IDisposable
             sender is not Button { Tag: MusicDebugScenario scenario }) return;
         MusicOverlayVisualPresenter.SetDebugScenario(_visual, scenario, _lightTheme);
         _debugScenarioSelected(scenario);
+    }
+
+    private void OnDebugToastClick(object sender, RoutedEventArgs e)
+    {
+        if (_disposed || _getMode() == OverlayInteractionMode.Closing ||
+            sender is not Button { Tag: ToastTone tone, Content: string message }) return;
+        _showToast(new ToastNotification(message, tone));
     }
 
     private void CopyTrackInfo(string text, Button button)

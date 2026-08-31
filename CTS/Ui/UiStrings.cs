@@ -37,7 +37,8 @@ public sealed class UiStrings
     public string MusicNetworkError => Get("plugin_circletosearch_music_network_error");
     public string MusicDeviceError => Get("plugin_circletosearch_music_device_error");
     public string OpenInShazam => Get("plugin_circletosearch_music_open_in_shazam");
-    public string DebugMusicTitle => Get("plugin_circletosearch_debug_music_title");
+    public string DebugOverlayTitle => Get("plugin_circletosearch_debug_overlay_title");
+    public string DebugMusicSection => Get("plugin_circletosearch_debug_music_section");
     public string DebugMusicLive => Get("plugin_circletosearch_debug_music_live");
     public string DebugMusicRippleSoft => Get("plugin_circletosearch_debug_music_ripple_soft");
     public string DebugMusicRippleMedium => Get("plugin_circletosearch_debug_music_ripple_medium");
@@ -48,6 +49,10 @@ public sealed class UiStrings
     public string DebugMusicDeviceError => Get("plugin_circletosearch_debug_music_device_error");
     public string DebugMusicServiceError => Get("plugin_circletosearch_debug_music_service_error");
     public string DebugMusicRateLimited => Get("plugin_circletosearch_debug_music_rate_limited");
+    public string DebugToastSection => Get("plugin_circletosearch_debug_toast_section");
+    public string DebugToastNeutral => Get("plugin_circletosearch_debug_toast_neutral");
+    public string DebugToastError => Get("plugin_circletosearch_debug_toast_error");
+    public string DebugToastSuccess => Get("plugin_circletosearch_debug_toast_success");
     public string DebugMusicTrackTitle => Get("plugin_circletosearch_debug_music_track_title");
     public string DebugMusicTrackArtist => Get("plugin_circletosearch_debug_music_track_artist");
     public string DebugMusicTrackAlbum => Get("plugin_circletosearch_debug_music_track_album");

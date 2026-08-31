@@ -108,6 +108,10 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.Visual.LightTheme,
                 context.CanUseProvider,
                 context.ProviderSelected);
+            toast = new ToastOverlayController(
+                context.Visual.Bottom,
+                context.Visual.LightTheme,
+                _animationsEnabled);
             music = new MusicOverlayController(
                 context.Visual.Music,
                 context.Visual.Bottom.LayoutTransitions,
@@ -120,12 +124,9 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.MusicStartRequested,
                 context.MusicCancelRequested,
                 context.DebugScenarioSelected,
+                toast.Show,
                 context.MusicResultCommandRequested,
                 _setClipboard,
-                _animationsEnabled);
-            toast = new ToastOverlayController(
-                context.Visual.Bottom,
-                context.Visual.LightTheme,
                 _animationsEnabled);
             return new OverlayControllers(selection, provider, music, toast);
         }

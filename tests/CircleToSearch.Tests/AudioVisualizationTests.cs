@@ -1,9 +1,11 @@
 using CircleToSearch.Capture;
 using CircleToSearch.MusicRecognition.Audio;
+using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
 using NAudio.Wave;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Shapes;
 using Xunit;
 
@@ -135,7 +137,10 @@ public sealed class AudioVisualizationTests
                 1));
 
             var effect = Assert.Single(canvas.Children.OfType<Canvas>());
-            Assert.Single(effect.Children.OfType<Rectangle>());
+            var wash = Assert.Single(effect.Children.OfType<Rectangle>());
+            Assert.Equal(
+                PluginPalette.WithAlpha(PluginPalette.SceneRippleAudio, 0.15),
+                Assert.IsType<SolidColorBrush>(wash.Fill).Color);
             var particles = effect.Children.OfType<Ellipse>().ToArray();
             Assert.True(particles.Length > 20);
             Assert.All(particles, particle => Assert.Null(particle.Stroke));
@@ -179,6 +184,32 @@ public sealed class AudioVisualizationTests
             Assert.True(
                 particles.Max(Canvas.GetTop) - particles.Min(Canvas.GetTop) > canvas.ActualHeight * 0.65,
                 "particles should span most of the overlay height");
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Music_match_scene_effect_uses_system_accent()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var canvas = new Canvas { Width = 640, Height = 400 };
+            canvas.Measure(new Size(640, 400));
+            canvas.Arrange(new Rect(0, 0, 640, 400));
+            using var host = new SceneRippleHost(canvas, animationsEnabled: true);
+
+            host.Emit(new SceneRippleRequest(
+                new Point(320, 200),
+                SceneRipplePreset.MusicMatch,
+                1));
+
+            var effect = Assert.Single(canvas.Children.OfType<Canvas>());
+            var wash = Assert.Single(effect.Children.OfType<Rectangle>());
+            var fill = Assert.IsType<SolidColorBrush>(wash.Fill);
+            Assert.Equal(
+                PluginPalette.WithAlpha(SystemAccentColor.Read(), 0.07),
+                fill.Color);
         });
 
         Assert.Null(failure);

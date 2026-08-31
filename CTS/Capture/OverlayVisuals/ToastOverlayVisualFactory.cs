@@ -15,18 +15,18 @@ internal static class ToastOverlayVisualFactory
     {
         ArgumentNullException.ThrowIfNull(notification);
         var theme = PluginPalette.For(lightTheme);
-        var tone = notification.Tone switch
+        var accent = notification.Tone switch
         {
-            ToastTone.Neutral => theme.Toast.Neutral,
-            ToastTone.Error => theme.Toast.Error,
-            ToastTone.Success => theme.Toast.Success,
+            ToastTone.Neutral => theme.Toast.NeutralAccent,
+            ToastTone.Error => theme.Toast.ErrorAccent,
+            ToastTone.Success => theme.Toast.SuccessAccent,
             _ => throw new ArgumentOutOfRangeException(nameof(notification)),
         };
 
         var message = new TextBlock
         {
             Text = notification.Message,
-            Foreground = OverlayVisualResources.Frozen(tone.Text),
+            Foreground = OverlayVisualResources.Frozen(theme.Toast.Text),
             FontFamily = OverlayVisualResources.Font,
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,
@@ -37,8 +37,8 @@ internal static class ToastOverlayVisualFactory
         var card = new Border
         {
             Child = message,
-            Background = OverlayVisualResources.Frozen(tone.Surface),
-            BorderBrush = OverlayVisualResources.Frozen(tone.Border),
+            Background = OverlayVisualResources.Frozen(theme.Toast.Surface),
+            BorderBrush = OverlayVisualResources.Frozen(accent),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(20),
             Padding = new Thickness(16, 10, 16, 10),

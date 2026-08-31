@@ -56,7 +56,8 @@ public sealed record MusicOverlayVisual(
     AudioWaveformVisual Waveform,
     Grid ResultHost,
     Border DebugPanel,
-    Panel DebugScenarioButtons);
+    Panel DebugScenarioButtons,
+    Panel DebugToastButtons);
 
 public sealed record OverlayEffectsVisual(
     Canvas SceneRippleLayer,

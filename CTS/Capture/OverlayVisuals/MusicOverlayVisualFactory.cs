@@ -88,13 +88,21 @@ internal static class MusicOverlayVisualFactory
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         Panel.SetZIndex(resultHost, 1);
-        var (debugPanel, debugScenarioButtons) = CreateDebugPanel(palette.MusicOverlay, strings);
+        var (debugPanel, debugScenarioButtons, debugToastButtons) =
+            CreateDebugPanel(palette.MusicOverlay, strings);
         Panel.SetZIndex(debugPanel, 3);
         return new MusicOverlayVisual(
-            button, icon, listeningLayer, waveform, resultHost, debugPanel, debugScenarioButtons);
+            button,
+            icon,
+            listeningLayer,
+            waveform,
+            resultHost,
+            debugPanel,
+            debugScenarioButtons,
+            debugToastButtons);
     }
 
-    private static (Border Panel, Panel Buttons) CreateDebugPanel(
+    private static (Border Panel, Panel ScenarioButtons, Panel ToastButtons) CreateDebugPanel(
         MusicOverlayPalette palette,
         UiStrings strings)
     {
@@ -111,41 +119,36 @@ internal static class MusicOverlayVisualFactory
             (MusicDebugScenario.ServiceError, strings.DebugMusicServiceError),
             (MusicDebugScenario.RateLimited, strings.DebugMusicRateLimited),
         ];
-        var buttons = new UniformGrid { Columns = 2 };
+        var scenarioButtons = new UniformGrid { Columns = 2 };
         foreach (var (scenario, label) in scenarios)
-        {
-            var button = new Button
-            {
-                Content = label,
-                Tag = scenario,
-                Foreground = OverlayVisualResources.Frozen(palette.Text),
-                Background = OverlayVisualResources.Frozen(PluginPalette.Transparent),
-                BorderBrush = OverlayVisualResources.Frozen(PluginPalette.Transparent),
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(10, 6, 10, 6),
-                Margin = new Thickness(0, 1, 0, 1),
-                HorizontalContentAlignment = HorizontalAlignment.Left,
-                FontFamily = OverlayVisualResources.Font,
-                FontSize = 12,
-                Cursor = Cursors.Hand,
-            };
-            OverlayVisualResources.ApplyButtonTemplate(
-                button, 6, palette.SecondaryContainer, palette.OnSecondaryContainer);
-            AutomationProperties.SetName(button, label);
-            buttons.Children.Add(button);
-        }
+            scenarioButtons.Children.Add(CreateDebugButton(palette, label, scenario));
+
+        (ToastTone Tone, string Label)[] toasts =
+        [
+            (ToastTone.Neutral, strings.DebugToastNeutral),
+            (ToastTone.Error, strings.DebugToastError),
+            (ToastTone.Success, strings.DebugToastSuccess),
+        ];
+        var toastButtons = new UniformGrid { Columns = 3 };
+        foreach (var (tone, label) in toasts)
+            toastButtons.Children.Add(CreateDebugButton(palette, label, tone));
 
         var content = new StackPanel();
         content.Children.Add(new TextBlock
         {
-            Text = strings.DebugMusicTitle,
+            Text = strings.DebugOverlayTitle,
             Foreground = OverlayVisualResources.Frozen(palette.Text),
             FontFamily = OverlayVisualResources.Font,
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 0, 0, 8),
+            Margin = new Thickness(0, 0, 0, 10),
         });
-        content.Children.Add(buttons);
+        content.Children.Add(CreateDebugSectionTitle(palette, strings.DebugMusicSection));
+        content.Children.Add(scenarioButtons);
+        var toastTitle = CreateDebugSectionTitle(palette, strings.DebugToastSection);
+        toastTitle.Margin = new Thickness(0, 10, 0, 4);
+        content.Children.Add(toastTitle);
+        content.Children.Add(toastButtons);
 
         var panel = new Border
         {
@@ -169,9 +172,50 @@ internal static class MusicOverlayVisualFactory
                 Opacity = palette.ShadowOpacity,
             },
         };
-        MusicOverlayVisualPresenter.SetDebugScenario(buttons, palette, MusicDebugScenario.Live);
-        return (panel, buttons);
+        MusicOverlayVisualPresenter.SetDebugScenario(
+            scenarioButtons,
+            palette,
+            MusicDebugScenario.Live);
+        return (panel, scenarioButtons, toastButtons);
     }
+
+    private static Button CreateDebugButton(
+        MusicOverlayPalette palette,
+        string label,
+        object tag)
+    {
+        var button = new Button
+        {
+            Content = label,
+            Tag = tag,
+            Foreground = OverlayVisualResources.Frozen(palette.Text),
+            Background = OverlayVisualResources.Frozen(PluginPalette.Transparent),
+            BorderBrush = OverlayVisualResources.Frozen(PluginPalette.Transparent),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(10, 6, 10, 6),
+            Margin = new Thickness(0, 1, 0, 1),
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            FontFamily = OverlayVisualResources.Font,
+            FontSize = 12,
+            Cursor = Cursors.Hand,
+        };
+        OverlayVisualResources.ApplyButtonTemplate(
+            button, 6, palette.SecondaryContainer, palette.OnSecondaryContainer);
+        AutomationProperties.SetName(button, label);
+        return button;
+    }
+
+    private static TextBlock CreateDebugSectionTitle(
+        MusicOverlayPalette palette,
+        string text) => new()
+        {
+            Text = text,
+            Foreground = OverlayVisualResources.Frozen(palette.MutedText),
+            FontFamily = OverlayVisualResources.Font,
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 4),
+        };
 
     private static Geometry CreateMusicIconGeometry()
     {

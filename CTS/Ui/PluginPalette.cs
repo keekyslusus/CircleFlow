@@ -4,6 +4,8 @@ using System.Windows.Media;
 
 internal static class PluginPalette
 {
+    private static Color DarkMusicPrimary { get; } = Color.FromRgb(0xD0, 0xBC, 0xFF);
+    private static Color LightMusicPrimary { get; } = Color.FromRgb(0x67, 0x50, 0xA4);
     private static Color DarkDockSurface { get; } = Color.FromArgb(0xE6, 0x20, 0x21, 0x24);
     private static Color DarkDockHoverOverlay { get; } = Color.FromArgb(0x12, 0x00, 0x00, 0x00);
     private static Color LightDockSurface { get; } = Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD);
@@ -21,9 +23,7 @@ internal static class PluginPalette
     public static Color EntranceParticle { get; } = Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF);
     public static Color ListeningText { get; } = Color.FromRgb(0xF4, 0xF5, 0xF8);
     public static Color ControlRipple { get; } = Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF);
-    public static Color SceneRippleEntrance { get; } = Color.FromRgb(0x8A, 0xB4, 0xF8);
     public static Color SceneRippleAudio { get; } = Color.FromRgb(0xC5, 0x9B, 0xFF);
-    public static Color SceneRippleMatch { get; } = Color.FromRgb(0x71, 0xDC, 0xA1);
 
     public static IReadOnlyList<Color> GoogleLensLoadingDots { get; } = Array.AsReadOnly(
         new[]
@@ -80,25 +80,18 @@ internal static class PluginPalette
             Text: Color.FromRgb(0xE6, 0xE1, 0xE5),
             MutedText: Color.FromRgb(0xCA, 0xC4, 0xD0),
             Border: Color.FromRgb(0x44, 0x47, 0x46),
-            Primary: Color.FromRgb(0xD0, 0xBC, 0xFF),
+            Primary: DarkMusicPrimary,
             PrimaryContainer: Color.FromRgb(0x4F, 0x37, 0x8B),
             OnPrimaryContainer: Color.FromRgb(0xEA, 0xDD, 0xFF),
             SecondaryContainer: Color.FromRgb(0x4A, 0x44, 0x58),
             OnSecondaryContainer: Color.FromRgb(0xE8, 0xDE, 0xF8),
             ShadowOpacity: 0.35),
         Toast: new ToastPalette(
-            Neutral: new ToastTonePalette(
-                Color.FromRgb(0x21, 0x1F, 0x26),
-                Color.FromRgb(0xE6, 0xE1, 0xE5),
-                Color.FromRgb(0x44, 0x47, 0x46)),
-            Error: new ToastTonePalette(
-                Color.FromRgb(0x8C, 0x1D, 0x18),
-                Color.FromRgb(0xF9, 0xDE, 0xDC),
-                Color.FromRgb(0xF2, 0xB8, 0xB5)),
-            Success: new ToastTonePalette(
-                Color.FromRgb(0x00, 0x52, 0x33),
-                Color.FromRgb(0xA8, 0xF5, 0xC7),
-                Color.FromRgb(0x6D, 0xD5, 0x8C)),
+            Surface: Color.FromRgb(0x21, 0x1F, 0x26),
+            Text: Color.FromRgb(0xE6, 0xE1, 0xE5),
+            NeutralAccent: Color.FromRgb(0x44, 0x47, 0x46),
+            ErrorAccent: Color.FromRgb(0xC9, 0x8B, 0x86),
+            SuccessAccent: DarkMusicPrimary,
             ShadowOpacity: 0.35));
 
     private static PluginThemePalette Light { get; } = new(
@@ -145,25 +138,18 @@ internal static class PluginPalette
             Text: Color.FromRgb(0x1C, 0x1B, 0x1F),
             MutedText: Color.FromRgb(0x49, 0x45, 0x4F),
             Border: Color.FromRgb(0xC4, 0xC7, 0xC5),
-            Primary: Color.FromRgb(0x67, 0x50, 0xA4),
+            Primary: LightMusicPrimary,
             PrimaryContainer: Color.FromRgb(0xEA, 0xDD, 0xFF),
             OnPrimaryContainer: Color.FromRgb(0x21, 0x00, 0x5D),
             SecondaryContainer: Color.FromRgb(0xE8, 0xDE, 0xF8),
             OnSecondaryContainer: Color.FromRgb(0x1D, 0x19, 0x2B),
             ShadowOpacity: 0.12),
         Toast: new ToastPalette(
-            Neutral: new ToastTonePalette(
-                Color.FromRgb(0xF3, 0xF3, 0xFA),
-                Color.FromRgb(0x1C, 0x1B, 0x1F),
-                Color.FromRgb(0xC4, 0xC7, 0xC5)),
-            Error: new ToastTonePalette(
-                Color.FromRgb(0xF9, 0xDE, 0xDC),
-                Color.FromRgb(0x41, 0x0E, 0x0B),
-                Color.FromRgb(0xB3, 0x26, 0x1E)),
-            Success: new ToastTonePalette(
-                Color.FromRgb(0xD0, 0xF8, 0xDD),
-                Color.FromRgb(0x0F, 0x52, 0x23),
-                Color.FromRgb(0x18, 0x80, 0x38)),
+            Surface: Color.FromRgb(0xF3, 0xF3, 0xFA),
+            Text: Color.FromRgb(0x1C, 0x1B, 0x1F),
+            NeutralAccent: Color.FromRgb(0xC4, 0xC7, 0xC5),
+            ErrorAccent: Color.FromRgb(0xB6, 0x5F, 0x58),
+            SuccessAccent: LightMusicPrimary,
             ShadowOpacity: 0.12));
 
     internal static Color Composite(Color background, Color foreground)
@@ -193,12 +179,12 @@ internal sealed record PluginThemePalette(
     ToastPalette Toast);
 
 internal sealed record ToastPalette(
-    ToastTonePalette Neutral,
-    ToastTonePalette Error,
-    ToastTonePalette Success,
+    Color Surface,
+    Color Text,
+    Color NeutralAccent,
+    Color ErrorAccent,
+    Color SuccessAccent,
     double ShadowOpacity);
-
-internal sealed record ToastTonePalette(Color Surface, Color Text, Color Border);
 
 internal sealed record SelectionChipPalette(
     Color Surface,

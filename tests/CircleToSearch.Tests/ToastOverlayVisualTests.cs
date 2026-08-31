@@ -14,25 +14,35 @@ public sealed class ToastOverlayVisualTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Every_tone_uses_its_semantic_theme_palette(bool lightTheme)
+    public void Every_tone_uses_shared_surface_and_semantic_accent(bool lightTheme)
     {
         Assert.Null(RunOnSta(() =>
         {
             var theme = PluginPalette.For(lightTheme);
-            VerifyTone(ToastTone.Neutral, theme.Toast.Neutral);
-            VerifyTone(ToastTone.Error, theme.Toast.Error);
-            VerifyTone(ToastTone.Success, theme.Toast.Success);
+            VerifyTone(ToastTone.Neutral, theme.Toast.NeutralAccent);
+            VerifyTone(ToastTone.Error, theme.Toast.ErrorAccent);
+            VerifyTone(ToastTone.Success, theme.Toast.SuccessAccent);
 
-            void VerifyTone(ToastTone tone, ToastTonePalette expected)
+            void VerifyTone(ToastTone tone, Color expectedAccent)
             {
                 var visual = ToastOverlayVisualFactory.Create(
                     new ToastNotification("Message", tone),
                     lightTheme);
-                Assert.Equal(expected.Surface, Assert.IsType<SolidColorBrush>(visual.Card.Background).Color);
-                Assert.Equal(expected.Text, Assert.IsType<SolidColorBrush>(visual.Message.Foreground).Color);
-                Assert.Equal(expected.Border, Assert.IsType<SolidColorBrush>(visual.Card.BorderBrush).Color);
+                Assert.Equal(theme.Toast.Surface, Assert.IsType<SolidColorBrush>(visual.Card.Background).Color);
+                Assert.Equal(theme.Toast.Text, Assert.IsType<SolidColorBrush>(visual.Message.Foreground).Color);
+                Assert.Equal(expectedAccent, Assert.IsType<SolidColorBrush>(visual.Card.BorderBrush).Color);
             }
         }));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Success_accent_reuses_music_primary(bool lightTheme)
+    {
+        var theme = PluginPalette.For(lightTheme);
+
+        Assert.Equal(theme.MusicOverlay.Primary, theme.Toast.SuccessAccent);
     }
 
     [Fact]

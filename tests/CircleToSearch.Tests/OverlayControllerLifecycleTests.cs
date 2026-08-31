@@ -81,6 +81,44 @@ public sealed class OverlayControllerLifecycleTests
     }
 
     [Fact]
+    public void Debug_toast_buttons_request_every_tone_with_their_localized_message()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = CreateVisual();
+            var notifications = new List<ToastNotification>();
+            using var controller = CreateMusicController(
+                visual,
+                [],
+                animationsEnabled: false,
+                notifications.Add);
+
+            foreach (var button in visual.Music.DebugToastButtons.Children.OfType<Button>())
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Collection(
+                notifications,
+                notification =>
+                {
+                    Assert.Equal(ToastTone.Neutral, notification.Tone);
+                    Assert.Equal(TestUiStrings.English.DebugToastNeutral, notification.Message);
+                },
+                notification =>
+                {
+                    Assert.Equal(ToastTone.Error, notification.Tone);
+                    Assert.Equal(TestUiStrings.English.DebugToastError, notification.Message);
+                },
+                notification =>
+                {
+                    Assert.Equal(ToastTone.Success, notification.Tone);
+                    Assert.Equal(TestUiStrings.English.DebugToastSuccess, notification.Message);
+                });
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Dispose_aborts_pending_match_dispatcher_operation()
     {
         var failure = RunOnSta(() =>
@@ -395,7 +433,8 @@ public sealed class OverlayControllerLifecycleTests
     private static MusicOverlayController CreateMusicController(
         OverlayVisual visual,
         List<IOverlayCommand> commands,
-        bool animationsEnabled) =>
+        bool animationsEnabled,
+        Action<ToastNotification>? showToast = null) =>
         new(
             visual.Music,
             visual.Bottom.LayoutTransitions,
@@ -408,6 +447,7 @@ public sealed class OverlayControllerLifecycleTests
             () => { },
             () => { },
             _ => { },
+            showToast ?? (_ => { }),
             commands.Add,
             _ => { },
             () => animationsEnabled);

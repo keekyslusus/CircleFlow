@@ -272,7 +272,7 @@ public sealed class SceneRippleHost : ISceneRippleSink, IDisposable
     private static ParticleProfile Profile(SceneRipplePreset preset, double intensity) => preset switch
     {
         SceneRipplePreset.Entrance => new(
-            PluginPalette.SceneRippleEntrance,
+            PluginPalette.SceneRippleAudio,
             TimeSpan.FromMilliseconds(1150),
             0,
             0,
@@ -284,7 +284,7 @@ public sealed class SceneRippleHost : ISceneRippleSink, IDisposable
             TimeSpan.Zero,
             TimeSpan.Zero),
         SceneRipplePreset.MusicMatch => new(
-            PluginPalette.SceneRippleMatch,
+            SystemAccentColor.Read(),
             TimeSpan.FromMilliseconds(980),
             90,
             140,

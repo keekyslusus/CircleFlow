@@ -350,6 +350,55 @@ public sealed class OverlayWindowTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Debug_toast_buttons_spawn_all_tones_in_the_overlay_stack()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                _ => { },
+                new OverlayControllerFactory(_ => { }, () => false),
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+
+            foreach (var button in overlay.VisualState.Music.DebugToastButtons.Children.OfType<Button>())
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            var stack = overlay.VisualState.Bottom.Stack.Children.Cast<UIElement>().ToArray();
+            Assert.Equal(5, stack.Length);
+            Assert.Equal(
+                [
+                    TestUiStrings.English.DebugToastNeutral,
+                    TestUiStrings.English.DebugToastError,
+                    TestUiStrings.English.DebugToastSuccess,
+                ],
+                stack.Take(3)
+                    .Select(slot => Assert.IsType<TextBlock>(
+                        Assert.IsType<Border>(
+                            Assert.Single(Assert.IsType<Grid>(slot).Children)).Child).Text)
+                    .ToArray());
+            Assert.Same(overlay.VisualState.Bottom.ResultSlot, stack[3]);
+            Assert.Same(overlay.VisualState.Bottom.ActionSlot, stack[4]);
+
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
     private static void PumpUntilShutdown(OverlayWindow overlay)
     {
         overlay.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
