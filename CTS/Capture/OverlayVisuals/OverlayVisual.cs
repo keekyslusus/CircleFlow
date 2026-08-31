@@ -38,6 +38,11 @@ public sealed record BottomOverlayVisual(
     Canvas ProviderMenuLayer,
     BottomOverlayLayoutTransitions LayoutTransitions);
 
+internal sealed record ToastOverlayVisual(
+    Grid Slot,
+    Border Card,
+    TextBlock Message);
+
 public sealed record ProviderMenuVisual(
     Button Button,
     ContentControl Content,

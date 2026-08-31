@@ -194,6 +194,7 @@ internal sealed class SelectionOverlayController : IDisposable
         var bounds = LassoBoundsCalculator.Calculate(_sampler.Points, _monitor, _paddingPx, _minDiagonalPx);
         if (bounds is null)
         {
+            ResetRejectedSelection();
             _selectionRejected();
         }
         else
@@ -258,6 +259,34 @@ internal sealed class SelectionOverlayController : IDisposable
         _holdTimer.Stop();
         _holdTimer.Tick -= OnHoldCompleted;
         _holdTimer = null;
+    }
+
+    private void ResetRejectedSelection()
+    {
+        UnqueueRevealUpdate();
+        StopHoldTimer();
+        _sampler.Reset();
+        _stroke.Clear();
+        _visual.Halo.Points.Clear();
+        _visual.Accent.Points.Clear();
+        var size = new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight);
+        _visual.Dim.Data = SelectionOverlayTransitions.BuildRevealGeometry(size, []);
+        _visual.Sheen.Data = Geometry.Empty;
+        _visual.DimRect.Data = Geometry.Empty;
+        _visual.SelectionFrame.Data = Geometry.Empty;
+
+        UIElement[] visible = [_visual.Dim, _visual.Sheen, _visual.Halo, _visual.Accent];
+        UIElement[] hidden = [_visual.DimRect, _visual.SelectionFrame];
+        foreach (var layer in visible)
+        {
+            layer.BeginAnimation(UIElement.OpacityProperty, null);
+            layer.Opacity = 1;
+        }
+        foreach (var layer in hidden)
+        {
+            layer.BeginAnimation(UIElement.OpacityProperty, null);
+            layer.Opacity = 0;
+        }
     }
 
     private static CubicEase EaseOut() => new() { EasingMode = EasingMode.EaseOut };

@@ -17,6 +17,7 @@ public sealed class UiStrings
     public string GoogleLensProviderName => Get("plugin_circletosearch_google_lens_provider_name");
     public string YandexImagesProviderName => Get("plugin_circletosearch_yandex_images_provider_name");
     public string SelectionPrompt => Get("plugin_circletosearch_selection_prompt");
+    public string SelectionTooSmall => Get("plugin_circletosearch_selection_too_small");
     public string CancelKeyName => Get("plugin_circletosearch_cancel_key_name");
     public string CancelAction => Get("plugin_circletosearch_cancel_action");
     public string MusicRecognitionAction => Get("plugin_circletosearch_music_recognition_action");

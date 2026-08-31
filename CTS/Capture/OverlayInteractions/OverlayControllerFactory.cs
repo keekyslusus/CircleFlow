@@ -14,19 +14,22 @@ internal interface IOverlayControllerFactory
 internal sealed class OverlayControllers(
     SelectionOverlayController selection,
     ProviderMenuController provider,
-    MusicOverlayController music) : IDisposable
+    MusicOverlayController music,
+    ToastOverlayController toast) : IDisposable
 {
     private bool _disposed;
 
     internal SelectionOverlayController Selection { get; } = selection;
     internal ProviderMenuController Provider { get; } = provider;
     internal MusicOverlayController Music { get; } = music;
+    internal ToastOverlayController Toast { get; } = toast;
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
         Music.Dispose();
+        Toast.Dispose();
         Provider.Dispose();
         Selection.Dispose();
     }
@@ -79,6 +82,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         SelectionOverlayController? selection = null;
         ProviderMenuController? provider = null;
         MusicOverlayController? music = null;
+        ToastOverlayController? toast = null;
         try
         {
             selection = new SelectionOverlayController(
@@ -119,10 +123,15 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.MusicResultCommandRequested,
                 _setClipboard,
                 _animationsEnabled);
-            return new OverlayControllers(selection, provider, music);
+            toast = new ToastOverlayController(
+                context.Visual.Bottom,
+                context.Visual.LightTheme,
+                _animationsEnabled);
+            return new OverlayControllers(selection, provider, music, toast);
         }
         catch
         {
+            toast?.Dispose();
             music?.Dispose();
             provider?.Dispose();
             selection?.Dispose();

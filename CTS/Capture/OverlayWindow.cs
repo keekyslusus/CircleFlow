@@ -44,11 +44,13 @@ public sealed class OverlayWindow : Window
     private readonly bool _clickThroughOnCancel;
     private readonly Point? _entranceOrigin;
     private readonly Action<IOverlayCommand>? _publishCommand;
+    private readonly UiStrings _strings;
     private readonly OverlayInteractionState _interaction = new();
     private readonly OverlayControllers _controllers;
     private readonly SelectionOverlayController _selection;
     private readonly ProviderMenuController _provider;
     private readonly MusicOverlayController _music;
+    private readonly ToastOverlayController _toast;
     private readonly List<IDisposable> _controlRipples = [];
     private bool _chipDismissed;
     private bool _cancelPublished;
@@ -84,6 +86,7 @@ public sealed class OverlayWindow : Window
         _exitFade = exitFade;
         _clickThroughOnCancel = clickThroughOnCancel;
         _publishCommand = publishCommand;
+        _strings = strings;
         ArgumentNullException.ThrowIfNull(controllerFactory);
         _entranceOrigin = entranceOrigin is null
             ? null
@@ -125,7 +128,7 @@ public sealed class OverlayWindow : Window
             CanStartSelection,
             OnSelectionStarted,
             OnSelectionCompleted,
-            () => CancelInternal(),
+            OnSelectionRejected,
             FinishShutdown,
             () => !_interaction.IsFinished,
             providerId => _publishCommand?.Invoke(new ProviderSelected(providerId)),
@@ -137,6 +140,7 @@ public sealed class OverlayWindow : Window
         _selection = _controllers.Selection;
         _provider = _controllers.Provider;
         _music = _controllers.Music;
+        _toast = _controllers.Toast;
 
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -311,6 +315,14 @@ public sealed class OverlayWindow : Window
         else _publishCommand(new VisualSelection(selection, _provider.SelectedProviderId));
     }
 
+    private void OnSelectionRejected()
+    {
+        if (_interaction.IsFinished || Mode != OverlayInteractionMode.Selecting) return;
+        _chipDismissed = false;
+        ActionTrayTransitions.BeginReturn(_visual.Actions);
+        _toast.Show(new ToastNotification(_strings.SelectionTooSmall, ToastTone.Error));
+    }
+
     private void OnMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         CancelInternal();
@@ -382,6 +394,7 @@ public sealed class OverlayWindow : Window
                 _selection.StopInput();
                 _provider.SetOpen(false);
                 _music.SetDebugPanelOpen(false);
+                _toast.SettleForClosing();
                 _visual.Bottom.LayoutTransitions.Settle();
                 break;
         }

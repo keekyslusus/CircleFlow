@@ -285,7 +285,7 @@ public sealed class OverlayWindowTests
     }
 
     [Fact]
-    public void Small_selection_cancels_without_transferring_the_frame()
+    public void Small_selection_resets_and_shows_toast_without_publishing_a_command()
     {
         var failure = RunOnSta(() =>
         {
@@ -322,6 +322,27 @@ public sealed class OverlayWindowTests
             });
 
             Assert.False(overlay.FrameTransferred);
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            Assert.Empty(commands);
+            Assert.Empty(overlay.VisualState.Selection.Halo.Points);
+            Assert.Empty(overlay.VisualState.Selection.Accent.Points);
+            Assert.Same(System.Windows.Media.Geometry.Empty, overlay.VisualState.Selection.Sheen.Data);
+            Assert.Same(System.Windows.Media.Geometry.Empty, overlay.VisualState.Selection.DimRect.Data);
+            Assert.Same(System.Windows.Media.Geometry.Empty, overlay.VisualState.Selection.SelectionFrame.Data);
+            Assert.Equal(1, overlay.VisualState.Selection.Dim.Opacity);
+            Assert.Equal(0, overlay.VisualState.Selection.DimRect.Opacity);
+            Assert.True(overlay.VisualState.Actions.Tray.IsHitTestVisible);
+
+            var stack = overlay.VisualState.Bottom.Stack.Children.Cast<UIElement>().ToArray();
+            Assert.Equal(3, stack.Length);
+            var toastSlot = Assert.IsType<Grid>(stack[0]);
+            Assert.Same(overlay.VisualState.Bottom.ResultSlot, stack[1]);
+            Assert.Same(overlay.VisualState.Bottom.ActionSlot, stack[2]);
+            var toastCard = Assert.IsType<Border>(Assert.Single(toastSlot.Children));
+            var toastMessage = Assert.IsType<TextBlock>(toastCard.Child);
+            Assert.Equal(TestUiStrings.English.SelectionTooSmall, toastMessage.Text);
+
+            RaiseEscape(overlay);
             Assert.IsType<CancelSession>(Assert.Single(commands));
             Dispatcher.Run();
         });
