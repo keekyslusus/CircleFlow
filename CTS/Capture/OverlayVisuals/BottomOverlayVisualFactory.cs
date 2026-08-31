@@ -2,6 +2,7 @@ namespace CircleToSearch.Capture;
 
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 
 internal static class BottomOverlayVisualFactory
 {
@@ -13,7 +14,17 @@ internal static class BottomOverlayVisualFactory
         ProviderMenuVisual? provider,
         MusicOverlayVisual music)
     {
-        music.ResultHost.Margin = new Thickness(0, 0, 0, ResultGapDips);
+        music.ResultHost.Margin = new Thickness();
+        var resultSlot = new Grid
+        {
+            Margin = new Thickness(0, 0, 0, ResultGapDips),
+        };
+        resultSlot.SetBinding(
+            UIElement.VisibilityProperty,
+            new Binding(nameof(UIElement.Visibility)) { Source = music.ResultHost });
+        resultSlot.Children.Add(music.ResultHost);
+        var actionSlot = new Grid();
+        actionSlot.Children.Add(actions.Tray);
 
         var stack = new StackPanel
         {
@@ -21,8 +32,8 @@ internal static class BottomOverlayVisualFactory
             VerticalAlignment = VerticalAlignment.Bottom,
             Margin = new Thickness(0, 0, 0, chipBottomMargin),
         };
-        stack.Children.Add(music.ResultHost);
-        stack.Children.Add(actions.Tray);
+        stack.Children.Add(resultSlot);
+        stack.Children.Add(actionSlot);
 
         var providerMenuLayer = new Canvas();
         if (provider is not null) providerMenuLayer.Children.Add(provider.Menu);
@@ -31,6 +42,13 @@ internal static class BottomOverlayVisualFactory
         root.Children.Add(stack);
         root.Children.Add(providerMenuLayer);
         Panel.SetZIndex(root, 2);
-        return new BottomOverlayVisual(root, stack, providerMenuLayer);
+        var layoutTransitions = new BottomOverlayLayoutTransitions(root, stack);
+        return new BottomOverlayVisual(
+            root,
+            stack,
+            resultSlot,
+            actionSlot,
+            providerMenuLayer,
+            layoutTransitions);
     }
 }

@@ -50,9 +50,15 @@ public sealed class OverlayVisualCompositionTests
             Assert.True(visual.Bottom.Root.IsHitTestVisible);
             Assert.Null(visual.Bottom.Root.Background);
             Assert.Equal(
-                [visual.Music.ResultHost, visual.Actions.Tray],
+                [visual.Bottom.ResultSlot, visual.Bottom.ActionSlot],
                 visual.Bottom.Stack.Children.Cast<UIElement>());
-            Assert.Equal(new Thickness(0, 0, 0, 16), visual.Music.ResultHost.Margin);
+            Assert.Same(visual.Music.ResultHost, Assert.Single(visual.Bottom.ResultSlot.Children));
+            Assert.Same(visual.Actions.Tray, Assert.Single(visual.Bottom.ActionSlot.Children));
+            Assert.Equal(new Thickness(0, 0, 0, 16), visual.Bottom.ResultSlot.Margin);
+            Assert.Equal(new Thickness(), visual.Music.ResultHost.Margin);
+            Assert.IsType<System.Windows.Media.TranslateTransform>(visual.Bottom.ResultSlot.RenderTransform);
+            Assert.IsType<System.Windows.Media.TranslateTransform>(visual.Bottom.ActionSlot.RenderTransform);
+            Assert.Same(visual.Actions.Lift, visual.Actions.Tray.RenderTransform);
             visual.Music.Waveform.Dispose();
             visual.Effects.SceneRipples.Dispose();
         });

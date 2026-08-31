@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
@@ -216,6 +217,66 @@ public sealed class OverlayControllerLifecycleTests
     }
 
     [Fact]
+    public void Production_result_mutations_move_a_persistent_slot_without_replacing_component_transforms()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = CreateVisual();
+            var toastSlot = new Grid();
+            toastSlot.Children.Add(new Border { Width = 180, Height = 32 });
+            visual.Bottom.Stack.Children.Insert(0, toastSlot);
+            var window = ShowVisual(visual);
+            var commands = new List<IOverlayCommand>();
+            using var controller = CreateMusicController(visual, commands, animationsEnabled: true);
+            var trayLift = visual.Actions.Lift;
+            var oldToastY = toastSlot.TranslatePoint(new Point(), visual.Root).Y;
+
+            controller.ShowResult(MatchedOutcome());
+
+            var toastOffset = Assert.IsType<TranslateTransform>(toastSlot.RenderTransform);
+            Assert.Equal(oldToastY, toastSlot.TranslatePoint(new Point(), visual.Root).Y, 2);
+            Assert.InRange(toastOffset.Y, 63, 65);
+            Assert.Same(trayLift, visual.Actions.Tray.RenderTransform);
+            var matchedCard = Assert.Single(visual.Music.ResultHost.Children.OfType<FrameworkElement>());
+            var matchedTransforms = MusicResultTransitions.GetTransforms(matchedCard);
+            Assert.Same(matchedTransforms.Translate,
+                Assert.IsType<TransformGroup>(matchedCard.RenderTransform).Children[1]);
+            PumpFor(TimeSpan.FromMilliseconds(260));
+            var matchedToastY = toastSlot.TranslatePoint(new Point(), visual.Root).Y;
+
+            controller.ShowResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio));
+
+            Assert.Equal(matchedToastY, toastSlot.TranslatePoint(new Point(), visual.Root).Y, 2);
+            Assert.True(toastOffset.HasAnimatedProperties);
+            Assert.Same(trayLift, visual.Actions.Tray.RenderTransform);
+            var replacement = Assert.Single(visual.Music.ResultHost.Children.OfType<FrameworkElement>());
+            Assert.NotSame(matchedCard, replacement);
+            Assert.IsType<TransformGroup>(replacement.RenderTransform);
+            PumpFor(TimeSpan.FromMilliseconds(260));
+            var tallToastY = toastSlot.TranslatePoint(new Point(), visual.Root).Y;
+            Assert.True(tallToastY < matchedToastY);
+
+            controller.DismissResult();
+            Assert.Equal(Visibility.Visible, visual.Music.ResultHost.Visibility);
+            PumpFor(TimeSpan.FromMilliseconds(190));
+
+            Assert.Equal(Visibility.Collapsed, visual.Music.ResultHost.Visibility);
+            Assert.True(toastOffset.HasAnimatedProperties);
+            Assert.Same(trayLift, visual.Actions.Tray.RenderTransform);
+            PumpFor(TimeSpan.FromMilliseconds(260));
+            Assert.Equal(oldToastY, toastSlot.TranslatePoint(new Point(), visual.Root).Y, 2);
+            Assert.Equal(0, toastOffset.Y, 3);
+            Assert.False(toastOffset.HasAnimatedProperties);
+
+            visual.Effects.SceneRipples.Dispose();
+            window.Content = null;
+            window.Close();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Dispose_cancels_pending_result_exit()
     {
         var failure = RunOnSta(() =>
@@ -337,6 +398,7 @@ public sealed class OverlayControllerLifecycleTests
         bool animationsEnabled) =>
         new(
             visual.Music,
+            visual.Bottom.LayoutTransitions,
             visual.Effects,
             visual.Root,
             TestUiStrings.English,

@@ -106,6 +106,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.ProviderSelected);
             music = new MusicOverlayController(
                 context.Visual.Music,
+                context.Visual.Bottom.LayoutTransitions,
                 context.Visual.Effects,
                 context.Visual.Root,
                 context.Strings,

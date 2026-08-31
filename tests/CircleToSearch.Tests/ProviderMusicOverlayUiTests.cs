@@ -479,7 +479,7 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.False(overlay.VisualState.Music.Waveform.IsRendering);
             Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.ListeningLayer.Visibility);
             Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ResultHost.Visibility);
-            Assert.Same(overlay.VisualState.Bottom.Stack, overlay.VisualState.Music.ResultHost.Parent);
+            Assert.Same(overlay.VisualState.Bottom.ResultSlot, overlay.VisualState.Music.ResultHost.Parent);
             var card = Assert.Single(overlay.VisualState.Music.ResultHost.Children.OfType<Border>());
             Assert.Equal(48, card.Height);
             Assert.Equal(new CornerRadius(24), card.CornerRadius);

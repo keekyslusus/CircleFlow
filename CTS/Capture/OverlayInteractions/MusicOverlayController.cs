@@ -12,6 +12,7 @@ namespace CircleToSearch.Capture.OverlayInteractions;
 internal sealed class MusicOverlayController : IDisposable
 {
     private readonly MusicOverlayVisual _visual;
+    private readonly BottomOverlayLayoutTransitions _layoutTransitions;
     private readonly OverlayEffectsVisual _effects;
     private readonly FrameworkElement _root;
     private readonly UiStrings _strings;
@@ -42,6 +43,7 @@ internal sealed class MusicOverlayController : IDisposable
 
     internal MusicOverlayController(
         MusicOverlayVisual visual,
+        BottomOverlayLayoutTransitions layoutTransitions,
         OverlayEffectsVisual effects,
         FrameworkElement root,
         UiStrings strings,
@@ -56,6 +58,7 @@ internal sealed class MusicOverlayController : IDisposable
         Func<bool> animationsEnabled)
     {
         _visual = visual;
+        _layoutTransitions = layoutTransitions;
         _effects = effects;
         _root = root;
         _strings = strings;
@@ -103,20 +106,24 @@ internal sealed class MusicOverlayController : IDisposable
         AbortPendingMatchRipple();
         DisposeResultRipples();
         _resultGeneration++;
-        _currentResultCard = null;
-        _visual.ResultHost.Children.Clear();
-        ResetResultHost();
+        var animationsEnabled = _animationsEnabled();
         _visual.Waveform.Stop();
         MusicOverlayVisualPresenter.SetListeningState(_visual, listening: false, _lightTheme);
-        var card = MusicOverlayVisualPresenter.PresentResult(
-            _visual,
-            outcome,
-            _strings,
-            _lightTheme,
-            _resultCommandRequested,
-            CopyTrackInfo);
-        _currentResultCard = card;
-        var animationsEnabled = _animationsEnabled();
+        var card = _layoutTransitions.Apply(() =>
+        {
+            _currentResultCard = null;
+            _visual.ResultHost.Children.Clear();
+            ResetResultHost();
+            var presented = MusicOverlayVisualPresenter.PresentResult(
+                _visual,
+                outcome,
+                _strings,
+                _lightTheme,
+                _resultCommandRequested,
+                CopyTrackInfo);
+            _currentResultCard = presented;
+            return presented;
+        }, animationsEnabled);
         MusicResultTransitions.BeginEntrance(card, animationsEnabled);
         _resultRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.ResultHost));
         if (outcome.Status != MusicRecognitionStatus.Matched || !animationsEnabled) return;
@@ -173,6 +180,7 @@ internal sealed class MusicOverlayController : IDisposable
         AbortPendingMatchRipple();
         CancelPendingResultExit();
         DisposeResultRipples();
+        _layoutTransitions.Settle();
         ClearResultVisual();
         _visual.Waveform.Dispose();
     }
@@ -243,10 +251,11 @@ internal sealed class MusicOverlayController : IDisposable
         }
 
         var generation = ++_resultGeneration;
+        var animationsEnabled = _animationsEnabled();
         var exit = MusicResultTransitions.BeginExit(
             card,
-            _animationsEnabled(),
-            () => CompleteResultExit(card, generation));
+            animationsEnabled,
+            () => CompleteResultExit(card, generation, animationsEnabled));
         if (!exit.IsCompleted && ReferenceEquals(_currentResultCard, card) &&
             generation == _resultGeneration)
             _pendingResultExit = exit;
@@ -254,14 +263,14 @@ internal sealed class MusicOverlayController : IDisposable
             exit.Dispose();
     }
 
-    private void CompleteResultExit(FrameworkElement card, long generation)
+    private void CompleteResultExit(FrameworkElement card, long generation, bool animationsEnabled)
     {
         if (_disposed || generation != _resultGeneration ||
             !ReferenceEquals(_currentResultCard, card)) return;
         var completedExit = _pendingResultExit;
         _pendingResultExit = null;
         completedExit?.Dispose();
-        ClearResultVisual();
+        _layoutTransitions.Apply(ClearResultVisual, animationsEnabled);
     }
 
     private void CancelPendingResultExit()

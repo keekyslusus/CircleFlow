@@ -33,7 +33,10 @@ public sealed record ActionTrayVisual(
 public sealed record BottomOverlayVisual(
     Grid Root,
     StackPanel Stack,
-    Canvas ProviderMenuLayer);
+    Grid ResultSlot,
+    Grid ActionSlot,
+    Canvas ProviderMenuLayer,
+    BottomOverlayLayoutTransitions LayoutTransitions);
 
 public sealed record ProviderMenuVisual(
     Button Button,

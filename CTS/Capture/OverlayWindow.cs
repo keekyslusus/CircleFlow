@@ -382,6 +382,7 @@ public sealed class OverlayWindow : Window
                 _selection.StopInput();
                 _provider.SetOpen(false);
                 _music.SetDebugPanelOpen(false);
+                _visual.Bottom.LayoutTransitions.Settle();
                 break;
         }
     }
@@ -486,6 +487,7 @@ public sealed class OverlayWindow : Window
         Dispatcher.ShutdownStarted -= OnDispatcherShutdownStarted;
         UnqueueEntranceRipple();
         _controllers.Dispose();
+        _visual.Bottom.LayoutTransitions.Dispose();
         _visual.Effects.SceneRipples.Dispose();
         foreach (var ripple in _controlRipples) ripple.Dispose();
         _controlRipples.Clear();
