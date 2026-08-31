@@ -1,3 +1,6 @@
+// Portions adapted from Material Color Utilities.
+// Copyright 2021 Google LLC. Licensed under the Apache License, Version 2.0.
+
 namespace CircleToSearch.Ui;
 
 using System.Windows.Media;

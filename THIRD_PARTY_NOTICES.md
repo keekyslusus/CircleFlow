@@ -6,3 +6,7 @@ copyright Marin Moulinier and contributors, licensed under GPL-3.0-or-later. Ada
 files retain SPDX identifiers.
 
 Shazam is an Apple service. This project is not affiliated with or endorsed by Apple or Shazam.
+
+The HCT color conversion under `CTS/Ui/HctColorConverter.cs` is adapted from
+[Material Color Utilities](https://github.com/material-foundation/material-color-utilities),
+copyright Google LLC, licensed under the Apache License 2.0.
