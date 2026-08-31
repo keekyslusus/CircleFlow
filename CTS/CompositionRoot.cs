@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Windows.Controls;
 using Flow.Launcher.Plugin;
 using CircleToSearch.Capture;
+using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.Interop;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
@@ -102,8 +103,10 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
+        var overlayControllerFactory = new OverlayControllerFactory();
+        var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
         var workflow = new OverlaySessionWorkflow(
-            new OverlaySessionFactory(log),
+            new OverlaySessionFactory(log, new PointerMonitorCapture(), overlayWindowFactory),
             visualSearch,
             musicRecognition,
             musicResultPresenter,

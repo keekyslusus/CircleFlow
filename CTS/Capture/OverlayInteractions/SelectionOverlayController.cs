@@ -1,0 +1,264 @@
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
+using GdiPoint = System.Drawing.Point;
+using GdiRectangle = System.Drawing.Rectangle;
+
+namespace CircleToSearch.Capture.OverlayInteractions;
+
+internal sealed class SelectionOverlayController : IDisposable
+{
+    private const double SampleDistanceDips = 3;
+    private static readonly TimeSpan SelectionHoldDuration = TimeSpan.FromMilliseconds(450);
+
+    private readonly SelectionOverlayVisual _visual;
+    private readonly FrameworkElement _coordinateRoot;
+    private readonly GdiRectangle _monitor;
+    private readonly double _scale;
+    private readonly int _paddingPx;
+    private readonly int _minDiagonalPx;
+    private readonly bool _overscan;
+    private readonly Func<bool> _canAcceptInput;
+    private readonly Func<object?, Point, bool> _canStartSelection;
+    private readonly Action _selectionStarted;
+    private readonly Action<GdiRectangle> _selectionCompleted;
+    private readonly Action _selectionRejected;
+    private readonly Action _holdCompleted;
+    private readonly LassoPathSampler _sampler;
+    private readonly List<Point> _stroke = [];
+    private DispatcherTimer? _holdTimer;
+    private bool _drawing;
+    private bool _revealUpdateQueued;
+    private bool _disposed;
+
+    internal bool HasPendingRevealUpdate => _revealUpdateQueued;
+
+    internal bool HasPendingHold => _holdTimer is not null;
+
+    internal SelectionOverlayController(
+        SelectionOverlayVisual visual,
+        FrameworkElement coordinateRoot,
+        GdiRectangle monitor,
+        double scale,
+        int paddingPx,
+        int minDiagonalPx,
+        bool overscan,
+        Func<bool> canAcceptInput,
+        Func<object?, Point, bool> canStartSelection,
+        Action selectionStarted,
+        Action<GdiRectangle> selectionCompleted,
+        Action selectionRejected,
+        Action holdCompleted)
+    {
+        _visual = visual;
+        _coordinateRoot = coordinateRoot;
+        _monitor = monitor;
+        _scale = scale;
+        _paddingPx = paddingPx;
+        _minDiagonalPx = minDiagonalPx;
+        _overscan = overscan;
+        _canAcceptInput = canAcceptInput;
+        _canStartSelection = canStartSelection;
+        _selectionStarted = selectionStarted;
+        _selectionCompleted = selectionCompleted;
+        _selectionRejected = selectionRejected;
+        _holdCompleted = holdCompleted;
+        _sampler = new LassoPathSampler(SampleDistanceDips * scale);
+
+        _visual.InputSurface.MouseLeftButtonDown += OnMouseLeftButtonDown;
+        _visual.InputSurface.MouseMove += OnMouseMove;
+        _visual.InputSurface.MouseLeftButtonUp += OnMouseLeftButtonUp;
+    }
+
+    internal void StopInput()
+    {
+        _drawing = false;
+        UnqueueRevealUpdate();
+        ReleaseMouseCapture();
+    }
+
+    internal void FadeForMusic()
+    {
+        UIElement[] targets =
+        [
+            _visual.Screenshot,
+            _visual.Sheen,
+            _visual.Halo,
+            _visual.Accent,
+            _visual.SelectionFrame,
+        ];
+        if (!OverlayVisualResources.AnimationsEnabled())
+        {
+            foreach (var target in targets) target.Opacity = 0;
+            return;
+        }
+        var duration = TimeSpan.FromMilliseconds(200);
+        foreach (var target in targets)
+            target.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(target.Opacity, 0, duration)
+            {
+                EasingFunction = EaseOut(),
+            });
+    }
+
+    internal void RestoreAfterMusic()
+    {
+        UIElement[] targets = [_visual.Screenshot, _visual.Sheen, _visual.Halo, _visual.Accent];
+        _visual.SelectionFrame.BeginAnimation(UIElement.OpacityProperty, null);
+        _visual.SelectionFrame.Opacity = 0;
+        if (!OverlayVisualResources.AnimationsEnabled())
+        {
+            foreach (var target in targets) target.Opacity = 1;
+            return;
+        }
+        var duration = TimeSpan.FromMilliseconds(200);
+        foreach (var target in targets)
+            target.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(target.Opacity, 1, duration)
+            {
+                EasingFunction = EaseOut(),
+            });
+    }
+
+    internal void ShowSelectionFrame(GdiRectangle bounds)
+    {
+        UnqueueRevealUpdate();
+        var size = new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight);
+        var offset = _overscan ? 1 : 0;
+        var rect = new Rect(
+            bounds.Left / _scale + offset,
+            bounds.Top / _scale + offset,
+            bounds.Width / _scale,
+            bounds.Height / _scale);
+        Point[] corners =
+        [
+            new(rect.Left, rect.Top),
+            new(rect.Right, rect.Top),
+            new(rect.Right, rect.Bottom),
+            new(rect.Left, rect.Bottom),
+        ];
+        SelectionOverlayTransitions.BeginSelectionReveal(
+            _visual,
+            SelectionOverlayTransitions.BuildRevealGeometry(size, corners),
+            SelectionOverlayTransitions.BuildSelectionFrameGeometry(rect));
+
+        StopHoldTimer();
+        _holdTimer = new DispatcherTimer { Interval = SelectionHoldDuration };
+        _holdTimer.Tick += OnHoldCompleted;
+        _holdTimer.Start();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _visual.InputSurface.MouseLeftButtonDown -= OnMouseLeftButtonDown;
+        _visual.InputSurface.MouseMove -= OnMouseMove;
+        _visual.InputSurface.MouseLeftButtonUp -= OnMouseLeftButtonUp;
+        StopInput();
+        StopHoldTimer();
+    }
+
+    private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_disposed || !_canAcceptInput()) return;
+        var point = e.GetPosition(_coordinateRoot);
+        if (!_canStartSelection(e.OriginalSource, point))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        _drawing = true;
+        _selectionStarted();
+        _sampler.Reset();
+        _stroke.Clear();
+        Track(e);
+        _visual.InputSurface.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void OnMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_disposed || !_drawing || !_canAcceptInput()) return;
+        Track(e);
+        e.Handled = true;
+    }
+
+    private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_disposed || !_drawing || !_canAcceptInput()) return;
+        _drawing = false;
+        ReleaseMouseCapture();
+        Track(e, final: true);
+        var bounds = LassoBoundsCalculator.Calculate(_sampler.Points, _monitor, _paddingPx, _minDiagonalPx);
+        if (bounds is null)
+        {
+            _selectionRejected();
+        }
+        else
+        {
+            _selectionCompleted(bounds.Value);
+            if (!_disposed) ShowSelectionFrame(bounds.Value);
+        }
+        e.Handled = true;
+    }
+
+    private void Track(MouseEventArgs e, bool final = false)
+    {
+        var dip = e.GetPosition(_coordinateRoot);
+        var physical = new GdiPoint(
+            (int)Math.Round(dip.X * _scale),
+            (int)Math.Round(dip.Y * _scale));
+        var accepted = final ? _sampler.AddFinal(physical) : _sampler.Add(physical);
+        if (!accepted) return;
+        _stroke.Add(dip);
+        _visual.Halo.Points.Add(dip);
+        _visual.Accent.Points.Add(dip);
+        QueueRevealUpdate();
+    }
+
+    private void QueueRevealUpdate()
+    {
+        if (_revealUpdateQueued || _disposed) return;
+        _revealUpdateQueued = true;
+        CompositionTarget.Rendering += FlushReveal;
+    }
+
+    private void UnqueueRevealUpdate()
+    {
+        if (!_revealUpdateQueued) return;
+        _revealUpdateQueued = false;
+        CompositionTarget.Rendering -= FlushReveal;
+    }
+
+    private void FlushReveal(object? sender, EventArgs e)
+    {
+        UnqueueRevealUpdate();
+        if (_disposed) return;
+        var size = new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight);
+        _visual.Dim.Data = SelectionOverlayTransitions.BuildRevealGeometry(size, _stroke);
+        _visual.Sheen.Data = SelectionOverlayTransitions.BuildPolygonGeometry(_stroke);
+    }
+
+    private void ReleaseMouseCapture()
+    {
+        if (ReferenceEquals(Mouse.Captured, _visual.InputSurface)) Mouse.Capture(null);
+    }
+
+    private void OnHoldCompleted(object? sender, EventArgs e)
+    {
+        StopHoldTimer();
+        if (!_disposed) _holdCompleted();
+    }
+
+    private void StopHoldTimer()
+    {
+        if (_holdTimer is null) return;
+        _holdTimer.Stop();
+        _holdTimer.Tick -= OnHoldCompleted;
+        _holdTimer = null;
+    }
+
+    private static CubicEase EaseOut() => new() { EasingMode = EasingMode.EaseOut };
+}

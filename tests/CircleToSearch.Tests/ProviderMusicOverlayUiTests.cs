@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using System.Runtime.InteropServices;
 using CircleToSearch.Capture;
+using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.MusicRecognition;
@@ -108,6 +109,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 _ => { },
+                new OverlayControllerFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -177,6 +179,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 _ => { },
+                new OverlayControllerFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -233,6 +236,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
+                new OverlayControllerFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -292,6 +296,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
+                new OverlayControllerFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -331,6 +336,65 @@ public sealed class ProviderMusicOverlayUiTests
     }
 
     [Fact]
+    public void Real_pointer_selection_transfers_frame_once_and_repeated_cleanup_preserves_it()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                new OverlayControllerFactory(),
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+            overlay.Activate();
+            Assert.True(NativeMethods.GetCursorPos(out var originalPointer));
+            try
+            {
+                var input = overlay.VisualState.Selection.InputSurface;
+                var start = input.PointToScreen(new Point(80, 80));
+                var finish = input.PointToScreen(new Point(300, 220));
+                Assert.True(SetCursorPos((int)Math.Round(start.X), (int)Math.Round(start.Y)));
+                mouse_event(MouseEventLeftDown, 0, 0, 0, UIntPtr.Zero);
+                PumpUntil(() => ReferenceEquals(Mouse.Captured, input));
+                Assert.True(SetCursorPos((int)Math.Round(finish.X), (int)Math.Round(finish.Y)));
+                mouse_event(MouseEventLeftUp, 0, 0, 0, UIntPtr.Zero);
+                PumpUntil(() => commands.Count == 1);
+
+                var selected = Assert.IsType<VisualSelection>(Assert.Single(commands));
+                Assert.True(overlay.FrameTransferred);
+                Assert.Same(frame, selected.Selection.FrozenFrame);
+                Assert.True(selected.Selection.Bounds.Width > 0);
+                Assert.True(selected.Selection.Bounds.Height > 0);
+
+                overlay.CloseFromSession();
+                overlay.CloseFromSession();
+                Dispatcher.Run();
+
+                Assert.Equal(640, selected.Selection.FrozenFrame.Width);
+                Assert.Single(commands);
+            }
+            finally
+            {
+                SetCursorPos(originalPointer.X, originalPointer.Y);
+            }
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Match_result_stops_waveform_keeps_dim_and_exposes_actions()
     {
         var failure = RunOnSta(() =>
@@ -349,6 +413,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
+                new OverlayControllerFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -404,6 +469,46 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
             Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.ResultHost.Visibility);
             Assert.False(overlay.Dispatcher.HasShutdownStarted);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Retry_result_returns_to_listening_and_publishes_once()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                new OverlayControllerFactory(),
+                overscan: false);
+            overlay.Show();
+            overlay.ShowListening();
+            overlay.ShowMusicResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.NoMatch));
+            overlay.UpdateLayout();
+            var retry = Descendants(overlay.VisualState.Music.ResultHost).OfType<Button>()
+                .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.TryAgain);
+
+            retry.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
+            Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ListeningLayer.Visibility);
+            Assert.IsType<RetryMusicRecognition>(Assert.Single(commands));
             overlay.CloseFromSession();
             Dispatcher.Run();
         });

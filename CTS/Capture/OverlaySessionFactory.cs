@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Windows.Threading;
 using CircleToSearch.Interop;
 
@@ -7,10 +6,17 @@ namespace CircleToSearch.Capture;
 public sealed class OverlaySessionFactory : IOverlaySessionFactory
 {
     private readonly PluginLog _log;
+    private readonly IPointerMonitorCapture _capture;
+    private readonly IOverlayWindowFactory _windowFactory;
 
-    public OverlaySessionFactory(PluginLog log)
+    public OverlaySessionFactory(
+        PluginLog log,
+        IPointerMonitorCapture capture,
+        IOverlayWindowFactory windowFactory)
     {
         _log = log ?? throw new ArgumentNullException(nameof(log));
+        _capture = capture ?? throw new ArgumentNullException(nameof(capture));
+        _windowFactory = windowFactory ?? throw new ArgumentNullException(nameof(windowFactory));
     }
 
     public Task<IOverlaySession?> OpenAsync(OverlayLaunchOptions options, CancellationToken cancellationToken)
@@ -37,8 +43,8 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
         Exception? failure = null;
         try
         {
-            if (!OverlayWindow.TryCapturePointerMonitor(
-                    out var monitor, out var workArea, out var frame, out var scale, out var pointer))
+            var capture = _capture.Capture();
+            if (capture is null)
             {
                 _log.Warn(nameof(OverlaySessionFactory), "capturing the pointer monitor failed; selection canceled");
                 ready.TrySetResult(null);
@@ -47,28 +53,33 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
 
             if (cancellationToken.IsCancellationRequested)
             {
-                frame.Dispose();
+                capture.Frame.Dispose();
                 ready.TrySetResult(null);
                 return;
             }
 
             session = new OverlaySession(_log);
-            var transferred = false;
+            OverlayWindow? window = null;
             try
             {
-                var window = new OverlayWindow(
-                    frame, monitor, workArea, scale, options, session.Publish, entranceOrigin: pointer);
+                window = _windowFactory.Create(
+                    capture.Frame,
+                    capture.Monitor,
+                    capture.WorkArea,
+                    capture.Scale,
+                    options,
+                    session.Publish,
+                    capture.Pointer);
                 session.Attach(window);
                 window.Show();
                 using var registration = cancellationToken.Register(
                     () => session.Publish(new CancelSession()));
                 ready.TrySetResult(session);
                 RunDispatcherLoop(session);
-                transferred = window.FrameTransferred;
             }
             finally
             {
-                if (!transferred) frame.Dispose();
+                if (window?.FrameTransferred != true) capture.Frame.Dispose();
             }
         }
         catch (Exception exception)

@@ -3,6 +3,8 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using CircleToSearch.Capture;
+using CircleToSearch.Capture.OverlayInteractions;
+using CircleToSearch.Search;
 using Xunit;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiPoint = System.Drawing.Point;
@@ -12,6 +14,12 @@ namespace CircleToSearch.Tests;
 
 public sealed class OverlayWindowTests
 {
+    private static readonly SearchProviderDescriptor[] Providers =
+    [
+        new(SearchProviderIds.GoogleLens, "Google Lens"),
+        new(SearchProviderIds.YandexImages, "Yandex Images"),
+    ];
+
     [Fact]
     public void Visual_factory_places_music_button_beside_not_inside_chip()
     {
@@ -49,7 +57,8 @@ public sealed class OverlayWindowTests
                 monitor,
                 1.0,
                 new OverlayOptions(8, 12),
-                TestUiStrings.English);
+                TestUiStrings.English,
+                new OverlayControllerFactory());
             overlay.Show();
             var musicButton = Assert.Single(
                 Descendants((DependencyObject)overlay.Content).OfType<Button>(),
@@ -78,6 +87,7 @@ public sealed class OverlayWindowTests
                 1.0,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
+                new OverlayControllerFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -112,6 +122,7 @@ public sealed class OverlayWindowTests
                 1,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
+                new OverlayControllerFactory(),
                 overscan: false,
                 entranceOrigin: new GdiPoint(320, 200));
             overlay.Show();
@@ -149,7 +160,8 @@ public sealed class OverlayWindowTests
                 monitor,
                 1.0,
                 new OverlayOptions(8, 12),
-                TestUiStrings.English);
+                TestUiStrings.English,
+                new OverlayControllerFactory());
             overlay.Show();
             PumpUntilShutdown(overlay);
         });
@@ -171,7 +183,8 @@ public sealed class OverlayWindowTests
                 workArea,
                 1.25,
                 new OverlayOptions(8, 12),
-                TestUiStrings.English);
+                TestUiStrings.English,
+                new OverlayControllerFactory());
             overlay.Show();
             PumpUntilShutdown(overlay);
         });
@@ -192,7 +205,8 @@ public sealed class OverlayWindowTests
                 monitor,
                 1.0,
                 new OverlayOptions(8, 12),
-                TestUiStrings.English);
+                TestUiStrings.English,
+                new OverlayControllerFactory());
             overlay.Show();
             overlay.CancelFromCoordinator();
             Dispatcher.Run();
@@ -215,7 +229,8 @@ public sealed class OverlayWindowTests
                 monitor,
                 1.0,
                 new OverlayOptions(8, 12),
-                TestUiStrings.English);
+                TestUiStrings.English,
+                new OverlayControllerFactory());
             overlay.Show();
             overlay.CancelFromCoordinator();
             overlay.Dispatcher.BeginInvoke(overlay.CloseFromSession, DispatcherPriority.Background);
@@ -227,10 +242,109 @@ public sealed class OverlayWindowTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Escape_closes_debug_then_provider_before_publishing_cancel_once()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                new OverlayControllerFactory(),
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+            overlay.SetDebugPanelOpen(true);
+            overlay.VisualState.Provider!.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            RaiseEscape(overlay);
+            Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.DebugPanel.Visibility);
+            Assert.Empty(commands);
+
+            RaiseEscape(overlay);
+            Assert.Empty(commands);
+
+            RaiseEscape(overlay);
+            overlay.CancelFromCoordinator();
+            Assert.IsType<CancelSession>(Assert.Single(commands));
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Small_selection_cancels_without_transferring_the_frame()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 10_000),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                new OverlayControllerFactory(),
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+            var input = overlay.VisualState.Selection.InputSurface;
+            input.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+                System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left)
+            {
+                RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+                Source = input,
+            });
+            input.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+                System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left)
+            {
+                RoutedEvent = UIElement.MouseLeftButtonUpEvent,
+                Source = input,
+            });
+
+            Assert.False(overlay.FrameTransferred);
+            Assert.IsType<CancelSession>(Assert.Single(commands));
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
     private static void PumpUntilShutdown(OverlayWindow overlay)
     {
         overlay.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
         Dispatcher.Run();
+    }
+
+    private static void RaiseEscape(OverlayWindow overlay)
+    {
+        overlay.RaiseEvent(new System.Windows.Input.KeyEventArgs(
+            System.Windows.Input.Keyboard.PrimaryDevice,
+            PresentationSource.FromVisual(overlay),
+            0,
+            System.Windows.Input.Key.Escape)
+        {
+            RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent,
+        });
     }
 
     private static Exception? RunOnSta(Action action)

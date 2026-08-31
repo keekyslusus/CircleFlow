@@ -2,6 +2,7 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
+using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.Interop;
 using Xunit;
 using GdiBitmap = System.Drawing.Bitmap;
@@ -76,6 +77,7 @@ public sealed class FadeCaptureTests
                 scale,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
+                new OverlayControllerFactory(),
                 allowsTransparency: true,
                 exitFade: OverlayExitFade.Root,
                 clickThroughOnCancel: true,

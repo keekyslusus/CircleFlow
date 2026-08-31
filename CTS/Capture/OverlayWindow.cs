@@ -1,6 +1,4 @@
-using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -9,17 +7,16 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.Interop;
-using CircleToSearch.Ui;
-using CircleToSearch.Search;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
+using CircleToSearch.Search;
+using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
 using GdiBitmap = System.Drawing.Bitmap;
-using GdiGraphics = System.Drawing.Graphics;
 using GdiPoint = System.Drawing.Point;
 using GdiRectangle = System.Drawing.Rectangle;
-using GdiSize = System.Drawing.Size;
 
 namespace CircleToSearch.Capture;
 
@@ -36,49 +33,29 @@ public enum OverlayExitFade
     DimLayers,
 }
 
-internal enum OverlayInteractionMode
-{
-    Selecting,
-    Listening,
-    MusicResult,
-}
-
 public sealed class OverlayWindow : Window
 {
-    private const uint MonitorDefaultToNearest = 2;
-    private const int MonitorEffectiveDpi = 0;
     private const double ChipEdgeMarginDips = 32;
-    private const double SampleDistanceDips = 3;
     private static readonly TimeSpan ExitFadeDuration = TimeSpan.FromMilliseconds(160);
-    private static readonly TimeSpan SelectionHoldDuration = TimeSpan.FromMilliseconds(450);
 
     private readonly GdiBitmap _frame;
-    private readonly GdiRectangle _monitor;
-    private readonly double _scale;
-    private readonly int _paddingPx;
-    private readonly int _minDiagonalPx;
     private readonly OverlayVisual _visual;
-    private readonly LassoPathSampler _sampler;
     private readonly OverlayExitFade _exitFade;
     private readonly bool _clickThroughOnCancel;
-    private readonly bool _overscan;
     private readonly Point? _entranceOrigin;
-    private readonly UiStrings _strings;
-    private readonly IReadOnlyList<SearchProviderDescriptor> _providers;
     private readonly Action<IOverlayCommand>? _publishCommand;
+    private readonly OverlayInteractionState _interaction = new();
+    private readonly OverlayControllers _controllers;
+    private readonly SelectionOverlayController _selection;
+    private readonly ProviderMenuController _provider;
+    private readonly MusicOverlayController _music;
     private readonly List<IDisposable> _controlRipples = [];
-    private string _selectedProviderId;
-    private readonly List<Point> _stroke = [];
-    private bool _drawing;
-    private bool _finished;
     private bool _chipDismissed;
-    private bool _revealUpdateQueued;
-    private bool _providerMenuOpen;
-    private bool _debugPanelOpen;
     private bool _cancelPublished;
     private bool _entranceRipplePending;
+    private bool _resourcesDisposed;
 
-    internal OverlayInteractionMode Mode { get; private set; } = OverlayInteractionMode.Selecting;
+    internal OverlayInteractionMode Mode => _interaction.Mode;
 
     internal bool FrameTransferred { get; private set; }
 
@@ -93,6 +70,7 @@ public sealed class OverlayWindow : Window
         double scale,
         OverlayOptions options,
         UiStrings strings,
+        IOverlayControllerFactory controllerFactory,
         bool allowsTransparency = true,
         OverlayExitFade exitFade = OverlayExitFade.Root,
         bool clickThroughOnCancel = true,
@@ -103,61 +81,23 @@ public sealed class OverlayWindow : Window
         Action<IOverlayCommand>? publishCommand = null)
     {
         _frame = frame;
-        _monitor = monitor;
-        _scale = scale;
-        _paddingPx = options.PaddingPx;
-        _minDiagonalPx = options.MinDiagonalPx;
         _exitFade = exitFade;
         _clickThroughOnCancel = clickThroughOnCancel;
-        _overscan = overscan;
+        _publishCommand = publishCommand;
+        ArgumentNullException.ThrowIfNull(controllerFactory);
         _entranceOrigin = entranceOrigin is null
             ? null
             : new Point(
                 (entranceOrigin.Value.X - monitor.Left) / scale + (overscan ? 1 : 0),
                 (entranceOrigin.Value.Y - monitor.Top) / scale + (overscan ? 1 : 0));
-        _strings = strings;
-        _providers = providers ?? [];
-        _selectedProviderId = initialProviderId ?? string.Empty;
-        _publishCommand = publishCommand;
-        _sampler = new LassoPathSampler(SampleDistanceDips * scale);
+        var availableProviders = providers ?? [];
+        var selectedProviderId = initialProviderId ?? string.Empty;
 
-        Title = strings.PluginTitle;
-        WindowStyle = WindowStyle.None;
-        ResizeMode = ResizeMode.NoResize;
-        ShowInTaskbar = false;
-        Topmost = true;
-        ShowActivated = true;
-        Cursor = Cursors.Cross;
-        Left = monitor.Left / scale;
-        Top = monitor.Top / scale;
-        Width = monitor.Width / scale;
-        Height = monitor.Height / scale;
-        // Born transparent: a window that becomes layered later (window Opacity < 1) renders
-        // black on this setup; a transparent window fades its content cleanly into the desktop.
-        if (allowsTransparency)
-        {
-            AllowsTransparency = true;
-            Background = CreateFrozenSolidBrush(PluginPalette.Transparent);
-        }
-        else
-        {
-            Background = CreateFrozenSolidBrush(PluginPalette.OpaqueBlack);
-        }
-        if (overscan)
-        {
-            // The window rect then differs from the monitor rect, which keeps DWM's
-            // fullscreen-cover heuristics (global shadow disabling) idle; the 1 DIP
-            // overhang on each side hangs off the screen and is never visible.
-            Left -= 1;
-            Top -= 1;
-            Width += 2;
-            Height += 2;
-        }
-
+        ConfigureWindow(monitor, scale, strings, allowsTransparency, overscan);
         var frameSource = CreateFrozenFrame(frame);
         var visualSize = new Size(Width, Height);
         var bottomMargin = ChipBottomMargin(monitor, workArea, scale) + (overscan ? 1 : 0);
-        _visual = _providers.Count == 0
+        _visual = availableProviders.Count == 0
             ? OverlayVisualFactory.CreateRoot(frameSource, visualSize, bottomMargin, strings)
             : OverlayVisualFactory.CreateRoot(
                 frameSource,
@@ -165,24 +105,45 @@ public sealed class OverlayWindow : Window
                 bottomMargin,
                 SystemTheme.IsLight(),
                 strings,
-                _providers,
-                _selectedProviderId);
+                availableProviders,
+                selectedProviderId);
         if (overscan) _visual.Selection.Screenshot.Margin = new Thickness(1);
         Content = new AdornerDecorator { Child = _visual.Root };
-        Loaded += OnLoaded;
 
+        _controllers = controllerFactory.Create(new OverlayControllerContext(
+            _visual,
+            this,
+            monitor,
+            scale,
+            options,
+            overscan,
+            availableProviders,
+            selectedProviderId,
+            strings,
+            publishCommand is not null,
+            () => _interaction.CanAcceptSelectionInput,
+            CanStartSelection,
+            OnSelectionStarted,
+            OnSelectionCompleted,
+            () => CancelInternal(),
+            FinishShutdown,
+            () => !_interaction.IsFinished,
+            providerId => _publishCommand?.Invoke(new ProviderSelected(providerId)),
+            () => Mode,
+            StartMusicRecognition,
+            CancelMusicRecognition,
+            scenario => _publishCommand?.Invoke(new MusicDebugScenarioSelected(scenario)),
+            HandleMusicResultCommand));
+        _selection = _controllers.Selection;
+        _provider = _controllers.Provider;
+        _music = _controllers.Music;
+
+        Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
-        _visual.Music.Button.Click += OnMusicButtonClick;
-        AttachDebugScenarioHandlers();
-        if (_visual.Provider is not null) _visual.Provider.Button.Click += OnProviderButtonClick;
-        AttachProviderMenuHandlers();
-        _visual.Selection.InputSurface.MouseLeftButtonDown += OnMouseLeftButtonDown;
-        _visual.Selection.InputSurface.MouseMove += OnMouseMove;
-        _visual.Selection.InputSurface.MouseLeftButtonUp += OnMouseLeftButtonUp;
         MouseRightButtonDown += OnMouseRightButtonDown;
         Deactivated += OnDeactivated;
-        Closed += (_, _) => DisposeVisualResources();
-        Dispatcher.ShutdownStarted += (_, _) => DisposeVisualResources();
+        Closed += OnClosed;
+        Dispatcher.ShutdownStarted += OnDispatcherShutdownStarted;
     }
 
     internal OverlayWindow(
@@ -192,6 +153,7 @@ public sealed class OverlayWindow : Window
         double scale,
         OverlayLaunchOptions options,
         Action<IOverlayCommand> publishCommand,
+        IOverlayControllerFactory controllerFactory,
         bool allowsTransparency = true,
         OverlayExitFade exitFade = OverlayExitFade.Root,
         bool clickThroughOnCancel = true,
@@ -204,6 +166,7 @@ public sealed class OverlayWindow : Window
             scale,
             options.CaptureOptions,
             options.Strings,
+            controllerFactory,
             allowsTransparency,
             exitFade,
             clickThroughOnCancel,
@@ -217,53 +180,340 @@ public sealed class OverlayWindow : Window
 
     public void CancelFromCoordinator() => Dispatcher.BeginInvoke(new Action(() => CancelInternal()));
 
-    internal static bool TryCapturePointerMonitor(
-        out GdiRectangle monitor,
-        out GdiRectangle workArea,
-        out GdiBitmap frame,
-        out double scale,
-        out GdiPoint pointer)
+    internal void SetDebugPanelOpen(bool open)
     {
-        monitor = default;
-        workArea = default;
-        frame = null!;
-        scale = 1.0;
-        pointer = default;
+        _music.SetDebugPanelOpen(open);
+        if (open) _provider.SetOpen(false);
+    }
 
-        if (!NativeMethods.GetCursorPos(out var nativePointer)) return false;
-        pointer = new GdiPoint(nativePointer.X, nativePointer.Y);
-        var handle = NativeMethods.MonitorFromPoint(nativePointer, MonitorDefaultToNearest);
-        if (handle == IntPtr.Zero) return false;
+    internal bool IsActionTrayInteraction(object? originalSource, Point windowPoint)
+    {
+        var hit = InputHitTest(windowPoint) as DependencyObject;
+        return IsWithin(originalSource as DependencyObject, _visual.Actions.Root) ||
+               IsWithin(originalSource as DependencyObject, _visual.Music.ResultHost) ||
+               IsWithin(originalSource as DependencyObject, _visual.Music.DebugPanel) ||
+               IsWithin(hit, _visual.Actions.Root) ||
+               IsWithin(hit, _visual.Music.ResultHost) ||
+               IsWithin(hit, _visual.Music.DebugPanel) ||
+               _visual.Actions.Root.IsMouseOver ||
+               _visual.Music.ResultHost.IsMouseOver ||
+               _visual.Music.DebugPanel.IsMouseOver;
+    }
 
-        var info = new MONITORINFO { CbSize = Marshal.SizeOf<MONITORINFO>() };
-        if (!NativeMethods.GetMonitorInfoW(handle, ref info)) return false;
+    internal void ShowListening()
+    {
+        if (_interaction.IsFinished || Mode == OverlayInteractionMode.Listening) return;
+        if (Mode != OverlayInteractionMode.Selecting && Mode != OverlayInteractionMode.MusicResult) return;
+        ApplyModeTransition(OverlayInteractionMode.Listening);
+    }
 
-        var bounds = info.Monitor;
-        var width = bounds.Right - bounds.Left;
-        var height = bounds.Bottom - bounds.Top;
-        if (width <= 0 || height <= 0) return false;
+    internal void ReportAudio(MusicVisualizationFrame frame) => _music.ReportAudio(frame);
 
-        if (NativeMethods.GetDpiForMonitor(handle, MonitorEffectiveDpi, out var dpiX, out _) != 0 || dpiX == 0)
-            dpiX = 96;
-        scale = dpiX / 96.0;
+    internal void ShowMusicResult(MusicRecognitionOutcome outcome)
+    {
+        if (_interaction.IsFinished || Mode != OverlayInteractionMode.Listening ||
+            outcome.Status == MusicRecognitionStatus.Canceled) return;
+        ApplyModeTransition(OverlayInteractionMode.MusicResult);
+        _music.ShowResult(outcome);
+    }
 
-        var captured = new GdiBitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        try
+    internal void CloseFromSession()
+    {
+        if (!_interaction.IsFinished) ApplyModeTransition(OverlayInteractionMode.Closing);
+        DisposeVisualResources();
+        if (!Dispatcher.HasShutdownStarted)
+            Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+    }
+
+    private void ConfigureWindow(
+        GdiRectangle monitor,
+        double scale,
+        UiStrings strings,
+        bool allowsTransparency,
+        bool overscan)
+    {
+        Title = strings.PluginTitle;
+        WindowStyle = WindowStyle.None;
+        ResizeMode = ResizeMode.NoResize;
+        ShowInTaskbar = false;
+        Topmost = true;
+        ShowActivated = true;
+        Cursor = Cursors.Cross;
+        Left = monitor.Left / scale;
+        Top = monitor.Top / scale;
+        Width = monitor.Width / scale;
+        Height = monitor.Height / scale;
+        Background = CreateFrozenSolidBrush(
+            allowsTransparency ? PluginPalette.Transparent : PluginPalette.OpaqueBlack);
+        if (allowsTransparency) AllowsTransparency = true;
+        if (!overscan) return;
+        Left -= 1;
+        Top -= 1;
+        Width += 2;
+        Height += 2;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (!_chipDismissed) ActionTrayTransitions.BeginEntrance(_visual.Actions);
+        QueueEntranceRipple();
+        _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.Actions.Root));
+    }
+
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (_publishCommand is not null &&
+            e.Key == Key.D &&
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Control) &&
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
         {
-            using var graphics = GdiGraphics.FromImage(captured);
-            graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, new GdiSize(width, height));
+            SetDebugPanelOpen(!_music.IsDebugPanelOpen);
+            e.Handled = true;
+            return;
         }
-        catch
+        if (e.Key != Key.Escape) return;
+        if (_music.IsDebugPanelOpen)
         {
-            captured.Dispose();
-            throw;
+            SetDebugPanelOpen(false);
+        }
+        else if (_provider.IsOpen)
+        {
+            _provider.SetOpen(false);
+        }
+        else
+        {
+            CancelInternal();
+        }
+        e.Handled = true;
+    }
+
+    private bool CanStartSelection(object? originalSource, Point point)
+    {
+        var actionInteraction = IsActionTrayInteraction(originalSource, point);
+        if (_provider.IsOpen && !actionInteraction)
+        {
+            _provider.SetOpen(false);
+            return false;
+        }
+        return _interaction.CanAcceptSelectionInput && !actionInteraction;
+    }
+
+    private void OnSelectionStarted()
+    {
+        _chipDismissed = true;
+        ActionTrayTransitions.BeginExit(_visual.Actions);
+    }
+
+    private void OnSelectionCompleted(GdiRectangle bounds)
+    {
+        if (_interaction.IsFinished) return;
+        ApplyModeTransition(OverlayInteractionMode.Closing);
+        var selection = new SelectionOutcome(bounds, _frame);
+        FrameTransferred = true;
+        if (_publishCommand is null) Outcome = OverlayOutcome.VisualSelection(selection);
+        else _publishCommand(new VisualSelection(selection, _provider.SelectedProviderId));
+    }
+
+    private void OnMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        CancelInternal();
+        e.Handled = true;
+    }
+
+    private void OnDeactivated(object? sender, EventArgs e)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_interaction.IsFinished || IsActive) return;
+            if (IsActionTrayInteraction(null, Mouse.GetPosition(this))) return;
+            CancelInternal();
+        }, DispatcherPriority.ContextIdle);
+    }
+
+    private void StartMusicRecognition()
+    {
+        SetDebugPanelOpen(false);
+        if (_publishCommand is null)
+        {
+            ApplyModeTransition(OverlayInteractionMode.Closing);
+            Outcome = OverlayOutcome.MusicRecognition();
+            IsHitTestVisible = false;
+            Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+            return;
+        }
+        ApplyModeTransition(OverlayInteractionMode.Listening);
+        _publishCommand(new StartMusicRecognition());
+    }
+
+    private void CancelMusicRecognition()
+    {
+        PublishCancel();
+        CancelInternal(publish: false);
+    }
+
+    private void HandleMusicResultCommand(IOverlayCommand command)
+    {
+        if (_interaction.IsFinished) return;
+        if (command is DismissMusicResult && Mode == OverlayInteractionMode.MusicResult)
+            ApplyModeTransition(OverlayInteractionMode.Selecting);
+        else if (command is RetryMusicRecognition && Mode == OverlayInteractionMode.MusicResult)
+            ApplyModeTransition(OverlayInteractionMode.Listening);
+        _publishCommand?.Invoke(command);
+    }
+
+    private void ApplyModeTransition(OverlayInteractionMode target)
+    {
+        if (!_interaction.TransitionTo(target)) return;
+        switch (target)
+        {
+            case OverlayInteractionMode.Listening:
+                _selection.StopInput();
+                _music.ShowListening();
+                Cursor = Cursors.Arrow;
+                _selection.FadeForMusic();
+                break;
+            case OverlayInteractionMode.MusicResult:
+                _selection.StopInput();
+                Cursor = Cursors.Arrow;
+                break;
+            case OverlayInteractionMode.Selecting:
+                _music.DismissResult();
+                _selection.RestoreAfterMusic();
+                Cursor = Cursors.Cross;
+                break;
+            case OverlayInteractionMode.Closing:
+                _selection.StopInput();
+                _provider.SetOpen(false);
+                _music.SetDebugPanelOpen(false);
+                break;
+        }
+    }
+
+    private void CancelInternal(bool publish = true)
+    {
+        if (_interaction.IsFinished) return;
+        if (publish && _publishCommand is not null) PublishCancel();
+        ApplyModeTransition(OverlayInteractionMode.Closing);
+        if (!OverlayVisualResources.AnimationsEnabled())
+        {
+            Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+            return;
         }
 
-        var work = info.Work;
-        monitor = new GdiRectangle(bounds.Left, bounds.Top, width, height);
-        workArea = new GdiRectangle(work.Left, work.Top, work.Right - work.Left, work.Bottom - work.Top);
-        frame = captured;
-        return true;
+        var fade = Fade(1, 0);
+        switch (_exitFade)
+        {
+            case OverlayExitFade.Root:
+                fade.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                _visual.Root.BeginAnimation(OpacityProperty, fade);
+                break;
+            case OverlayExitFade.DimLayers:
+                var completed = Fade(1, 0);
+                completed.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                _visual.Selection.Dim.BeginAnimation(OpacityProperty, completed);
+                _visual.Selection.Sheen.BeginAnimation(OpacityProperty, Fade(1, 0));
+                _visual.Selection.Halo.BeginAnimation(OpacityProperty, Fade(1, 0));
+                _visual.Selection.Accent.BeginAnimation(OpacityProperty, Fade(1, 0));
+                ActionTrayTransitions.BeginExit(_visual.Actions);
+                break;
+            default:
+                fade.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                BeginAnimation(OpacityProperty, fade);
+                break;
+        }
+
+        if (_clickThroughOnCancel) MakeClickThrough();
+        IsHitTestVisible = false;
+    }
+
+    private void QueueEntranceRipple()
+    {
+        if (_entranceOrigin is null || _entranceRipplePending) return;
+        _entranceRipplePending = true;
+        CompositionTarget.Rendering += EmitEntranceRippleOnFirstFrame;
+    }
+
+    private void EmitEntranceRippleOnFirstFrame(object? sender, EventArgs e)
+    {
+        if (_interaction.IsFinished)
+        {
+            UnqueueEntranceRipple();
+            return;
+        }
+        if (_visual.Effects.SceneRippleLayer.ActualWidth <= 0 ||
+            _visual.Effects.SceneRippleLayer.ActualHeight <= 0) return;
+        UnqueueEntranceRipple();
+        _visual.Effects.SceneRipples.Emit(new SceneRippleRequest(
+            _entranceOrigin!.Value,
+            SceneRipplePreset.Entrance,
+            1));
+    }
+
+    private void UnqueueEntranceRipple()
+    {
+        if (!_entranceRipplePending) return;
+        _entranceRipplePending = false;
+        CompositionTarget.Rendering -= EmitEntranceRippleOnFirstFrame;
+    }
+
+    private void MakeClickThrough()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        var style = NativeMethods.GetWindowLongW(hwnd, NativeMethods.GwlExStyle);
+        NativeMethods.SetWindowLongW(hwnd, NativeMethods.GwlExStyle, style | NativeMethods.WsExTransparent);
+    }
+
+    private void FinishShutdown()
+    {
+        DisposeVisualResources();
+        Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+    }
+
+    private void PublishCancel()
+    {
+        if (_cancelPublished) return;
+        _cancelPublished = true;
+        _publishCommand?.Invoke(new CancelSession());
+    }
+
+    private void DisposeVisualResources()
+    {
+        if (_resourcesDisposed) return;
+        _resourcesDisposed = true;
+        Loaded -= OnLoaded;
+        PreviewKeyDown -= OnPreviewKeyDown;
+        MouseRightButtonDown -= OnMouseRightButtonDown;
+        Deactivated -= OnDeactivated;
+        Closed -= OnClosed;
+        Dispatcher.ShutdownStarted -= OnDispatcherShutdownStarted;
+        UnqueueEntranceRipple();
+        _controllers.Dispose();
+        _visual.Effects.SceneRipples.Dispose();
+        foreach (var ripple in _controlRipples) ripple.Dispose();
+        _controlRipples.Clear();
+    }
+
+    private void OnClosed(object? sender, EventArgs e) => DisposeVisualResources();
+
+    private void OnDispatcherShutdownStarted(object? sender, EventArgs e) => DisposeVisualResources();
+
+    private DoubleAnimation Fade(double from, double to) =>
+        new(from, to, ExitFadeDuration) { EasingFunction = EaseOut() };
+
+    private static CubicEase EaseOut() => new() { EasingMode = EasingMode.EaseOut };
+
+    private static bool IsWithin(DependencyObject? source, DependencyObject ancestor)
+    {
+        var current = source;
+        while (current is not null)
+        {
+            if (ReferenceEquals(current, ancestor)) return true;
+            current = current is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(current)
+                : LogicalTreeHelper.GetParent(current);
+        }
+        return false;
     }
 
     private static BitmapSource CreateFrozenFrame(GdiBitmap frame)
@@ -294,564 +544,4 @@ public sealed class OverlayWindow : Window
 
     private static double ChipBottomMargin(GdiRectangle monitor, GdiRectangle workArea, double scale) =>
         (monitor.Bottom - workArea.Bottom) / scale + ChipEdgeMarginDips;
-
-    private void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        if (!_chipDismissed) ActionTrayTransitions.BeginEntrance(_visual.Actions);
-        QueueEntranceRipple();
-        _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.Actions.Root));
-    }
-
-    private void QueueEntranceRipple()
-    {
-        if (_entranceOrigin is null || _entranceRipplePending) return;
-        _entranceRipplePending = true;
-        CompositionTarget.Rendering += EmitEntranceRippleOnFirstFrame;
-    }
-
-    private void EmitEntranceRippleOnFirstFrame(object? sender, EventArgs e)
-    {
-        if (_finished)
-        {
-            UnqueueEntranceRipple();
-            return;
-        }
-        if (_visual.Effects.SceneRippleLayer.ActualWidth <= 0 || _visual.Effects.SceneRippleLayer.ActualHeight <= 0) return;
-        UnqueueEntranceRipple();
-        _visual.Effects.SceneRipples.Emit(new SceneRippleRequest(
-            _entranceOrigin!.Value,
-            SceneRipplePreset.Entrance,
-            1));
-    }
-
-    private void UnqueueEntranceRipple()
-    {
-        if (!_entranceRipplePending) return;
-        _entranceRipplePending = false;
-        CompositionTarget.Rendering -= EmitEntranceRippleOnFirstFrame;
-    }
-
-    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        if (_publishCommand is not null &&
-            e.Key == Key.D &&
-            Keyboard.Modifiers.HasFlag(ModifierKeys.Control) &&
-            Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
-        {
-            SetDebugPanelOpen(!_debugPanelOpen);
-            e.Handled = true;
-            return;
-        }
-        if (e.Key != Key.Escape) return;
-        if (_debugPanelOpen)
-        {
-            SetDebugPanelOpen(false);
-            e.Handled = true;
-            return;
-        }
-        if (_providerMenuOpen)
-        {
-            SetProviderMenuOpen(false);
-            e.Handled = true;
-            return;
-        }
-        CancelInternal();
-        e.Handled = true;
-    }
-
-    private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        var actionInteraction = IsActionTrayInteraction(e.OriginalSource, e.GetPosition(this));
-        if (_providerMenuOpen && !actionInteraction)
-        {
-            SetProviderMenuOpen(false);
-            e.Handled = true;
-            return;
-        }
-        if (_finished || Mode != OverlayInteractionMode.Selecting || actionInteraction) return;
-        _drawing = true;
-        _chipDismissed = true;
-        ActionTrayTransitions.BeginExit(_visual.Actions);
-        _sampler.Reset();
-        _stroke.Clear();
-        Track(e);
-        _visual.Selection.InputSurface.CaptureMouse();
-        e.Handled = true;
-    }
-
-    private void OnMouseMove(object sender, MouseEventArgs e)
-    {
-        if (!_drawing || _finished || Mode != OverlayInteractionMode.Selecting) return;
-        Track(e);
-        e.Handled = true;
-    }
-
-    private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        if (!_drawing || _finished || Mode != OverlayInteractionMode.Selecting) return;
-        _drawing = false;
-        ReleaseSelectionInput();
-        Track(e, final: true);
-        var bounds = LassoBoundsCalculator.Calculate(_sampler.Points, _monitor, _paddingPx, _minDiagonalPx);
-        if (bounds is null)
-        {
-            CancelInternal();
-        }
-        else
-        {
-            _finished = true;
-            var selection = new SelectionOutcome(bounds.Value, _frame);
-            FrameTransferred = true;
-            if (_publishCommand is null) Outcome = OverlayOutcome.VisualSelection(selection);
-            else _publishCommand(new VisualSelection(selection, _selectedProviderId));
-            ShowSelectionFrame(bounds.Value);
-        }
-        e.Handled = true;
-    }
-
-    private void OnMouseRightButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        CancelInternal();
-        e.Handled = true;
-    }
-
-    private void OnDeactivated(object? sender, EventArgs e)
-    {
-        Dispatcher.BeginInvoke(() =>
-        {
-            if (_finished || IsActive) return;
-            if (IsActionTrayInteraction(null, Mouse.GetPosition(this))) return;
-            CancelInternal();
-        }, DispatcherPriority.ContextIdle);
-    }
-
-    private void OnProviderButtonClick(object sender, RoutedEventArgs e)
-    {
-        if (_finished) return;
-        SetProviderMenuOpen(!_providerMenuOpen);
-        e.Handled = true;
-    }
-
-    private void AttachProviderMenuHandlers()
-    {
-        if (_visual.Provider?.Menu.Child is not StackPanel panel) return;
-        foreach (var item in panel.Children.OfType<Button>()) item.Click += OnProviderMenuItemClick;
-    }
-
-    private void OnProviderMenuItemClick(object sender, RoutedEventArgs e)
-    {
-        if (_finished || sender is not Button { Tag: string providerId }) return;
-        var descriptor = _providers.FirstOrDefault(provider =>
-            string.Equals(provider.Id, providerId, StringComparison.OrdinalIgnoreCase));
-        if (descriptor is null) return;
-        _selectedProviderId = descriptor.Id;
-        ProviderMenuVisualPresenter.UpdateProvider(
-            _visual.Provider!,
-            _providers,
-            _selectedProviderId,
-            _strings,
-            SystemTheme.IsLight());
-        AttachProviderMenuHandlers();
-        SetProviderMenuOpen(false);
-        _publishCommand?.Invoke(new ProviderSelected(_selectedProviderId));
-        e.Handled = true;
-    }
-
-    private void AttachDebugScenarioHandlers()
-    {
-        foreach (var button in _visual.Music.DebugScenarioButtons.Children.OfType<Button>())
-            button.Click += OnDebugScenarioClick;
-    }
-
-    private void OnDebugScenarioClick(object sender, RoutedEventArgs e)
-    {
-        if (_finished || sender is not Button { Tag: MusicDebugScenario scenario }) return;
-        MusicOverlayVisualPresenter.SetDebugScenario(_visual.Music, scenario, _visual.LightTheme);
-        _publishCommand?.Invoke(new MusicDebugScenarioSelected(scenario));
-    }
-
-    internal void SetDebugPanelOpen(bool open)
-    {
-        if (_finished || _publishCommand is null) return;
-        _debugPanelOpen = open;
-        _visual.Music.DebugPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
-        if (open) SetProviderMenuOpen(false);
-    }
-
-    private void SetProviderMenuOpen(bool open)
-    {
-        _providerMenuOpen = open;
-        if (_visual.Provider is not null)
-            ProviderMenuVisualPresenter.SetOpen(_visual.Provider, _visual.Actions.Root, open);
-    }
-
-    private void OnMusicButtonClick(object sender, RoutedEventArgs e)
-    {
-        if (_finished) return;
-        if (_publishCommand is not null)
-        {
-            if (Mode == OverlayInteractionMode.Selecting)
-            {
-                SetDebugPanelOpen(false);
-                ShowListening();
-                _publishCommand(new StartMusicRecognition());
-            }
-            else
-            {
-                PublishCancel();
-                CancelInternal(publish: false);
-            }
-            e.Handled = true;
-            return;
-        }
-        _finished = true;
-        _drawing = false;
-        UnqueueRevealUpdate();
-        ReleaseSelectionInput();
-        Outcome = OverlayOutcome.MusicRecognition();
-        IsHitTestVisible = false;
-        Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
-        e.Handled = true;
-    }
-
-    internal bool IsActionTrayInteraction(object? originalSource, Point windowPoint)
-    {
-        var hit = InputHitTest(windowPoint) as DependencyObject;
-        return IsWithin(originalSource as DependencyObject, _visual.Actions.Root) ||
-               IsWithin(originalSource as DependencyObject, _visual.Music.ResultHost) ||
-               IsWithin(originalSource as DependencyObject, _visual.Music.DebugPanel) ||
-               IsWithin(hit, _visual.Actions.Root) ||
-               IsWithin(hit, _visual.Music.ResultHost) ||
-               IsWithin(hit, _visual.Music.DebugPanel) ||
-               _visual.Actions.Root.IsMouseOver ||
-               _visual.Music.ResultHost.IsMouseOver ||
-               _visual.Music.DebugPanel.IsMouseOver;
-    }
-
-    internal void ShowListening()
-    {
-        if (_finished || Mode == OverlayInteractionMode.Listening) return;
-        Mode = OverlayInteractionMode.Listening;
-        _drawing = false;
-        UnqueueRevealUpdate();
-        ReleaseSelectionInput();
-        _visual.Music.ResultHost.Visibility = Visibility.Collapsed;
-        MusicOverlayVisualPresenter.SetListeningState(_visual.Music, listening: true, _visual.LightTheme);
-        _visual.Music.Waveform.Start();
-        _visual.Music.Button.ToolTip = _strings.CancelMusicRecognition;
-        System.Windows.Automation.AutomationProperties.SetName(
-            _visual.Music.Button,
-            _strings.CancelMusicRecognition);
-        Cursor = Cursors.Arrow;
-        FadeSelectionLayersForListening();
-    }
-
-    internal void ReportAudio(MusicVisualizationFrame frame)
-    {
-        if (_finished || Mode != OverlayInteractionMode.Listening) return;
-        _visual.Music.Waveform.Report(frame);
-        if (!frame.IsTransient || !OverlayVisualResources.AnimationsEnabled()) return;
-        var center = _visual.Music.Waveform.TransformToAncestor(_visual.Root).Transform(
-            new Point(_visual.Music.Waveform.ActualWidth / 2, _visual.Music.Waveform.ActualHeight / 2));
-        _visual.Effects.SceneRipples.Emit(new SceneRippleRequest(
-            center,
-            SceneRipplePreset.AudioTransient,
-            frame.NormalizedPeak));
-    }
-
-    internal void ShowMusicResult(MusicRecognitionOutcome outcome)
-    {
-        if (_finished || outcome.Status == MusicRecognitionStatus.Canceled) return;
-        Mode = OverlayInteractionMode.MusicResult;
-        _visual.Music.Waveform.Stop();
-        MusicOverlayVisualPresenter.SetListeningState(_visual.Music, listening: false, _visual.LightTheme);
-        var card = MusicOverlayVisualPresenter.PresentResult(
-            _visual.Music,
-            outcome,
-            _strings,
-            _visual.LightTheme,
-            command =>
-            {
-                if (command is DismissMusicResult) DismissMusicResult();
-                _publishCommand?.Invoke(command);
-            },
-            CopyTrackInfo);
-        _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.Music.ResultHost));
-        if (outcome.Status == MusicRecognitionStatus.Matched && OverlayVisualResources.AnimationsEnabled())
-        {
-            Dispatcher.BeginInvoke(() =>
-            {
-                if (_finished || Mode != OverlayInteractionMode.MusicResult) return;
-                card.UpdateLayout();
-                var origin = card.TransformToAncestor(_visual.Root).Transform(
-                    new Point(card.ActualWidth / 2, card.ActualHeight / 2));
-                _visual.Effects.SceneRipples.Emit(new SceneRippleRequest(origin, SceneRipplePreset.MusicMatch, 1));
-            }, DispatcherPriority.Loaded);
-        }
-    }
-
-    private void DismissMusicResult()
-    {
-        if (_finished || Mode != OverlayInteractionMode.MusicResult) return;
-        _visual.Music.ResultHost.Visibility = Visibility.Collapsed;
-        _visual.Music.ResultHost.Children.Clear();
-        Mode = OverlayInteractionMode.Selecting;
-        RestoreSelectionLayersAfterMusic();
-        _visual.Music.Button.ToolTip = _strings.MusicRecognitionAction;
-        AutomationProperties.SetName(_visual.Music.Button, _strings.MusicRecognitionAction);
-        Cursor = Cursors.Cross;
-    }
-
-    internal void CloseFromSession()
-    {
-        _finished = true;
-        _drawing = false;
-        ReleaseSelectionInput();
-        DisposeVisualResources();
-        if (!Dispatcher.HasShutdownStarted)
-            Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
-    }
-
-    private static bool IsWithin(DependencyObject? source, DependencyObject ancestor)
-    {
-        var current = source;
-        while (current is not null)
-        {
-            if (ReferenceEquals(current, ancestor)) return true;
-            current = current is Visual or System.Windows.Media.Media3D.Visual3D
-                ? VisualTreeHelper.GetParent(current)
-                : LogicalTreeHelper.GetParent(current);
-        }
-        return false;
-    }
-
-    private void ReleaseSelectionInput()
-    {
-        if (ReferenceEquals(Mouse.Captured, _visual.Selection.InputSurface))
-            Mouse.Capture(null);
-    }
-
-    private void Track(MouseEventArgs e, bool final = false)
-    {
-        var dip = e.GetPosition(this);
-        var physical = ToPhysical(dip);
-        var accepted = final ? _sampler.AddFinal(physical) : _sampler.Add(physical);
-        if (!accepted) return;
-        _stroke.Add(dip);
-        _visual.Selection.Halo.Points.Add(dip);
-        _visual.Selection.Accent.Points.Add(dip);
-        QueueRevealUpdate();
-    }
-
-    private void FadeSelectionLayersForListening()
-    {
-        UIElement[] fadeTargets =
-        [
-            _visual.Selection.Screenshot,
-            _visual.Selection.Sheen,
-            _visual.Selection.Halo,
-            _visual.Selection.Accent,
-            _visual.Selection.SelectionFrame,
-        ];
-        if (!OverlayVisualResources.AnimationsEnabled())
-        {
-            foreach (var target in fadeTargets) target.Opacity = 0;
-            return;
-        }
-        var duration = TimeSpan.FromMilliseconds(200);
-        foreach (var target in fadeTargets)
-            target.BeginAnimation(OpacityProperty, new DoubleAnimation(target.Opacity, 0, duration)
-            {
-                EasingFunction = EaseOut(),
-            });
-    }
-
-    private void RestoreSelectionLayersAfterMusic()
-    {
-        UIElement[] restoreTargets =
-        [
-            _visual.Selection.Screenshot,
-            _visual.Selection.Sheen,
-            _visual.Selection.Halo,
-            _visual.Selection.Accent,
-        ];
-        _visual.Selection.SelectionFrame.BeginAnimation(OpacityProperty, null);
-        _visual.Selection.SelectionFrame.Opacity = 0;
-        if (!OverlayVisualResources.AnimationsEnabled())
-        {
-            foreach (var target in restoreTargets) target.Opacity = 1;
-            return;
-        }
-        var duration = TimeSpan.FromMilliseconds(200);
-        foreach (var target in restoreTargets)
-            target.BeginAnimation(OpacityProperty, new DoubleAnimation(target.Opacity, 1, duration)
-            {
-                EasingFunction = EaseOut(),
-            });
-    }
-
-    private void CopyTrackInfo(string text, Button button)
-    {
-        try
-        {
-            Clipboard.SetText(text);
-            MusicOverlayVisualPresenter.SetCopyConfirmed(button, confirmed: true, _strings, _visual.LightTheme);
-            var restore = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1300) };
-            restore.Tick += (_, _) =>
-            {
-                restore.Stop();
-                if (_finished) return;
-                MusicOverlayVisualPresenter.SetCopyConfirmed(button, confirmed: false, _strings, _visual.LightTheme);
-            };
-            restore.Start();
-        }
-        catch
-        {
-            MusicOverlayVisualPresenter.SetCopyConfirmed(button, confirmed: false, _strings, _visual.LightTheme);
-        }
-    }
-
-    private void QueueRevealUpdate()
-    {
-        if (_revealUpdateQueued) return;
-        _revealUpdateQueued = true;
-        CompositionTarget.Rendering += FlushReveal;
-    }
-
-    private void UnqueueRevealUpdate()
-    {
-        if (!_revealUpdateQueued) return;
-        _revealUpdateQueued = false;
-        CompositionTarget.Rendering -= FlushReveal;
-    }
-
-    // Runs at most once per render frame, so fast drags never rebuild the mask more often than displayed.
-    private void FlushReveal(object? sender, EventArgs e)
-    {
-        _revealUpdateQueued = false;
-        CompositionTarget.Rendering -= FlushReveal;
-        var size = new Size(ActualWidth, ActualHeight);
-        _visual.Selection.Dim.Data = SelectionOverlayTransitions.BuildRevealGeometry(size, _stroke);
-        _visual.Selection.Sheen.Data = SelectionOverlayTransitions.BuildPolygonGeometry(_stroke);
-    }
-
-    // Circle-to-search style finish: the lasso snaps into the exact rectangle that will be
-    // sent, the frame holds for a beat so the region stays readable, then the window closes
-    // into the provider with no fade (the frozen frame matches the live desktop).
-    private void ShowSelectionFrame(GdiRectangle bounds)
-    {
-        UnqueueRevealUpdate();
-        var size = new Size(ActualWidth, ActualHeight);
-        var offset = _overscan ? 1 : 0;
-        var rect = new Rect(
-            bounds.Left / _scale + offset,
-            bounds.Top / _scale + offset,
-            bounds.Width / _scale,
-            bounds.Height / _scale);
-        Point[] corners =
-        [
-            new(rect.Left, rect.Top),
-            new(rect.Right, rect.Top),
-            new(rect.Right, rect.Bottom),
-            new(rect.Left, rect.Bottom),
-        ];
-        SelectionOverlayTransitions.BeginSelectionReveal(
-            _visual.Selection,
-            SelectionOverlayTransitions.BuildRevealGeometry(size, corners),
-            SelectionOverlayTransitions.BuildSelectionFrameGeometry(rect));
-
-        var hold = new DispatcherTimer { Interval = SelectionHoldDuration };
-        hold.Tick += (_, _) =>
-        {
-            hold.Stop();
-            FinishShutdown();
-        };
-        hold.Start();
-    }
-
-    private GdiPoint ToPhysical(Point dip)
-        => new((int)Math.Round(dip.X * _scale), (int)Math.Round(dip.Y * _scale));
-
-    private void CancelInternal(bool publish = true)
-    {
-        if (_finished) return;
-        if (publish && _publishCommand is not null) PublishCancel();
-        _finished = true;
-        UnqueueRevealUpdate();
-        ReleaseSelectionInput();
-        if (!OverlayVisualResources.AnimationsEnabled())
-        {
-            Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
-            return;
-        }
-
-        // The frozen frame cross-fades into the live desktop; only the cancel path animates,
-        // the mouse-up path shows the selection rectangle and closes without a window fade.
-        var fade = Fade(1, 0);
-        switch (_exitFade)
-        {
-            case OverlayExitFade.Root:
-                fade.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
-                _visual.Root.BeginAnimation(OpacityProperty, fade);
-                break;
-            case OverlayExitFade.DimLayers:
-                // No window transparency: the overlay layers melt away while the frozen
-                // frame (identical to the live desktop) stays until close.
-                var completed = new DoubleAnimation(1, 0, ExitFadeDuration) { EasingFunction = EaseOut() };
-                completed.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
-                _visual.Selection.Dim.BeginAnimation(OpacityProperty, completed);
-                _visual.Selection.Sheen.BeginAnimation(OpacityProperty, Fade(1, 0));
-                _visual.Selection.Halo.BeginAnimation(OpacityProperty, Fade(1, 0));
-                _visual.Selection.Accent.BeginAnimation(OpacityProperty, Fade(1, 0));
-                ActionTrayTransitions.BeginExit(_visual.Actions);
-                break;
-            default:
-                fade.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
-                BeginAnimation(OpacityProperty, fade);
-                break;
-        }
-
-        if (_clickThroughOnCancel) MakeClickThrough();
-        IsHitTestVisible = false;
-    }
-
-    private DoubleAnimation Fade(double from, double to) =>
-        new(from, to, ExitFadeDuration) { EasingFunction = EaseOut() };
-
-    private static CubicEase EaseOut() => new() { EasingMode = EasingMode.EaseOut };
-
-    private void MakeClickThrough()
-    {
-        var hwnd = new WindowInteropHelper(this).Handle;
-        if (hwnd == IntPtr.Zero) return;
-        var style = NativeMethods.GetWindowLongW(hwnd, NativeMethods.GwlExStyle);
-        // Transparent only: setting WS_EX_LAYERED by hand detaches WPF's DWM redirection
-        // surface and the window renders black; WPF enables layering itself for Opacity < 1.
-        NativeMethods.SetWindowLongW(hwnd, NativeMethods.GwlExStyle, style | NativeMethods.WsExTransparent);
-    }
-
-    private void FinishShutdown()
-    {
-        _finished = true;
-        UnqueueRevealUpdate();
-        DisposeVisualResources();
-        Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
-    }
-
-    private void PublishCancel()
-    {
-        if (_cancelPublished) return;
-        _cancelPublished = true;
-        _publishCommand?.Invoke(new CancelSession());
-    }
-
-    private void DisposeVisualResources()
-    {
-        UnqueueEntranceRipple();
-        _visual.Music.Waveform.Dispose();
-        _visual.Effects.SceneRipples.Dispose();
-        foreach (var ripple in _controlRipples) ripple.Dispose();
-        _controlRipples.Clear();
-        UnqueueRevealUpdate();
-    }
 }
