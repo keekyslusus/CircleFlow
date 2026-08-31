@@ -514,7 +514,15 @@ public sealed class ProviderMusicOverlayUiTests
 
             Assert.IsType<DismissMusicResult>(Assert.Single(commands));
             Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            if (OverlayVisualResources.AnimationsEnabled())
+            {
+                Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ResultHost.Visibility);
+                Assert.False(overlay.VisualState.Music.ResultHost.IsHitTestVisible);
+                Assert.Single(overlay.VisualState.Music.ResultHost.Children);
+                PumpFor(TimeSpan.FromMilliseconds(220));
+            }
             Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.ResultHost.Visibility);
+            Assert.Empty(overlay.VisualState.Music.ResultHost.Children);
             Assert.False(overlay.Dispatcher.HasShutdownStarted);
             overlay.CloseFromSession();
             Dispatcher.Run();
@@ -556,6 +564,15 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
             Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ListeningLayer.Visibility);
             Assert.IsType<RetryMusicRecognition>(Assert.Single(commands));
+            if (OverlayVisualResources.AnimationsEnabled())
+            {
+                Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ResultHost.Visibility);
+                Assert.False(overlay.VisualState.Music.ResultHost.IsHitTestVisible);
+                Assert.Single(overlay.VisualState.Music.ResultHost.Children);
+                PumpFor(TimeSpan.FromMilliseconds(220));
+            }
+            Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.ResultHost.Visibility);
+            Assert.Empty(overlay.VisualState.Music.ResultHost.Children);
             overlay.CloseFromSession();
             Dispatcher.Run();
         });
@@ -650,6 +667,19 @@ public sealed class ProviderMusicOverlayUiTests
         Dispatcher.PushFrame(frame);
         poll.Stop();
         Assert.True(condition(), "The real pointer click was not delivered to the WPF button.");
+    }
+
+    private static void PumpFor(TimeSpan duration)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer { Interval = duration };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            frame.Continue = false;
+        };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
     }
 
     private const uint MouseEventLeftDown = 0x0002;

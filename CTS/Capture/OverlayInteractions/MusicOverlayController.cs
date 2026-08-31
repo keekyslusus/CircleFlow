@@ -28,12 +28,17 @@ internal sealed class MusicOverlayController : IDisposable
     private readonly List<DispatcherTimer> _copyTimers = [];
     private readonly List<IDisposable> _resultRipples = [];
     private DispatcherOperation? _matchRippleOperation;
+    private FrameworkElement? _currentResultCard;
+    private MusicResultTransitions.ExitHandle? _pendingResultExit;
+    private long _resultGeneration;
     private bool _disposed;
 
     internal int PendingCopyRestoreCount => _copyTimers.Count;
 
     internal bool HasPendingMatchRipple =>
         _matchRippleOperation?.Status == DispatcherOperationStatus.Pending;
+
+    internal bool HasPendingResultExit => _pendingResultExit is not null;
 
     internal MusicOverlayController(
         MusicOverlayVisual visual,
@@ -84,9 +89,7 @@ internal sealed class MusicOverlayController : IDisposable
     internal void ShowListening()
     {
         if (_disposed) return;
-        _visual.ResultHost.Visibility = Visibility.Collapsed;
-        _visual.ResultHost.Children.Clear();
-        DisposeResultRipples();
+        BeginResultExit();
         MusicOverlayVisualPresenter.SetListeningState(_visual, listening: true, _lightTheme);
         _visual.Waveform.Start();
         _visual.Button.ToolTip = _strings.CancelMusicRecognition;
@@ -96,6 +99,13 @@ internal sealed class MusicOverlayController : IDisposable
     internal void ShowResult(MusicRecognitionOutcome outcome)
     {
         if (_disposed || outcome.Status == MusicRecognitionStatus.Canceled) return;
+        CancelPendingResultExit();
+        AbortPendingMatchRipple();
+        DisposeResultRipples();
+        _resultGeneration++;
+        _currentResultCard = null;
+        _visual.ResultHost.Children.Clear();
+        ResetResultHost();
         _visual.Waveform.Stop();
         MusicOverlayVisualPresenter.SetListeningState(_visual, listening: false, _lightTheme);
         var card = MusicOverlayVisualPresenter.PresentResult(
@@ -105,16 +115,23 @@ internal sealed class MusicOverlayController : IDisposable
             _lightTheme,
             _resultCommandRequested,
             CopyTrackInfo);
+        _currentResultCard = card;
+        var animationsEnabled = _animationsEnabled();
+        MusicResultTransitions.BeginEntrance(card, animationsEnabled);
         _resultRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.ResultHost));
-        if (outcome.Status != MusicRecognitionStatus.Matched || !_animationsEnabled()) return;
+        if (outcome.Status != MusicRecognitionStatus.Matched || !animationsEnabled) return;
 
+        var generation = _resultGeneration;
         _matchRippleOperation = _root.Dispatcher.BeginInvoke(() =>
         {
             _matchRippleOperation = null;
-            if (_disposed || _getMode() != OverlayInteractionMode.MusicResult) return;
-            card.UpdateLayout();
-            var origin = card.TransformToAncestor(_root).Transform(
-                new Point(card.ActualWidth / 2, card.ActualHeight / 2));
+            if (_disposed || _getMode() != OverlayInteractionMode.MusicResult ||
+                generation != _resultGeneration || !ReferenceEquals(_currentResultCard, card)) return;
+            _visual.ResultHost.UpdateLayout();
+            var origin = _visual.ResultHost.TransformToAncestor(_root).Transform(
+                new Point(
+                    _visual.ResultHost.ActualWidth / 2,
+                    _visual.ResultHost.ActualHeight / 2));
             _effects.SceneRipples.Emit(new SceneRippleRequest(origin, SceneRipplePreset.MusicMatch, 1));
         }, DispatcherPriority.Loaded);
     }
@@ -122,9 +139,7 @@ internal sealed class MusicOverlayController : IDisposable
     internal void DismissResult()
     {
         if (_disposed) return;
-        _visual.ResultHost.Visibility = Visibility.Collapsed;
-        _visual.ResultHost.Children.Clear();
-        DisposeResultRipples();
+        BeginResultExit();
         _visual.Button.ToolTip = _strings.MusicRecognitionAction;
         AutomationProperties.SetName(_visual.Button, _strings.MusicRecognitionAction);
     }
@@ -155,10 +170,10 @@ internal sealed class MusicOverlayController : IDisposable
             timer.Tick -= OnRestoreCopy;
         }
         _copyTimers.Clear();
-        if (_matchRippleOperation?.Status == DispatcherOperationStatus.Pending)
-            _matchRippleOperation.Abort();
-        _matchRippleOperation = null;
+        AbortPendingMatchRipple();
+        CancelPendingResultExit();
         DisposeResultRipples();
+        ClearResultVisual();
         _visual.Waveform.Dispose();
     }
 
@@ -211,5 +226,69 @@ internal sealed class MusicOverlayController : IDisposable
     {
         foreach (var ripple in _resultRipples) ripple.Dispose();
         _resultRipples.Clear();
+    }
+
+    private void BeginResultExit()
+    {
+        DisposeResultRipples();
+        AbortPendingMatchRipple();
+        if (_pendingResultExit is not null) return;
+
+        _visual.ResultHost.IsHitTestVisible = false;
+        var card = _currentResultCard;
+        if (card is null || !_visual.ResultHost.Children.Contains(card))
+        {
+            ClearResultVisual();
+            return;
+        }
+
+        var generation = ++_resultGeneration;
+        var exit = MusicResultTransitions.BeginExit(
+            card,
+            _animationsEnabled(),
+            () => CompleteResultExit(card, generation));
+        if (!exit.IsCompleted && ReferenceEquals(_currentResultCard, card) &&
+            generation == _resultGeneration)
+            _pendingResultExit = exit;
+        else
+            exit.Dispose();
+    }
+
+    private void CompleteResultExit(FrameworkElement card, long generation)
+    {
+        if (_disposed || generation != _resultGeneration ||
+            !ReferenceEquals(_currentResultCard, card)) return;
+        var completedExit = _pendingResultExit;
+        _pendingResultExit = null;
+        completedExit?.Dispose();
+        ClearResultVisual();
+    }
+
+    private void CancelPendingResultExit()
+    {
+        _pendingResultExit?.Dispose();
+        _pendingResultExit = null;
+    }
+
+    private void AbortPendingMatchRipple()
+    {
+        if (_matchRippleOperation?.Status == DispatcherOperationStatus.Pending)
+            _matchRippleOperation.Abort();
+        _matchRippleOperation = null;
+    }
+
+    private void ClearResultVisual()
+    {
+        _currentResultCard = null;
+        _visual.ResultHost.Children.Clear();
+        _visual.ResultHost.Visibility = Visibility.Collapsed;
+        ResetResultHost();
+    }
+
+    private void ResetResultHost()
+    {
+        _visual.ResultHost.BeginAnimation(UIElement.OpacityProperty, null);
+        _visual.ResultHost.Opacity = 1;
+        _visual.ResultHost.IsHitTestVisible = true;
     }
 }

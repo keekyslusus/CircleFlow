@@ -102,6 +102,164 @@ public sealed class OverlayControllerLifecycleTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Animated_dismiss_keeps_card_visible_and_noninteractive_until_cleanup()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = CreateVisual();
+            var window = ShowVisual(visual);
+            var commands = new List<IOverlayCommand>();
+            using var controller = CreateMusicController(visual, commands, animationsEnabled: true);
+            controller.ShowResult(MatchedOutcome());
+            var card = Assert.Single(visual.Music.ResultHost.Children.OfType<FrameworkElement>());
+
+            controller.DismissResult();
+
+            Assert.True(controller.HasPendingResultExit);
+            Assert.Equal(Visibility.Visible, visual.Music.ResultHost.Visibility);
+            Assert.False(visual.Music.ResultHost.IsHitTestVisible);
+            Assert.Same(card, Assert.Single(visual.Music.ResultHost.Children));
+            PumpFor(TimeSpan.FromMilliseconds(220));
+
+            Assert.False(controller.HasPendingResultExit);
+            Assert.Equal(Visibility.Collapsed, visual.Music.ResultHost.Visibility);
+            Assert.True(visual.Music.ResultHost.IsHitTestVisible);
+            Assert.Empty(visual.Music.ResultHost.Children);
+            visual.Effects.SceneRipples.Dispose();
+            window.Content = null;
+            window.Close();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Disabled_dismiss_collapses_and_clears_synchronously()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = CreateVisual();
+            var commands = new List<IOverlayCommand>();
+            using var controller = CreateMusicController(visual, commands, animationsEnabled: false);
+            controller.ShowResult(MatchedOutcome());
+
+            controller.DismissResult();
+
+            Assert.False(controller.HasPendingResultExit);
+            Assert.Equal(Visibility.Collapsed, visual.Music.ResultHost.Visibility);
+            Assert.True(visual.Music.ResultHost.IsHitTestVisible);
+            Assert.Empty(visual.Music.ResultHost.Children);
+            visual.Effects.SceneRipples.Dispose();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Retry_listening_starts_while_old_card_finishes_noninteractive_exit()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = CreateVisual();
+            var window = ShowVisual(visual);
+            var commands = new List<IOverlayCommand>();
+            using var controller = CreateMusicController(visual, commands, animationsEnabled: true);
+            controller.ShowResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.NoMatch));
+
+            controller.ShowListening();
+
+            Assert.Equal(Visibility.Visible, visual.Music.ListeningLayer.Visibility);
+            Assert.True(visual.Music.Waveform.IsRendering);
+            Assert.Equal(Visibility.Visible, visual.Music.ResultHost.Visibility);
+            Assert.False(visual.Music.ResultHost.IsHitTestVisible);
+            Assert.NotEmpty(visual.Music.ResultHost.Children);
+            PumpFor(TimeSpan.FromMilliseconds(220));
+
+            Assert.Equal(Visibility.Collapsed, visual.Music.ResultHost.Visibility);
+            Assert.Empty(visual.Music.ResultHost.Children);
+            visual.Effects.SceneRipples.Dispose();
+            window.Content = null;
+            window.Close();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void New_result_cancels_old_exit_and_stale_deadline_cannot_clear_it()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = CreateVisual();
+            var window = ShowVisual(visual);
+            var commands = new List<IOverlayCommand>();
+            using var controller = CreateMusicController(visual, commands, animationsEnabled: true);
+            controller.ShowResult(MatchedOutcome());
+            controller.DismissResult();
+            Assert.True(controller.HasPendingResultExit);
+
+            controller.ShowResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio));
+            var replacement = Assert.Single(visual.Music.ResultHost.Children.OfType<FrameworkElement>());
+            PumpFor(TimeSpan.FromMilliseconds(220));
+
+            Assert.False(controller.HasPendingResultExit);
+            Assert.Equal(Visibility.Visible, visual.Music.ResultHost.Visibility);
+            Assert.True(visual.Music.ResultHost.IsHitTestVisible);
+            Assert.Same(replacement, Assert.Single(visual.Music.ResultHost.Children));
+            visual.Effects.SceneRipples.Dispose();
+            window.Content = null;
+            window.Close();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Dispose_cancels_pending_result_exit()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = CreateVisual();
+            var window = ShowVisual(visual);
+            var commands = new List<IOverlayCommand>();
+            var controller = CreateMusicController(visual, commands, animationsEnabled: true);
+            controller.ShowResult(MatchedOutcome());
+            controller.DismissResult();
+            Assert.True(controller.HasPendingResultExit);
+
+            controller.Dispose();
+
+            Assert.False(controller.HasPendingResultExit);
+            Assert.Empty(visual.Music.ResultHost.Children);
+            PumpFor(TimeSpan.FromMilliseconds(220));
+            Assert.Empty(commands);
+            visual.Effects.SceneRipples.Dispose();
+            window.Content = null;
+            window.Close();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Dispose_during_result_exit_releases_controller_and_window()
+    {
+        WeakReference? controllerReference = null;
+        WeakReference? windowReference = null;
+        var failure = RunOnSta(() =>
+        {
+            CreateAndDisposePendingResultController(out controllerReference, out windowReference);
+            PumpFor(TimeSpan.FromMilliseconds(220));
+            ForceCollection();
+
+            Assert.False(controllerReference.IsAlive);
+            Assert.False(windowReference.IsAlive);
+        });
+
+        Assert.Null(failure);
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void CreateAndDisposePendingRenderController(
         out WeakReference controllerReference,
@@ -130,6 +288,26 @@ public sealed class OverlayControllerLifecycleTests
         controller.Dispose();
         Assert.False(controller.HasPendingRevealUpdate);
         Assert.NotSame(input, Mouse.Captured);
+        window.Content = null;
+        window.Close();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void CreateAndDisposePendingResultController(
+        out WeakReference controllerReference,
+        out WeakReference windowReference)
+    {
+        var visual = CreateVisual();
+        var window = ShowVisual(visual);
+        var controller = CreateMusicController(visual, [], animationsEnabled: true);
+        controller.ShowResult(MatchedOutcome());
+        controller.DismissResult();
+        Assert.True(controller.HasPendingResultExit);
+
+        controllerReference = new WeakReference(controller);
+        windowReference = new WeakReference(window);
+        controller.Dispose();
+        visual.Effects.SceneRipples.Dispose();
         window.Content = null;
         window.Close();
     }
@@ -178,6 +356,19 @@ public sealed class OverlayControllerLifecycleTests
         32,
         lightTheme: false,
         TestUiStrings.English);
+
+    private static Window ShowVisual(OverlayVisual visual)
+    {
+        var window = new Window
+        {
+            Width = 640,
+            Height = 400,
+            Content = visual.Root,
+        };
+        window.Show();
+        window.UpdateLayout();
+        return window;
+    }
 
     private static MusicRecognitionOutcome MatchedOutcome() =>
         MusicRecognitionOutcome.Matched(new ShazamRecognition(
