@@ -1,0 +1,79 @@
+<Window x:Class="CircleToSearch.AccentColorTool.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource accent_tool_title}"
+        Width="580"
+        Height="360"
+        MinWidth="460"
+        MinHeight="300"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
+        Foreground="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}">
+    <Grid Margin="24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="20" />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Grid.Column="0"
+                   Margin="0,0,0,10"
+                   HorizontalAlignment="Center"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Text="{DynamicResource accent_tool_system_accent}" />
+        <TextBlock Grid.Row="0"
+                   Grid.Column="2"
+                   Margin="0,0,0,10"
+                   HorizontalAlignment="Center"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Text="{DynamicResource accent_tool_pastel_accent}" />
+
+        <Border x:Name="SystemAccentSwatch"
+                Grid.Row="1"
+                Grid.Column="0"
+                MinHeight="150"
+                BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+                BorderThickness="1"
+                CornerRadius="12" />
+        <Border x:Name="PastelAccentSwatch"
+                Grid.Row="1"
+                Grid.Column="2"
+                MinHeight="150"
+                BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+                BorderThickness="1"
+                CornerRadius="12" />
+
+        <TextBlock x:Name="SystemAccentValue"
+                   Grid.Row="2"
+                   Grid.Column="0"
+                   Margin="0,10,0,0"
+                   HorizontalAlignment="Center"
+                   FontFamily="Consolas"
+                   FontSize="14" />
+        <TextBlock x:Name="PastelAccentValue"
+                   Grid.Row="2"
+                   Grid.Column="2"
+                   Margin="0,10,0,0"
+                   HorizontalAlignment="Center"
+                   FontFamily="Consolas"
+                   FontSize="14" />
+
+        <Button Grid.Row="3"
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Margin="0,20,0,0"
+                Padding="28,9"
+                HorizontalAlignment="Center"
+                Click="RefreshButton_Click"
+                Content="{DynamicResource accent_tool_refresh}" />
+    </Grid>
+</Window>

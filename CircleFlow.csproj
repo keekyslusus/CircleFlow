@@ -39,6 +39,8 @@
   <ItemGroup>
     <Compile Remove="tests\**\*.cs" />
     <Compile Remove="poc\**\*.cs" />
+    <ApplicationDefinition Remove="tests\**\*.xaml" />
+    <Page Remove="tests\**\*.xaml" />
   </ItemGroup>
 
   <ItemGroup>
