@@ -18,7 +18,7 @@ public interface IMusicVisualizationProgress
 
 public static class MusicVisualizationSettings
 {
-    public const double RippleSensitivity = 0.65;
+    public const double RippleSensitivity = 0.67;
 }
 
 public static class AudioLevelMeter
