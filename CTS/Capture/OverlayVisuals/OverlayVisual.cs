@@ -12,6 +12,7 @@ public sealed record OverlayVisual(
     ActionTrayVisual Actions,
     ProviderMenuVisual? Provider,
     MusicOverlayVisual Music,
+    DebugOverlayVisual Debug,
     BottomOverlayVisual Bottom,
     OverlayEffectsVisual Effects);
 
@@ -54,10 +55,12 @@ public sealed record MusicOverlayVisual(
     Path Icon,
     StackPanel ListeningLayer,
     AudioWaveformVisual Waveform,
-    Grid ResultHost,
-    Border DebugPanel,
-    Panel DebugScenarioButtons,
-    Panel DebugToastButtons);
+    Grid ResultHost);
+
+public sealed record DebugOverlayVisual(
+    Border Panel,
+    Panel MusicScenarioButtons,
+    Panel ToastButtons);
 
 public sealed record OverlayEffectsVisual(
     Canvas SceneRippleLayer,

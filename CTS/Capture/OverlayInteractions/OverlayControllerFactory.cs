@@ -15,7 +15,8 @@ internal sealed class OverlayControllers(
     SelectionOverlayController selection,
     ProviderMenuController provider,
     MusicOverlayController music,
-    ToastOverlayController toast) : IDisposable
+    ToastOverlayController toast,
+    DebugOverlayController debug) : IDisposable
 {
     private bool _disposed;
 
@@ -23,11 +24,13 @@ internal sealed class OverlayControllers(
     internal ProviderMenuController Provider { get; } = provider;
     internal MusicOverlayController Music { get; } = music;
     internal ToastOverlayController Toast { get; } = toast;
+    internal DebugOverlayController Debug { get; } = debug;
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+        Debug.Dispose();
         Music.Dispose();
         Toast.Dispose();
         Provider.Dispose();
@@ -83,6 +86,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         ProviderMenuController? provider = null;
         MusicOverlayController? music = null;
         ToastOverlayController? toast = null;
+        DebugOverlayController? debug = null;
         try
         {
             selection = new SelectionOverlayController(
@@ -112,6 +116,13 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.Visual.Bottom,
                 context.Visual.LightTheme,
                 _animationsEnabled);
+            debug = new DebugOverlayController(
+                context.Visual.Debug,
+                context.Visual.LightTheme,
+                context.DebugEnabled,
+                context.GetMode,
+                context.DebugScenarioSelected,
+                toast.Show);
             music = new MusicOverlayController(
                 context.Visual.Music,
                 context.Visual.Bottom.LayoutTransitions,
@@ -119,21 +130,19 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.Visual.Root,
                 context.Strings,
                 context.Visual.LightTheme,
-                context.DebugEnabled,
                 context.GetMode,
                 context.MusicStartRequested,
                 context.MusicCancelRequested,
-                context.DebugScenarioSelected,
-                toast.Show,
                 context.MusicResultCommandRequested,
                 _setClipboard,
                 _animationsEnabled);
-            return new OverlayControllers(selection, provider, music, toast);
+            return new OverlayControllers(selection, provider, music, toast, debug);
         }
         catch
         {
-            toast?.Dispose();
             music?.Dispose();
+            debug?.Dispose();
+            toast?.Dispose();
             provider?.Dispose();
             selection?.Dispose();
             throw;

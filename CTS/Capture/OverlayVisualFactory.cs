@@ -37,6 +37,7 @@ public static class OverlayVisualFactory
         var selection = SelectionOverlayVisualFactory.Create(frame, size);
         var provider = ProviderMenuVisualFactory.Create(providers, selectedProviderId, lightTheme, strings);
         var music = MusicOverlayVisualFactory.Create(size, lightTheme, strings);
+        var debug = DebugOverlayVisualFactory.Create(lightTheme, strings);
         var actions = ActionTrayVisualFactory.Create(
             palette.SelectionChip,
             strings,
@@ -60,8 +61,8 @@ public static class OverlayVisualFactory
         root.Children.Add(effects.SceneRippleLayer);
         root.Children.Add(music.ListeningLayer);
         root.Children.Add(bottom.Root);
-        root.Children.Add(music.DebugPanel);
+        root.Children.Add(debug.Panel);
 
-        return new OverlayVisual(lightTheme, root, selection, actions, provider, music, bottom, effects);
+        return new OverlayVisual(lightTheme, root, selection, actions, provider, music, debug, bottom, effects);
     }
 }

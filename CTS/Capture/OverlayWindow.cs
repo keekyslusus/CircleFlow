@@ -51,6 +51,7 @@ public sealed class OverlayWindow : Window
     private readonly ProviderMenuController _provider;
     private readonly MusicOverlayController _music;
     private readonly ToastOverlayController _toast;
+    private readonly DebugOverlayController _debug;
     private readonly List<IDisposable> _controlRipples = [];
     private bool _chipDismissed;
     private bool _cancelPublished;
@@ -141,6 +142,7 @@ public sealed class OverlayWindow : Window
         _provider = _controllers.Provider;
         _music = _controllers.Music;
         _toast = _controllers.Toast;
+        _debug = _controllers.Debug;
 
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -186,7 +188,7 @@ public sealed class OverlayWindow : Window
 
     internal void SetDebugPanelOpen(bool open)
     {
-        _music.SetDebugPanelOpen(open);
+        _debug.SetOpen(open);
         if (open) _provider.SetOpen(false);
     }
 
@@ -194,11 +196,11 @@ public sealed class OverlayWindow : Window
     {
         var hit = InputHitTest(windowPoint) as DependencyObject;
         return IsWithin(originalSource as DependencyObject, _visual.Bottom.Root) ||
-               IsWithin(originalSource as DependencyObject, _visual.Music.DebugPanel) ||
+               IsWithin(originalSource as DependencyObject, _visual.Debug.Panel) ||
                IsWithin(hit, _visual.Bottom.Root) ||
-               IsWithin(hit, _visual.Music.DebugPanel) ||
+               IsWithin(hit, _visual.Debug.Panel) ||
                _visual.Bottom.Root.IsMouseOver ||
-               _visual.Music.DebugPanel.IsMouseOver;
+               _visual.Debug.Panel.IsMouseOver;
     }
 
     internal void ShowListening()
@@ -268,12 +270,12 @@ public sealed class OverlayWindow : Window
             Keyboard.Modifiers.HasFlag(ModifierKeys.Control) &&
             Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
         {
-            SetDebugPanelOpen(!_music.IsDebugPanelOpen);
+            SetDebugPanelOpen(!_debug.IsOpen);
             e.Handled = true;
             return;
         }
         if (e.Key != Key.Escape) return;
-        if (_music.IsDebugPanelOpen)
+        if (_debug.IsOpen)
         {
             SetDebugPanelOpen(false);
         }
@@ -393,7 +395,7 @@ public sealed class OverlayWindow : Window
             case OverlayInteractionMode.Closing:
                 _selection.StopInput();
                 _provider.SetOpen(false);
-                _music.SetDebugPanelOpen(false);
+                _debug.SetOpen(false);
                 _toast.SettleForClosing();
                 _visual.Bottom.LayoutTransitions.Settle();
                 break;

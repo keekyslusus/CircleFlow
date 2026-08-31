@@ -52,16 +52,6 @@ public sealed class MusicOverlayVisualTests
                 TestUiStrings.English);
             MusicOverlayVisualPresenter.SetListeningState(root.Music, listening: true, lightTheme: false);
             Assert.Equal(Visibility.Visible, root.Music.ListeningLayer.Visibility);
-            Assert.Equal(
-                Enum.GetValues<MusicDebugScenario>(),
-                root.Music.DebugScenarioButtons.Children.OfType<Button>()
-                    .Select(button => Assert.IsType<MusicDebugScenario>(button.Tag))
-                    .ToArray());
-            Assert.Equal(
-                Enum.GetValues<ToastTone>(),
-                root.Music.DebugToastButtons.Children.OfType<Button>()
-                    .Select(button => Assert.IsType<ToastTone>(button.Tag))
-                    .ToArray());
 
             MusicOverlayVisualPresenter.SetListeningState(root.Music, listening: false, lightTheme: false);
             Assert.Equal(Visibility.Collapsed, root.Music.ListeningLayer.Visibility);

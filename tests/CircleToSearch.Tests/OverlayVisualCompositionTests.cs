@@ -41,7 +41,7 @@ public sealed class OverlayVisualCompositionTests
                 visual.Effects.SceneRippleLayer,
                 visual.Music.ListeningLayer,
                 visual.Bottom.Root,
-                visual.Music.DebugPanel,
+                visual.Debug.Panel,
             ];
 
             Assert.Equal(expected, visual.Root.Children.Cast<UIElement>());
@@ -59,6 +59,10 @@ public sealed class OverlayVisualCompositionTests
             Assert.IsType<System.Windows.Media.TranslateTransform>(visual.Bottom.ResultSlot.RenderTransform);
             Assert.IsType<System.Windows.Media.TranslateTransform>(visual.Bottom.ActionSlot.RenderTransform);
             Assert.Same(visual.Actions.Lift, visual.Actions.Tray.RenderTransform);
+            Assert.Same(visual.Root, visual.Debug.Panel.Parent);
+            Assert.DoesNotContain(visual.Debug.Panel, visual.Music.ListeningLayer.Children.Cast<UIElement>());
+            Assert.DoesNotContain(visual.Debug.Panel, visual.Music.ResultHost.Children.Cast<UIElement>());
+            Assert.True(visual.Root.Children.IndexOf(visual.Debug.Panel) > visual.Root.Children.IndexOf(visual.Bottom.Root));
             visual.Music.Waveform.Dispose();
             visual.Effects.SceneRipples.Dispose();
         });

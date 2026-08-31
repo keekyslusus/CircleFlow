@@ -351,12 +351,12 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.True(NativeMethods.GetCursorPos(out var originalPointer));
             try
             {
-                Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.DebugPanel.Visibility);
+                Assert.Equal(Visibility.Collapsed, overlay.VisualState.Debug.Panel.Visibility);
                 overlay.SetDebugPanelOpen(true);
                 overlay.UpdateLayout();
-                Assert.Equal(Visibility.Visible, overlay.VisualState.Music.DebugPanel.Visibility);
+                Assert.Equal(Visibility.Visible, overlay.VisualState.Debug.Panel.Visibility);
 
-                var noAudio = overlay.VisualState.Music.DebugScenarioButtons.Children
+                var noAudio = overlay.VisualState.Debug.MusicScenarioButtons.Children
                     .OfType<Button>()
                     .Single(button => Equals(button.Tag, MusicDebugScenario.NoAudio));
                 ClickWithRealPointer(noAudio);
@@ -368,7 +368,7 @@ public sealed class ProviderMusicOverlayUiTests
                     MusicDebugScenario.NoAudio,
                     Assert.IsType<MusicDebugScenarioSelected>(commands[0]).Scenario);
                 Assert.IsType<StartMusicRecognition>(commands[1]);
-                Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.DebugPanel.Visibility);
+                Assert.Equal(Visibility.Collapsed, overlay.VisualState.Debug.Panel.Visibility);
                 Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
             }
             finally

@@ -269,7 +269,7 @@ public sealed class OverlayWindowTests
             overlay.VisualState.Provider!.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
             RaiseEscape(overlay);
-            Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.DebugPanel.Visibility);
+            Assert.Equal(Visibility.Collapsed, overlay.VisualState.Debug.Panel.Visibility);
             Assert.Empty(commands);
 
             RaiseEscape(overlay);
@@ -278,6 +278,43 @@ public sealed class OverlayWindowTests
             RaiseEscape(overlay);
             overlay.CancelFromCoordinator();
             Assert.IsType<CancelSession>(Assert.Single(commands));
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Starting_music_recognition_closes_the_debug_panel()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                new OverlayControllerFactory(),
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+            overlay.SetDebugPanelOpen(true);
+
+            overlay.VisualState.Music.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal(Visibility.Collapsed, overlay.VisualState.Debug.Panel.Visibility);
+            Assert.IsType<StartMusicRecognition>(Assert.Single(commands));
+            Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
+            overlay.CloseFromSession();
             Dispatcher.Run();
         });
 
@@ -373,7 +410,7 @@ public sealed class OverlayWindowTests
             overlay.Show();
             overlay.UpdateLayout();
 
-            foreach (var button in overlay.VisualState.Music.DebugToastButtons.Children.OfType<Button>())
+            foreach (var button in overlay.VisualState.Debug.ToastButtons.Children.OfType<Button>())
                 button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
             var stack = overlay.VisualState.Bottom.Stack.Children.Cast<UIElement>().ToArray();
