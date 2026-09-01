@@ -3,7 +3,7 @@ using CircleToSearch.Ui;
 
 namespace CircleToSearch.Search;
 
-public enum SearchState { Idle, Selecting, Uploading, RecognizingMusic, ShowingMusicResult }
+public enum SearchState { Idle, Cancelable, Uploading }
 
 public sealed class SearchCoordinator
 {
@@ -42,7 +42,7 @@ public sealed class SearchCoordinator
         {
             return State switch
             {
-                SearchState.Selecting or SearchState.RecognizingMusic or SearchState.ShowingMusicResult => CancelActiveSession(),
+                SearchState.Cancelable => CancelActiveSession(),
                 SearchState.Uploading => IgnoreTrigger("upload in progress"),
                 _ => StartSession("hotkey"),
             };
@@ -100,7 +100,7 @@ public sealed class SearchCoordinator
         Volatile.Write(ref _cancellation, cancellation);
         try
         {
-            SetState(SearchState.Selecting);
+            SetState(SearchState.Cancelable);
             _log.Info(nameof(SearchCoordinator), $"selection started via {trigger}");
             SafeHideMainWindow();
             try
@@ -112,7 +112,9 @@ public sealed class SearchCoordinator
                 return;
             }
 
-            await _workflow.RunAsync(SetState, cancellation.Token).ConfigureAwait(false);
+            await _workflow.RunAsync(
+                () => SetState(SearchState.Uploading),
+                cancellation.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {

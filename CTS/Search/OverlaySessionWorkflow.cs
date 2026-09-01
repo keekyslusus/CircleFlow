@@ -9,7 +9,7 @@ namespace CircleToSearch.Search;
 
 internal interface ISearchSessionWorkflow
 {
-    Task RunAsync(Action<SearchState> transition, CancellationToken cancellationToken);
+    Task RunAsync(Action onUploadStarted, CancellationToken cancellationToken);
 }
 
 internal sealed class OverlaySessionWorkflow(
@@ -22,7 +22,7 @@ internal sealed class OverlaySessionWorkflow(
     UiStrings strings,
     PluginLog log) : ISearchSessionWorkflow
 {
-    public async Task RunAsync(Action<SearchState> transition, CancellationToken cancellationToken)
+    public async Task RunAsync(Action onUploadStarted, CancellationToken cancellationToken)
     {
         var effective = providerSelection.GetEffectiveSelection();
         var launch = new OverlayLaunchOptions(
@@ -56,7 +56,6 @@ internal sealed class OverlaySessionWorkflow(
                         if (cancellationToken.IsCancellationRequested || outcome.Status == MusicRecognitionStatus.Canceled)
                             continue;
                         displayedOutcome = outcome;
-                        transition(SearchState.ShowingMusicResult);
                         try
                         {
                             await overlay.ShowMusicResultAsync(outcome, cancellationToken).ConfigureAwait(false);
@@ -90,7 +89,7 @@ internal sealed class OverlaySessionWorkflow(
                         await visualSearch.ExecuteAsync(
                             visual.Selection,
                             visual.ProviderId,
-                            () => transition(SearchState.Uploading),
+                            onUploadStarted,
                             cancellationToken).ConfigureAwait(false);
                         return;
 
@@ -99,7 +98,6 @@ internal sealed class OverlaySessionWorkflow(
                         displayedOutcome = null;
                         await overlay.ShowListeningAsync(cancellationToken).ConfigureAwait(false);
                         recognitionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        transition(SearchState.RecognizingMusic);
                         recognitionTask = musicRecognition.RecognizeAsync(
                             debugScenario,
                             new OverlayVisualizationProgress(overlay, recognitionCancellation.Token, log),
@@ -120,7 +118,6 @@ internal sealed class OverlaySessionWorkflow(
 
                     case DismissMusicResult:
                         displayedOutcome = null;
-                        transition(SearchState.Selecting);
                         break;
 
                     case CancelSession:
