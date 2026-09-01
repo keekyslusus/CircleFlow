@@ -11,6 +11,7 @@ namespace CircleToSearch.Capture.OverlayInteractions;
 internal sealed class SelectionOverlayController : IDisposable
 {
     private const double SampleDistanceDips = 3;
+    private const int PixelPickMaxDiagonalPx = 3;
     private static readonly TimeSpan SelectionHoldDuration = TimeSpan.FromMilliseconds(450);
 
     private readonly SelectionOverlayVisual _visual;
@@ -23,6 +24,7 @@ internal sealed class SelectionOverlayController : IDisposable
     private readonly Func<bool> _canAcceptInput;
     private readonly Func<object?, Point, bool> _canStartSelection;
     private readonly Action _selectionStarted;
+    private readonly Action<GdiPoint> _pixelPicked;
     private readonly Action<GdiRectangle> _selectionCompleted;
     private readonly Action _selectionRejected;
     private readonly Action _holdCompleted;
@@ -48,6 +50,7 @@ internal sealed class SelectionOverlayController : IDisposable
         Func<bool> canAcceptInput,
         Func<object?, Point, bool> canStartSelection,
         Action selectionStarted,
+        Action<GdiPoint> pixelPicked,
         Action<GdiRectangle> selectionCompleted,
         Action selectionRejected,
         Action holdCompleted)
@@ -62,6 +65,7 @@ internal sealed class SelectionOverlayController : IDisposable
         _canAcceptInput = canAcceptInput;
         _canStartSelection = canStartSelection;
         _selectionStarted = selectionStarted;
+        _pixelPicked = pixelPicked;
         _selectionCompleted = selectionCompleted;
         _selectionRejected = selectionRejected;
         _holdCompleted = holdCompleted;
@@ -191,14 +195,35 @@ internal sealed class SelectionOverlayController : IDisposable
         _drawing = false;
         ReleaseMouseCapture();
         Track(e, final: true);
-        var bounds = LassoBoundsCalculator.Calculate(_sampler.Points, _monitor, _paddingPx, _minDiagonalPx);
-        if (bounds is null)
+        var gesture = SelectionGestureClassifier.Classify(
+            _sampler.Points,
+            _minDiagonalPx,
+            PixelPickMaxDiagonalPx);
+        if (gesture == SelectionGestureKind.PixelPick)
         {
-            ResetRejectedSelection();
+            var point = _sampler.Points[^1];
+            ResetSelectionGesture();
+            _pixelPicked(point);
+        }
+        else if (gesture == SelectionGestureKind.TooSmall)
+        {
+            ResetSelectionGesture();
             _selectionRejected();
         }
         else
         {
+            var bounds = LassoBoundsCalculator.Calculate(
+                _sampler.Points,
+                _monitor,
+                _paddingPx,
+                _minDiagonalPx);
+            if (bounds is null)
+            {
+                ResetSelectionGesture();
+                _selectionRejected();
+                e.Handled = true;
+                return;
+            }
             _selectionCompleted(bounds.Value);
             if (!_disposed) ShowSelectionFrame(bounds.Value);
         }
@@ -261,7 +286,7 @@ internal sealed class SelectionOverlayController : IDisposable
         _holdTimer = null;
     }
 
-    private void ResetRejectedSelection()
+    private void ResetSelectionGesture()
     {
         UnqueueRevealUpdate();
         StopHoldTimer();

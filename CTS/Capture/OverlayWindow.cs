@@ -117,6 +117,7 @@ public sealed class OverlayWindow : Window
         _controllers = controllerFactory.Create(new OverlayControllerContext(
             _visual,
             this,
+            _frame,
             monitor,
             scale,
             options,
@@ -131,6 +132,9 @@ public sealed class OverlayWindow : Window
             OnSelectionCompleted,
             OnSelectionRejected,
             FinishShutdown,
+            OnColorConfirmationStarted,
+            OnColorPickFailed,
+            OnColorConfirmationCompleted,
             () => !_interaction.IsFinished,
             providerId => _publishCommand?.Invoke(new ProviderSelected(providerId)),
             () => Mode,
@@ -188,6 +192,7 @@ public sealed class OverlayWindow : Window
 
     internal void SetDebugPanelOpen(bool open)
     {
+        if (open && Mode == OverlayInteractionMode.ColorConfirmation) return;
         _debug.SetOpen(open);
         if (open) _provider.SetOpen(false);
     }
@@ -325,6 +330,28 @@ public sealed class OverlayWindow : Window
         _toast.Show(new ToastNotification(_strings.SelectionTooSmall, ToastTone.Error));
     }
 
+    private void OnColorConfirmationStarted()
+    {
+        if (_interaction.IsFinished || Mode != OverlayInteractionMode.Selecting) return;
+        ApplyModeTransition(OverlayInteractionMode.ColorConfirmation);
+    }
+
+    private void OnColorPickFailed()
+    {
+        if (_interaction.IsFinished || Mode != OverlayInteractionMode.Selecting) return;
+        _chipDismissed = false;
+        ActionTrayTransitions.BeginReturn(_visual.Actions);
+    }
+
+    private void OnColorConfirmationCompleted()
+    {
+        if (_interaction.IsFinished || Mode != OverlayInteractionMode.ColorConfirmation) return;
+        if (_publishCommand is null) Outcome = OverlayOutcome.ColorCopied();
+        else _publishCommand(new ColorCopied());
+        ApplyModeTransition(OverlayInteractionMode.Closing);
+        FinishShutdown();
+    }
+
     private void OnMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         CancelInternal();
@@ -391,6 +418,13 @@ public sealed class OverlayWindow : Window
                 _music.DismissResult();
                 _selection.RestoreAfterMusic();
                 Cursor = Cursors.Cross;
+                break;
+            case OverlayInteractionMode.ColorConfirmation:
+                _selection.StopInput();
+                _provider.SetOpen(false);
+                _debug.SetOpen(false);
+                ActionTrayTransitions.BeginExit(_visual.Actions);
+                Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Closing:
                 _selection.StopInput();

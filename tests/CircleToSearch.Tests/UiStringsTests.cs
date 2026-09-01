@@ -12,6 +12,8 @@ public sealed class UiStringsTests
 
         Assert.Equal("CircleFlow", strings.PluginTitle);
         Assert.Equal("Select an area", strings.SelectionPrompt);
+        Assert.Equal("Copied:", strings.ColorCopied);
+        Assert.Equal("The color could not be copied. Try again.", strings.ColorCopyFailed);
         Assert.Equal("Searching with Google Lens…", strings.GoogleLensLoading);
         Assert.Equal(
             "Ctrl+Alt+Space active",

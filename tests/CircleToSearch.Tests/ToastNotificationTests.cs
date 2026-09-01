@@ -28,4 +28,15 @@ public sealed class ToastNotificationTests
 
         Assert.Equal(TimeSpan.FromMilliseconds(3000), notification.Duration);
     }
+
+    [Theory]
+    [InlineData(0x00, 0x00, 0x00, "#000000")]
+    [InlineData(0x03, 0x7B, 0xD5, "#037BD5")]
+    [InlineData(0xFF, 0xFF, 0xFF, "#FFFFFF")]
+    public void Color_sample_formats_fixed_width_uppercase_hex(
+        byte red,
+        byte green,
+        byte blue,
+        string expected) =>
+        Assert.Equal(expected, new ToastColorSample(red, green, blue).HexCode);
 }

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using CircleToSearch.Capture;
 using CircleToSearch.Ui;
@@ -89,6 +90,59 @@ public sealed class ToastOverlayVisualTests
         Assert.Equal(
             "Selection is too small. Drag to select a larger area.",
             TestUiStrings.English.SelectionTooSmall);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Color_toast_uses_dynamic_swatch_theme_border_and_single_live_region(bool lightTheme)
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var sample = new ToastColorSample(0x3A, 0x7B, 0xD5);
+            var visual = ToastOverlayVisualFactory.Create(
+                new ToastNotification(TestUiStrings.English.ColorCopied, ToastTone.Success, sample),
+                lightTheme);
+
+            Assert.Collection(
+                visual.Message.Inlines,
+                inline => Assert.Equal("Copied: ", Assert.IsType<Run>(inline).Text),
+                inline =>
+                {
+                    var swatch = Assert.IsType<Border>(Assert.IsType<InlineUIContainer>(inline).Child);
+                    Assert.Equal(16, swatch.Width);
+                    Assert.Equal(16, swatch.Height);
+                    Assert.Equal(new CornerRadius(4), swatch.CornerRadius);
+                    Assert.Equal(new Thickness(1), swatch.BorderThickness);
+                    Assert.Equal(
+                        Color.FromRgb(0x3A, 0x7B, 0xD5),
+                        Assert.IsType<SolidColorBrush>(swatch.Background).Color);
+                    Assert.Equal(
+                        PluginPalette.For(lightTheme).Toast.SwatchBorder,
+                        Assert.IsType<SolidColorBrush>(swatch.BorderBrush).Color);
+                    Assert.False(swatch.IsHitTestVisible);
+                },
+                inline => Assert.Equal(" #3A7BD5", Assert.IsType<Run>(inline).Text));
+            Assert.Equal("Copied: #3A7BD5", AutomationProperties.GetName(visual.Message));
+            Assert.IsType<TextBlockAutomationPeer>(ToastOverlayVisualFactory.Announce(visual));
+        }));
+    }
+
+    [Theory]
+    [InlineData(0, 0, 0)]
+    [InlineData(255, 255, 255)]
+    public void Extreme_swatches_keep_visible_border(byte red, byte green, byte blue)
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var visual = ToastOverlayVisualFactory.Create(
+                new ToastNotification("Copied:", ToastTone.Success, new ToastColorSample(red, green, blue)),
+                lightTheme: red == 255);
+            var container = Assert.IsType<InlineUIContainer>(visual.Message.Inlines.ElementAt(1));
+            var swatch = Assert.IsType<Border>(container.Child);
+            Assert.Equal(new Thickness(1), swatch.BorderThickness);
+            Assert.NotNull(swatch.BorderBrush);
+        }));
+    }
 
     private static Exception? RunOnSta(Action action)
     {

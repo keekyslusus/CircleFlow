@@ -11,6 +11,7 @@ public enum OverlayAction
 {
     VisualSelection,
     MusicRecognition,
+    ColorCopied,
 }
 
 public sealed record OverlayOutcome
@@ -19,8 +20,8 @@ public sealed record OverlayOutcome
     {
         if (action == OverlayAction.VisualSelection && selection is null)
             throw new ArgumentException("A visual action requires a selection.", nameof(selection));
-        if (action == OverlayAction.MusicRecognition && selection is not null)
-            throw new ArgumentException("A music action cannot contain a selection.", nameof(selection));
+        if (action != OverlayAction.VisualSelection && selection is not null)
+            throw new ArgumentException("Only a visual action can contain a selection.", nameof(selection));
 
         Action = action;
         Selection = selection;
@@ -34,4 +35,6 @@ public sealed record OverlayOutcome
         new(OverlayAction.VisualSelection, selection ?? throw new ArgumentNullException(nameof(selection)));
 
     public static OverlayOutcome MusicRecognition() => new(OverlayAction.MusicRecognition, null);
+
+    public static OverlayOutcome ColorCopied() => new(OverlayAction.ColorCopied, null);
 }

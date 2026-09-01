@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using CircleToSearch.Ui;
 
@@ -25,7 +26,6 @@ internal static class ToastOverlayVisualFactory
 
         var message = new TextBlock
         {
-            Text = notification.Message,
             Foreground = OverlayVisualResources.Frozen(theme.Toast.Text),
             FontFamily = OverlayVisualResources.Font,
             FontSize = 13,
@@ -34,6 +34,10 @@ internal static class ToastOverlayVisualFactory
             VerticalAlignment = VerticalAlignment.Center,
             IsHitTestVisible = false,
         };
+        if (notification.ColorSample is { } sample)
+            AddColorContent(message, notification.Message, sample, theme.Toast.SwatchBorder);
+        else
+            message.Text = notification.Message;
         var card = new Border
         {
             Child = message,
@@ -48,7 +52,7 @@ internal static class ToastOverlayVisualFactory
             IsHitTestVisible = false,
             Effect = OverlayVisualResources.DockShadow(6, theme.Toast.ShadowOpacity),
         };
-        AutomationProperties.SetName(message, notification.Message);
+        AutomationProperties.SetName(message, notification.AccessibleMessage);
         AutomationProperties.SetLiveSetting(message, AutomationLiveSetting.Polite);
 
         var slot = new Grid
@@ -59,6 +63,29 @@ internal static class ToastOverlayVisualFactory
         Panel.SetZIndex(slot, 1);
         slot.Children.Add(card);
         return new ToastOverlayVisual(slot, card, message);
+    }
+
+    private static void AddColorContent(
+        TextBlock message,
+        string prefix,
+        ToastColorSample sample,
+        Color swatchBorder)
+    {
+        message.Inlines.Add(new Run($"{prefix} "));
+        message.Inlines.Add(new InlineUIContainer(new Border
+        {
+            Width = 16,
+            Height = 16,
+            CornerRadius = new CornerRadius(4),
+            BorderThickness = new Thickness(1),
+            BorderBrush = OverlayVisualResources.Frozen(swatchBorder),
+            Background = OverlayVisualResources.Frozen(Color.FromRgb(sample.Red, sample.Green, sample.Blue)),
+            IsHitTestVisible = false,
+        })
+        {
+            BaselineAlignment = BaselineAlignment.Center,
+        });
+        message.Inlines.Add(new Run($" {sample.HexCode}"));
     }
 
     internal static AutomationPeer Announce(ToastOverlayVisual visual)

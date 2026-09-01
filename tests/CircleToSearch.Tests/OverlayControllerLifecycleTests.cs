@@ -389,6 +389,7 @@ public sealed class OverlayControllerLifecycleTests
             (_, _) => true,
             () => { },
             _ => { },
+            _ => { },
             () => { },
             holdCompleted);
 
