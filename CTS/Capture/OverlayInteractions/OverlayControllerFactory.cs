@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
@@ -75,16 +76,21 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
 {
     private readonly Action<string> _setClipboard;
     private readonly Func<bool> _animationsEnabled;
+    private readonly Func<MouseEventArgs, Point>? _pointerPosition;
 
     internal OverlayControllerFactory()
         : this(Clipboard.SetText, OverlayVisualResources.AnimationsEnabled)
     {
     }
 
-    internal OverlayControllerFactory(Action<string> setClipboard, Func<bool> animationsEnabled)
+    internal OverlayControllerFactory(
+        Action<string> setClipboard,
+        Func<bool> animationsEnabled,
+        Func<MouseEventArgs, Point>? pointerPosition = null)
     {
         _setClipboard = setClipboard ?? throw new ArgumentNullException(nameof(setClipboard));
         _animationsEnabled = animationsEnabled ?? throw new ArgumentNullException(nameof(animationsEnabled));
+        _pointerPosition = pointerPosition;
     }
 
     public OverlayControllers Create(OverlayControllerContext context)
@@ -124,7 +130,8 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 colorPick.Pick,
                 context.SelectionCompleted,
                 context.SelectionRejected,
-                context.SelectionHoldCompleted);
+                context.SelectionHoldCompleted,
+                _pointerPosition);
             provider = new ProviderMenuController(
                 context.Visual.Provider,
                 context.Visual.Bottom.Root,

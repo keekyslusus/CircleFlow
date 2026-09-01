@@ -32,4 +32,5 @@ powershell -ExecutionPolicy Bypass -File .\build_release.ps1 -NoPause
 
 ## License
 
-This project is distributed under GPL-3.0-or-later. See `LICENSE` and `THIRD_PARTY_NOTICES.md`.
+This project is distributed under GPL-3.0-or-later. See `LICENSE`, `THIRD_PARTY_NOTICES.txt`,
+and `THIRD_PARTY_LICENSES`.

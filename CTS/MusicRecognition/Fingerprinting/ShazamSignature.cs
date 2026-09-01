@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Adapted and ported to C# from SongRec; modified beginning 2026-08-29.
+// Portions copyright Marin Moulinier and SongRec contributors.
 
 namespace CircleToSearch.MusicRecognition.Fingerprinting;
 

@@ -2,10 +2,8 @@ using System.Windows.Threading;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Runtime.InteropServices;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
-using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using Xunit;
 using GdiBitmap = System.Drawing.Bitmap;
@@ -331,6 +329,7 @@ public sealed class OverlayWindowTests
             using var frame = new GdiBitmap(640, 400);
             var monitor = new GdiRectangle(0, 0, 640, 400);
             var commands = new List<IOverlayCommand>();
+            var pointerPosition = PointerPositions(new Point(100, 100), new Point(110, 100));
             var overlay = new OverlayWindow(
                 frame,
                 monitor,
@@ -342,21 +341,12 @@ public sealed class OverlayWindowTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(),
+                new OverlayControllerFactory(_ => { }, () => false, pointerPosition),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
-            overlay.Activate();
             var input = overlay.VisualState.Selection.InputSurface;
-            Assert.True(NativeMethods.GetCursorPos(out var originalPointer));
-            var start = input.PointToScreen(new Point(100, 100));
-            Assert.True(SetCursorPos((int)Math.Round(start.X), (int)Math.Round(start.Y)));
-            PumpFor(TimeSpan.FromMilliseconds(40));
-            mouse_event(MouseEventLeftDown, 0, 0, 0, UIntPtr.Zero);
-            PumpUntil(() => ReferenceEquals(System.Windows.Input.Mouse.Captured, input));
-            Assert.True(SetCursorPos((int)Math.Round(start.X + 10), (int)Math.Round(start.Y)));
-            mouse_event(MouseEventLeftUp, 0, 0, 0, UIntPtr.Zero);
-            PumpUntil(() => overlay.VisualState.Bottom.Stack.Children.Count == 3);
+            RaisePointerGesture(input);
 
             Assert.False(overlay.FrameTransferred);
             Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
@@ -382,7 +372,6 @@ public sealed class OverlayWindowTests
             RaiseEscape(overlay);
             Assert.IsType<CancelSession>(Assert.Single(commands));
             Dispatcher.Run();
-            SetCursorPos(originalPointer.X, originalPointer.Y);
         });
 
         Assert.Null(failure);
@@ -397,6 +386,7 @@ public sealed class OverlayWindowTests
             var monitor = new GdiRectangle(0, 0, 640, 400);
             var commands = new List<IOverlayCommand>();
             var clipboard = new List<string>();
+            var local = new Point(120, 80);
             var overlay = new OverlayWindow(
                 frame,
                 monitor,
@@ -408,16 +398,12 @@ public sealed class OverlayWindowTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(clipboard.Add, () => false),
+                new OverlayControllerFactory(clipboard.Add, () => false, PointerPositions(local, local)),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
-            var local = new Point(120, 80);
             frame.SetPixel((int)local.X, (int)local.Y, System.Drawing.Color.FromArgb(0x3A, 0x7B, 0xD5));
-            Assert.Equal(
-                SelectionGestureKind.PixelPick,
-                SelectionGestureClassifier.Classify([new GdiPoint((int)local.X, (int)local.Y)], 12, 3));
-            GetColorPicker(overlay).Pick(new GdiPoint((int)local.X, (int)local.Y));
+            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
 
             Assert.Equal(["#3A7BD5"], clipboard);
             Assert.Empty(commands);
@@ -439,6 +425,133 @@ public sealed class OverlayWindowTests
         Assert.Null(failure);
     }
 
+    [Theory]
+    [InlineData(1.0, 0, 0)]
+    [InlineData(1.0, 639, 0)]
+    [InlineData(1.0, 0, 399)]
+    [InlineData(1.0, 639, 399)]
+    [InlineData(1.5, 0, 0)]
+    [InlineData(1.5, 639, 0)]
+    [InlineData(1.5, 0, 399)]
+    [InlineData(1.5, 639, 399)]
+    public void Overscan_click_pipeline_copies_exact_frame_edge_pixel(
+        double scale,
+        int pixelX,
+        int pixelY)
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            frame.SetPixel(pixelX, pixelY, System.Drawing.Color.FromArgb(0x24, 0x68, 0xAC));
+            var monitor = new GdiRectangle(0, 0, frame.Width, frame.Height);
+            var commands = new List<IOverlayCommand>();
+            var clipboard = new List<string>();
+            var rootPoint = new Point(1 + pixelX / scale, 1 + pixelY / scale);
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                scale,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                new OverlayControllerFactory(
+                    clipboard.Add,
+                    () => false,
+                    PointerPositions(rootPoint, rootPoint)),
+                overscan: true);
+            overlay.Show();
+            overlay.UpdateLayout();
+
+            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
+
+            Assert.Equal(["#2468AC"], clipboard);
+            Assert.Equal(OverlayInteractionMode.ColorConfirmation, overlay.Mode);
+            Assert.False(overlay.FrameTransferred);
+            Assert.Empty(commands);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Three_pixel_jitter_uses_mouse_up_pixel_in_color_pipeline()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            frame.SetPixel(103, 100, System.Drawing.Color.FromArgb(0xAB, 0xCD, 0xEF));
+            var monitor = new GdiRectangle(0, 0, frame.Width, frame.Height);
+            var clipboard = new List<string>();
+            var pointerPosition = PointerPositions(new Point(100, 100), new Point(103, 100));
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                _ => { },
+                new OverlayControllerFactory(clipboard.Add, () => false, pointerPosition),
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+
+            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
+
+            Assert.Equal(["#ABCDEF"], clipboard);
+            Assert.Equal(OverlayInteractionMode.ColorConfirmation, overlay.Mode);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Normal_lasso_pipeline_still_publishes_visual_selection()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, frame.Width, frame.Height);
+            var commands = new List<IOverlayCommand>();
+            var pointerPosition = PointerPositions(new Point(100, 100), new Point(140, 130));
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                new OverlayControllerFactory(_ => { }, () => false, pointerPosition),
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+
+            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
+
+            var selection = Assert.IsType<VisualSelection>(Assert.Single(commands));
+            Assert.Equal(new GdiRectangle(92, 92, 56, 46), selection.Selection.Bounds);
+            Assert.True(overlay.FrameTransferred);
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
     [Fact]
     public void Clipboard_failure_returns_to_selecting_with_tray_and_localized_error()
     {
@@ -447,6 +560,7 @@ public sealed class OverlayWindowTests
             using var frame = new GdiBitmap(640, 400);
             var monitor = new GdiRectangle(0, 0, 640, 400);
             var commands = new List<IOverlayCommand>();
+            var point = new Point(120, 80);
             var overlay = new OverlayWindow(
                 frame,
                 monitor,
@@ -460,11 +574,12 @@ public sealed class OverlayWindowTests
                 commands.Add,
                 new OverlayControllerFactory(
                     _ => throw new InvalidOperationException("clipboard busy"),
-                    () => false),
+                    () => false,
+                    PointerPositions(point, point)),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
-            GetColorPicker(overlay).Pick(new GdiPoint(120, 80));
+            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
 
             Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
             Assert.False(overlay.FrameTransferred);
@@ -537,51 +652,30 @@ public sealed class OverlayWindowTests
         Dispatcher.Run();
     }
 
-    private static void PumpUntil(Func<bool> condition)
+    private static void RaisePointerGesture(FrameworkElement input)
     {
-        if (condition()) return;
-        var frame = new DispatcherFrame();
-        var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-        timeout.Tick += (_, _) =>
+        input.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+            System.Windows.Input.Mouse.PrimaryDevice,
+            0,
+            System.Windows.Input.MouseButton.Left)
         {
-            timeout.Stop();
-            frame.Continue = false;
-        };
-        var poll = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
-        poll.Tick += (_, _) =>
+            RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+            Source = input,
+        });
+        input.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+            System.Windows.Input.Mouse.PrimaryDevice,
+            0,
+            System.Windows.Input.MouseButton.Left)
         {
-            if (!condition()) return;
-            poll.Stop();
-            timeout.Stop();
-            frame.Continue = false;
-        };
-        timeout.Start();
-        poll.Start();
-        Dispatcher.PushFrame(frame);
-        poll.Stop();
-        Assert.True(condition(), "The pointer gesture was not delivered to the overlay.");
+            RoutedEvent = UIElement.MouseLeftButtonUpEvent,
+            Source = input,
+        });
     }
 
-    private static void PumpFor(TimeSpan duration)
-    {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = duration };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            frame.Continue = false;
-        };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-    }
-
-    private static ColorPickController GetColorPicker(OverlayWindow overlay)
-    {
-        var field = typeof(OverlayWindow).GetField(
-            "_controllers",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        return Assert.IsType<OverlayControllers>(field?.GetValue(overlay)).ColorPick;
-    }
+    private static Func<System.Windows.Input.MouseEventArgs, Point> PointerPositions(
+        Point start,
+        Point finish) =>
+        e => e.RoutedEvent == UIElement.MouseLeftButtonUpEvent ? finish : start;
 
     private static void RaiseEscape(OverlayWindow overlay)
     {
@@ -629,13 +723,4 @@ public sealed class OverlayWindowTests
         }
     }
 
-    private const uint MouseEventLeftDown = 0x0002;
-    private const uint MouseEventLeftUp = 0x0004;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetCursorPos(int x, int y);
-
-    [DllImport("user32.dll")]
-    private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
 }

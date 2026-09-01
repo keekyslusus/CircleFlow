@@ -6,6 +6,7 @@
   "Author": "keekys",
   "Version": "0.5.1",
   "Language": "csharp",
+  "Website": "https://github.com/keekyslusus/circletosearchplugin",
   "ExecuteFileName": "CircleToSearch.dll",
   "IcoPath": "Images\\app.png"
 }

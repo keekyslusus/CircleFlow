@@ -1,0 +1,42 @@
+CircleFlow third-party notices
+==============================
+
+SongRec
+-------
+
+The Shazam-compatible fingerprint generator, signature format, and client code under
+CTS/MusicRecognition are adapted and ported to C# from SongRec:
+https://github.com/marin-m/SongRec
+
+Copyright Marin Moulinier and SongRec contributors.
+Licensed under GPL-3.0-or-later. The port was created on 2026-08-29 and has been
+subsequently modified for CircleFlow. Adapted source files retain SPDX identifiers.
+The complete GPL version 3 license text is distributed in the root LICENSE file.
+
+Shazam is an Apple service. CircleFlow is not affiliated with or endorsed by Apple or Shazam.
+
+Material Color Utilities
+------------------------
+
+The HCT color conversion in CTS/Ui/HctColorConverter.cs is adapted and ported to C# from
+Material Color Utilities:
+https://github.com/material-foundation/material-color-utilities
+
+Copyright 2021 Google LLC.
+Licensed under the Apache License, Version 2.0. The port was created on 2026-08-31 and has
+been subsequently modified for CircleFlow. The complete license text is distributed in
+THIRD_PARTY_LICENSES/Apache-2.0.txt.
+
+Bundled .NET dependencies
+-------------------------
+
+CircleFlow binary distributions include the following third-party dependencies:
+
+- Flow.Launcher.Plugin 5.3.1 (MIT)
+- JetBrains.Annotations 2025.2.2 (MIT)
+- MathNet.Numerics 5.0.0 (MIT)
+- NAudio 3.0.1 and its component assemblies (MIT)
+- System.Numerics.Tensors 9.0.0 (MIT)
+- Microsoft.Web.WebView2 1.0.4129.50 (3-Clause BSD license and bundled notices)
+
+The applicable license texts and notices are distributed in THIRD_PARTY_LICENSES.

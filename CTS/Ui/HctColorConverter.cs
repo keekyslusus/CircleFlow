@@ -1,5 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 // Portions adapted from Material Color Utilities.
 // Copyright 2021 Google LLC. Licensed under the Apache License, Version 2.0.
+// Ported to C# and modified for CircleFlow beginning 2026-08-31.
 
 namespace CircleToSearch.Ui;
 

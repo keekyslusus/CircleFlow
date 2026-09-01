@@ -23,6 +23,7 @@ internal sealed class SelectionOverlayController : IDisposable
     private readonly bool _overscan;
     private readonly Func<bool> _canAcceptInput;
     private readonly Func<object?, Point, bool> _canStartSelection;
+    private readonly Func<MouseEventArgs, Point> _pointerPosition;
     private readonly Action _selectionStarted;
     private readonly Action<GdiPoint> _pixelPicked;
     private readonly Action<GdiRectangle> _selectionCompleted;
@@ -53,7 +54,8 @@ internal sealed class SelectionOverlayController : IDisposable
         Action<GdiPoint> pixelPicked,
         Action<GdiRectangle> selectionCompleted,
         Action selectionRejected,
-        Action holdCompleted)
+        Action holdCompleted,
+        Func<MouseEventArgs, Point>? pointerPosition = null)
     {
         _visual = visual;
         _coordinateRoot = coordinateRoot;
@@ -64,6 +66,7 @@ internal sealed class SelectionOverlayController : IDisposable
         _overscan = overscan;
         _canAcceptInput = canAcceptInput;
         _canStartSelection = canStartSelection;
+        _pointerPosition = pointerPosition ?? (e => e.GetPosition(_coordinateRoot));
         _selectionStarted = selectionStarted;
         _pixelPicked = pixelPicked;
         _selectionCompleted = selectionCompleted;
@@ -166,7 +169,7 @@ internal sealed class SelectionOverlayController : IDisposable
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (_disposed || !_canAcceptInput()) return;
-        var point = e.GetPosition(_coordinateRoot);
+        var point = _pointerPosition(e);
         if (!_canStartSelection(e.OriginalSource, point))
         {
             e.Handled = true;
@@ -177,7 +180,7 @@ internal sealed class SelectionOverlayController : IDisposable
         _selectionStarted();
         _sampler.Reset();
         _stroke.Clear();
-        Track(e);
+        Track(point);
         _visual.InputSurface.CaptureMouse();
         e.Handled = true;
     }
@@ -185,7 +188,7 @@ internal sealed class SelectionOverlayController : IDisposable
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
         if (_disposed || !_drawing || !_canAcceptInput()) return;
-        Track(e);
+        Track(_pointerPosition(e));
         e.Handled = true;
     }
 
@@ -194,7 +197,7 @@ internal sealed class SelectionOverlayController : IDisposable
         if (_disposed || !_drawing || !_canAcceptInput()) return;
         _drawing = false;
         ReleaseMouseCapture();
-        Track(e, final: true);
+        Track(_pointerPosition(e), final: true);
         var gesture = SelectionGestureClassifier.Classify(
             _sampler.Points,
             _minDiagonalPx,
@@ -230,12 +233,12 @@ internal sealed class SelectionOverlayController : IDisposable
         e.Handled = true;
     }
 
-    private void Track(MouseEventArgs e, bool final = false)
+    private void Track(Point dip, bool final = false)
     {
-        var dip = e.GetPosition(_coordinateRoot);
+        var overscanInsetDips = _overscan ? 1d : 0d;
         var physical = new GdiPoint(
-            (int)Math.Round(dip.X * _scale),
-            (int)Math.Round(dip.Y * _scale));
+            (int)Math.Round((dip.X - overscanInsetDips) * _scale),
+            (int)Math.Round((dip.Y - overscanInsetDips) * _scale));
         var accepted = final ? _sampler.AddFinal(physical) : _sampler.Add(physical);
         if (!accepted) return;
         _stroke.Add(dip);
