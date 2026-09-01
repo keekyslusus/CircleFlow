@@ -116,18 +116,18 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
-    public async Task Visual_selection_transitions_to_uploading()
+    public async Task Visual_selection_reports_upload_started_exactly_once()
     {
         using var harness = new Harness();
         harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.GoogleLens));
 
         await harness.RunAsync();
 
-        Assert.Equal([SearchState.Uploading], harness.Transitions);
+        Assert.Equal(1, harness.UploadStartedCalls);
     }
 
     [Fact]
-    public async Task Music_result_transitions_from_recognizing_to_showing_result()
+    public async Task Music_recognition_shows_listening_and_result_without_reporting_upload()
     {
         using var harness = new Harness();
         harness.Overlay.CloseAfterResult = true;
@@ -135,9 +135,9 @@ public sealed class OverlaySessionWorkflowTests
 
         await harness.RunAsync();
 
-        Assert.Equal(
-            [SearchState.RecognizingMusic, SearchState.ShowingMusicResult],
-            harness.Transitions);
+        Assert.Equal(1, harness.Overlay.ListeningCalls);
+        Assert.Equal(1, harness.Overlay.ResultCalls);
+        Assert.Equal(0, harness.UploadStartedCalls);
     }
 
     [Fact]
@@ -152,15 +152,10 @@ public sealed class OverlaySessionWorkflowTests
         await harness.RunAsync();
 
         Assert.Equal(MusicRecognitionStatus.NoMatch, harness.Overlay.Result?.Status);
+        Assert.Equal(1, harness.Overlay.ListeningCalls);
+        Assert.Equal(1, harness.Overlay.ResultCalls);
         Assert.Equal(1, harness.Google.Calls);
-        Assert.Equal(
-            [
-                SearchState.RecognizingMusic,
-                SearchState.ShowingMusicResult,
-                SearchState.Selecting,
-                SearchState.Uploading,
-            ],
-            harness.Transitions);
+        Assert.Equal(1, harness.UploadStartedCalls);
     }
 
     [Fact]
@@ -192,6 +187,46 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
+    public async Task Coordinator_hotkey_during_recognition_cancels_the_session()
+    {
+        using var harness = new Harness();
+        harness.Music.Gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+        var coordinator = harness.CreateCoordinator();
+
+        var session = coordinator.StartFromHotkeyAsync();
+        Assert.True(SpinWait.SpinUntil(() => harness.Music.Calls == 1, TimeSpan.FromSeconds(5)));
+        Assert.Equal(SearchState.Cancelable, coordinator.State);
+
+        await coordinator.StartFromHotkeyAsync();
+        await session;
+
+        Assert.Equal(1, harness.Music.CanceledCalls);
+        Assert.Equal(1, harness.Overlay.CloseCalls);
+        Assert.Equal(SearchState.Idle, coordinator.State);
+    }
+
+    [Fact]
+    public async Task Coordinator_hotkey_while_music_result_is_shown_cancels_the_session()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+        var coordinator = harness.CreateCoordinator();
+
+        var session = coordinator.StartFromHotkeyAsync();
+        Assert.True(SpinWait.SpinUntil(() => harness.Overlay.ResultCalls == 1, TimeSpan.FromSeconds(5)));
+        Assert.Equal(SearchState.Cancelable, coordinator.State);
+
+        await coordinator.StartFromHotkeyAsync();
+        await session;
+
+        Assert.Equal(1, harness.Overlay.ListeningCalls);
+        Assert.Equal(1, harness.Overlay.ResultCalls);
+        Assert.Equal(1, harness.Overlay.CloseCalls);
+        Assert.Equal(SearchState.Idle, coordinator.State);
+    }
+
+    [Fact]
     public async Task Retry_starts_a_new_recognition_after_the_previous_result()
     {
         using var harness = new Harness();
@@ -203,14 +238,8 @@ public sealed class OverlaySessionWorkflowTests
 
         Assert.Equal(2, harness.Music.Calls);
         Assert.Equal(2, harness.Overlay.ListeningCalls);
-        Assert.Equal(
-            [
-                SearchState.RecognizingMusic,
-                SearchState.ShowingMusicResult,
-                SearchState.RecognizingMusic,
-                SearchState.ShowingMusicResult,
-            ],
-            harness.Transitions);
+        Assert.Equal(2, harness.Overlay.ResultCalls);
+        Assert.Equal(0, harness.UploadStartedCalls);
     }
 
     [Fact]
@@ -369,11 +398,11 @@ public sealed class OverlaySessionWorkflowTests
         public List<string> Messages { get; } = [];
         public List<string> Opened { get; } = [];
         public List<string> Events => Overlay.Events;
-        public List<SearchState> Transitions { get; } = [];
+        public int UploadStartedCalls { get; private set; }
         public int SaveCalls { get; private set; }
 
         public Task RunAsync(CancellationToken cancellationToken = default) =>
-            Workflow.RunAsync(Transitions.Add, cancellationToken);
+            Workflow.RunAsync(() => UploadStartedCalls++, cancellationToken);
 
         public SearchCoordinator CreateCoordinator() => new(
             Workflow,

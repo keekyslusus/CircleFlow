@@ -23,13 +23,13 @@ public sealed class SearchCoordinatorTests
     }
 
     [Fact]
-    public async Task Repeated_hotkey_during_selection_cancels_the_active_session()
+    public async Task Repeated_hotkey_during_cancelable_session_cancels_the_active_session()
     {
         var harness = new Harness();
         harness.Workflow.BlockUntilCanceled = true;
 
         var session = harness.Coordinator.StartFromHotkeyAsync();
-        Assert.True(WaitForState(harness.Coordinator, SearchState.Selecting));
+        Assert.True(WaitForState(harness.Coordinator, SearchState.Cancelable));
 
         await harness.Coordinator.StartFromHotkeyAsync();
         await session;
@@ -39,30 +39,11 @@ public sealed class SearchCoordinatorTests
         Assert.Equal(SearchState.Idle, harness.Coordinator.State);
     }
 
-    [Theory]
-    [InlineData(SearchState.RecognizingMusic)]
-    [InlineData(SearchState.ShowingMusicResult)]
-    public async Task Hotkey_during_cancelable_workflow_state_cancels_the_session(SearchState state)
-    {
-        var harness = new Harness();
-        harness.Workflow.TransitionBeforeBlocking = state;
-        harness.Workflow.BlockUntilCanceled = true;
-
-        var session = harness.Coordinator.StartFromHotkeyAsync();
-        Assert.True(WaitForState(harness.Coordinator, state));
-
-        await harness.Coordinator.StartFromHotkeyAsync();
-        await session;
-
-        Assert.True(harness.Workflow.CancellationObserved);
-        Assert.Equal(SearchState.Idle, harness.Coordinator.State);
-    }
-
     [Fact]
     public async Task Hotkey_during_upload_is_ignored_without_canceling_the_workflow()
     {
         var harness = new Harness();
-        harness.Workflow.TransitionBeforeBlocking = SearchState.Uploading;
+        harness.Workflow.StartUploadBeforeBlocking = true;
         harness.Workflow.Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var session = harness.Coordinator.StartFromHotkeyAsync();
@@ -74,21 +55,22 @@ public sealed class SearchCoordinatorTests
         await session;
 
         Assert.Equal(1, harness.Workflow.Calls);
+        Assert.Equal(SearchState.Idle, harness.Coordinator.State);
     }
 
     [Theory]
-    [InlineData(SearchState.Selecting)]
-    [InlineData(SearchState.Uploading)]
-    [InlineData(SearchState.RecognizingMusic)]
-    [InlineData(SearchState.ShowingMusicResult)]
-    public async Task Query_during_an_active_session_is_ignored(SearchState state)
+    [InlineData(false, SearchState.Cancelable)]
+    [InlineData(true, SearchState.Uploading)]
+    public async Task Query_during_an_active_session_is_ignored(
+        bool uploadStarted,
+        SearchState expectedState)
     {
         var harness = new Harness();
-        harness.Workflow.TransitionBeforeBlocking = state;
+        harness.Workflow.StartUploadBeforeBlocking = uploadStarted;
         harness.Workflow.Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var session = harness.Coordinator.StartFromHotkeyAsync();
-        Assert.True(WaitForState(harness.Coordinator, state));
+        Assert.True(WaitForState(harness.Coordinator, expectedState));
 
         await harness.Coordinator.StartFromQueryAsync();
         harness.Workflow.Completion.SetResult();
@@ -96,6 +78,7 @@ public sealed class SearchCoordinatorTests
 
         Assert.Equal(1, harness.Workflow.Calls);
         Assert.False(harness.Workflow.CancellationObserved);
+        Assert.Equal(SearchState.Idle, harness.Coordinator.State);
     }
 
     [Fact]
@@ -128,11 +111,12 @@ public sealed class SearchCoordinatorTests
         harness.Workflow.BlockUntilCanceled = true;
 
         var session = harness.Coordinator.StartFromHotkeyAsync();
-        Assert.True(WaitForState(harness.Coordinator, SearchState.Selecting));
+        Assert.True(WaitForState(harness.Coordinator, SearchState.Cancelable));
         await harness.Coordinator.CancelActiveSession();
         await session;
 
         Assert.Empty(harness.Notifier.Errors);
+        Assert.Equal(SearchState.Idle, harness.Coordinator.State);
     }
 
     [Fact]
@@ -163,7 +147,7 @@ public sealed class SearchCoordinatorTests
         var harness = new Harness(hideDelayMilliseconds: 30_000);
 
         var session = harness.Coordinator.StartFromHotkeyAsync();
-        Assert.True(WaitForState(harness.Coordinator, SearchState.Selecting));
+        Assert.True(WaitForState(harness.Coordinator, SearchState.Cancelable));
         await harness.Coordinator.StartFromHotkeyAsync();
         await session;
 
@@ -208,15 +192,15 @@ public sealed class SearchCoordinatorTests
         public int Calls { get; private set; }
         public bool BlockUntilCanceled { get; set; }
         public bool CancellationObserved { get; private set; }
-        public SearchState? TransitionBeforeBlocking { get; set; }
+        public bool StartUploadBeforeBlocking { get; set; }
         public TaskCompletionSource? Completion { get; set; }
         public Exception? Exception { get; set; }
 
-        public async Task RunAsync(Action<SearchState> transition, CancellationToken cancellationToken)
+        public async Task RunAsync(Action onUploadStarted, CancellationToken cancellationToken)
         {
             Calls++;
             if (Exception is not null) throw Exception;
-            if (TransitionBeforeBlocking is { } state) transition(state);
+            if (StartUploadBeforeBlocking) onUploadStarted();
             if (BlockUntilCanceled)
             {
                 try { await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken); }
