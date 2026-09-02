@@ -14,7 +14,10 @@ public sealed record OverlayVisual(
     MusicOverlayVisual Music,
     DebugOverlayVisual Debug,
     BottomOverlayVisual Bottom,
-    OverlayEffectsVisual Effects);
+    OverlayEffectsVisual Effects,
+    TextSelectionVisual TextSelection,
+    FloatingTextToolbarVisual FloatingToolbar,
+    TranslationOverlayVisual Translation);
 
 public sealed record SelectionOverlayVisual(
     Image Screenshot,

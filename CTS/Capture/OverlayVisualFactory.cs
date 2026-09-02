@@ -38,11 +38,15 @@ public static class OverlayVisualFactory
         var provider = ProviderMenuVisualFactory.Create(providers, selectedProviderId, lightTheme, strings);
         var music = MusicOverlayVisualFactory.Create(size, lightTheme, strings);
         var debug = DebugOverlayVisualFactory.Create(lightTheme, strings);
+        var translation = new TranslationOverlayVisual(lightTheme, strings);
+        var textSelection = new TextSelectionVisual();
+        var floatingToolbar = new FloatingTextToolbarVisual(lightTheme, strings);
         var actions = ActionTrayVisualFactory.Create(
             palette.SelectionChip,
             strings,
             provider,
-            music);
+            music,
+            translation);
         var bottom = BottomOverlayVisualFactory.Create(chipBottomMargin, actions, provider, music);
         var sceneRippleLayer = new Canvas { IsHitTestVisible = false };
         var effects = new OverlayEffectsVisual(
@@ -51,18 +55,34 @@ public static class OverlayVisualFactory
 
         var root = new Grid();
         root.Children.Add(selection.Screenshot);
+        root.Children.Add(translation.CardsLayer);
         root.Children.Add(selection.Dim);
         root.Children.Add(selection.DimRect);
         root.Children.Add(selection.Sheen);
         root.Children.Add(selection.Halo);
         root.Children.Add(selection.Accent);
         root.Children.Add(selection.SelectionFrame);
+        root.Children.Add(textSelection.HighlightLayer);
         root.Children.Add(selection.InputSurface);
+        root.Children.Add(floatingToolbar.Root);
+        root.Children.Add(translation.TogglePill);
         root.Children.Add(effects.SceneRippleLayer);
         root.Children.Add(music.ListeningLayer);
         root.Children.Add(bottom.Root);
         root.Children.Add(debug.Panel);
 
-        return new OverlayVisual(lightTheme, root, selection, actions, provider, music, debug, bottom, effects);
+        return new OverlayVisual(
+            lightTheme,
+            root,
+            selection,
+            actions,
+            provider,
+            music,
+            debug,
+            bottom,
+            effects,
+            textSelection,
+            floatingToolbar,
+            translation);
     }
 }

@@ -31,13 +31,17 @@ public sealed class OverlayVisualCompositionTests
             UIElement[] expected =
             [
                 visual.Selection.Screenshot,
+                visual.Translation.CardsLayer,
                 visual.Selection.Dim,
                 visual.Selection.DimRect,
                 visual.Selection.Sheen,
                 visual.Selection.Halo,
                 visual.Selection.Accent,
                 visual.Selection.SelectionFrame,
+                visual.TextSelection.HighlightLayer,
                 visual.Selection.InputSurface,
+                visual.FloatingToolbar.Root,
+                visual.Translation.TogglePill,
                 visual.Effects.SceneRippleLayer,
                 visual.Music.ListeningLayer,
                 visual.Bottom.Root,
@@ -45,7 +49,14 @@ public sealed class OverlayVisualCompositionTests
             ];
 
             Assert.Equal(expected, visual.Root.Children.Cast<UIElement>());
-            Assert.All(expected.Take(7), layer => Assert.False(layer.IsHitTestVisible));
+            Assert.False(visual.Selection.Screenshot.IsHitTestVisible);
+            Assert.False(visual.Selection.Dim.IsHitTestVisible);
+            Assert.False(visual.Selection.DimRect.IsHitTestVisible);
+            Assert.False(visual.Selection.Sheen.IsHitTestVisible);
+            Assert.False(visual.Selection.Halo.IsHitTestVisible);
+            Assert.False(visual.Selection.Accent.IsHitTestVisible);
+            Assert.False(visual.Selection.SelectionFrame.IsHitTestVisible);
+            Assert.False(visual.TextSelection.HighlightLayer.IsHitTestVisible);
             Assert.True(visual.Selection.InputSurface.IsHitTestVisible);
             Assert.True(visual.Bottom.Root.IsHitTestVisible);
             Assert.Null(visual.Bottom.Root.Background);
@@ -83,9 +94,10 @@ public sealed class OverlayVisualCompositionTests
                 TestUiStrings.English);
 
             Assert.Null(visual.Provider);
-            Assert.Equal(2, visual.Actions.Tray.Children.Count);
+            Assert.Equal(3, visual.Actions.Tray.Children.Count);
             Assert.Same(visual.Actions.Chip, visual.Actions.Tray.Children[0]);
             Assert.Same(visual.Music.Button, visual.Actions.Tray.Children[1]);
+            Assert.Same(visual.Translation.TranslateButton, visual.Actions.Tray.Children[2]);
             Assert.Empty(visual.Bottom.ProviderMenuLayer.Children);
             visual.Music.Waveform.Dispose();
             visual.Effects.SceneRipples.Dispose();

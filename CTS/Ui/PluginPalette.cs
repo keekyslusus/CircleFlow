@@ -24,6 +24,8 @@ internal static class PluginPalette
     public static Color ListeningText { get; } = Color.FromRgb(0xF4, 0xF5, 0xF8);
     public static Color ControlRipple { get; } = Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF);
     public static Color SceneRippleAudio { get; } = Color.FromRgb(0xC5, 0x9B, 0xFF);
+    public static Color TextSelectionHighlight =>
+        Color.FromArgb(0x66, SystemAccentColor.Read().R, SystemAccentColor.Read().G, SystemAccentColor.Read().B);
 
     public static IReadOnlyList<Color> GoogleLensLoadingDots { get; } = Array.AsReadOnly(
         new[]
@@ -93,6 +95,25 @@ internal static class PluginPalette
             ErrorAccent: Color.FromRgb(0xC9, 0x8B, 0x86),
             SuccessAccent: DarkMusicPrimary,
             SwatchBorder: Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF),
+            ShadowOpacity: 0.35),
+        TranslateButton: new MusicButtonPalette(
+            Surface: DarkDockSurface,
+            Foreground: Color.FromRgb(0xF1, 0xF3, 0xF4),
+            Border: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
+            Hover: Composite(DarkDockSurface, DarkDockHoverOverlay)),
+        FloatingToolbar: new FloatingToolbarPalette(
+            Surface: DarkDockSurface,
+            Text: Color.FromRgb(0xF1, 0xF3, 0xF4),
+            Border: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
+            Hover: Color.FromArgb(0x29, 0xFF, 0xFF, 0xFF),
+            ShadowOpacity: 0.35),
+        Translation: new TranslationPalette(
+            TogglePillSurface: DarkDockSurface,
+            TogglePillBorder: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
+            TogglePillText: Color.FromRgb(0xF1, 0xF3, 0xF4),
+            TogglePillHover: Color.FromArgb(0x29, 0xFF, 0xFF, 0xFF),
+            CardFallbackBackground: Color.FromRgb(0x20, 0x21, 0x24),
+            CardFallbackText: Color.FromRgb(0xE8, 0xEA, 0xED),
             ShadowOpacity: 0.35));
 
     private static PluginThemePalette Light { get; } = new(
@@ -152,7 +173,26 @@ internal static class PluginPalette
             ErrorAccent: Color.FromRgb(0xB6, 0x5F, 0x58),
             SuccessAccent: LightMusicPrimary,
             SwatchBorder: Color.FromArgb(0x52, 0x20, 0x21, 0x24),
-            ShadowOpacity: 0.12));
+            ShadowOpacity: 0.12),
+        TranslateButton: new MusicButtonPalette(
+            Surface: LightDockSurface,
+            Foreground: Color.FromRgb(0x3C, 0x40, 0x43),
+            Border: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
+            Hover: Composite(LightDockSurface, LightDockHoverOverlay)),
+        FloatingToolbar: new FloatingToolbarPalette(
+            Surface: LightDockSurface,
+            Text: Color.FromRgb(0x1F, 0x20, 0x23),
+            Border: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
+            Hover: Color.FromArgb(0x14, 0x20, 0x21, 0x24),
+            ShadowOpacity: 0.2),
+        Translation: new TranslationPalette(
+            TogglePillSurface: LightDockSurface,
+            TogglePillBorder: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
+            TogglePillText: Color.FromRgb(0x1F, 0x20, 0x23),
+            TogglePillHover: Color.FromArgb(0x14, 0x20, 0x21, 0x24),
+            CardFallbackBackground: Color.FromRgb(0xF7, 0xF9, 0xFC),
+            CardFallbackText: Color.FromRgb(0x30, 0x34, 0x3A),
+            ShadowOpacity: 0.2));
 
     internal static Color Composite(Color background, Color foreground)
     {
@@ -171,14 +211,33 @@ internal static class PluginPalette
     }
 }
 
+internal sealed record FloatingToolbarPalette(
+    Color Surface,
+    Color Text,
+    Color Border,
+    Color Hover,
+    double ShadowOpacity);
+
+internal sealed record TranslationPalette(
+    Color TogglePillSurface,
+    Color TogglePillBorder,
+    Color TogglePillText,
+    Color TogglePillHover,
+    Color CardFallbackBackground,
+    Color CardFallbackText,
+    double ShadowOpacity);
+
 internal sealed record PluginThemePalette(
     Color WindowSurface,
     Color PrimaryText,
     SelectionChipPalette SelectionChip,
     MusicButtonPalette MusicButton,
+    MusicButtonPalette TranslateButton,
     ProviderPalette Provider,
     MusicOverlayPalette MusicOverlay,
-    ToastPalette Toast);
+    ToastPalette Toast,
+    FloatingToolbarPalette FloatingToolbar,
+    TranslationPalette Translation);
 
 internal sealed record ToastPalette(
     Color Surface,

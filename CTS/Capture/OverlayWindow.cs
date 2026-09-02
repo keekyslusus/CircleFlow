@@ -52,6 +52,8 @@ public sealed class OverlayWindow : Window
     private readonly MusicOverlayController _music;
     private readonly ToastOverlayController _toast;
     private readonly DebugOverlayController _debug;
+    private readonly TextOverlayController? _text;
+    private readonly TranslationOverlayController? _translation;
     private readonly List<IDisposable> _controlRipples = [];
     private bool _chipDismissed;
     private bool _cancelPublished;
@@ -141,15 +143,22 @@ public sealed class OverlayWindow : Window
             StartMusicRecognition,
             CancelMusicRecognition,
             scenario => _publishCommand?.Invoke(new MusicDebugScenarioSelected(scenario)),
-            HandleMusicResultCommand));
+            HandleMusicResultCommand,
+            this,
+            ApplyModeTransition));
         _selection = _controllers.Selection;
         _provider = _controllers.Provider;
         _music = _controllers.Music;
         _toast = _controllers.Toast;
         _debug = _controllers.Debug;
+        _text = _controllers.Text;
+        _translation = _controllers.Translation;
 
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
+        PreviewMouseMove += OnPreviewMouseMove;
+        PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
+        PreviewMouseLeftButtonUp += OnPreviewMouseLeftButtonUp;
         MouseRightButtonDown += OnMouseRightButtonDown;
         Deactivated += OnDeactivated;
         Closed += OnClosed;
@@ -202,10 +211,16 @@ public sealed class OverlayWindow : Window
         var hit = InputHitTest(windowPoint) as DependencyObject;
         return IsWithin(originalSource as DependencyObject, _visual.Bottom.Root) ||
                IsWithin(originalSource as DependencyObject, _visual.Debug.Panel) ||
+               IsWithin(originalSource as DependencyObject, _visual.Translation.TogglePill) ||
+               IsWithin(originalSource as DependencyObject, _visual.FloatingToolbar.Root) ||
                IsWithin(hit, _visual.Bottom.Root) ||
                IsWithin(hit, _visual.Debug.Panel) ||
+               IsWithin(hit, _visual.Translation.TogglePill) ||
+               IsWithin(hit, _visual.FloatingToolbar.Root) ||
                _visual.Bottom.Root.IsMouseOver ||
-               _visual.Debug.Panel.IsMouseOver;
+               _visual.Debug.Panel.IsMouseOver ||
+               _visual.Translation.TogglePill.IsMouseOver ||
+               _visual.FloatingToolbar.Root.IsMouseOver;
     }
 
     internal void ShowListening()
@@ -270,6 +285,14 @@ public sealed class OverlayWindow : Window
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (_text is not null && e.Key == Key.C && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            if (_text.TryCopySelection())
+            {
+                e.Handled = true;
+                return;
+            }
+        }
         if (_publishCommand is not null &&
             e.Key == Key.D &&
             Keyboard.Modifiers.HasFlag(ModifierKeys.Control) &&
@@ -280,7 +303,15 @@ public sealed class OverlayWindow : Window
             return;
         }
         if (e.Key != Key.Escape) return;
-        if (_debug.IsOpen)
+        if (_text is not null && _text.HasSelection)
+        {
+            _text.ClearSelection();
+        }
+        else if (_translation is not null && _translation.IsActive)
+        {
+            _translation.ExitTranslation();
+        }
+        else if (_debug.IsOpen)
         {
             SetDebugPanelOpen(false);
         }
@@ -295,6 +326,77 @@ public sealed class OverlayWindow : Window
         e.Handled = true;
     }
 
+    private void OnPreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        var point = e.GetPosition(this);
+        if (Mode == OverlayInteractionMode.TextSelection && _text is not null)
+        {
+            _text.UpdateDrag(point);
+            e.Handled = true;
+            return;
+        }
+        if (IsActionTrayInteraction(e.OriginalSource, point))
+        {
+            Cursor = Cursors.Arrow;
+            return;
+        }
+        if (Mode == OverlayInteractionMode.Selecting && _text is not null)
+        {
+            _text.UpdateHoverCursor(point);
+        }
+    }
+
+    private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var point = e.GetPosition(this);
+        if (IsActionTrayInteraction(e.OriginalSource, point)) return;
+
+        if (_text is not null && _text.IsOverText(point))
+        {
+            if (_provider.IsOpen) _provider.SetOpen(false);
+            if (_text.StartSelection(point))
+            {
+                _visual.Selection.InputSurface.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+        else if (_text is not null && _text.HasSelection)
+        {
+            _text.ClearSelection();
+        }
+    }
+
+    private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (Mode == OverlayInteractionMode.TextSelection && _text is not null)
+        {
+            if (ReferenceEquals(Mouse.Captured, _visual.Selection.InputSurface))
+            {
+                Mouse.Capture(null);
+            }
+            _text.FinishDrag();
+            e.Handled = true;
+        }
+    }
+
+    internal void SetOcrSnapshot(CircleToSearch.Ocr.OcrScreenSnapshot snapshot)
+    {
+        _text?.SetSnapshot(snapshot);
+        _translation?.SetSnapshot(snapshot);
+    }
+
+    internal void SetPendingOcrTask(Task<CircleToSearch.Ocr.OcrScreenSnapshot> task)
+    {
+        _translation?.SetPendingOcrTask(task);
+        task.ContinueWith(t =>
+        {
+            if (t.IsCompletedSuccessfully)
+            {
+                Dispatcher.InvokeAsync(() => SetOcrSnapshot(t.Result));
+            }
+        }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+    }
+
     private bool CanStartSelection(object? originalSource, Point point)
     {
         var actionInteraction = IsActionTrayInteraction(originalSource, point);
@@ -303,7 +405,12 @@ public sealed class OverlayWindow : Window
             _provider.SetOpen(false);
             return false;
         }
-        return _interaction.CanAcceptSelectionInput && !actionInteraction;
+        if (actionInteraction) return false;
+        if (_text is not null && _text.IsOverText(point))
+        {
+            return false;
+        }
+        return _interaction.CanAcceptSelectionInput;
     }
 
     private void OnSelectionStarted()
@@ -406,6 +513,7 @@ public sealed class OverlayWindow : Window
         {
             case OverlayInteractionMode.Listening:
                 _selection.StopInput();
+                _text?.ClearSelection();
                 _music.ShowListening();
                 Cursor = Cursors.Arrow;
                 _selection.FadeForMusic();
@@ -421,13 +529,28 @@ public sealed class OverlayWindow : Window
                 break;
             case OverlayInteractionMode.ColorConfirmation:
                 _selection.StopInput();
+                _text?.ClearSelection();
+                _translation?.ExitTranslation();
                 _provider.SetOpen(false);
                 _debug.SetOpen(false);
                 ActionTrayTransitions.BeginExit(_visual.Actions);
                 Cursor = Cursors.Arrow;
                 break;
+            case OverlayInteractionMode.TextSelection:
+                _provider.SetOpen(false);
+                _debug.SetOpen(false);
+                break;
+            case OverlayInteractionMode.Translation:
+                _selection.StopInput();
+                _text?.ClearSelection();
+                _provider.SetOpen(false);
+                _debug.SetOpen(false);
+                Cursor = Cursors.Arrow;
+                break;
             case OverlayInteractionMode.Closing:
                 _selection.StopInput();
+                _text?.ClearSelection();
+                _translation?.ExitTranslation();
                 _provider.SetOpen(false);
                 _debug.SetOpen(false);
                 _toast.SettleForClosing();
@@ -530,6 +653,9 @@ public sealed class OverlayWindow : Window
         _resourcesDisposed = true;
         Loaded -= OnLoaded;
         PreviewKeyDown -= OnPreviewKeyDown;
+        PreviewMouseMove -= OnPreviewMouseMove;
+        PreviewMouseLeftButtonDown -= OnPreviewMouseLeftButtonDown;
+        PreviewMouseLeftButtonUp -= OnPreviewMouseLeftButtonUp;
         MouseRightButtonDown -= OnMouseRightButtonDown;
         Deactivated -= OnDeactivated;
         Closed -= OnClosed;

@@ -1,4 +1,4 @@
-# CircleClow
+# CircleFlow
 
 [Circle to Search](https://search.google/ways-to-search/circle-to-search/) for Windows
 

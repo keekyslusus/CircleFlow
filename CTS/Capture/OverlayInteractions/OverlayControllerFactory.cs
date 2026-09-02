@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
+using CircleToSearch.Translation;
 using CircleToSearch.Ui;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
@@ -19,7 +20,9 @@ internal sealed class OverlayControllers(
     ProviderMenuController provider,
     MusicOverlayController music,
     ToastOverlayController toast,
-    DebugOverlayController debug) : IDisposable
+    DebugOverlayController debug,
+    TextOverlayController? text = null,
+    TranslationOverlayController? translation = null) : IDisposable
 {
     private bool _disposed;
 
@@ -29,11 +32,15 @@ internal sealed class OverlayControllers(
     internal MusicOverlayController Music { get; } = music;
     internal ToastOverlayController Toast { get; } = toast;
     internal DebugOverlayController Debug { get; } = debug;
+    internal TextOverlayController? Text { get; } = text;
+    internal TranslationOverlayController? Translation { get; } = translation;
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+        Translation?.Dispose();
+        Text?.Dispose();
         Debug.Dispose();
         Music.Dispose();
         Provider.Dispose();
@@ -70,27 +77,34 @@ internal sealed record OverlayControllerContext(
     Action MusicStartRequested,
     Action MusicCancelRequested,
     Action<MusicDebugScenario> DebugScenarioSelected,
-    Action<IOverlayCommand> MusicResultCommandRequested);
+    Action<IOverlayCommand> MusicResultCommandRequested,
+    Window? Window = null,
+    Action<OverlayInteractionMode>? SetMode = null,
+    ITranslationService? TranslationService = null);
 
 internal sealed class OverlayControllerFactory : IOverlayControllerFactory
 {
     private readonly Action<string> _setClipboard;
     private readonly Func<bool> _animationsEnabled;
     private readonly Func<MouseEventArgs, Point>? _pointerPosition;
+    private readonly ITranslationService? _translationService;
 
-    internal OverlayControllerFactory()
-        : this(Clipboard.SetText, OverlayVisualResources.AnimationsEnabled)
+    internal OverlayControllerFactory(
+        ITranslationService? translationService = null)
+        : this(Clipboard.SetText, OverlayVisualResources.AnimationsEnabled, translationService: translationService)
     {
     }
 
     internal OverlayControllerFactory(
         Action<string> setClipboard,
         Func<bool> animationsEnabled,
-        Func<MouseEventArgs, Point>? pointerPosition = null)
+        Func<MouseEventArgs, Point>? pointerPosition = null,
+        ITranslationService? translationService = null)
     {
         _setClipboard = setClipboard ?? throw new ArgumentNullException(nameof(setClipboard));
         _animationsEnabled = animationsEnabled ?? throw new ArgumentNullException(nameof(animationsEnabled));
         _pointerPosition = pointerPosition;
+        _translationService = translationService;
     }
 
     public OverlayControllers Create(OverlayControllerContext context)
@@ -102,6 +116,8 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         MusicOverlayController? music = null;
         ToastOverlayController? toast = null;
         DebugOverlayController? debug = null;
+        TextOverlayController? text = null;
+        TranslationOverlayController? translation = null;
         try
         {
             toast = new ToastOverlayController(
@@ -161,10 +177,43 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.MusicResultCommandRequested,
                 _setClipboard,
                 _animationsEnabled);
-            return new OverlayControllers(selection, colorPick, provider, music, toast, debug);
+
+            var translationService = context.TranslationService ?? _translationService;
+            if (context.Window is not null && context.SetMode is not null && translationService is not null)
+            {
+                text = new TextOverlayController(
+                    context.Visual.TextSelection,
+                    context.Visual.FloatingToolbar,
+                    context.CoordinateRoot,
+                    context.Window,
+                    context.Strings,
+                    _setClipboard,
+                    toast.Show,
+                    context.SelectionCompleted,
+                    translationService,
+                    context.GetMode,
+                    context.SetMode,
+                    context.Scale,
+                    context.Overscan);
+
+                translation = new TranslationOverlayController(
+                    context.Visual.Translation,
+                    context.FrozenFrame,
+                    context.Scale,
+                    translationService,
+                    context.Strings,
+                    _setClipboard,
+                    toast.Show,
+                    context.GetMode,
+                    context.SetMode);
+            }
+
+            return new OverlayControllers(selection, colorPick, provider, music, toast, debug, text, translation);
         }
         catch
         {
+            translation?.Dispose();
+            text?.Dispose();
             music?.Dispose();
             debug?.Dispose();
             provider?.Dispose();

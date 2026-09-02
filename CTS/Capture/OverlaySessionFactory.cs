@@ -8,15 +8,18 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
     private readonly PluginLog _log;
     private readonly IPointerMonitorCapture _capture;
     private readonly IOverlayWindowFactory _windowFactory;
+    private readonly CircleToSearch.Ocr.IOcrService? _ocrService;
 
     public OverlaySessionFactory(
         PluginLog log,
         IPointerMonitorCapture capture,
-        IOverlayWindowFactory windowFactory)
+        IOverlayWindowFactory windowFactory,
+        CircleToSearch.Ocr.IOcrService? ocrService = null)
     {
         _log = log ?? throw new ArgumentNullException(nameof(log));
         _capture = capture ?? throw new ArgumentNullException(nameof(capture));
         _windowFactory = windowFactory ?? throw new ArgumentNullException(nameof(windowFactory));
+        _ocrService = ocrService;
     }
 
     public Task<IOverlaySession?> OpenAsync(OverlayLaunchOptions options, CancellationToken cancellationToken)
@@ -58,6 +61,19 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
                 return;
             }
 
+            Task<CircleToSearch.Ocr.OcrScreenSnapshot>? ocrTask = null;
+            if (_ocrService is not null && _ocrService.IsAvailable)
+            {
+                var ocrFrame = (System.Drawing.Bitmap)capture.Frame.Clone();
+                ocrTask = Task.Run(async () =>
+                {
+                    using (ocrFrame)
+                    {
+                        return await _ocrService.RecognizeAsync(ocrFrame, capture.Scale, cancellationToken).ConfigureAwait(false);
+                    }
+                }, cancellationToken);
+            }
+
             session = new OverlaySession(_log);
             OverlayWindow? window = null;
             try
@@ -70,6 +86,7 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
                     options,
                     session.Publish,
                     capture.Pointer);
+                if (ocrTask is not null) window.SetPendingOcrTask(ocrTask);
                 session.Attach(window);
                 window.Show();
                 using var registration = cancellationToken.Register(

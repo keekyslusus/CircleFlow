@@ -10,8 +10,10 @@ using CircleToSearch.Interop;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.MusicRecognition.Shazam;
+using CircleToSearch.Ocr;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
+using CircleToSearch.Translation;
 using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
 using GdiBitmap = System.Drawing.Bitmap;
@@ -103,10 +105,16 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
-        var overlayControllerFactory = new OverlayControllerFactory();
+        var ocrService = new WindowsMediaOcrService(log);
+        var translationHttpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(10),
+        };
+        var translationService = new GoogleFreeTranslateClient(translationHttpClient, log);
+        var overlayControllerFactory = new OverlayControllerFactory(translationService: translationService);
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
         var workflow = new OverlaySessionWorkflow(
-            new OverlaySessionFactory(log, new PointerMonitorCapture(), overlayWindowFactory),
+            new OverlaySessionFactory(log, new PointerMonitorCapture(), overlayWindowFactory, ocrService),
             visualSearch,
             musicRecognition,
             musicResultPresenter,
@@ -152,7 +160,7 @@ public static class CompositionRoot
                 strings),
             hotkeyWindow,
             providerRouter,
-            [musicHttpClient, musicThrottle],
+            [musicHttpClient, musicThrottle, translationHttpClient],
             log);
     }
 

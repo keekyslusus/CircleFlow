@@ -74,6 +74,18 @@ public sealed class UiStrings
     public string ResultsUrlOpenFailed => Get("plugin_circletosearch_results_url_open_failed");
     public string GoogleLensWindowTitle => Get("plugin_circletosearch_google_lens_window_title");
     public string GoogleLensLoading => Get("plugin_circletosearch_google_lens_loading");
+    public string TranslateAction => Get("plugin_circletosearch_translate_action");
+    public string TranslateScreenAction => Get("plugin_circletosearch_translate_screen_action");
+    public string CopyTextAction => Get("plugin_circletosearch_copy_text_action");
+    public string TextCopied => Get("plugin_circletosearch_text_copied");
+    public string SearchTextAction => Get("plugin_circletosearch_search_text_action");
+    public string Translating => Get("plugin_circletosearch_translating");
+    public string TranslationFailed => Get("plugin_circletosearch_translation_failed");
+    public string NoTextDetected => Get("plugin_circletosearch_no_text_detected");
+    public string OcrNotSupported => Get("plugin_circletosearch_ocr_not_supported");
+    public string ShowOriginal => Get("plugin_circletosearch_show_original");
+    public string ShowTranslation => Get("plugin_circletosearch_show_translation");
+    public string CopyWordsCount(int count) => Get("plugin_circletosearch_copy_words_count", count);
 
     public string VisualSearchQuerySubtitle(string hotkeyStatus) =>
         Get("plugin_circletosearch_query_subtitle", hotkeyStatus);

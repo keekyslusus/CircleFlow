@@ -81,4 +81,16 @@
     <system:String x:Key="plugin_circletosearch_search_failed">The search failed: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_google_lens_window_title">CircleFlow - Google Lens</system:String>
     <system:String x:Key="plugin_circletosearch_google_lens_loading">Searching with Google Lens…</system:String>
+    <system:String x:Key="plugin_circletosearch_translate_action">Translate</system:String>
+    <system:String x:Key="plugin_circletosearch_translate_screen_action">Translate screen</system:String>
+    <system:String x:Key="plugin_circletosearch_copy_text_action">Copy text</system:String>
+    <system:String x:Key="plugin_circletosearch_text_copied">Text copied to clipboard</system:String>
+    <system:String x:Key="plugin_circletosearch_search_text_action">Search</system:String>
+    <system:String x:Key="plugin_circletosearch_translating">Translating screen…</system:String>
+    <system:String x:Key="plugin_circletosearch_translation_failed">Translation failed</system:String>
+    <system:String x:Key="plugin_circletosearch_no_text_detected">No text detected on screen</system:String>
+    <system:String x:Key="plugin_circletosearch_ocr_not_supported">Windows OCR is not available for this language</system:String>
+    <system:String x:Key="plugin_circletosearch_show_original">Show original</system:String>
+    <system:String x:Key="plugin_circletosearch_show_translation">Show translation</system:String>
+    <system:String x:Key="plugin_circletosearch_copy_words_count">Copy {0} words</system:String>
 </ResourceDictionary>
