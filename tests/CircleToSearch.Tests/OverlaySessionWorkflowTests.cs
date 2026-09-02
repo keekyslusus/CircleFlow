@@ -6,12 +6,43 @@ using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
+using CircleToSearch.TextRecognition;
+using CircleToSearch.Translation;
 using Xunit;
 
 namespace CircleToSearch.Tests;
 
 public sealed class OverlaySessionWorkflowTests
 {
+    [Fact]
+    public async Task Text_search_closes_overlay_before_opening_browser()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new SearchSelectedText("a&b", SearchProviderIds.GoogleLens));
+
+        await harness.RunAsync();
+
+        Assert.Equal(["close", "text-open", "close"], harness.Events);
+        Assert.Contains("q=a%26b", Assert.Single(harness.Opened));
+    }
+
+    [Fact]
+    public async Task Screen_translation_result_is_returned_to_matching_overlay_request()
+    {
+        using var harness = new Harness();
+        harness.Overlay.CloseAfterTranslation = true;
+        var word = new OcrWord(0, 0, 0, "Hello", new Rectangle(0, 0, 20, 10));
+        var document = new OcrDocument("en", new Size(100, 50),
+            [new OcrLine(0, 0, word.BoundsPx, [word])]);
+        var requestId = Guid.NewGuid();
+        harness.Overlay.Enqueue(new ScreenTranslationRequested(requestId, document, "es"));
+
+        await harness.RunAsync();
+
+        Assert.Equal(requestId, harness.Overlay.TranslationResult?.RequestId);
+        Assert.Equal("translated", Assert.Single(harness.Overlay.TranslationResult!.Lines).TranslatedText);
+    }
+
     [Fact]
     public async Task Color_copied_is_terminal_without_search_music_provider_or_browser_side_effects()
     {
@@ -390,6 +421,15 @@ public sealed class OverlaySessionWorkflowTests
                 Notifier,
                 TestUiStrings.English,
                 Log);
+            var textSearch = new TextSearchWorkflow(
+                new TextSearchUrlBuilder(),
+                url => { Events.Add("text-open"); Opened.Add(url); return true; },
+                Notifier,
+                TestUiStrings.English,
+                Log);
+            var screenTranslation = new ScreenTranslationWorkflow(
+                new FakeTranslationProvider(),
+                new TranslationSegmenter());
             Workflow = new OverlaySessionWorkflow(
                 Factory,
                 visualSearch,
@@ -398,7 +438,9 @@ public sealed class OverlaySessionWorkflowTests
                 providerSelection,
                 Settings,
                 TestUiStrings.English,
-                Log);
+                Log,
+                textSearch,
+                screenTranslation);
         }
 
         public OverlaySessionWorkflow Workflow { get; }
@@ -467,6 +509,8 @@ public sealed class OverlaySessionWorkflowTests
         public void CompleteCommands() => _commands.Writer.TryComplete();
         public MusicRecognitionOutcome? Result { get; private set; }
         public bool CloseAfterResult { get; set; }
+        public bool CloseAfterTranslation { get; set; }
+        public ScreenTranslationResult? TranslationResult { get; private set; }
         public Exception? ShowResultException { get; set; }
         public Action<int>? OnResult { get; set; }
         public int ResultCalls { get; private set; }
@@ -505,6 +549,13 @@ public sealed class OverlaySessionWorkflowTests
             Events.Add("close");
             return Task.CompletedTask;
         }
+        public Task ShowTranslationAsync(ScreenTranslationResult result, CancellationToken cancellationToken)
+        {
+            TranslationResult = result;
+            Events.Add("translation");
+            if (CloseAfterTranslation) Enqueue(new CancelSession());
+            return Task.CompletedTask;
+        }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
@@ -516,6 +567,16 @@ public sealed class OverlaySessionWorkflowTests
             Calls++;
             return Task.FromResult(VisualSearchOutcome.Handled());
         }
+    }
+
+    private sealed class FakeTranslationProvider : ITranslationProvider
+    {
+        public Task<TranslationBatchOutcome> TranslateAsync(
+            IReadOnlyList<TranslationChunk> chunks,
+            string sourceLanguageTag,
+            string targetLanguageTag,
+            CancellationToken cancellationToken) => Task.FromResult(new TranslationBatchOutcome(chunks.Select(chunk =>
+                new TranslatedChunk(chunk.LineId, chunk.Order, chunk.Text, "translated", TranslationFailure.None)).ToArray()));
     }
 
     private sealed class FakeMusicRecognizer : IMusicRecognizer

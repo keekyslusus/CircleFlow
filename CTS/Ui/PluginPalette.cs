@@ -93,7 +93,22 @@ internal static class PluginPalette
             ErrorAccent: Color.FromRgb(0xC9, 0x8B, 0x86),
             SuccessAccent: DarkMusicPrimary,
             SwatchBorder: Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF),
-            ShadowOpacity: 0.35));
+            ShadowOpacity: 0.35),
+        TextInteraction: new TextInteractionPalette(
+            Hover: Color.FromArgb(0x24, 0xD0, 0xBC, 0xFF),
+            Selection: Color.FromArgb(0x55, 0xD0, 0xBC, 0xFF),
+            CardSurface: Color.FromRgb(0x21, 0x1F, 0x26),
+            CardText: Color.FromRgb(0xE6, 0xE1, 0xE5),
+            CardBorder: Color.FromRgb(0x44, 0x47, 0x46),
+            ButtonHover: Color.FromRgb(0x4A, 0x44, 0x58)),
+        Translation: new TranslationPalette(
+            Surface: DarkDockSurface,
+            Text: Color.FromRgb(0xF1, 0xF3, 0xF4),
+            Border: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
+            Hover: Composite(DarkDockSurface, DarkDockHoverOverlay),
+            CardSurface: Color.FromArgb(0xF2, 0x21, 0x1F, 0x26),
+            CardText: Color.FromRgb(0xE6, 0xE1, 0xE5),
+            SourceDim: Color.FromArgb(0x80, 0x00, 0x00, 0x00)));
 
     private static PluginThemePalette Light { get; } = new(
         WindowSurface: Color.FromRgb(0xF7, 0xF9, 0xFC),
@@ -152,7 +167,22 @@ internal static class PluginPalette
             ErrorAccent: Color.FromRgb(0xB6, 0x5F, 0x58),
             SuccessAccent: LightMusicPrimary,
             SwatchBorder: Color.FromArgb(0x52, 0x20, 0x21, 0x24),
-            ShadowOpacity: 0.12));
+            ShadowOpacity: 0.12),
+        TextInteraction: new TextInteractionPalette(
+            Hover: Color.FromArgb(0x24, 0x67, 0x50, 0xA4),
+            Selection: Color.FromArgb(0x55, 0x67, 0x50, 0xA4),
+            CardSurface: Color.FromRgb(0xF3, 0xF3, 0xFA),
+            CardText: Color.FromRgb(0x1C, 0x1B, 0x1F),
+            CardBorder: Color.FromRgb(0xC4, 0xC7, 0xC5),
+            ButtonHover: Color.FromRgb(0xE8, 0xDE, 0xF8)),
+        Translation: new TranslationPalette(
+            Surface: LightDockSurface,
+            Text: Color.FromRgb(0x3C, 0x40, 0x43),
+            Border: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
+            Hover: Composite(LightDockSurface, LightDockHoverOverlay),
+            CardSurface: Color.FromArgb(0xF5, 0xF3, 0xF3, 0xFA),
+            CardText: Color.FromRgb(0x1C, 0x1B, 0x1F),
+            SourceDim: Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF)));
 
     internal static Color Composite(Color background, Color foreground)
     {
@@ -178,7 +208,26 @@ internal sealed record PluginThemePalette(
     MusicButtonPalette MusicButton,
     ProviderPalette Provider,
     MusicOverlayPalette MusicOverlay,
-    ToastPalette Toast);
+    ToastPalette Toast,
+    TextInteractionPalette TextInteraction,
+    TranslationPalette Translation);
+
+internal sealed record TextInteractionPalette(
+    Color Hover,
+    Color Selection,
+    Color CardSurface,
+    Color CardText,
+    Color CardBorder,
+    Color ButtonHover);
+
+internal sealed record TranslationPalette(
+    Color Surface,
+    Color Text,
+    Color Border,
+    Color Hover,
+    Color CardSurface,
+    Color CardText,
+    Color SourceDim);
 
 internal sealed record ToastPalette(
     Color Surface,

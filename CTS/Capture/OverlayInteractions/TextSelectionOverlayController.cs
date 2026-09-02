@@ -1,0 +1,217 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Shapes;
+using CircleToSearch.Search;
+using CircleToSearch.TextRecognition;
+using CircleToSearch.Ui;
+using GdiRectangle = System.Drawing.Rectangle;
+
+namespace CircleToSearch.Capture.OverlayInteractions;
+
+internal sealed class TextSelectionOverlayController : IDisposable
+{
+    private readonly TextSelectionVisual _visual;
+    private readonly FrameworkElement _coordinateRoot;
+    private readonly FrameworkElement _inputSurface;
+    private readonly OverlayCoordinateMapper _mapper;
+    private readonly OcrTextHitTester _hitTester;
+    private readonly Action<string> _setClipboard;
+    private readonly Action<ToastNotification> _showToast;
+    private readonly Func<string> _selectedProviderId;
+    private readonly Action<IOverlayCommand> _publish;
+    private readonly UiStrings _strings;
+    private readonly bool _lightTheme;
+    private OcrDocument? _document;
+    private OcrDocument? _gestureDocument;
+    private OcrWord? _anchor;
+    private OcrWord? _current;
+    private OcrWord? _hovered;
+    private TextSelectionRange? _selection;
+    private bool _disposed;
+    private bool _searchPublished;
+
+    internal TextSelectionOverlayController(
+        TextSelectionVisual visual,
+        FrameworkElement coordinateRoot,
+        FrameworkElement inputSurface,
+        OverlayCoordinateMapper mapper,
+        OcrTextHitTester hitTester,
+        Action<string> setClipboard,
+        Action<ToastNotification> showToast,
+        Func<string> selectedProviderId,
+        Action<IOverlayCommand> publish,
+        UiStrings strings,
+        bool lightTheme)
+    {
+        _visual = visual;
+        _coordinateRoot = coordinateRoot;
+        _inputSurface = inputSurface;
+        _mapper = mapper;
+        _hitTester = hitTester;
+        _setClipboard = setClipboard;
+        _showToast = showToast;
+        _selectedProviderId = selectedProviderId;
+        _publish = publish;
+        _strings = strings;
+        _lightTheme = lightTheme;
+        _visual.CopyButton.Click += OnCopy;
+        _visual.SearchButton.Click += OnSearch;
+    }
+
+    internal bool HasSelection => _selection is not null;
+    internal bool IsActionMenuOpen => _visual.ActionCard.Visibility == Visibility.Visible;
+
+    internal void SetDocument(OcrDocument? document)
+    {
+        _document = document;
+        _hovered = null;
+        if (document is null) Dismiss();
+        else if (_selection is null) _visual.HighlightLayer.Children.Clear();
+    }
+
+    internal bool Begin(Point point)
+    {
+        if (_disposed || _document is null) return false;
+        var word = _hitTester.HitTest(_document, _mapper.ToPhysical(point, clamp: false));
+        if (word is null) return false;
+        Dismiss();
+        _gestureDocument = _document;
+        _anchor = word;
+        _current = word;
+        RenderRange(TextSelectionRange.Create(_gestureDocument, word, word), showMenu: false);
+        _coordinateRoot.Cursor = Cursors.IBeam;
+        _inputSurface.CaptureMouse();
+        return true;
+    }
+
+    internal void Update(Point point)
+    {
+        if (_gestureDocument is null || _anchor is null) return;
+        var word = _hitTester.HitTest(_gestureDocument, _mapper.ToPhysical(point, clamp: false));
+        if (word is null || ReferenceEquals(word, _current)) return;
+        _current = word;
+        RenderRange(TextSelectionRange.Create(_gestureDocument, _anchor, word), showMenu: false);
+    }
+
+    internal void Complete(Point point)
+    {
+        if (_gestureDocument is null || _anchor is null) return;
+        Update(point);
+        var range = TextSelectionRange.Create(_gestureDocument, _anchor, _current ?? _anchor);
+        ReleaseCapture();
+        _gestureDocument = null;
+        _anchor = null;
+        _current = null;
+        RenderRange(range, showMenu: true);
+    }
+
+    internal void Hover(Point point)
+    {
+        if (_disposed || _gestureDocument is not null || IsActionMenuOpen) return;
+        var word = _hitTester.HitTest(_document, _mapper.ToPhysical(point, clamp: false));
+        if (ReferenceEquals(word, _hovered)) return;
+        _hovered = word;
+        _coordinateRoot.Cursor = word is null ? Cursors.Cross : Cursors.IBeam;
+        if (_selection is null) RenderHighlights(word is null ? [] : [word.BoundsPx], hover: true);
+    }
+
+    internal void Dismiss()
+    {
+        ReleaseCapture();
+        _gestureDocument = null;
+        _anchor = null;
+        _current = null;
+        _selection = null;
+        _hovered = null;
+        _searchPublished = false;
+        _visual.ActionCard.Visibility = Visibility.Collapsed;
+        _visual.HighlightLayer.Children.Clear();
+    }
+
+    internal void CancelGesture()
+    {
+        if (_gestureDocument is null) return;
+        Dismiss();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _visual.CopyButton.Click -= OnCopy;
+        _visual.SearchButton.Click -= OnSearch;
+        Dismiss();
+    }
+
+    private void OnCopy(object sender, RoutedEventArgs e)
+    {
+        if (_selection is null) return;
+        try
+        {
+            _setClipboard(_selection.Text);
+            _showToast(new ToastNotification(_strings.TextCopied, ToastTone.Success));
+        }
+        catch
+        {
+            _showToast(new ToastNotification(_strings.TextCopyFailed, ToastTone.Error));
+        }
+        e.Handled = true;
+    }
+
+    private void OnSearch(object sender, RoutedEventArgs e)
+    {
+        if (_selection is null || _searchPublished) return;
+        _searchPublished = true;
+        _visual.SearchButton.IsEnabled = false;
+        _publish(new SearchSelectedText(_selection.Text, _selectedProviderId()));
+        e.Handled = true;
+    }
+
+    private void RenderRange(TextSelectionRange range, bool showMenu)
+    {
+        _selection = range;
+        _searchPublished = false;
+        RenderHighlights(range.HighlightBoundsPx, hover: false);
+        if (!showMenu) return;
+        _visual.ActionCard.Visibility = Visibility.Visible;
+        _visual.SearchButton.IsEnabled = true;
+        _visual.ActionCard.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var selected = _mapper.ToDips(range.BoundsPx);
+        var desired = _visual.ActionCard.DesiredSize;
+        var placement = TextActionCardLayout.Place(
+            selected,
+            desired,
+            new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight));
+        Canvas.SetLeft(_visual.ActionCard, placement.X);
+        Canvas.SetTop(_visual.ActionCard, placement.Y);
+    }
+
+    private void RenderHighlights(IReadOnlyList<GdiRectangle> rectangles, bool hover)
+    {
+        _visual.HighlightLayer.Children.Clear();
+        var color = hover
+            ? PluginPalette.For(_lightTheme).TextInteraction.Hover
+            : PluginPalette.For(_lightTheme).TextInteraction.Selection;
+        foreach (var bounds in rectangles)
+        {
+            var dips = _mapper.ToDips(bounds);
+            var rectangle = new Rectangle
+            {
+                Width = dips.Width,
+                Height = dips.Height,
+                Fill = OverlayVisualResources.Frozen(color),
+                RadiusX = 2,
+                RadiusY = 2,
+            };
+            Canvas.SetLeft(rectangle, dips.Left);
+            Canvas.SetTop(rectangle, dips.Top);
+            _visual.HighlightLayer.Children.Add(rectangle);
+        }
+    }
+
+    private void ReleaseCapture()
+    {
+        if (ReferenceEquals(Mouse.Captured, _inputSurface)) Mouse.Capture(null);
+    }
+}

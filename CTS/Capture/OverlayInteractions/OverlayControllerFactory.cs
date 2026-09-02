@@ -3,6 +3,7 @@ using System.Windows.Input;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
+using CircleToSearch.TextRecognition;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
 
@@ -15,6 +16,10 @@ internal interface IOverlayControllerFactory
 
 internal sealed class OverlayControllers(
     SelectionOverlayController selection,
+    TextSelectionOverlayController textSelection,
+    PointerGestureRouter pointer,
+    OcrOverlayController ocr,
+    ScreenTranslationOverlayController translation,
     ColorPickController colorPick,
     ProviderMenuController provider,
     MusicOverlayController music,
@@ -24,6 +29,10 @@ internal sealed class OverlayControllers(
     private bool _disposed;
 
     internal SelectionOverlayController Selection { get; } = selection;
+    internal TextSelectionOverlayController TextSelection { get; } = textSelection;
+    internal PointerGestureRouter Pointer { get; } = pointer;
+    internal OcrOverlayController Ocr { get; } = ocr;
+    internal ScreenTranslationOverlayController Translation { get; } = translation;
     internal ColorPickController ColorPick { get; } = colorPick;
     internal ProviderMenuController Provider { get; } = provider;
     internal MusicOverlayController Music { get; } = music;
@@ -34,10 +43,14 @@ internal sealed class OverlayControllers(
     {
         if (_disposed) return;
         _disposed = true;
-        Debug.Dispose();
         Music.Dispose();
-        Provider.Dispose();
+        Debug.Dispose();
+        Ocr.Dispose();
+        Translation.Dispose();
+        Pointer.Dispose();
+        TextSelection.Dispose();
         Selection.Dispose();
+        Provider.Dispose();
         ColorPick.Dispose();
         Toast.Dispose();
     }
@@ -70,13 +83,22 @@ internal sealed record OverlayControllerContext(
     Action MusicStartRequested,
     Action MusicCancelRequested,
     Action<MusicDebugScenario> DebugScenarioSelected,
-    Action<IOverlayCommand> MusicResultCommandRequested);
+    Action<IOverlayCommand> MusicResultCommandRequested,
+    Action<IOverlayCommand> PublishCommand,
+    Action<OverlayInteractionMode> TransitionMode);
 
 internal sealed class OverlayControllerFactory : IOverlayControllerFactory
 {
     private readonly Action<string> _setClipboard;
     private readonly Func<bool> _animationsEnabled;
     private readonly Func<MouseEventArgs, Point>? _pointerPosition;
+    private readonly IOcrRecognizer _ocrRecognizer;
+    private readonly double _textHitToleranceDips;
+    private readonly Func<string?> _ocrLanguageTag;
+    private readonly Func<string> _targetLanguageTag;
+    private readonly Func<bool> _translationConsentAccepted;
+    private readonly Action _acceptTranslationConsent;
+    private readonly PluginLog? _log;
 
     internal OverlayControllerFactory()
         : this(Clipboard.SetText, OverlayVisualResources.AnimationsEnabled)
@@ -86,17 +108,37 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
     internal OverlayControllerFactory(
         Action<string> setClipboard,
         Func<bool> animationsEnabled,
-        Func<MouseEventArgs, Point>? pointerPosition = null)
+        Func<MouseEventArgs, Point>? pointerPosition = null,
+        IOcrRecognizer? ocrRecognizer = null,
+        double textHitToleranceDips = 3,
+        Func<string?>? ocrLanguageTag = null,
+        Func<string>? targetLanguageTag = null,
+        Func<bool>? translationConsentAccepted = null,
+        Action? acceptTranslationConsent = null,
+        PluginLog? log = null)
     {
         _setClipboard = setClipboard ?? throw new ArgumentNullException(nameof(setClipboard));
         _animationsEnabled = animationsEnabled ?? throw new ArgumentNullException(nameof(animationsEnabled));
         _pointerPosition = pointerPosition;
+        _ocrRecognizer = ocrRecognizer ?? DisabledOcrRecognizer.Instance;
+        if (!double.IsFinite(textHitToleranceDips) || textHitToleranceDips < 0)
+            throw new ArgumentOutOfRangeException(nameof(textHitToleranceDips));
+        _textHitToleranceDips = textHitToleranceDips;
+        _ocrLanguageTag = ocrLanguageTag ?? (() => null);
+        _targetLanguageTag = targetLanguageTag ?? (() => "en");
+        _translationConsentAccepted = translationConsentAccepted ?? (() => true);
+        _acceptTranslationConsent = acceptTranslationConsent ?? (() => { });
+        _log = log;
     }
 
     public OverlayControllers Create(OverlayControllerContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
         SelectionOverlayController? selection = null;
+        TextSelectionOverlayController? textSelection = null;
+        PointerGestureRouter? pointer = null;
+        OcrOverlayController? ocr = null;
+        ScreenTranslationOverlayController? translation = null;
         ColorPickController? colorPick = null;
         ProviderMenuController? provider = null;
         MusicOverlayController? music = null;
@@ -116,6 +158,16 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.ColorConfirmationStarted,
                 context.ColorPickFailed,
                 context.ColorConfirmationCompleted);
+            provider = new ProviderMenuController(
+                context.Visual.Provider,
+                context.Visual.Bottom.Root,
+                context.Providers,
+                context.SelectedProviderId,
+                context.Strings,
+                context.Visual.LightTheme,
+                context.CanUseProvider,
+                context.ProviderSelected);
+            var mapper = new OverlayCoordinateMapper(context.Scale, context.Overscan, context.Monitor.Size);
             selection = new SelectionOverlayController(
                 context.Visual.Selection,
                 context.CoordinateRoot,
@@ -131,16 +183,49 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.SelectionCompleted,
                 context.SelectionRejected,
                 context.SelectionHoldCompleted,
-                _pointerPosition);
-            provider = new ProviderMenuController(
-                context.Visual.Provider,
-                context.Visual.Bottom.Root,
-                context.Providers,
-                context.SelectedProviderId,
+                _pointerPosition,
+                subscribeInput: false);
+            textSelection = new TextSelectionOverlayController(
+                context.Visual.TextSelection,
+                context.CoordinateRoot,
+                context.Visual.Selection.InputSurface,
+                mapper,
+                new OcrTextHitTester(_textHitToleranceDips * context.Scale),
+                _setClipboard,
+                toast.Show,
+                () => provider.SelectedProviderId,
+                context.PublishCommand,
                 context.Strings,
-                context.Visual.LightTheme,
-                context.CanUseProvider,
-                context.ProviderSelected);
+                context.Visual.LightTheme);
+            pointer = new PointerGestureRouter(
+                context.Visual.Selection,
+                context.CoordinateRoot,
+                selection,
+                textSelection,
+                context.CanAcceptSelectionInput,
+                context.CanStartSelection,
+                _pointerPosition);
+            translation = new ScreenTranslationOverlayController(
+                context.Visual.TranslationAction,
+                context.Visual.TranslationOverlay,
+                context.CoordinateRoot,
+                mapper,
+                context.Strings,
+                _translationConsentAccepted,
+                _acceptTranslationConsent,
+                _targetLanguageTag,
+                context.PublishCommand,
+                context.TransitionMode,
+                toast.Show,
+                _animationsEnabled,
+                context.Visual.LightTheme);
+            var frameSource = (System.Windows.Media.Imaging.BitmapSource?)context.Visual.Selection.Screenshot.Source
+                ?? throw new InvalidOperationException("The overlay frame source is missing.");
+            ocr = new OcrOverlayController(frameSource, context.CoordinateRoot.Dispatcher, _ocrRecognizer, _ocrLanguageTag(), outcome =>
+            {
+                textSelection.SetDocument(outcome.Document);
+                translation.SetOcrOutcome(outcome);
+            }, _log);
             debug = new DebugOverlayController(
                 context.Visual.Debug,
                 context.Visual.LightTheme,
@@ -161,14 +246,28 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.MusicResultCommandRequested,
                 _setClipboard,
                 _animationsEnabled);
-            return new OverlayControllers(selection, colorPick, provider, music, toast, debug);
+            return new OverlayControllers(
+                selection,
+                textSelection,
+                pointer,
+                ocr,
+                translation,
+                colorPick,
+                provider,
+                music,
+                toast,
+                debug);
         }
         catch
         {
             music?.Dispose();
             debug?.Dispose();
-            provider?.Dispose();
+            ocr?.Dispose();
+            translation?.Dispose();
+            pointer?.Dispose();
+            textSelection?.Dispose();
             selection?.Dispose();
+            provider?.Dispose();
             colorPick?.Dispose();
             toast?.Dispose();
             throw;

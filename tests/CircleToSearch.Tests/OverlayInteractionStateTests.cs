@@ -5,6 +5,21 @@ namespace CircleToSearch.Tests;
 
 public sealed class OverlayInteractionStateTests
 {
+    [Fact]
+    public void Translation_lifecycle_returns_to_selection_and_blocks_selection_input()
+    {
+        var state = new OverlayInteractionState();
+
+        state.TransitionTo(OverlayInteractionMode.TranslationConsent);
+        Assert.False(state.CanAcceptSelectionInput);
+        state.TransitionTo(OverlayInteractionMode.Translating);
+        Assert.False(state.CanAcceptSelectionInput);
+        state.TransitionTo(OverlayInteractionMode.TranslationShown);
+        Assert.False(state.CanAcceptSelectionInput);
+        state.TransitionTo(OverlayInteractionMode.Selecting);
+        Assert.True(state.CanAcceptSelectionInput);
+    }
+
     [Theory]
     [InlineData((int)OverlayInteractionMode.Selecting, (int)OverlayInteractionMode.Listening)]
     [InlineData((int)OverlayInteractionMode.Listening, (int)OverlayInteractionMode.MusicResult)]

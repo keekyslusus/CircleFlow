@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Windows.Controls;
+using System.Windows;
 using Flow.Launcher.Plugin;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
@@ -14,6 +15,9 @@ using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
+using CircleToSearch.TextRecognition;
+using CircleToSearch.Translation;
+using System.Globalization;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
 
@@ -103,7 +107,43 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
-        var overlayControllerFactory = new OverlayControllerFactory();
+        var ocrLanguages = new OcrLanguageCatalog();
+        var translationHttpClient = new HttpClient
+        {
+            Timeout = Timeout.InfiniteTimeSpan,
+            DefaultRequestVersion = HttpVersion.Version20,
+            DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+        };
+        var screenTranslation = new ScreenTranslationWorkflow(
+            new MyMemoryTranslationProvider(translationHttpClient),
+            new TranslationSegmenter());
+        var textSearch = new TextSearchWorkflow(
+            new TextSearchUrlBuilder(),
+            OpenResultsUrl,
+            notifier,
+            strings,
+            log);
+        var overlayControllerFactory = new OverlayControllerFactory(
+            Clipboard.SetText,
+            OverlayVisualResources.AnimationsEnabled,
+            ocrRecognizer: new WindowsOcrRecognizer(),
+            textHitToleranceDips: 3,
+            ocrLanguageTag: () => ocrLanguages.Validate(settings.OcrLanguageTag),
+            targetLanguageTag: () =>
+            {
+                if (!string.IsNullOrWhiteSpace(settings.TranslationTargetLanguageTag))
+                    return settings.TranslationTargetLanguageTag;
+                return string.IsNullOrWhiteSpace(CultureInfo.CurrentUICulture.Name)
+                    ? "en"
+                    : CultureInfo.CurrentUICulture.Name;
+            },
+            translationConsentAccepted: () => settings.TranslationPrivacyConsentAccepted,
+            acceptTranslationConsent: () =>
+            {
+                settings.TranslationPrivacyConsentAccepted = true;
+                api.SaveSettingJsonStorage<PluginSettings>();
+            },
+            log: log);
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
         var workflow = new OverlaySessionWorkflow(
             new OverlaySessionFactory(log, new PointerMonitorCapture(), overlayWindowFactory),
@@ -113,7 +153,9 @@ public static class CompositionRoot
             providerSelection,
             settings,
             strings,
-            log);
+            log,
+            textSearch,
+            screenTranslation);
         var coordinator = new SearchCoordinator(
             workflow,
             () => api.HideMainWindow(),
@@ -149,10 +191,11 @@ public static class CompositionRoot
                 api.SaveSettingJsonStorage<PluginSettings>,
                 webView2Version,
                 providerRouter.GetEffectiveDescriptor(settings.SearchProviderId).DisplayName,
-                strings),
+                strings,
+                ocrLanguages.AvailableLanguages),
             hotkeyWindow,
             providerRouter,
-            [musicHttpClient, musicThrottle],
+            [musicHttpClient, musicThrottle, translationHttpClient],
             log);
     }
 

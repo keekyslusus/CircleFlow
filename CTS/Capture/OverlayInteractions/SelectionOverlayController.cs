@@ -16,11 +16,9 @@ internal sealed class SelectionOverlayController : IDisposable
 
     private readonly SelectionOverlayVisual _visual;
     private readonly FrameworkElement _coordinateRoot;
-    private readonly GdiRectangle _monitor;
-    private readonly double _scale;
+    private readonly OverlayCoordinateMapper _coordinateMapper;
     private readonly int _paddingPx;
     private readonly int _minDiagonalPx;
-    private readonly bool _overscan;
     private readonly Func<bool> _canAcceptInput;
     private readonly Func<object?, Point, bool> _canStartSelection;
     private readonly Func<MouseEventArgs, Point> _pointerPosition;
@@ -55,15 +53,14 @@ internal sealed class SelectionOverlayController : IDisposable
         Action<GdiRectangle> selectionCompleted,
         Action selectionRejected,
         Action holdCompleted,
-        Func<MouseEventArgs, Point>? pointerPosition = null)
+        Func<MouseEventArgs, Point>? pointerPosition = null,
+        bool subscribeInput = true)
     {
         _visual = visual;
         _coordinateRoot = coordinateRoot;
-        _monitor = monitor;
-        _scale = scale;
+        _coordinateMapper = new OverlayCoordinateMapper(scale, overscan, monitor.Size);
         _paddingPx = paddingPx;
         _minDiagonalPx = minDiagonalPx;
-        _overscan = overscan;
         _canAcceptInput = canAcceptInput;
         _canStartSelection = canStartSelection;
         _pointerPosition = pointerPosition ?? (e => e.GetPosition(_coordinateRoot));
@@ -74,10 +71,42 @@ internal sealed class SelectionOverlayController : IDisposable
         _holdCompleted = holdCompleted;
         _sampler = new LassoPathSampler(SampleDistanceDips * scale);
 
-        _visual.InputSurface.MouseLeftButtonDown += OnMouseLeftButtonDown;
-        _visual.InputSurface.MouseMove += OnMouseMove;
-        _visual.InputSurface.MouseLeftButtonUp += OnMouseLeftButtonUp;
+        if (subscribeInput)
+        {
+            _visual.InputSurface.MouseLeftButtonDown += OnMouseLeftButtonDown;
+            _visual.InputSurface.MouseMove += OnMouseMove;
+            _visual.InputSurface.MouseLeftButtonUp += OnMouseLeftButtonUp;
+        }
     }
+
+    internal bool Begin(Point point, object? originalSource = null)
+    {
+        if (_disposed || !_canAcceptInput() || !_canStartSelection(originalSource, point)) return false;
+        _drawing = true;
+        _selectionStarted();
+        _sampler.Reset();
+        _stroke.Clear();
+        Track(point);
+        _visual.InputSurface.CaptureMouse();
+        return true;
+    }
+
+    internal void Update(Point point)
+    {
+        if (_disposed || !_drawing || !_canAcceptInput()) return;
+        Track(point);
+    }
+
+    internal void Complete(Point point)
+    {
+        if (_disposed || !_drawing || !_canAcceptInput()) return;
+        _drawing = false;
+        ReleaseMouseCapture();
+        Track(point, final: true);
+        CompleteGesture();
+    }
+
+    internal void Cancel() => StopInput();
 
     internal void StopInput()
     {
@@ -131,12 +160,7 @@ internal sealed class SelectionOverlayController : IDisposable
     {
         UnqueueRevealUpdate();
         var size = new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight);
-        var offset = _overscan ? 1 : 0;
-        var rect = new Rect(
-            bounds.Left / _scale + offset,
-            bounds.Top / _scale + offset,
-            bounds.Width / _scale,
-            bounds.Height / _scale);
+        var rect = _coordinateMapper.ToDips(bounds);
         Point[] corners =
         [
             new(rect.Left, rect.Top),
@@ -169,35 +193,31 @@ internal sealed class SelectionOverlayController : IDisposable
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (_disposed || !_canAcceptInput()) return;
-        var point = _pointerPosition(e);
-        if (!_canStartSelection(e.OriginalSource, point))
+        if (!Begin(_pointerPosition(e), e.OriginalSource))
         {
             e.Handled = true;
             return;
         }
 
-        _drawing = true;
-        _selectionStarted();
-        _sampler.Reset();
-        _stroke.Clear();
-        Track(point);
-        _visual.InputSurface.CaptureMouse();
         e.Handled = true;
     }
 
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
         if (_disposed || !_drawing || !_canAcceptInput()) return;
-        Track(_pointerPosition(e));
+        Update(_pointerPosition(e));
         e.Handled = true;
     }
 
     private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (_disposed || !_drawing || !_canAcceptInput()) return;
-        _drawing = false;
-        ReleaseMouseCapture();
-        Track(_pointerPosition(e), final: true);
+        Complete(_pointerPosition(e));
+        e.Handled = true;
+    }
+
+    private void CompleteGesture()
+    {
         var gesture = SelectionGestureClassifier.Classify(
             _sampler.Points,
             _minDiagonalPx,
@@ -217,28 +237,23 @@ internal sealed class SelectionOverlayController : IDisposable
         {
             var bounds = LassoBoundsCalculator.Calculate(
                 _sampler.Points,
-                _monitor,
+                _coordinateMapper.CaptureBounds,
                 _paddingPx,
                 _minDiagonalPx);
             if (bounds is null)
             {
                 ResetSelectionGesture();
                 _selectionRejected();
-                e.Handled = true;
                 return;
             }
             _selectionCompleted(bounds.Value);
             if (!_disposed) ShowSelectionFrame(bounds.Value);
         }
-        e.Handled = true;
     }
 
     private void Track(Point dip, bool final = false)
     {
-        var overscanInsetDips = _overscan ? 1d : 0d;
-        var physical = new GdiPoint(
-            (int)Math.Round((dip.X - overscanInsetDips) * _scale),
-            (int)Math.Round((dip.Y - overscanInsetDips) * _scale));
+        var physical = _coordinateMapper.ToPhysical(dip);
         var accepted = final ? _sampler.AddFinal(physical) : _sampler.Add(physical);
         if (!accepted) return;
         _stroke.Add(dip);

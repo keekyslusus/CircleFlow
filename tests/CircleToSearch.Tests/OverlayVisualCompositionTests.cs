@@ -37,15 +37,19 @@ public sealed class OverlayVisualCompositionTests
                 visual.Selection.Halo,
                 visual.Selection.Accent,
                 visual.Selection.SelectionFrame,
+                visual.TextSelection.HighlightLayer,
                 visual.Selection.InputSurface,
+                visual.TranslationOverlay.CardsLayer,
                 visual.Effects.SceneRippleLayer,
                 visual.Music.ListeningLayer,
+                visual.TextSelection.ActionLayer,
+                visual.TranslationOverlay.ConsentCard,
                 visual.Bottom.Root,
                 visual.Debug.Panel,
             ];
 
             Assert.Equal(expected, visual.Root.Children.Cast<UIElement>());
-            Assert.All(expected.Take(7), layer => Assert.False(layer.IsHitTestVisible));
+            Assert.All(expected.Take(8), layer => Assert.False(layer.IsHitTestVisible));
             Assert.True(visual.Selection.InputSurface.IsHitTestVisible);
             Assert.True(visual.Bottom.Root.IsHitTestVisible);
             Assert.Null(visual.Bottom.Root.Background);
@@ -71,7 +75,7 @@ public sealed class OverlayVisualCompositionTests
     }
 
     [Fact]
-    public void No_providers_produces_a_two_item_tray_and_no_provider_group()
+    public void No_providers_produces_a_three_item_tray_and_no_provider_group()
     {
         var failure = RunOnSta(() =>
         {
@@ -83,9 +87,10 @@ public sealed class OverlayVisualCompositionTests
                 TestUiStrings.English);
 
             Assert.Null(visual.Provider);
-            Assert.Equal(2, visual.Actions.Tray.Children.Count);
+            Assert.Equal(3, visual.Actions.Tray.Children.Count);
             Assert.Same(visual.Actions.Chip, visual.Actions.Tray.Children[0]);
-            Assert.Same(visual.Music.Button, visual.Actions.Tray.Children[1]);
+            Assert.Same(visual.TranslationAction.Button, visual.Actions.Tray.Children[1]);
+            Assert.Same(visual.Music.Button, visual.Actions.Tray.Children[2]);
             Assert.Empty(visual.Bottom.ProviderMenuLayer.Children);
             visual.Music.Waveform.Dispose();
             visual.Effects.SceneRipples.Dispose();

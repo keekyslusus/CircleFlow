@@ -4,6 +4,7 @@ using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.Settings;
 using CircleToSearch.Ui;
+using CircleToSearch.Translation;
 
 namespace CircleToSearch.Search;
 
@@ -20,7 +21,9 @@ internal sealed class OverlaySessionWorkflow(
     ProviderSelectionStore providerSelection,
     PluginSettings settings,
     UiStrings strings,
-    PluginLog log) : ISearchSessionWorkflow
+    PluginLog log,
+    TextSearchWorkflow? textSearch = null,
+    ScreenTranslationWorkflow? screenTranslation = null) : ISearchSessionWorkflow
 {
     public async Task RunAsync(Action onUploadStarted, CancellationToken cancellationToken)
     {
@@ -38,14 +41,37 @@ internal sealed class OverlaySessionWorkflow(
         MusicRecognitionOutcome? displayedOutcome = null;
         var debugScenario = MusicDebugScenario.Live;
         Task<IOverlayCommand>? commandTask = null;
+        CancellationTokenSource? translationCancellation = null;
+        Task<ScreenTranslationOutcome>? translationTask = null;
+        Guid translationRequestId = Guid.Empty;
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
                 commandTask ??= overlay.ReadCommandAsync(cancellationToken);
+                var pending = new List<Task> { commandTask };
+                if (recognitionTask is not null) pending.Add(recognitionTask);
+                if (translationTask is not null) pending.Add(translationTask);
+                var completed = await Task.WhenAny(pending).ConfigureAwait(false);
+                if (translationTask is not null && ReferenceEquals(completed, translationTask))
+                {
+                    var outcome = await translationTask.ConfigureAwait(false);
+                    var completedRequestId = translationRequestId;
+                    translationTask = null;
+                    translationRequestId = Guid.Empty;
+                    translationCancellation?.Dispose();
+                    translationCancellation = null;
+                    if (cancellationToken.IsCancellationRequested || outcome.Failure == TranslationFailure.Canceled)
+                        continue;
+                    if (outcome.Result is { } result)
+                        await overlay.ShowTranslationAsync(result, cancellationToken).ConfigureAwait(false);
+                    else
+                        await overlay.ShowTranslationFailureAsync(completedRequestId, outcome.Failure, cancellationToken)
+                            .ConfigureAwait(false);
+                    continue;
+                }
                 if (recognitionTask is not null)
                 {
-                    var completed = await Task.WhenAny(commandTask, recognitionTask).ConfigureAwait(false);
                     if (ReferenceEquals(completed, recognitionTask))
                     {
                         var outcome = await recognitionTask.ConfigureAwait(false);
@@ -92,6 +118,33 @@ internal sealed class OverlaySessionWorkflow(
                             onUploadStarted,
                             cancellationToken).ConfigureAwait(false);
                         return;
+
+                    case SearchSelectedText selectedText when textSearch is not null:
+                        await overlay.CloseAsync().ConfigureAwait(false);
+                        textSearch.Execute(selectedText.Text, selectedText.ProviderId);
+                        return;
+
+                    case ScreenTranslationRequested requested when
+                        screenTranslation is not null && translationTask is null:
+                        translationRequestId = requested.RequestId;
+                        translationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        translationTask = screenTranslation.TranslateAsync(
+                            requested.RequestId,
+                            requested.Document,
+                            requested.TargetLanguageTag,
+                            translationCancellation.Token);
+                        break;
+
+                    case CancelScreenTranslation canceled when
+                        translationTask is not null && canceled.RequestId == translationRequestId:
+                        translationCancellation?.Cancel();
+                        try { await translationTask.ConfigureAwait(false); }
+                        catch (OperationCanceledException) { }
+                        translationTask = null;
+                        translationRequestId = Guid.Empty;
+                        translationCancellation?.Dispose();
+                        translationCancellation = null;
+                        break;
 
                     case StartMusicRecognition when recognitionTask is null:
                     case RetryMusicRecognition when recognitionTask is null:
@@ -141,6 +194,16 @@ internal sealed class OverlaySessionWorkflow(
                     catch (OperationCanceledException) { }
                 }
                 recognitionCancellation.Dispose();
+            }
+            if (translationCancellation is not null)
+            {
+                translationCancellation.Cancel();
+                if (translationTask is not null)
+                {
+                    try { await translationTask.ConfigureAwait(false); }
+                    catch (OperationCanceledException) { }
+                }
+                translationCancellation.Dispose();
             }
             await overlay.CloseAsync().ConfigureAwait(false);
         }
