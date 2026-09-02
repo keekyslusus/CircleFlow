@@ -27,14 +27,28 @@ internal static class MusicOverlayVisualFactory
             Height = 18,
             Stretch = Stretch.Uniform,
             IsHitTestVisible = false,
+            RenderTransformOrigin = new Point(0.5, 0.5),
         };
+        icon.RenderTransform = new ScaleTransform(1, 1);
+        var loadingIndicator = new LoadingIndicatorVisual
+        {
+            Fill = OverlayVisualResources.Frozen(palette.MusicButton.Foreground),
+            Opacity = 0,
+            Visibility = Visibility.Collapsed,
+            RenderTransform = new ScaleTransform(0.72, 0.72),
+        };
+        var glyph = new Grid { Width = 42, Height = 42 };
+        glyph.Children.Add(icon);
+        glyph.Children.Add(loadingIndicator);
         var button = new Button
         {
-            Content = icon,
+            Content = glyph,
             Width = 44,
             Height = 44,
             Margin = new Thickness(8, 0, 0, 0),
-            Padding = new Thickness(10),
+            Padding = new Thickness(),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Background = OverlayVisualResources.Frozen(palette.MusicButton.Surface),
             Foreground = OverlayVisualResources.Frozen(palette.MusicButton.Foreground),
@@ -89,6 +103,7 @@ internal static class MusicOverlayVisualFactory
         return new MusicOverlayVisual(
             button,
             icon,
+            loadingIndicator,
             listeningLayer,
             waveform,
             resultHost);

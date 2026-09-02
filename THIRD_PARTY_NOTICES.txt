@@ -27,6 +27,16 @@ Licensed under the Apache License, Version 2.0. The port was created on 2026-08-
 been subsequently modified for CircleFlow. The complete license text is distributed in
 THIRD_PARTY_LICENSES/Apache-2.0.txt.
 
+Material 3 Expressive loading indicator
+---------------------------------------
+
+The loading-indicator shape assets and animation model in
+CTS/Capture/LoadingIndicatorVisual.cs are adapted from Material Components for Android.
+
+Copyright 2024 Google LLC.
+Licensed under the Apache License, Version 2.0. The complete license text is distributed
+in THIRD_PARTY_LICENSES/Apache-2.0.txt.
+
 Bundled .NET dependencies
 -------------------------
 

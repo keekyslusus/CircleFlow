@@ -77,10 +77,15 @@ public sealed class ProviderMusicOverlayPreviewTests
             new Point(width / 2.0, height * 0.45),
             SceneRipplePreset.AudioTransient,
             0.86));
-        Pump(TimeSpan.FromMilliseconds(340));
+        Pump(TimeSpan.FromMilliseconds(90));
+        Capture(visual.Root, $"provider-music-{themeName}-listening-enter.png");
+        Pump(TimeSpan.FromMilliseconds(250));
         Capture(visual.Root, $"provider-music-{themeName}-listening.png");
         visual.Music.Waveform.Stop();
         MusicOverlayVisualPresenter.SetListeningState(visual.Music, listening: false, lightTheme);
+        Pump(TimeSpan.FromMilliseconds(90));
+        Capture(visual.Root, $"provider-music-{themeName}-listening-exit.png");
+        Pump(TimeSpan.FromMilliseconds(110));
 
         var matchCard = MusicOverlayVisualPresenter.PresentResult(
             visual.Music,
@@ -110,6 +115,7 @@ public sealed class ProviderMusicOverlayPreviewTests
             (_, _) => { });
         window.UpdateLayout();
         Capture(visual.Root, $"provider-music-{themeName}-no-audio.png");
+        visual.Music.LoadingIndicator.Dispose();
         window.Close();
     }
 

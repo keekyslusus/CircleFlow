@@ -48,6 +48,11 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.False(visual.Selection.Screenshot.IsHitTestVisible);
             Assert.Equal(44, visual.Provider.Button.Height);
             Assert.Equal(44, visual.Music.Button.Height);
+            Assert.Equal(new Thickness(), visual.Music.Button.Padding);
+            Assert.Equal(HorizontalAlignment.Center, visual.Music.Button.HorizontalContentAlignment);
+            Assert.Equal(VerticalAlignment.Center, visual.Music.Button.VerticalContentAlignment);
+            Assert.Equal(42, visual.Music.LoadingIndicator.Width);
+            Assert.Equal(42, visual.Music.LoadingIndicator.Height);
             Assert.Equal(6, visual.Provider.Chevron.Width);
             Assert.Equal(6, visual.Provider.Chevron.Height);
             var chevronSlot = Assert.IsType<Grid>(visual.Provider.Chevron.Parent);
@@ -71,6 +76,7 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Contains(
                 "Yandex Images",
                 Descendants((DependencyObject)item.Content).OfType<TextBlock>().Select(text => text.Text));
+            visual.Music.LoadingIndicator.Dispose();
         });
 
         Assert.Null(failure);

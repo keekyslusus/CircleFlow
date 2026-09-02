@@ -53,6 +53,7 @@ public sealed record ProviderMenuVisual(
 public sealed record MusicOverlayVisual(
     Button Button,
     Path Icon,
+    LoadingIndicatorVisual LoadingIndicator,
     StackPanel ListeningLayer,
     AudioWaveformVisual Waveform,
     Grid ResultHost);

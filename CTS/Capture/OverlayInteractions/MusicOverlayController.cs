@@ -159,6 +159,7 @@ internal sealed class MusicOverlayController : IDisposable
         DisposeResultRipples();
         _layoutTransitions.Settle();
         ClearResultVisual();
+        _visual.LoadingIndicator.Dispose();
         _visual.Waveform.Dispose();
     }
 
