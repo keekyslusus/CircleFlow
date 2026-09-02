@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using System.Windows.Threading;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
+using CircleToSearch.Translation;
 
 namespace CircleToSearch.Capture;
 
@@ -11,6 +12,9 @@ public interface IOverlaySession : IAsyncDisposable
     Task ShowListeningAsync(CancellationToken cancellationToken);
     Task ReportAudioAsync(MusicVisualizationFrame frame, CancellationToken cancellationToken);
     Task ShowMusicResultAsync(MusicRecognitionOutcome outcome, CancellationToken cancellationToken);
+    Task ShowTranslationAsync(ScreenTranslationResult result, CancellationToken cancellationToken) => Task.CompletedTask;
+    Task ShowTranslationFailureAsync(Guid requestId, TranslationFailure failure, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
     Task CloseAsync();
 }
 
@@ -105,17 +109,31 @@ internal sealed class OverlaySession : IOverlaySession
     public Task ShowMusicResultAsync(MusicRecognitionOutcome outcome, CancellationToken cancellationToken) =>
         InvokeAsync(window => window.ShowMusicResult(outcome), cancellationToken);
 
+    public Task ShowTranslationAsync(ScreenTranslationResult result, CancellationToken cancellationToken) =>
+        InvokeAsync(window => window.ShowTranslation(result), cancellationToken);
+
+    public Task ShowTranslationFailureAsync(
+        Guid requestId,
+        TranslationFailure failure,
+        CancellationToken cancellationToken) =>
+        InvokeAsync(window => window.ShowTranslationFailure(requestId, failure), cancellationToken);
+
     public async Task CloseAsync()
     {
         var window = _window;
         if (window is null || _closed.Task.IsCompleted) return;
         var dispatcher = window.Dispatcher;
-        if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished) return;
+        if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+        {
+            await _closed.Task.ConfigureAwait(false);
+            return;
+        }
         await InvokeWhileDispatcherAliveAsync(
             dispatcher,
             window.CloseFromSession,
             DispatcherPriority.Send,
             CancellationToken.None).ConfigureAwait(false);
+        await _closed.Task.ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()

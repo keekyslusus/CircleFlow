@@ -16,7 +16,8 @@ internal static class ActionTrayVisualFactory
         SelectionChipPalette palette,
         UiStrings strings,
         ProviderMenuVisual? provider,
-        MusicOverlayVisual music)
+        MusicOverlayVisual music,
+        TranslationActionVisual translation)
     {
         var lift = new TranslateTransform();
         var chip = CreateChip(palette, strings);
@@ -29,6 +30,7 @@ internal static class ActionTrayVisualFactory
         };
         tray.Children.Add(chip);
         if (provider is not null) tray.Children.Add(provider.Button);
+        tray.Children.Add(translation.Button);
         tray.Children.Add(music.Button);
 
         return new ActionTrayVisual(tray, chip, lift);

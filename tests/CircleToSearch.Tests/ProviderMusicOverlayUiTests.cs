@@ -42,7 +42,8 @@ public sealed class ProviderMusicOverlayUiTests
 
             Assert.Same(visual.Actions.Chip, visual.Actions.Tray.Children[0]);
             Assert.Same(visual.Provider!.Button, visual.Actions.Tray.Children[1]);
-            Assert.Same(visual.Music.Button, visual.Actions.Tray.Children[2]);
+            Assert.Same(visual.TranslationAction.Button, visual.Actions.Tray.Children[2]);
+            Assert.Same(visual.Music.Button, visual.Actions.Tray.Children[3]);
             Assert.True(visual.Root.Children.IndexOf(visual.Selection.InputSurface) <
                         visual.Root.Children.IndexOf(visual.Bottom.Root));
             Assert.False(visual.Selection.Screenshot.IsHitTestVisible);

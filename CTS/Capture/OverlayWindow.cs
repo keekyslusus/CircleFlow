@@ -14,6 +14,7 @@ using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
+using CircleToSearch.Translation;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiPoint = System.Drawing.Point;
 using GdiRectangle = System.Drawing.Rectangle;
@@ -48,6 +49,10 @@ public sealed class OverlayWindow : Window
     private readonly OverlayInteractionState _interaction = new();
     private readonly OverlayControllers _controllers;
     private readonly SelectionOverlayController _selection;
+    private readonly TextSelectionOverlayController _textSelection;
+    private readonly PointerGestureRouter _pointer;
+    private readonly OcrOverlayController _ocr;
+    private readonly ScreenTranslationOverlayController _translation;
     private readonly ProviderMenuController _provider;
     private readonly MusicOverlayController _music;
     private readonly ToastOverlayController _toast;
@@ -141,8 +146,14 @@ public sealed class OverlayWindow : Window
             StartMusicRecognition,
             CancelMusicRecognition,
             scenario => _publishCommand?.Invoke(new MusicDebugScenarioSelected(scenario)),
-            HandleMusicResultCommand));
+            HandleMusicResultCommand,
+            command => _publishCommand?.Invoke(command),
+            ApplyModeTransition));
         _selection = _controllers.Selection;
+        _textSelection = _controllers.TextSelection;
+        _pointer = _controllers.Pointer;
+        _ocr = _controllers.Ocr;
+        _translation = _controllers.Translation;
         _provider = _controllers.Provider;
         _music = _controllers.Music;
         _toast = _controllers.Toast;
@@ -150,6 +161,7 @@ public sealed class OverlayWindow : Window
 
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
+        PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
         MouseRightButtonDown += OnMouseRightButtonDown;
         Deactivated += OnDeactivated;
         Closed += OnClosed;
@@ -197,15 +209,21 @@ public sealed class OverlayWindow : Window
         if (open) _provider.SetOpen(false);
     }
 
-    internal bool IsActionTrayInteraction(object? originalSource, Point windowPoint)
+    internal bool IsOverlayChromeInteraction(object? originalSource, Point windowPoint)
     {
         var hit = InputHitTest(windowPoint) as DependencyObject;
         return IsWithin(originalSource as DependencyObject, _visual.Bottom.Root) ||
                IsWithin(originalSource as DependencyObject, _visual.Debug.Panel) ||
+               IsWithin(originalSource as DependencyObject, _visual.TextSelection.ActionCard) ||
+               IsWithin(originalSource as DependencyObject, _visual.TranslationOverlay.ConsentCard) ||
                IsWithin(hit, _visual.Bottom.Root) ||
                IsWithin(hit, _visual.Debug.Panel) ||
+               IsWithin(hit, _visual.TextSelection.ActionCard) ||
+               IsWithin(hit, _visual.TranslationOverlay.ConsentCard) ||
                _visual.Bottom.Root.IsMouseOver ||
-               _visual.Debug.Panel.IsMouseOver;
+               _visual.Debug.Panel.IsMouseOver ||
+               _visual.TextSelection.ActionCard.IsMouseOver ||
+               _visual.TranslationOverlay.ConsentCard.IsMouseOver;
     }
 
     internal void ShowListening()
@@ -224,6 +242,14 @@ public sealed class OverlayWindow : Window
         ApplyModeTransition(OverlayInteractionMode.MusicResult);
         _music.ShowResult(outcome);
     }
+
+    internal bool IsActionTrayInteraction(object? originalSource, Point windowPoint) =>
+        IsOverlayChromeInteraction(originalSource, windowPoint);
+
+    internal void ShowTranslation(ScreenTranslationResult result) => _translation.ShowResult(result);
+
+    internal void ShowTranslationFailure(Guid requestId, TranslationFailure failure) =>
+        _translation.ShowFailure(requestId, failure);
 
     internal void CloseFromSession()
     {
@@ -266,6 +292,7 @@ public sealed class OverlayWindow : Window
         if (!_chipDismissed) ActionTrayTransitions.BeginEntrance(_visual.Actions);
         QueueEntranceRipple();
         _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.Bottom.Root));
+        _ocr.Start();
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
@@ -288,6 +315,14 @@ public sealed class OverlayWindow : Window
         {
             _provider.SetOpen(false);
         }
+        else if (_translation.HandleEscape())
+        {
+        }
+        else if (_textSelection.IsActionMenuOpen)
+        {
+            _textSelection.Dismiss();
+            Cursor = Cursors.Cross;
+        }
         else
         {
             CancelInternal();
@@ -297,12 +332,13 @@ public sealed class OverlayWindow : Window
 
     private bool CanStartSelection(object? originalSource, Point point)
     {
-        var actionInteraction = IsActionTrayInteraction(originalSource, point);
+        var actionInteraction = IsOverlayChromeInteraction(originalSource, point);
         if (_provider.IsOpen && !actionInteraction)
         {
             _provider.SetOpen(false);
             return false;
         }
+        if (_textSelection.HasSelection && !actionInteraction) _textSelection.Dismiss();
         return _interaction.CanAcceptSelectionInput && !actionInteraction;
     }
 
@@ -363,7 +399,7 @@ public sealed class OverlayWindow : Window
         Dispatcher.BeginInvoke(() =>
         {
             if (_interaction.IsFinished || IsActive) return;
-            if (IsActionTrayInteraction(null, Mouse.GetPosition(this))) return;
+            if (IsOverlayChromeInteraction(null, Mouse.GetPosition(this))) return;
             CancelInternal();
         }, DispatcherPriority.ContextIdle);
     }
@@ -405,35 +441,68 @@ public sealed class OverlayWindow : Window
         switch (target)
         {
             case OverlayInteractionMode.Listening:
-                _selection.StopInput();
+                _pointer.Cancel();
+                _textSelection.Dismiss();
+                _visual.TranslationAction.Button.IsEnabled = false;
                 _music.ShowListening();
                 Cursor = Cursors.Arrow;
                 _selection.FadeForMusic();
                 break;
             case OverlayInteractionMode.MusicResult:
-                _selection.StopInput();
+                _pointer.Cancel();
+                _visual.TranslationAction.Button.IsEnabled = false;
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Selecting:
                 _music.DismissResult();
                 _selection.RestoreAfterMusic();
+                SetConflictingControlsEnabled(true);
                 Cursor = Cursors.Cross;
                 break;
             case OverlayInteractionMode.ColorConfirmation:
-                _selection.StopInput();
+                _pointer.Cancel();
+                _textSelection.Dismiss();
                 _provider.SetOpen(false);
                 _debug.SetOpen(false);
                 ActionTrayTransitions.BeginExit(_visual.Actions);
+                _visual.TranslationAction.Button.IsEnabled = false;
+                Cursor = Cursors.Arrow;
+                break;
+            case OverlayInteractionMode.TranslationConsent:
+            case OverlayInteractionMode.Translating:
+            case OverlayInteractionMode.TranslationShown:
+                _pointer.Cancel();
+                _textSelection.Dismiss();
+                _provider.SetOpen(false);
+                _debug.SetOpen(false);
+                SetConflictingControlsEnabled(false);
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Closing:
-                _selection.StopInput();
+                _pointer.Cancel();
+                _textSelection.Dismiss();
+                _translation.CancelForClosing();
                 _provider.SetOpen(false);
                 _debug.SetOpen(false);
                 _toast.SettleForClosing();
                 _visual.Bottom.LayoutTransitions.Settle();
+                _visual.TranslationAction.Button.IsEnabled = false;
                 break;
         }
+    }
+
+    private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_textSelection.HasSelection) return;
+        if (IsWithin(e.OriginalSource as DependencyObject, _visual.TextSelection.ActionCard)) return;
+        _textSelection.Dismiss();
+    }
+
+    private void SetConflictingControlsEnabled(bool enabled)
+    {
+        if (_visual.Provider is not null) _visual.Provider.Button.IsEnabled = enabled;
+        _visual.Music.Button.IsEnabled = enabled;
+        _visual.TranslationAction.Button.IsEnabled = true;
     }
 
     private void CancelInternal(bool publish = true)
@@ -530,6 +599,7 @@ public sealed class OverlayWindow : Window
         _resourcesDisposed = true;
         Loaded -= OnLoaded;
         PreviewKeyDown -= OnPreviewKeyDown;
+        PreviewMouseLeftButtonDown -= OnPreviewMouseLeftButtonDown;
         MouseRightButtonDown -= OnMouseRightButtonDown;
         Deactivated -= OnDeactivated;
         Closed -= OnClosed;

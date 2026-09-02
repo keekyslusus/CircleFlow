@@ -9,7 +9,10 @@ public sealed record OverlayVisual(
     bool LightTheme,
     Grid Root,
     SelectionOverlayVisual Selection,
+    TextSelectionVisual TextSelection,
     ActionTrayVisual Actions,
+    TranslationActionVisual TranslationAction,
+    TranslationOverlayVisual TranslationOverlay,
     ProviderMenuVisual? Provider,
     MusicOverlayVisual Music,
     DebugOverlayVisual Debug,
@@ -30,6 +33,24 @@ public sealed record ActionTrayVisual(
     StackPanel Tray,
     Border Chip,
     TranslateTransform Lift);
+
+public sealed record TextSelectionVisual(
+    Canvas HighlightLayer,
+    Canvas ActionLayer,
+    Border ActionCard,
+    Button CopyButton,
+    Button SearchButton);
+
+public sealed record TranslationActionVisual(
+    Button Button,
+    TextBlock Label,
+    LoadingIndicatorVisual LoadingIndicator);
+
+public sealed record TranslationOverlayVisual(
+    Canvas CardsLayer,
+    Border ConsentCard,
+    Button ContinueButton,
+    Button CancelButton);
 
 public sealed record BottomOverlayVisual(
     Grid Root,

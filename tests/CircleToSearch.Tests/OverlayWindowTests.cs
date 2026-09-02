@@ -33,7 +33,8 @@ public sealed class OverlayWindowTests
                 TestUiStrings.English);
 
             Assert.Same(visual.Actions.Chip, visual.Actions.Tray.Children[0]);
-            Assert.Same(visual.Music.Button, visual.Actions.Tray.Children[1]);
+            Assert.Same(visual.TranslationAction.Button, visual.Actions.Tray.Children[1]);
+            Assert.Same(visual.Music.Button, visual.Actions.Tray.Children[2]);
             Assert.DoesNotContain(visual.Music.Button, Descendants(visual.Actions.Chip));
             Assert.Equal(TestUiStrings.English.MusicRecognitionAction, visual.Music.Button.ToolTip);
             Assert.Equal(

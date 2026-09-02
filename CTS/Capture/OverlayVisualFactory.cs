@@ -35,6 +35,9 @@ public static class OverlayVisualFactory
     {
         var palette = PluginPalette.For(lightTheme);
         var selection = SelectionOverlayVisualFactory.Create(frame, size);
+        var textSelection = TextTranslationVisualFactory.CreateTextSelection(lightTheme, strings);
+        var translationAction = TextTranslationVisualFactory.CreateTranslationAction(lightTheme, strings);
+        var translationOverlay = TextTranslationVisualFactory.CreateTranslationOverlay(lightTheme, strings);
         var provider = ProviderMenuVisualFactory.Create(providers, selectedProviderId, lightTheme, strings);
         var music = MusicOverlayVisualFactory.Create(size, lightTheme, strings);
         var debug = DebugOverlayVisualFactory.Create(lightTheme, strings);
@@ -42,7 +45,8 @@ public static class OverlayVisualFactory
             palette.SelectionChip,
             strings,
             provider,
-            music);
+            music,
+            translationAction);
         var bottom = BottomOverlayVisualFactory.Create(chipBottomMargin, actions, provider, music);
         var sceneRippleLayer = new Canvas { IsHitTestVisible = false };
         var effects = new OverlayEffectsVisual(
@@ -57,12 +61,28 @@ public static class OverlayVisualFactory
         root.Children.Add(selection.Halo);
         root.Children.Add(selection.Accent);
         root.Children.Add(selection.SelectionFrame);
+        root.Children.Add(textSelection.HighlightLayer);
         root.Children.Add(selection.InputSurface);
+        root.Children.Add(translationOverlay.CardsLayer);
         root.Children.Add(effects.SceneRippleLayer);
         root.Children.Add(music.ListeningLayer);
+        root.Children.Add(textSelection.ActionLayer);
+        root.Children.Add(translationOverlay.ConsentCard);
         root.Children.Add(bottom.Root);
         root.Children.Add(debug.Panel);
 
-        return new OverlayVisual(lightTheme, root, selection, actions, provider, music, debug, bottom, effects);
+        return new OverlayVisual(
+            lightTheme,
+            root,
+            selection,
+            textSelection,
+            actions,
+            translationAction,
+            translationOverlay,
+            provider,
+            music,
+            debug,
+            bottom,
+            effects);
     }
 }
