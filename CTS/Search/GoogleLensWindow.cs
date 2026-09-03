@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,6 +20,7 @@ namespace CircleToSearch.Search;
 public sealed class GoogleLensWindow : IDisposable
 {
     private static readonly Uri GoogleLensHome = new("https://lens.google.com/?hl=en");
+    private static readonly Uri GoogleLensUpload = new("https://lens.google.com/v3/upload");
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan AttachmentTimeout = TimeSpan.FromSeconds(15);
 
@@ -93,11 +95,17 @@ public sealed class GoogleLensWindow : IDisposable
             window.Show();
             window.Activate();
 
-            await NavigateAsync(webView, GoogleLensHome, cancel).ConfigureAwait(true);
-            cancel.ThrowIfCancellationRequested();
-
-            var resultsReady = await OpenLensResultsAsync(webView, window, png, cancel)
+            var resultsReady = await OpenLensResultsWithUploadAsync(webView, window, png, cancel)
                 .ConfigureAwait(true);
+            if (!resultsReady && ReferenceEquals(_window, window))
+            {
+                _log.Info(nameof(GoogleLensWindow), "falling back to Google Lens page upload");
+                await NavigateAsync(webView, GoogleLensHome, cancel).ConfigureAwait(true);
+                cancel.ThrowIfCancellationRequested();
+                resultsReady = await OpenLensResultsWithScriptAsync(webView, window, png, cancel)
+                    .ConfigureAwait(true);
+            }
+
             HideLoadingOverlay();
             completion.TrySetResult(resultsReady
                 ? GoogleLensSearchStatus.ResultsReady
@@ -234,7 +242,119 @@ public sealed class GoogleLensWindow : IDisposable
         }
     }
 
-    private async Task<bool> OpenLensResultsAsync(
+    private async Task<bool> OpenLensResultsWithUploadAsync(
+        WebView2 webView,
+        Window window,
+        byte[] png,
+        CancellationToken cancel)
+    {
+        var navigation = new TaskCompletionSource<CoreWebView2NavigationCompletedEventArgs>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        void OnClosed(object? sender, EventArgs args) => closed.TrySetResult();
+        void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)
+        {
+            if (args.IsSuccess || args.WebErrorStatus != CoreWebView2WebErrorStatus.ConnectionAborted)
+                navigation.TrySetResult(args);
+        }
+
+        webView.NavigationCompleted += OnNavigationCompleted;
+        window.Closed += OnClosed;
+        try
+        {
+            var boundary = $"----CircleToSearch{Guid.NewGuid():N}";
+            using var body = CreateLensUploadBody(png, boundary);
+            var request = _environment!.CreateWebResourceRequest(
+                GoogleLensUpload.AbsoluteUri,
+                "POST",
+                body,
+                CreateLensUploadHeaders(boundary));
+            webView.CoreWebView2.NavigateWithWebResourceRequest(request);
+
+            var finished = await Task.WhenAny(
+                    navigation.Task,
+                    closed.Task,
+                    Task.Delay(NavigationTimeout, cancel))
+                .ConfigureAwait(true);
+            cancel.ThrowIfCancellationRequested();
+            if (finished != navigation.Task)
+            {
+                if (finished != closed.Task)
+                    _log.Warn(nameof(GoogleLensWindow), "Google Lens direct upload navigation timed out");
+                return false;
+            }
+
+            var result = await navigation.Task.ConfigureAwait(true);
+            if (!result.IsSuccess)
+            {
+                _log.Warn(
+                    nameof(GoogleLensWindow),
+                    $"Google Lens direct upload navigation failed: {result.WebErrorStatus}");
+                return false;
+            }
+
+            if (!IsGoogleLensResultsUrl(webView.Source))
+            {
+                _log.Warn(
+                    nameof(GoogleLensWindow),
+                    $"Google Lens direct upload returned an unexpected URL: {webView.Source}");
+                return false;
+            }
+
+            _log.Info(nameof(GoogleLensWindow), "Google Lens results opened through direct upload");
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _log.Warn(
+                nameof(GoogleLensWindow),
+                $"Google Lens direct upload failed: {exception.GetType().Name}: {exception.Message}");
+            return false;
+        }
+        finally
+        {
+            webView.NavigationCompleted -= OnNavigationCompleted;
+            window.Closed -= OnClosed;
+        }
+    }
+
+    internal static MemoryStream CreateLensUploadBody(byte[] png, string boundary)
+    {
+        ArgumentNullException.ThrowIfNull(png);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundary);
+        if (boundary.Contains('\r', StringComparison.Ordinal) ||
+            boundary.Contains('\n', StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Multipart boundary cannot contain line breaks.", nameof(boundary));
+        }
+
+        var stream = new MemoryStream();
+        WriteAscii(
+            stream,
+            $"--{boundary}\r\n" +
+            "Content-Disposition: form-data; name=\"encoded_image\"; filename=\"circle-to-search.png\"\r\n" +
+            "Content-Type: image/png\r\n\r\n");
+        stream.Write(png);
+        WriteAscii(stream, $"\r\n--{boundary}--\r\n");
+        stream.Position = 0;
+        return stream;
+    }
+
+    internal static string CreateLensUploadHeaders(string boundary) =>
+        $"Content-Type: multipart/form-data; boundary={boundary}";
+
+    private static void WriteAscii(Stream stream, string value)
+    {
+        var bytes = Encoding.ASCII.GetBytes(value);
+        stream.Write(bytes);
+    }
+
+    private async Task<bool> OpenLensResultsWithScriptAsync(
         WebView2 webView,
         Window window,
         byte[] png,
