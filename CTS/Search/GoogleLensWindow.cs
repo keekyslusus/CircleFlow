@@ -86,6 +86,7 @@ public sealed class GoogleLensWindow : IDisposable
         try
         {
             cancel.ThrowIfCancellationRequested();
+            var jpeg = GoogleLensImageEncoder.EncodeJpeg(png);
             await EnsureWindowAsync().ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
 
@@ -96,14 +97,14 @@ public sealed class GoogleLensWindow : IDisposable
             window.Show();
             window.Activate();
 
-            var resultsReady = await OpenLensResultsWithUploadAsync(webView, window, png, cancel)
+            var resultsReady = await OpenLensResultsWithUploadAsync(webView, window, jpeg, cancel)
                 .ConfigureAwait(true);
             if (!resultsReady && ReferenceEquals(_window, window))
             {
                 _log.Info(nameof(GoogleLensWindow), "falling back to Google Lens page upload");
                 await NavigateAsync(webView, GoogleLensHome, cancel).ConfigureAwait(true);
                 cancel.ThrowIfCancellationRequested();
-                resultsReady = await OpenLensResultsWithScriptAsync(webView, window, png, cancel)
+                resultsReady = await OpenLensResultsWithScriptAsync(webView, window, jpeg, cancel)
                     .ConfigureAwait(true);
             }
 
@@ -252,7 +253,7 @@ public sealed class GoogleLensWindow : IDisposable
     private async Task<bool> OpenLensResultsWithUploadAsync(
         WebView2 webView,
         Window window,
-        byte[] png,
+        byte[] jpeg,
         CancellationToken cancel)
     {
         var navigation = new TaskCompletionSource<CoreWebView2NavigationCompletedEventArgs>(
@@ -271,7 +272,7 @@ public sealed class GoogleLensWindow : IDisposable
         try
         {
             var boundary = $"----CircleToSearch{Guid.NewGuid():N}";
-            using var body = CreateLensUploadBody(png, boundary);
+            using var body = CreateLensUploadBody(jpeg, boundary);
             var request = _environment!.CreateWebResourceRequest(
                 GoogleLensUpload.AbsoluteUri,
                 "POST",
@@ -330,9 +331,9 @@ public sealed class GoogleLensWindow : IDisposable
         }
     }
 
-    internal static MemoryStream CreateLensUploadBody(byte[] png, string boundary)
+    internal static MemoryStream CreateLensUploadBody(byte[] jpeg, string boundary)
     {
-        ArgumentNullException.ThrowIfNull(png);
+        ArgumentNullException.ThrowIfNull(jpeg);
         ArgumentException.ThrowIfNullOrWhiteSpace(boundary);
         if (boundary.Contains('\r', StringComparison.Ordinal) ||
             boundary.Contains('\n', StringComparison.Ordinal))
@@ -344,9 +345,9 @@ public sealed class GoogleLensWindow : IDisposable
         WriteAscii(
             stream,
             $"--{boundary}\r\n" +
-            "Content-Disposition: form-data; name=\"encoded_image\"; filename=\"circle-to-search.png\"\r\n" +
-            "Content-Type: image/png\r\n\r\n");
-        stream.Write(png);
+            "Content-Disposition: form-data; name=\"encoded_image\"; filename=\"circle-to-search.jpg\"\r\n" +
+            "Content-Type: image/jpeg\r\n\r\n");
+        stream.Write(jpeg);
         WriteAscii(stream, $"\r\n--{boundary}--\r\n");
         stream.Position = 0;
         return stream;
@@ -364,7 +365,7 @@ public sealed class GoogleLensWindow : IDisposable
     private async Task<bool> OpenLensResultsWithScriptAsync(
         WebView2 webView,
         Window window,
-        byte[] png,
+        byte[] jpeg,
         CancellationToken cancel)
     {
         var acknowledgement = new TaskCompletionSource<string>(
@@ -398,7 +399,7 @@ public sealed class GoogleLensWindow : IDisposable
             if (!string.Equals(JsonSerializer.Deserialize<string>(installed), "ready", StringComparison.Ordinal))
                 return false;
 
-            webView.CoreWebView2.PostWebMessageAsString(Convert.ToBase64String(png));
+            webView.CoreWebView2.PostWebMessageAsString(Convert.ToBase64String(jpeg));
             var finished = await Task.WhenAny(
                     acknowledgement.Task,
                     closed.Task,
@@ -622,9 +623,9 @@ public sealed class GoogleLensWindow : IDisposable
               for (let index = 0; index < binary.length; index++) {
                 bytes[index] = binary.charCodeAt(index);
               }
-              const fileName = "circle-to-search.png";
+              const fileName = "circle-to-search.jpg";
               const transfer = new DataTransfer();
-              transfer.items.add(new File([bytes], fileName, { type: "image/png" }));
+              transfer.items.add(new File([bytes], fileName, { type: "image/jpeg" }));
 
               for (const type of ["dragenter", "dragover", "drop"]) {
                 dropArea.dispatchEvent(new DragEvent(type, {

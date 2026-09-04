@@ -38,19 +38,19 @@ public sealed class GoogleLensWindowTests
     }
 
     [Fact]
-    public void Direct_upload_builds_the_expected_raw_png_multipart_request()
+    public void Direct_upload_builds_the_expected_raw_jpeg_multipart_request()
     {
         const string boundary = "----CircleToSearchTestBoundary";
-        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x00, 0xFF, 0x0D, 0x0A];
+        byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0xFF, 0x0D, 0x0A];
 
-        using var body = GoogleLensWindow.CreateLensUploadBody(png, boundary);
+        using var body = GoogleLensWindow.CreateLensUploadBody(jpeg, boundary);
 
         var prefix = Encoding.ASCII.GetBytes(
             $"--{boundary}\r\n" +
-            "Content-Disposition: form-data; name=\"encoded_image\"; filename=\"circle-to-search.png\"\r\n" +
-            "Content-Type: image/png\r\n\r\n");
+            "Content-Disposition: form-data; name=\"encoded_image\"; filename=\"circle-to-search.jpg\"\r\n" +
+            "Content-Type: image/jpeg\r\n\r\n");
         var suffix = Encoding.ASCII.GetBytes($"\r\n--{boundary}--\r\n");
-        Assert.Equal(prefix.Concat(png).Concat(suffix), body.ToArray());
+        Assert.Equal(prefix.Concat(jpeg).Concat(suffix), body.ToArray());
         Assert.Equal(0, body.Position);
         Assert.Equal(
             $"Content-Type: multipart/form-data; boundary={boundary}",
