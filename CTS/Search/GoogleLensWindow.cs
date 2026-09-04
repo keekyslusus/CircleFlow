@@ -19,6 +19,7 @@ namespace CircleToSearch.Search;
 
 public sealed class GoogleLensWindow : IDisposable
 {
+    private static readonly bool LoadingOverlayEnabled = false;
     private static readonly Uri GoogleLensHome = new("https://lens.google.com/?hl=en");
     private static readonly Uri GoogleLensUpload = new("https://lens.google.com/v3/upload");
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
@@ -146,13 +147,19 @@ public sealed class GoogleLensWindow : IDisposable
         var webViewBackground = ToDrawingColor(palette.WindowSurface);
         var webView = new WebView2
         {
-            Visibility = Visibility.Hidden,
+            Visibility = LoadingOverlayEnabled ? Visibility.Hidden : Visibility.Visible,
             DefaultBackgroundColor = webViewBackground,
         };
-        var loadingOverlay = CreateLoadingOverlay(palette, out var loadingText);
         var content = new Grid { Background = background };
         content.Children.Add(webView);
-        content.Children.Add(loadingOverlay);
+        Grid? loadingOverlay = null;
+        TextBlock? loadingText = null;
+        if (LoadingOverlayEnabled)
+        {
+            loadingOverlay = CreateLoadingOverlay(palette, out loadingText);
+            content.Children.Add(loadingOverlay);
+        }
+
         var closed = false;
         var window = new Window
         {
