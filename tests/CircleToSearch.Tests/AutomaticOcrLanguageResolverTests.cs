@@ -6,27 +6,30 @@ namespace CircleToSearch.Tests;
 public sealed class AutomaticOcrLanguageResolverTests
 {
     [Fact]
-    public void Exact_preferred_tags_win_and_order_is_russian_then_english()
-    {
-        var resolved = Resolve("en-GB", "RU-ru", "en-US", "ru-KZ");
+    public void Every_installed_language_is_returned_in_deterministic_order() =>
+        Assert.Equal(["de-DE", "en-US", "fr-FR", "ru-RU", "uk-UA"],
+            Resolve("uk-UA", "fr-FR", "ru-RU", "de-DE", "en-US"));
 
-        Assert.Equal(["RU-ru", "en-US"], resolved);
-    }
-
-    [Fact]
-    public void Neutral_fallback_is_case_insensitive_and_deterministic()
-    {
-        var resolved = Resolve("EN-gb", "ru-UA", "ru-BY", "en-AU");
-
-        Assert.Equal(["ru-BY", "en-AU"], resolved);
-    }
+    [Theory]
+    [InlineData("de-DE")]
+    [InlineData("ja-JP")]
+    public void A_single_non_russian_non_english_pack_is_supported(string tag) =>
+        Assert.Equal([tag], Resolve(tag));
 
     [Fact]
-    public void Missing_packs_are_omitted_without_duplicates()
-    {
-        Assert.Equal(["en-US"], Resolve("en-US", "EN-us", "fr-FR"));
-        Assert.Empty(Resolve("fr-FR", "de-DE"));
-    }
+    public void Empty_catalog_returns_an_empty_snapshot() => Assert.Empty(Resolve());
+
+    [Fact]
+    public void Exact_duplicates_are_trimmed_and_removed_case_insensitively() =>
+        Assert.Equal(["EN-us", "fr-FR"], Resolve(" fr-FR ", "en-US", " EN-us ", "  "));
+
+    [Fact]
+    public void Regional_variants_remain_separate() =>
+        Assert.Equal(["en-GB", "en-US", "zh-Hans", "zh-Hant"], Resolve("zh-Hant", "en-US", "zh-Hans", "en-GB"));
+
+    [Fact]
+    public void Input_order_does_not_change_result() =>
+        Assert.Equal(Resolve("uk-UA", "de-DE", "en-US"), Resolve("en-US", "uk-UA", "de-DE"));
 
     private static IReadOnlyList<string> Resolve(params string[] tags) =>
         new AutomaticOcrLanguageResolver().Resolve(tags.Select(tag => new OcrLanguageOption(tag, tag)).ToArray());

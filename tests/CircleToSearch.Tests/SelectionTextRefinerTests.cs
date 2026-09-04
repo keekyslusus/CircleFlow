@@ -89,6 +89,96 @@ public sealed class SelectionTextRefinerTests
         Assert.Equal("Add notification", outcome.Text);
     }
 
+    [Theory]
+    [InlineData("größere Straße", "größere Straße", "de-DE", "en-US")]
+    [InlineData("додати сповіщення", "додати сповіщення", "uk-UA", "ru-RU")]
+    [InlineData("Ελληνικό κείμενο", "Ελληνικό κείμενο", "el-GR", "en-US")]
+    [InlineData("النص العربي", "النص العربي", "ar-SA", "en-US")]
+    [InlineData("日本語のテキスト", "日本語のテキスト", "ja-JP", "en-US")]
+    public async Task Lone_candidate_with_matching_actual_scripts_is_accepted(
+        string preliminary,
+        string refined,
+        string successfulLanguage,
+        string noTextLanguage)
+    {
+        var fake = new FakeLanguageRecognizer((source, tag, _) => Task.FromResult(
+            tag.Equals(successfulLanguage, StringComparison.OrdinalIgnoreCase)
+                ? OcrRecognitionOutcome.Success(Document(source, tag, refined))
+                : OcrRecognitionOutcome.NoText()));
+
+        var outcome = await Refiner(fake, successfulLanguage, noTextLanguage).RefineAsync(
+            Frame(), Selection(preliminary, new Rectangle(20, 20, 120, 12)), CancellationToken.None);
+
+        Assert.Equal(SelectionTextRefinementStatus.Success, outcome.Status);
+        Assert.Equal(refined, outcome.Text);
+    }
+
+    [Theory]
+    [InlineData("добавить", "A06aBVlTb", "en-US", "ru-RU")]
+    [InlineData("Ελληνικό", "Elliniko", "en-US", "el-GR")]
+    [InlineData("النص", "alnas", "en-US", "ar-SA")]
+    public async Task Lone_candidate_with_incompatible_actual_script_is_rejected(
+        string preliminary,
+        string refined,
+        string successfulLanguage,
+        string noTextLanguage)
+    {
+        var fake = new FakeLanguageRecognizer((source, tag, _) => Task.FromResult(
+            tag.Equals(successfulLanguage, StringComparison.OrdinalIgnoreCase)
+                ? OcrRecognitionOutcome.Success(Document(source, tag, refined))
+                : OcrRecognitionOutcome.NoText()));
+
+        var outcome = await Refiner(fake, successfulLanguage, noTextLanguage).RefineAsync(
+            Frame(), Selection(preliminary, new Rectangle(20, 20, 100, 12)), CancellationToken.None);
+
+        Assert.Equal(SelectionTextRefinementStatus.NoText, outcome.Status);
+        Assert.Null(outcome.Text);
+    }
+
+    [Fact]
+    public async Task Lone_candidate_must_cover_every_significant_preliminary_script()
+    {
+        var fake = new FakeLanguageRecognizer((source, tag, _) => Task.FromResult(
+            tag == "en-US"
+                ? OcrRecognitionOutcome.Success(Document(source, tag, "Hello world"))
+                : OcrRecognitionOutcome.NoText()));
+
+        var outcome = await Refiner(fake, "en-US", "ru-RU").RefineAsync(
+            Frame(), Selection("Hello мир", new Rectangle(20, 20, 100, 12)), CancellationToken.None);
+
+        Assert.Equal(SelectionTextRefinementStatus.NoText, outcome.Status);
+    }
+
+    [Fact]
+    public async Task Mixed_script_candidate_is_accepted_when_it_covers_all_significant_scripts()
+    {
+        var fake = new FakeLanguageRecognizer((source, tag, _) => Task.FromResult(
+            tag == "en-US"
+                ? OcrRecognitionOutcome.Success(Document(source, tag, "Hello м"))
+                : OcrRecognitionOutcome.NoText()));
+
+        var outcome = await Refiner(fake, "en-US", "ru-RU").RefineAsync(
+            Frame(), Selection("Hello мир", new Rectangle(20, 20, 100, 12)), CancellationToken.None);
+
+        Assert.Equal(SelectionTextRefinementStatus.Success, outcome.Status);
+        Assert.Equal("Hello м", outcome.Text);
+    }
+
+    [Fact]
+    public async Task Preliminary_text_without_letters_allows_a_lone_candidate()
+    {
+        var fake = new FakeLanguageRecognizer((source, tag, _) => Task.FromResult(
+            tag == "de-DE"
+                ? OcrRecognitionOutcome.Success(Document(source, tag, "456"))
+                : OcrRecognitionOutcome.NoText()));
+
+        var outcome = await Refiner(fake, "de-DE", "en-US").RefineAsync(
+            Frame(), Selection("123 —", new Rectangle(20, 20, 60, 12)), CancellationToken.None);
+
+        Assert.Equal(SelectionTextRefinementStatus.Success, outcome.Status);
+        Assert.Equal("456", outcome.Text);
+    }
+
     [Fact]
     public async Task Cancellation_never_returns_success()
     {
@@ -100,6 +190,25 @@ public sealed class SelectionTextRefinerTests
         using var cancellation = new CancellationTokenSource();
         var task = Refiner(fake).RefineAsync(Frame(), Selection("text", new Rectangle(10, 10, 40, 12)), cancellation.Token);
         cancellation.Cancel();
+
+        Assert.Equal(SelectionTextRefinementStatus.Canceled, (await task).Status);
+    }
+
+    [Fact]
+    public async Task Cancellation_rejects_late_success_from_an_engine_that_ignores_the_token()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fake = new FakeLanguageRecognizer(async (source, tag, _) =>
+        {
+            await release.Task;
+            return OcrRecognitionOutcome.Success(Document(source, tag, "late"));
+        });
+        using var cancellation = new CancellationTokenSource();
+        var task = Refiner(fake).RefineAsync(
+            Frame(), Selection("text", new Rectangle(10, 10, 40, 12)), cancellation.Token);
+
+        cancellation.Cancel();
+        release.SetResult();
 
         Assert.Equal(SelectionTextRefinementStatus.Canceled, (await task).Status);
     }
@@ -138,14 +247,20 @@ public sealed class SelectionTextRefinerTests
             SelectionTextRefiner.CreateCropBounds(new Rectangle(88, 88, 12, 12), 100, 100));
     }
 
-    private static SelectionTextRefiner Refiner(ILanguageOcrRecognizer recognizer) => new(
-        recognizer,
-        new OcrLanguageCatalog([
-            new OcrLanguageOption("ru-RU", "Russian"),
-            new OcrLanguageOption("en-US", "English")]),
-        new AutomaticOcrLanguageResolver(),
-        new OcrDocumentMerger(new OcrTextQualityScorer()),
-        2600);
+    private static SelectionTextRefiner Refiner(
+        ILanguageOcrRecognizer recognizer,
+        params string[] languageTags)
+    {
+        var tags = languageTags.Length == 0 ? ["ru-RU", "en-US"] : languageTags;
+        var classifier = new OcrUnicodeScriptClassifier();
+        return new SelectionTextRefiner(
+            recognizer,
+            new OcrLanguageCatalog(tags.Select(tag => new OcrLanguageOption(tag, tag)).ToArray()),
+            new AutomaticOcrLanguageResolver(),
+            new OcrDocumentMerger(new OcrTextQualityScorer(classifier)),
+            classifier,
+            2600);
+    }
 
     private static BitmapSource Frame() => BitmapSource.Create(
         300, 120, 96, 96, PixelFormats.Bgra32, null, new byte[144000], 1200);

@@ -109,7 +109,8 @@ public static class CompositionRoot
             log);
         var ocrLanguages = new OcrLanguageCatalog();
         var ocrLanguageResolver = new AutomaticOcrLanguageResolver();
-        var ocrScorer = new OcrTextQualityScorer();
+        var ocrScriptClassifier = new OcrUnicodeScriptClassifier();
+        var ocrScorer = new OcrTextQualityScorer(ocrScriptClassifier);
         var ocrMerger = new OcrDocumentMerger(ocrScorer);
         var languageOcrRecognizer = new WindowsOcrRecognizer(new OcrFrameTiler(), maximumConcurrency: 2);
         var automaticOcrRecognizer = new AutomaticOcrRecognizer(
@@ -121,7 +122,8 @@ public static class CompositionRoot
             languageOcrRecognizer,
             ocrLanguages,
             ocrLanguageResolver,
-            ocrMerger);
+            ocrMerger,
+            ocrScriptClassifier);
         var translationHttpClient = new HttpClient
         {
             Timeout = Timeout.InfiniteTimeSpan,

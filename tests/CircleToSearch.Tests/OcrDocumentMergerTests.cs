@@ -6,7 +6,7 @@ namespace CircleToSearch.Tests;
 
 public sealed class OcrDocumentMergerTests
 {
-    private readonly OcrDocumentMerger _merger = new(new OcrTextQualityScorer());
+    private readonly OcrDocumentMerger _merger = new(new OcrTextQualityScorer(new OcrUnicodeScriptClassifier()));
 
     [Fact]
     public void Russian_native_text_wins_over_english_lookalike_result()

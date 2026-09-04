@@ -6,27 +6,30 @@ namespace CircleToSearch.TextRecognition;
 public sealed record OcrTextQuality(
     double Score,
     int LetterCount,
-    double CyrillicRatio,
-    double LatinRatio,
-    double BigramRatio,
-    bool IsNativeRussian,
-    bool IsUseful);
+    double ScriptConcentration,
+    double ProfileRatio,
+    bool IsUseful,
+    OcrUnicodeScriptAnalysis Scripts);
 
-public sealed class OcrTextQualityScorer
+public sealed class OcrTextQualityScorer(OcrUnicodeScriptClassifier scriptClassifier)
 {
-    private static readonly HashSet<string> RussianBigrams = Bigrams(
-        "ст но то на ен ов ни ра во ко ро по пр ос го ал ли ер ре от та ан ор те ка ла ве ит ар ет ол од ль ть ил ый ие за ск не ва ти се ри");
-    private static readonly HashSet<string> EnglishBigrams = Bigrams(
-        "th he in er an re on at en nd ti es or te of ed is it al ar st to nt ng se ha as ou io le ve co me de hi ri ro ic ne ea ra ce li ch ll be ma si om ur");
+    private static readonly IReadOnlyDictionary<string, LanguageProfile> Profiles =
+        new Dictionary<string, LanguageProfile>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ru"] = new(
+                OcrUnicodeScript.Cyrillic,
+                Bigrams("ст но то на ен ов ни ра во ко ро по пр ос го ал ли ер ре от та ан ор те ка ла ве ит ар ет ол од ль ть ил ый ие за ск не ва ти се ри")),
+            ["en"] = new(
+                OcrUnicodeScript.Latin,
+                Bigrams("th he in er an re on at en nd ti es or te of ed is it al ar st to nt ng se ha as ou io le ve co me de hi ri ro ic ne ea ra ce li ch ll be ma si om ur ad")),
+        };
 
     public OcrTextQuality Score(string text, string languageTag)
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentException.ThrowIfNullOrWhiteSpace(languageTag);
         var runes = text.EnumerateRunes().ToArray();
-        var letters = runes.Where(Rune.IsLetter).ToArray();
-        var cyrillic = letters.Count(IsCyrillic);
-        var latin = letters.Count(IsLatin);
+        var scripts = scriptClassifier.Analyze(text);
         var bad = runes.Count(rune => Rune.GetUnicodeCategory(rune) is
             UnicodeCategory.Control or UnicodeCategory.PrivateUse or UnicodeCategory.Surrogate || rune.Value == 0xfffd);
         var useful = runes.Count(rune => !Rune.IsWhiteSpace(rune) && !Rune.IsPunctuation(rune));
@@ -35,31 +38,25 @@ public sealed class OcrTextQualityScorer
             .Count(token => token.Any(char.IsLetter) && token.Any(char.IsDigit));
         var uppercaseTransitions = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
             .Sum(UppercaseTransitions);
-        var profile = languageTag.StartsWith("ru", StringComparison.OrdinalIgnoreCase)
-            ? RussianBigrams
-            : EnglishBigrams;
-        var normalizedLetters = string.Concat(letters.Select(rune => rune.ToString())).ToLowerInvariant();
-        var pairs = Enumerable.Range(0, Math.Max(0, normalizedLetters.Length - 1))
-            .Select(index => normalizedLetters.Substring(index, 2))
-            .Where(pair => pair.All(char.IsLetter))
-            .ToArray();
-        var bigramRatio = pairs.Length == 0 ? 0 : pairs.Count(profile.Contains) / (double)pairs.Length;
-        var letterCount = letters.Length;
-        var cyrillicRatio = letterCount == 0 ? 0 : cyrillic / (double)letterCount;
-        var latinRatio = letterCount == 0 ? 0 : latin / (double)letterCount;
-        var expectedScriptRatio = languageTag.StartsWith("ru", StringComparison.OrdinalIgnoreCase)
-            ? cyrillicRatio
-            : latinRatio;
-        var score = useful + letterCount * 1.5 + expectedScriptRatio * 12 + bigramRatio * 14
-            - bad * 25 - mixedTokens * 2.5 - uppercaseTransitions * 1.5;
+        var scriptConcentration = scripts.LetterCount == 0
+            ? 0
+            : scripts.LetterCounts.Values.Max() / (double)scripts.LetterCount;
+        var profile = GetProfile(languageTag);
+        var profileRatio = profile is null ? 0 : CalculateBigramRatio(text, profile.Bigrams);
+        var expectedScriptRatio = profile is null || scripts.LetterCount == 0
+            ? 0
+            : scripts.Count(profile.Script) / (double)scripts.LetterCount;
+        var significantScriptPenalty = Math.Max(0, scripts.SignificantScripts.Count - 1) * 1.5;
+        var score = useful + scripts.LetterCount * 1.5 + scriptConcentration * 5 +
+            expectedScriptRatio * 7 + profileRatio * 14 - significantScriptPenalty -
+            bad * 25 - mixedTokens * 2.5 - uppercaseTransitions * 1.5;
         return new OcrTextQuality(
             score,
-            letterCount,
-            cyrillicRatio,
-            latinRatio,
-            bigramRatio,
-            cyrillic >= 2 && cyrillicRatio >= 0.5,
-            visible > 0 && bad <= Math.Max(1, runes.Length / 5));
+            scripts.LetterCount,
+            scriptConcentration,
+            profileRatio,
+            visible > 0 && bad <= Math.Max(1, runes.Length / 5),
+            scripts);
     }
 
     internal OcrLine Choose(IReadOnlyList<OcrLine> candidates, IReadOnlyList<string> languageOrder)
@@ -69,27 +66,38 @@ public sealed class OcrTextQualityScorer
             .Select(group => ChooseEquivalent(group.ToArray(), languageOrder)).ToArray();
         if (distinct.Length == 1) return distinct[0];
         var scored = distinct.Select(line => (Line: line, Quality: Score(line.Text, line.LanguageTag))).ToArray();
-        var russian = scored.Where(item => item.Line.LanguageTag.StartsWith("ru", StringComparison.OrdinalIgnoreCase) &&
-                                           item.Quality.IsNativeRussian && item.Quality.IsUseful)
+
+        var russian = scored.Where(item => IsLanguage(item.Line.LanguageTag, "ru") &&
+                                           item.Quality.Scripts.DominantScript == OcrUnicodeScript.Cyrillic &&
+                                           item.Quality.ProfileRatio >= 0.15 && item.Quality.IsUseful)
             .OrderByDescending(item => item.Quality.Score).FirstOrDefault();
         if (russian.Line is not null)
         {
             var alternatives = scored.Where(item => !ReferenceEquals(item.Line, russian.Line)).ToArray();
-            var looksLikeMojibake = russian.Quality.LetterCount >= 4 && russian.Quality.BigramRatio >= 0.15 &&
-                alternatives.Any(item => item.Quality.CyrillicRatio == 0 &&
-                (item.Quality.LatinRatio > 0.65 || item.Line.Text.Any(char.IsDigit)) &&
-                item.Quality.Score <= russian.Quality.Score + 8);
+            var looksLikeMojibake = russian.Quality.LetterCount >= 4 &&
+                alternatives.Any(item => item.Quality.Scripts.Count(OcrUnicodeScript.Cyrillic) == 0 &&
+                    (item.Quality.Scripts.Count(OcrUnicodeScript.Latin) > item.Quality.LetterCount * 0.65 ||
+                     item.Line.Text.Any(char.IsDigit)) &&
+                    item.Quality.Score <= russian.Quality.Score + 8);
             if (looksLikeMojibake) return russian.Line;
         }
-        var english = scored.Where(item => item.Line.LanguageTag.StartsWith("en", StringComparison.OrdinalIgnoreCase) &&
-                                           item.Quality.LatinRatio >= 0.5 && item.Quality.IsUseful)
-            .OrderByDescending(item => item.Quality.Score).FirstOrDefault();
-        var best = scored.OrderByDescending(item => item.Quality.Score)
+
+        return scored.OrderByDescending(item => item.Quality.Score)
             .ThenBy(item => LanguageIndex(item.Line.LanguageTag, languageOrder))
+            .ThenBy(item => item.Line.LanguageTag, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.Line.LanguageTag, StringComparer.Ordinal)
+            .Select(item => item.Line)
             .First();
-        if (english.Line is not null && english.Quality.Score >= best.Quality.Score - 3) return english.Line;
-        return best.Line;
     }
+
+    private OcrLine ChooseEquivalent(IReadOnlyList<OcrLine> candidates, IReadOnlyList<string> languageOrder) =>
+        candidates.Select(line => (Line: line, Quality: Score(line.Text, line.LanguageTag)))
+            .OrderByDescending(item => item.Quality.Score)
+            .ThenBy(item => LanguageIndex(item.Line.LanguageTag, languageOrder))
+            .ThenBy(item => item.Line.LanguageTag, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.Line.LanguageTag, StringComparer.Ordinal)
+            .Select(item => item.Line)
+            .First();
 
     private static int UppercaseTransitions(string token)
     {
@@ -99,30 +107,39 @@ public sealed class OcrTextQualityScorer
         return transitions;
     }
 
-    private OcrLine ChooseEquivalent(IReadOnlyList<OcrLine> candidates, IReadOnlyList<string> languageOrder)
+    private static double CalculateBigramRatio(string text, IReadOnlySet<string> profile)
     {
-        var quality = Score(candidates[0].Text, candidates[0].LanguageTag);
-        if (quality.CyrillicRatio >= 0.5)
-        {
-            var russian = candidates.FirstOrDefault(line => line.LanguageTag.StartsWith("ru", StringComparison.OrdinalIgnoreCase));
-            if (russian is not null) return russian;
-        }
-        if (quality.LatinRatio >= 0.5)
-        {
-            var english = candidates.FirstOrDefault(line => line.LanguageTag.StartsWith("en", StringComparison.OrdinalIgnoreCase));
-            if (english is not null) return english;
-        }
-        return candidates.OrderBy(line => LanguageIndex(line.LanguageTag, languageOrder)).First();
+        var letters = text.EnumerateRunes().Where(Rune.IsLetter)
+            .Select(rune => rune.ToString().ToLowerInvariant()).ToArray();
+        if (letters.Length < 2) return 0;
+        var pairs = Enumerable.Range(0, letters.Length - 1)
+            .Select(index => letters[index] + letters[index + 1]).ToArray();
+        return pairs.Count(profile.Contains) / (double)pairs.Length;
     }
 
-    private static bool IsCyrillic(Rune rune) => rune.Value is >= 0x0400 and <= 0x052f;
-    private static bool IsLatin(Rune rune) => rune.Value is >= 0x0041 and <= 0x024f;
-    private static string Normalize(string text) => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    private static LanguageProfile? GetProfile(string languageTag)
+    {
+        var separator = languageTag.IndexOf('-');
+        var neutral = separator < 0 ? languageTag : languageTag[..separator];
+        return Profiles.GetValueOrDefault(neutral);
+    }
+
+    private static bool IsLanguage(string languageTag, string neutralTag) =>
+        string.Equals(languageTag, neutralTag, StringComparison.OrdinalIgnoreCase) ||
+        languageTag.StartsWith(neutralTag + "-", StringComparison.OrdinalIgnoreCase);
+
+    private static string Normalize(string text) =>
+        string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
     private static int LanguageIndex(string tag, IReadOnlyList<string> order)
     {
         for (var index = 0; index < order.Count; index++)
             if (string.Equals(tag, order[index], StringComparison.OrdinalIgnoreCase)) return index;
         return int.MaxValue;
     }
-    private static HashSet<string> Bigrams(string value) => value.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+
+    private static HashSet<string> Bigrams(string value) =>
+        value.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+
+    private sealed record LanguageProfile(OcrUnicodeScript Script, IReadOnlySet<string> Bigrams);
 }

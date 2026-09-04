@@ -12,14 +12,14 @@ using Int32Rect = System.Windows.Int32Rect;
 public sealed class WindowsOcrRecognizer : ILanguageOcrRecognizer, IDisposable
 {
     private readonly OcrFrameTiler _tiler;
-    private readonly SemaphoreSlim _scheduler;
+    private readonly OcrOperationScheduler _scheduler;
     private bool _disposed;
 
     public WindowsOcrRecognizer(OcrFrameTiler? tiler = null, int maximumConcurrency = 2)
     {
         if (maximumConcurrency <= 0) throw new ArgumentOutOfRangeException(nameof(maximumConcurrency));
         _tiler = tiler ?? new OcrFrameTiler();
-        _scheduler = new SemaphoreSlim(maximumConcurrency, maximumConcurrency);
+        _scheduler = new OcrOperationScheduler(maximumConcurrency);
     }
 
     public async Task<OcrRecognitionOutcome> RecognizeAsync(
@@ -40,24 +40,19 @@ public sealed class WindowsOcrRecognizer : ILanguageOcrRecognizer, IDisposable
             foreach (var tile in tiles)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var prepared = await Task.Run(() => PreparePixels(source, tile.BoundsPx, cancellationToken), cancellationToken)
-                    .ConfigureAwait(false);
-                using var bitmap = SoftwareBitmap.CreateCopyFromBuffer(
-                    prepared.Pixels.AsBuffer(), BitmapPixelFormat.Bgra8, prepared.Width, prepared.Height,
-                    BitmapAlphaMode.Premultiplied);
-                cancellationToken.ThrowIfCancellationRequested();
-                await _scheduler.WaitAsync(cancellationToken).ConfigureAwait(false);
-                OcrResult result;
-                try
+                var recognized = await _scheduler.RunAsync(async token =>
                 {
-                    result = await engine.RecognizeAsync(bitmap).AsTask(cancellationToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    _scheduler.Release();
-                }
-                cancellationToken.ThrowIfCancellationRequested();
-                collected.AddRange(ReadTile(result, tile, size));
+                    var prepared = await Task.Run(() => PreparePixels(source, tile.BoundsPx, token), token)
+                        .ConfigureAwait(false);
+                    using var bitmap = SoftwareBitmap.CreateCopyFromBuffer(
+                        prepared.Pixels.AsBuffer(), BitmapPixelFormat.Bgra8, prepared.Width, prepared.Height,
+                        BitmapAlphaMode.Premultiplied);
+                    token.ThrowIfCancellationRequested();
+                    var result = await engine.RecognizeAsync(bitmap).AsTask(token).ConfigureAwait(false);
+                    token.ThrowIfCancellationRequested();
+                    return ReadTile(result, tile, size).ToArray();
+                }, cancellationToken).ConfigureAwait(false);
+                collected.AddRange(recognized);
             }
             var document = BuildDocument(engine.RecognizerLanguage.LanguageTag, size, collected);
             return document.Lines.Count == 0 ? OcrRecognitionOutcome.NoText() : OcrRecognitionOutcome.Success(document);

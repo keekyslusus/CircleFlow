@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -12,6 +11,7 @@ public sealed class SelectionTextRefiner(
     OcrLanguageCatalog languageCatalog,
     AutomaticOcrLanguageResolver languageResolver,
     OcrDocumentMerger merger,
+    OcrUnicodeScriptClassifier scriptClassifier,
     int maximumDimension = 0) : ISelectionTextRefiner
 {
     public async Task<SelectionTextRefinement> RefineAsync(
@@ -95,6 +95,7 @@ public sealed class SelectionTextRefiner(
     {
         var outcomes = await Task.WhenAll(languages.Select(language =>
             languageRecognizer.RecognizeAsync(crop, language, cancellationToken))).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         if (outcomes.Any(outcome => outcome.Status == OcrRecognitionStatus.Canceled))
             return OcrRecognitionOutcome.Canceled();
         if (outcomes.Any(outcome => outcome.Status is OcrRecognitionStatus.Failed or
@@ -105,30 +106,22 @@ public sealed class SelectionTextRefiner(
         if (documents.Length == 0) return OcrRecognitionOutcome.NoText();
         if (outcomes.Any(outcome => outcome.Status == OcrRecognitionStatus.NoText) &&
             documents.Length == 1 &&
-            !MatchesPreliminaryScript(documents[0].LanguageTag, preliminaryText))
+            !MatchesPreliminaryScripts(preliminaryText, DocumentText(documents[0])))
             return OcrRecognitionOutcome.NoText();
         var merged = merger.Merge(documents, languages);
         return merged.Lines.Count == 0 ? OcrRecognitionOutcome.NoText() : OcrRecognitionOutcome.Success(merged);
     }
 
-    private static bool MatchesPreliminaryScript(string languageTag, string preliminaryText)
+    private bool MatchesPreliminaryScripts(string preliminaryText, string candidateText)
     {
-        var cyrillic = 0;
-        var latin = 0;
-        var otherLetters = 0;
-        foreach (var rune in preliminaryText.EnumerateRunes().Where(System.Text.Rune.IsLetter))
-        {
-            if (rune.Value is >= 0x0400 and <= 0x052f) cyrillic++;
-            else if (rune.Value is >= 0x0041 and <= 0x024f) latin++;
-            else otherLetters++;
-        }
-        if (cyrillic == 0 && latin == 0 && otherLetters == 0) return true;
-        if (cyrillic > 0 && latin == 0 && otherLetters == 0)
-            return languageTag.StartsWith("ru", StringComparison.OrdinalIgnoreCase);
-        if (latin > 0 && cyrillic == 0 && otherLetters == 0)
-            return languageTag.StartsWith("en", StringComparison.OrdinalIgnoreCase);
-        return false;
+        var preliminary = scriptClassifier.Analyze(preliminaryText);
+        if (preliminary.LetterCount == 0) return true;
+        var candidate = scriptClassifier.Analyze(candidateText);
+        return preliminary.SignificantScripts.All(script => candidate.Count(script) > 0);
     }
+
+    private static string DocumentText(OcrDocument document) =>
+        string.Join(Environment.NewLine, document.Lines.OrderBy(line => line.Order).Select(line => line.Text));
 
     private static BitmapSource CreateCrop(BitmapSource source, Rectangle bounds, double scale)
     {

@@ -96,7 +96,7 @@
     <system:String x:Key="plugin_circletosearch_consent_cancel">Cancel</system:String>
     <system:String x:Key="plugin_circletosearch_translation_canceled">Translation canceled.</system:String>
     <system:String x:Key="plugin_circletosearch_ocr_no_text">No text was recognized on this screen.</system:String>
-    <system:String x:Key="plugin_circletosearch_ocr_language_unavailable">A Russian or English Windows OCR language pack is required.</system:String>
+    <system:String x:Key="plugin_circletosearch_ocr_language_unavailable">Install at least one Windows OCR language pack to recognize screen text.</system:String>
     <system:String x:Key="plugin_circletosearch_ocr_failed">Screen text recognition is unavailable.</system:String>
     <system:String x:Key="plugin_circletosearch_screen_already_target_language">The screen is already in the target language.</system:String>
     <system:String x:Key="plugin_circletosearch_translation_network_error">Translation failed because the network is unavailable.</system:String>
