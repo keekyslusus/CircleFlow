@@ -43,7 +43,7 @@ public sealed record TextSelectionVisual(
 
 public sealed record TranslationActionVisual(
     Button Button,
-    TextBlock Label,
+    Path Icon,
     LoadingIndicatorVisual LoadingIndicator);
 
 public sealed record TranslationOverlayVisual(

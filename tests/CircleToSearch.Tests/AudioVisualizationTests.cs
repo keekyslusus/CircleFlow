@@ -153,7 +153,8 @@ public sealed class AudioVisualizationTests
     [Theory]
     [InlineData(SceneRipplePreset.AudioTransient, 0.5)]
     [InlineData(SceneRipplePreset.MusicMatch, 1)]
-    public void Music_scene_effects_are_fullscreen_particle_waves_without_rings(
+    [InlineData(SceneRipplePreset.TranslationComplete, 1)]
+    public void Scene_effects_are_fullscreen_particle_waves_without_rings(
         SceneRipplePreset preset,
         double intensity)
     {

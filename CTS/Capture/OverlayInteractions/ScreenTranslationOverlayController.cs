@@ -2,9 +2,11 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
 using CircleToSearch.Ui;
+using CircleToSearch.Ui.Effects;
 
 namespace CircleToSearch.Capture.OverlayInteractions;
 
@@ -12,6 +14,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 {
     private readonly TranslationActionVisual _action;
     private readonly TranslationOverlayVisual _overlay;
+    private readonly OverlayEffectsVisual _effects;
     private readonly FrameworkElement _coordinateRoot;
     private readonly OverlayCoordinateMapper _mapper;
     private readonly UiStrings _strings;
@@ -26,11 +29,13 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private OcrRecognitionOutcome? _ocr;
     private Guid _requestId;
     private bool _waitingForOcr;
+    private DispatcherOperation? _completionRippleOperation;
     private bool _disposed;
 
     internal ScreenTranslationOverlayController(
         TranslationActionVisual action,
         TranslationOverlayVisual overlay,
+        OverlayEffectsVisual effects,
         FrameworkElement coordinateRoot,
         OverlayCoordinateMapper mapper,
         UiStrings strings,
@@ -45,6 +50,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     {
         _action = action;
         _overlay = overlay;
+        _effects = effects;
         _coordinateRoot = coordinateRoot;
         _mapper = mapper;
         _strings = strings;
@@ -64,6 +70,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     internal bool IsConsentOpen => _overlay.ConsentCard.Visibility == Visibility.Visible;
     internal bool IsTranslating => _requestId != Guid.Empty;
     internal bool IsTranslationShown => _overlay.CardsLayer.Visibility == Visibility.Visible && _overlay.CardsLayer.Children.Count > 0;
+    internal bool HasPendingCompletionRipple =>
+        _completionRippleOperation?.Status == DispatcherOperationStatus.Pending;
 
     internal void SetOcrOutcome(OcrRecognitionOutcome outcome)
     {
@@ -74,12 +82,14 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     internal void ShowResult(ScreenTranslationResult result)
     {
         if (_disposed || result.RequestId != _requestId) return;
+        AbortPendingCompletionRipple();
         _requestId = Guid.Empty;
         _waitingForOcr = false;
+        SetActionVisual(_strings.ShowOriginal, TextTranslationVisualFactory.ShowOriginalIconGeometry);
         StopLoading();
         Render(result);
-        SetActionText(_strings.ShowOriginal);
         _transition(OverlayInteractionMode.TranslationShown);
+        QueueCompletionRipple();
         if (result.IsPartial)
             _showToast(new ToastNotification(_strings.TranslationPartial, ToastTone.Error));
     }
@@ -89,8 +99,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         if (_disposed || requestId != _requestId) return;
         _requestId = Guid.Empty;
         _waitingForOcr = false;
+        SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);
         StopLoading();
-        SetActionText(_strings.Translate);
         _transition(OverlayInteractionMode.Selecting);
         var message = failure switch
         {
@@ -130,6 +140,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         if (_requestId != Guid.Empty) _publish(new CancelScreenTranslation(_requestId));
         _requestId = Guid.Empty;
         _waitingForOcr = false;
+        AbortPendingCompletionRipple();
         StopLoading();
     }
 
@@ -185,9 +196,9 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _overlay.ConsentCard.Visibility = Visibility.Collapsed;
         _requestId = Guid.NewGuid();
         _waitingForOcr = true;
-        SetActionText(_strings.Translating);
-        _action.LoadingIndicator.Visibility = Visibility.Visible;
-        _action.LoadingIndicator.Start(_animationsEnabled());
+        SetActionVisual(_strings.Translating, TextTranslationVisualFactory.TranslateIconGeometry);
+        TranslationActionVisualPresenter.SetTranslatingState(
+            _action, translating: true, _lightTheme, _animationsEnabled());
         _transition(OverlayInteractionMode.Translating);
         TryPublishTranslation();
     }
@@ -202,8 +213,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
             if (string.IsNullOrWhiteSpace(targetLanguage))
             {
                 _requestId = Guid.Empty;
+                SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);
                 StopLoading();
-                SetActionText(_strings.Translate);
                 _transition(OverlayInteractionMode.Selecting);
                 _showToast(new ToastNotification(_strings.TranslationFailed, ToastTone.Error));
                 return;
@@ -218,8 +229,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
             _ => _strings.OcrFailed,
         };
         _requestId = Guid.Empty;
+        SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);
         StopLoading();
-        SetActionText(_strings.Translate);
         _transition(OverlayInteractionMode.Selecting);
         _showToast(new ToastNotification(message, ToastTone.Error));
     }
@@ -229,16 +240,17 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         if (_requestId != Guid.Empty) _publish(new CancelScreenTranslation(_requestId));
         _requestId = Guid.Empty;
         _waitingForOcr = false;
+        SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);
         StopLoading();
-        SetActionText(_strings.Translate);
         _transition(OverlayInteractionMode.Selecting);
     }
 
     private void DismissTranslation()
     {
+        AbortPendingCompletionRipple();
         _overlay.CardsLayer.Children.Clear();
         _overlay.CardsLayer.Visibility = Visibility.Collapsed;
-        SetActionText(_strings.Translate);
+        SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);
         _transition(OverlayInteractionMode.Selecting);
     }
 
@@ -250,15 +262,39 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 
     private void StopLoading()
     {
-        _action.LoadingIndicator.Stop();
-        _action.LoadingIndicator.Visibility = Visibility.Collapsed;
+        TranslationActionVisualPresenter.SetTranslatingState(
+            _action, translating: false, _lightTheme, _animationsEnabled());
     }
 
-    private void SetActionText(string text)
+    private void SetActionVisual(string name, System.Windows.Media.Geometry geometry)
     {
-        _action.Label.Text = text;
-        _action.Button.ToolTip = text;
-        AutomationProperties.SetName(_action.Button, text);
+        _action.Icon.Data = geometry;
+        _action.Button.ToolTip = name;
+        AutomationProperties.SetName(_action.Button, name);
+    }
+
+    private void QueueCompletionRipple()
+    {
+        if (!_animationsEnabled()) return;
+        _completionRippleOperation = _coordinateRoot.Dispatcher.BeginInvoke(() =>
+        {
+            _completionRippleOperation = null;
+            if (_disposed || !IsTranslationShown) return;
+            _coordinateRoot.UpdateLayout();
+            var origin = _action.Button.TransformToAncestor(_coordinateRoot).Transform(
+                new Point(_action.Button.ActualWidth / 2, _action.Button.ActualHeight / 2));
+            _effects.SceneRipples.Emit(new SceneRippleRequest(
+                origin,
+                SceneRipplePreset.TranslationComplete,
+                1));
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void AbortPendingCompletionRipple()
+    {
+        if (_completionRippleOperation?.Status == DispatcherOperationStatus.Pending)
+            _completionRippleOperation.Abort();
+        _completionRippleOperation = null;
     }
 
     private void Render(ScreenTranslationResult result)

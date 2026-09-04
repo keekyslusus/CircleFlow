@@ -48,6 +48,18 @@ public sealed class ProviderMusicOverlayUiTests
                         visual.Root.Children.IndexOf(visual.Bottom.Root));
             Assert.False(visual.Selection.Screenshot.IsHitTestVisible);
             Assert.Equal(44, visual.Provider.Button.Height);
+            Assert.Equal(44, visual.TranslationAction.Button.Width);
+            Assert.Equal(44, visual.TranslationAction.Button.Height);
+            Assert.Equal(new Thickness(), visual.TranslationAction.Button.Padding);
+            Assert.Equal(HorizontalAlignment.Center, visual.TranslationAction.Button.HorizontalContentAlignment);
+            Assert.Equal(VerticalAlignment.Center, visual.TranslationAction.Button.VerticalContentAlignment);
+            Assert.Same(
+                TextTranslationVisualFactory.TranslateIconGeometry,
+                visual.TranslationAction.Icon.Data);
+            Assert.Equal(18, visual.TranslationAction.Icon.Width);
+            Assert.Equal(18, visual.TranslationAction.Icon.Height);
+            Assert.Equal(42, visual.TranslationAction.LoadingIndicator.Width);
+            Assert.Equal(42, visual.TranslationAction.LoadingIndicator.Height);
             Assert.Equal(44, visual.Music.Button.Height);
             Assert.Equal(new Thickness(), visual.Music.Button.Padding);
             Assert.Equal(HorizontalAlignment.Center, visual.Music.Button.HorizontalContentAlignment);

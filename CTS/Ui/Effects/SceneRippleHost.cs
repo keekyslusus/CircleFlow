@@ -295,6 +295,18 @@ public sealed class SceneRippleHost : ISceneRippleSink, IDisposable
             0.07,
             TimeSpan.FromMilliseconds(520),
             TimeSpan.FromMilliseconds(90)),
+        SceneRipplePreset.TranslationComplete => new(
+            SystemAccentColor.Read(),
+            TimeSpan.FromMilliseconds(900),
+            64,
+            112,
+            2.8,
+            5.8,
+            0.44,
+            0.84,
+            0.05,
+            TimeSpan.FromMilliseconds(480),
+            TimeSpan.FromMilliseconds(75)),
         _ => new(
             PluginPalette.SceneRippleAudio,
             TimeSpan.FromMilliseconds(760),

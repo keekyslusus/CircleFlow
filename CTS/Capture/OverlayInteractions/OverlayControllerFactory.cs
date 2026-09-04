@@ -208,6 +208,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
             translation = new ScreenTranslationOverlayController(
                 context.Visual.TranslationAction,
                 context.Visual.TranslationOverlay,
+                context.Visual.Effects,
                 context.CoordinateRoot,
                 mapper,
                 context.Strings,

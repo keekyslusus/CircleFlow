@@ -45,6 +45,7 @@ public sealed class OcrTranslationPreviewTests
             AddTranslationCard(visual.TranslationOverlay.CardsLayer, "Hello from the translated screen", 120, 120, 300);
             AddTranslationCard(visual.TranslationOverlay.CardsLayer, "A longer translated line wraps without clipping.", 120, 178, 360);
             visual.TranslationOverlay.CardsLayer.Visibility = Visibility.Visible;
+            visual.TranslationAction.Icon.Data = TextTranslationVisualFactory.ShowOriginalIconGeometry;
             Capture(visual.Root, Path.Combine(directory, "ocr-translation-cards-preview.png"));
 
             visual.Music.Waveform.Dispose();

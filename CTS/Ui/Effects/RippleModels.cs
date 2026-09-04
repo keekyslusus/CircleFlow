@@ -7,6 +7,7 @@ public enum SceneRipplePreset
     Entrance,
     AudioTransient,
     MusicMatch,
+    TranslationComplete,
 }
 
 public readonly record struct SceneRippleRequest(Point Origin, SceneRipplePreset Preset, double Intensity);
