@@ -30,7 +30,6 @@ public sealed class OcrOverlayControllerTests
                 source,
                 dispatcher,
                 recognizer,
-                "en-US",
                 outcome =>
                 {
                     delivered = outcome;
@@ -71,7 +70,6 @@ public sealed class OcrOverlayControllerTests
                 source,
                 dispatcher,
                 new FailingRecognizer(),
-                null,
                 outcome =>
                 {
                     delivered = outcome;
@@ -104,8 +102,8 @@ public sealed class OcrOverlayControllerTests
     private static OcrDocument Document()
     {
         var bounds = new Rectangle(0, 0, 1, 1);
-        var word = new OcrWord(0, 0, 0, "text", bounds);
-        return new OcrDocument("en-US", new Size(1, 1), [new OcrLine(0, 0, bounds, [word])]);
+        var word = new OcrWord(0, 0, 0, "en-US", "text", bounds);
+        return new OcrDocument("en-US", new Size(1, 1), [new OcrLine(0, 0, "en-US", bounds, [word])]);
     }
 
     private static DispatcherTimer StartTimeout(DispatcherFrame frame, Action timedOut)
@@ -143,7 +141,6 @@ public sealed class OcrOverlayControllerTests
 
         public Task<OcrRecognitionOutcome> RecognizeAsync(
             BitmapSource source,
-            string? requestedLanguageTag,
             CancellationToken cancellationToken) => Task.Run(() =>
             {
                 ReceivedFrozenSource = source.IsFrozen;
@@ -155,7 +152,6 @@ public sealed class OcrOverlayControllerTests
     {
         public async Task<OcrRecognitionOutcome> RecognizeAsync(
             BitmapSource source,
-            string? requestedLanguageTag,
             CancellationToken cancellationToken)
         {
             await Task.Yield();

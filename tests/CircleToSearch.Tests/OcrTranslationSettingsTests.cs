@@ -8,29 +8,23 @@ namespace CircleToSearch.Tests;
 public sealed class OcrTranslationSettingsTests
 {
     [Fact]
-    public void Settings_round_trip_language_tags_and_privacy_consent()
+    public void Settings_ignore_legacy_source_language_and_round_trip_translation_settings()
     {
-        var settings = new PluginSettings
-        {
-            OcrLanguageTag = "ru-RU",
-            TranslationTargetLanguageTag = "en-US",
-            TranslationPrivacyConsentAccepted = true,
-        };
+        const string json = """{"OcrLanguageTag":"ru-RU","TranslationTargetLanguageTag":"en-US","TranslationPrivacyConsentAccepted":true}""";
+        var restored = JsonSerializer.Deserialize<PluginSettings>(json)!;
 
-        var restored = JsonSerializer.Deserialize<PluginSettings>(JsonSerializer.Serialize(settings))!;
-
-        Assert.Equal("ru-RU", restored.OcrLanguageTag);
         Assert.Equal("en-US", restored.TranslationTargetLanguageTag);
         Assert.True(restored.TranslationPrivacyConsentAccepted);
+        Assert.Null(typeof(PluginSettings).GetProperty("OcrLanguageTag"));
     }
 
     [Fact]
-    public void Catalog_validates_case_insensitively_and_falls_back_for_missing_pack()
+    public void Catalog_exposes_only_the_installed_language_options_it_was_given()
     {
         var catalog = new OcrLanguageCatalog([new OcrLanguageOption("en-US", "English")]);
 
-        Assert.Equal("en-US", catalog.Validate("EN-us"));
-        Assert.Null(catalog.Validate("ru-RU"));
-        Assert.Null(catalog.Validate(string.Empty));
+        var language = Assert.Single(catalog.AvailableLanguages);
+        Assert.Equal("en-US", language.Tag);
+        Assert.Equal("English", language.DisplayName);
     }
 }

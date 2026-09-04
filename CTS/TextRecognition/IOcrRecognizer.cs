@@ -6,7 +6,14 @@ public interface IOcrRecognizer
 {
     Task<OcrRecognitionOutcome> RecognizeAsync(
         BitmapSource source,
-        string? requestedLanguageTag,
+        CancellationToken cancellationToken);
+}
+
+public interface ILanguageOcrRecognizer
+{
+    Task<OcrRecognitionOutcome> RecognizeAsync(
+        BitmapSource source,
+        string languageTag,
         CancellationToken cancellationToken);
 }
 
@@ -43,7 +50,6 @@ internal sealed class DisabledOcrRecognizer : IOcrRecognizer
 
     public Task<OcrRecognitionOutcome> RecognizeAsync(
         BitmapSource source,
-        string? requestedLanguageTag,
         CancellationToken cancellationToken) =>
         Task.FromResult(OcrRecognitionOutcome.PlatformUnavailable());
 }

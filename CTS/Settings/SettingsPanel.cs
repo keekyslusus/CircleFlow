@@ -29,13 +29,11 @@ public sealed class SettingsPanel : UserControl
         var maxSide = CreateInput(settings.MaxLongSidePx.ToString());
 
         var languages = ocrLanguages ?? [];
-        var ocrLabel = CreateText(strings.SettingsOcrLanguageLabel);
-        var ocrLanguage = CreateLanguagePicker(languages, strings.SystemDefaultLanguage, settings.OcrLanguageTag, includeDefault: true);
         var targetLabel = CreateText(strings.SettingsTranslationTargetLabel);
         var initialTarget = string.IsNullOrWhiteSpace(settings.TranslationTargetLanguageTag)
             ? DefaultTargetLanguageTag()
             : settings.TranslationTargetLanguageTag;
-        var targetLanguage = CreateLanguagePicker(languages, strings.SystemDefaultLanguage, initialTarget, includeDefault: false);
+        var targetLanguage = CreateLanguagePicker(languages, initialTarget);
 
         var status = CreateText(string.Empty);
 
@@ -47,7 +45,6 @@ public sealed class SettingsPanel : UserControl
                 settings.HotkeyGesture = gesture.Text.Trim();
                 if (int.TryParse(maxSide.Text, out var max) && max is >= 256 and <= 8000)
                     settings.MaxLongSidePx = max;
-                settings.OcrLanguageTag = ocrLanguage.SelectedValue as string ?? string.Empty;
                 settings.TranslationTargetLanguageTag = targetLanguage.SelectedValue as string ??
                     DefaultTargetLanguageTag();
                 save();
@@ -72,8 +69,6 @@ public sealed class SettingsPanel : UserControl
                 gesture,
                 maxSideLabel,
                 maxSide,
-                ocrLabel,
-                ocrLanguage,
                 targetLabel,
                 targetLanguage,
                 apply,
@@ -100,12 +95,9 @@ public sealed class SettingsPanel : UserControl
 
     private static ComboBox CreateLanguagePicker(
         IReadOnlyList<OcrLanguageOption> languages,
-        string defaultName,
-        string selectedTag,
-        bool includeDefault)
+        string selectedTag)
     {
         var options = new List<OcrLanguageOption>();
-        if (includeDefault) options.Add(new OcrLanguageOption(string.Empty, defaultName));
         options.AddRange(languages);
         if (!string.IsNullOrWhiteSpace(selectedTag) &&
             options.All(option => !string.Equals(option.Tag, selectedTag, StringComparison.OrdinalIgnoreCase)))

@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
@@ -102,8 +104,8 @@ public sealed class PointerGestureRouterTests
                 harness.Text.SetDocument(Document());
                 Raise(harness.Input, UIElement.MouseLeftButtonDownEvent);
                 harness.Text.SetDocument(new OcrDocument("en", new GdiSize(100, 40),
-                    [new OcrLine(0, 0, new GdiRectangle(80, 20, 10, 10),
-                        [new OcrWord(9, 0, 0, "replacement", new GdiRectangle(80, 20, 10, 10))]) ]));
+                    [new OcrLine(0, 0, "en", new GdiRectangle(80, 20, 10, 10),
+                        [new OcrWord(9, 0, 0, "en", "replacement", new GdiRectangle(80, 20, 10, 10))]) ]));
                 harness.Pointer = new Point(55, 15);
                 Raise(harness.Input, UIElement.MouseMoveEvent);
                 Raise(harness.Input, UIElement.MouseLeftButtonUpEvent);
@@ -157,12 +159,103 @@ public sealed class PointerGestureRouterTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Copy_and_search_share_one_refined_result()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var copied = new List<string>();
+            var refiner = new ImmediateRefiner(SelectionTextRefinement.Success("добавить уведомление"));
+            var harness = new RouterHarness(new Point(15, 15), copied.Add, refiner: refiner);
+            using (harness)
+            {
+                harness.Text.SetDocument(Document());
+                RaiseGesture(harness.Input);
+                harness.Visual.TextSelection.CopyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                harness.Visual.TextSelection.SearchButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                Assert.Equal(["добавить уведомление"], copied);
+                Assert.Equal("добавить уведомление", Assert.IsType<SearchSelectedText>(Assert.Single(harness.Commands)).Text);
+                Assert.Equal(1, refiner.Calls);
+            }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Refinement_failure_preserves_preliminary_copy_text()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var copied = new List<string>();
+            var harness = new RouterHarness(
+                new Point(15, 15), copied.Add, refiner: new ImmediateRefiner(SelectionTextRefinement.Failed()));
+            using (harness)
+            {
+                harness.Text.SetDocument(Document());
+                RaiseGesture(harness.Input);
+                harness.Visual.TextSelection.CopyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                Assert.Equal(["one"], copied);
+                Assert.Equal(TestUiStrings.English.TextCopied, Assert.Single(harness.Notifications).Message);
+            }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Double_copy_while_refining_starts_one_request_and_one_clipboard_write()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var copied = new List<string>();
+            var refiner = new DeferredRefiner();
+            var harness = new RouterHarness(new Point(15, 15), copied.Add, refiner: refiner);
+            using (harness)
+            {
+                harness.Text.SetDocument(Document());
+                RaiseGesture(harness.Input);
+                harness.Visual.TextSelection.CopyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                harness.Visual.TextSelection.CopyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                Assert.Equal(1, refiner.Calls);
+                Assert.Empty(copied);
+                Assert.False(harness.Visual.TextSelection.CopyButton.IsEnabled);
+                refiner.Complete(SelectionTextRefinement.Success("refined"));
+                DrainDispatcher();
+
+                Assert.Equal(["refined"], copied);
+            }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Dispose_during_refinement_prevents_late_search_publish()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var refiner = new DeferredRefiner();
+            using var harness = new RouterHarness(new Point(15, 15), refiner: refiner);
+            harness.Text.SetDocument(Document());
+            RaiseGesture(harness.Input);
+            harness.Visual.TextSelection.SearchButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            harness.Text.Dispose();
+            refiner.Complete(SelectionTextRefinement.Success("late"));
+            DrainDispatcher();
+
+            Assert.Empty(harness.Commands);
+        });
+        Assert.Null(failure);
+    }
+
     private static OcrDocument Document()
     {
-        var one = new OcrWord(0, 0, 0, "one", new GdiRectangle(10, 10, 20, 10));
-        var two = new OcrWord(1, 0, 1, "two", new GdiRectangle(45, 10, 20, 10));
+        var one = new OcrWord(0, 0, 0, "en", "one", new GdiRectangle(10, 10, 20, 10));
+        var two = new OcrWord(1, 0, 1, "en", "two", new GdiRectangle(45, 10, 20, 10));
         return new OcrDocument("en", new GdiSize(100, 40),
-            [new OcrLine(0, 0, GdiRectangle.Union(one.BoundsPx, two.BoundsPx), [one, two])]);
+            [new OcrLine(0, 0, "en", GdiRectangle.Union(one.BoundsPx, two.BoundsPx), [one, two])]);
     }
 
     private static void RaiseGesture(FrameworkElement input)
@@ -180,6 +273,13 @@ public sealed class PointerGestureRouterTests
                 Source = input,
             });
 
+    private static void DrainDispatcher()
+    {
+        var frame = new DispatcherFrame();
+        Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() => frame.Continue = false));
+        Dispatcher.PushFrame(frame);
+    }
+
     private sealed class RouterHarness : IDisposable
     {
         private readonly Window _window;
@@ -189,7 +289,8 @@ public sealed class PointerGestureRouterTests
             Point pointer,
             Action<string>? clipboard = null,
             Func<ModifierKeys>? modifiers = null,
-            Func<object?, Point, bool>? canStart = null)
+            Func<object?, Point, bool>? canStart = null,
+            ISelectionTextRefiner? refiner = null)
         {
             Pointer = pointer;
             Visual = OverlayVisualFactory.CreateRoot(null, new Size(100, 40), 0, false, TestUiStrings.English);
@@ -219,6 +320,8 @@ public sealed class PointerGestureRouterTests
                 Visual.Selection.InputSurface,
                 mapper,
                 new OcrTextHitTester(),
+                BitmapSource.Create(100, 40, 96, 96, PixelFormats.Bgra32, null, new byte[16000], 400),
+                refiner ?? DisabledSelectionTextRefiner.Instance,
                 clipboard ?? (_ => { }),
                 Notifications.Add,
                 () => "google-lens",
@@ -272,5 +375,39 @@ public sealed class PointerGestureRouterTests
         thread.Start();
         thread.Join();
         return failure;
+    }
+
+    private sealed class ImmediateRefiner(SelectionTextRefinement result) : ISelectionTextRefiner
+    {
+        internal int Calls { get; private set; }
+
+        public Task<SelectionTextRefinement> RefineAsync(
+            BitmapSource frozenFrame,
+            TextSelectionRange selection,
+            CancellationToken cancellationToken)
+        {
+            Calls++;
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class DeferredRefiner : ISelectionTextRefiner
+    {
+        private readonly TaskCompletionSource<SelectionTextRefinement> _completion =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal int Calls { get; private set; }
+
+        public Task<SelectionTextRefinement> RefineAsync(
+            BitmapSource frozenFrame,
+            TextSelectionRange selection,
+            CancellationToken cancellationToken)
+        {
+            Calls++;
+            cancellationToken.Register(() => _completion.TrySetCanceled(cancellationToken));
+            return _completion.Task;
+        }
+
+        internal void Complete(SelectionTextRefinement result) => _completion.TrySetResult(result);
     }
 }

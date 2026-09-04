@@ -97,9 +97,7 @@ public sealed class UiStrings
     public string TranslationRateLimited => Get("plugin_circletosearch_translation_rate_limited");
     public string TranslationFailed => Get("plugin_circletosearch_translation_failed");
     public string TranslationPartial => Get("plugin_circletosearch_translation_partial");
-    public string SettingsOcrLanguageLabel => Get("plugin_circletosearch_settings_ocr_language_label");
     public string SettingsTranslationTargetLabel => Get("plugin_circletosearch_settings_translation_target_label");
-    public string SystemDefaultLanguage => Get("plugin_circletosearch_system_default_language");
 
     public string VisualSearchQuerySubtitle(string hotkeyStatus) =>
         Get("plugin_circletosearch_query_subtitle", hotkeyStatus);

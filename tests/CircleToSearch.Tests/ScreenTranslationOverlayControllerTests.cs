@@ -195,8 +195,8 @@ public sealed class ScreenTranslationOverlayControllerTests
 
     private static OcrDocument Document()
     {
-        var word = new OcrWord(0, 0, 0, "Hello", new GdiRectangle(20, 20, 120, 20));
-        return new OcrDocument("en", new GdiSize(320, 200), [new OcrLine(0, 0, word.BoundsPx, [word])]);
+        var word = new OcrWord(0, 0, 0, "en", "Hello", new GdiRectangle(20, 20, 120, 20));
+        return new OcrDocument("en", new GdiSize(320, 200), [new OcrLine(0, 0, "en", word.BoundsPx, [word])]);
     }
 
     private static Exception? RunOnSta(Action action)

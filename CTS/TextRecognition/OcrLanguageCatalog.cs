@@ -29,13 +29,6 @@ public sealed class OcrLanguageCatalog
 
     public IReadOnlyList<OcrLanguageOption> AvailableLanguages => _languages;
 
-    public string? Validate(string? languageTag)
-    {
-        if (string.IsNullOrWhiteSpace(languageTag)) return null;
-        return _languages.FirstOrDefault(language =>
-            string.Equals(language.Tag, languageTag, StringComparison.OrdinalIgnoreCase))?.Tag;
-    }
-
     internal static Language? TryCreateLanguage(string tag)
     {
         try { return new Language(tag); }

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Shapes;
+using System.Windows.Media.Imaging;
 using CircleToSearch.Search;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Ui;
@@ -16,6 +17,8 @@ internal sealed class TextSelectionOverlayController : IDisposable
     private readonly FrameworkElement _inputSurface;
     private readonly OverlayCoordinateMapper _mapper;
     private readonly OcrTextHitTester _hitTester;
+    private readonly BitmapSource _frozenFrame;
+    private readonly ISelectionTextRefiner _textRefiner;
     private readonly Action<string> _setClipboard;
     private readonly Action<ToastNotification> _showToast;
     private readonly Func<string> _selectedProviderId;
@@ -30,6 +33,12 @@ internal sealed class TextSelectionOverlayController : IDisposable
     private TextSelectionRange? _selection;
     private bool _disposed;
     private bool _searchPublished;
+    private bool _actionPending;
+    private int _selectionGeneration;
+    private int _resolvedGeneration = -1;
+    private string? _resolvedText;
+    private CancellationTokenSource? _refinementCancellation;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
 
     internal TextSelectionOverlayController(
         TextSelectionVisual visual,
@@ -37,6 +46,8 @@ internal sealed class TextSelectionOverlayController : IDisposable
         FrameworkElement inputSurface,
         OverlayCoordinateMapper mapper,
         OcrTextHitTester hitTester,
+        BitmapSource frozenFrame,
+        ISelectionTextRefiner textRefiner,
         Action<string> setClipboard,
         Action<ToastNotification> showToast,
         Func<string> selectedProviderId,
@@ -49,6 +60,8 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _inputSurface = inputSurface;
         _mapper = mapper;
         _hitTester = hitTester;
+        _frozenFrame = frozenFrame ?? throw new ArgumentNullException(nameof(frozenFrame));
+        _textRefiner = textRefiner ?? throw new ArgumentNullException(nameof(textRefiner));
         _setClipboard = setClipboard;
         _showToast = showToast;
         _selectedProviderId = selectedProviderId;
@@ -64,6 +77,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
 
     internal void SetDocument(OcrDocument? document)
     {
+        InvalidateResolvedText();
         _document = document;
         _hovered = null;
         if (document is null) Dismiss();
@@ -118,6 +132,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
 
     internal void Dismiss()
     {
+        InvalidateResolvedText();
         ReleaseCapture();
         _gestureDocument = null;
         _anchor = null;
@@ -125,6 +140,9 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _selection = null;
         _hovered = null;
         _searchPublished = false;
+        _actionPending = false;
+        _visual.CopyButton.IsEnabled = true;
+        _visual.SearchButton.IsEnabled = true;
         _visual.ActionCard.Visibility = Visibility.Collapsed;
         _visual.HighlightLayer.Children.Clear();
     }
@@ -139,43 +157,119 @@ internal sealed class TextSelectionOverlayController : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _lifetimeCancellation.Cancel();
+        _refinementCancellation?.Cancel();
         _visual.CopyButton.Click -= OnCopy;
         _visual.SearchButton.Click -= OnSearch;
         Dismiss();
+        _lifetimeCancellation.Dispose();
     }
 
-    private void OnCopy(object sender, RoutedEventArgs e)
+    private async void OnCopy(object sender, RoutedEventArgs e)
     {
-        if (_selection is null) return;
+        e.Handled = true;
+        if (_selection is null || _actionPending || _disposed) return;
+        var selection = _selection;
+        var generation = _selectionGeneration;
+        _actionPending = true;
+        SetActionButtonsEnabled(false);
+        var text = await ResolveSelectionTextAsync(selection, generation);
+        if (_disposed) return;
+        await InvokeOnUiAsync(() =>
+        {
+            if (_disposed || generation != _selectionGeneration) return;
+            if (text is not null)
+            {
+                try
+                {
+                    _setClipboard(text);
+                    _showToast(new ToastNotification(_strings.TextCopied, ToastTone.Success));
+                }
+                catch
+                {
+                    _showToast(new ToastNotification(_strings.TextCopyFailed, ToastTone.Error));
+                }
+            }
+            if (!_disposed && generation == _selectionGeneration)
+            {
+                _actionPending = false;
+                SetActionButtonsEnabled(true);
+            }
+        });
+    }
+
+    private async void OnSearch(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (_selection is null || _searchPublished || _actionPending || _disposed) return;
+        var selection = _selection;
+        var generation = _selectionGeneration;
+        var providerId = _selectedProviderId();
+        _actionPending = true;
+        SetActionButtonsEnabled(false);
+        var text = await ResolveSelectionTextAsync(selection, generation);
+        if (_disposed) return;
+        await InvokeOnUiAsync(() =>
+        {
+            if (_disposed || generation != _selectionGeneration) return;
+            if (text is not null)
+            {
+                _searchPublished = true;
+                _publish(new SearchSelectedText(text, providerId));
+            }
+            if (!_disposed && generation == _selectionGeneration)
+            {
+                _actionPending = false;
+                _visual.CopyButton.IsEnabled = true;
+                _visual.SearchButton.IsEnabled = !_searchPublished;
+            }
+        });
+    }
+
+    internal async Task<string?> ResolveSelectionTextAsync(TextSelectionRange selection, int generation)
+    {
+        if (_disposed || generation != _selectionGeneration) return null;
+        if (_resolvedGeneration == generation && _resolvedText is not null) return _resolvedText;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
+        _refinementCancellation = cancellation;
+        SelectionTextRefinement refinement;
         try
         {
-            _setClipboard(_selection.Text);
-            _showToast(new ToastNotification(_strings.TextCopied, ToastTone.Success));
+            refinement = await _textRefiner.RefineAsync(_frozenFrame, selection, cancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
         }
         catch
         {
-            _showToast(new ToastNotification(_strings.TextCopyFailed, ToastTone.Error));
+            refinement = SelectionTextRefinement.Failed();
         }
-        e.Handled = true;
-    }
-
-    private void OnSearch(object sender, RoutedEventArgs e)
-    {
-        if (_selection is null || _searchPublished) return;
-        _searchPublished = true;
-        _visual.SearchButton.IsEnabled = false;
-        _publish(new SearchSelectedText(_selection.Text, _selectedProviderId()));
-        e.Handled = true;
+        finally
+        {
+            if (ReferenceEquals(_refinementCancellation, cancellation)) _refinementCancellation = null;
+        }
+        if (_disposed || cancellation.IsCancellationRequested || generation != _selectionGeneration) return null;
+        if (refinement.Status == SelectionTextRefinementStatus.Canceled) return null;
+        var resolved = refinement.Status == SelectionTextRefinementStatus.Success &&
+                       !string.IsNullOrWhiteSpace(refinement.Text)
+            ? refinement.Text
+            : selection.Text;
+        _resolvedGeneration = generation;
+        _resolvedText = resolved;
+        return resolved;
     }
 
     private void RenderRange(TextSelectionRange range, bool showMenu)
     {
+        InvalidateResolvedText();
         _selection = range;
         _searchPublished = false;
         RenderHighlights(range.HighlightBoundsPx, hover: false);
         if (!showMenu) return;
         _visual.ActionCard.Visibility = Visibility.Visible;
         _visual.SearchButton.IsEnabled = true;
+        _visual.CopyButton.IsEnabled = true;
         _visual.ActionCard.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var selected = _mapper.ToDips(range.BoundsPx);
         var desired = _visual.ActionCard.DesiredSize;
@@ -213,5 +307,38 @@ internal sealed class TextSelectionOverlayController : IDisposable
     private void ReleaseCapture()
     {
         if (ReferenceEquals(Mouse.Captured, _inputSurface)) Mouse.Capture(null);
+    }
+
+    private void InvalidateResolvedText()
+    {
+        _selectionGeneration++;
+        _resolvedGeneration = -1;
+        _resolvedText = null;
+        _refinementCancellation?.Cancel();
+        _refinementCancellation = null;
+        if (!_disposed)
+        {
+            _actionPending = false;
+            SetActionButtonsEnabled(true);
+        }
+    }
+
+    private void SetActionButtonsEnabled(bool enabled)
+    {
+        _visual.CopyButton.IsEnabled = enabled;
+        _visual.SearchButton.IsEnabled = enabled && !_searchPublished;
+    }
+
+    private async Task InvokeOnUiAsync(Action action)
+    {
+        var dispatcher = _coordinateRoot.Dispatcher;
+        if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished) return;
+        try
+        {
+            if (dispatcher.CheckAccess()) action();
+            else await dispatcher.InvokeAsync(action);
+        }
+        catch (TaskCanceledException) { }
+        catch (InvalidOperationException) when (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished) { }
     }
 }

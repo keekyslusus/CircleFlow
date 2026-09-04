@@ -8,7 +8,6 @@ internal sealed class OcrOverlayController(
     BitmapSource source,
     Dispatcher uiDispatcher,
     IOcrRecognizer recognizer,
-    string? requestedLanguageTag,
     Action<OcrRecognitionOutcome> completed,
     PluginLog? log = null) : IDisposable
 {
@@ -39,7 +38,7 @@ internal sealed class OcrOverlayController(
         OcrRecognitionOutcome outcome;
         try
         {
-            outcome = await recognizer.RecognizeAsync(source, requestedLanguageTag, _cancellation.Token)
+            outcome = await recognizer.RecognizeAsync(source, _cancellation.Token)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)

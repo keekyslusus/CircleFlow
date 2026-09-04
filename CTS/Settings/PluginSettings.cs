@@ -16,8 +16,6 @@ public sealed class PluginSettings
 
     public int LassoMinDiagonalPx { get; set; } = 12;
 
-    public string OcrLanguageTag { get; set; } = string.Empty;
-
     public string TranslationTargetLanguageTag { get; set; } = string.Empty;
 
     public bool TranslationPrivacyConsentAccepted { get; set; }

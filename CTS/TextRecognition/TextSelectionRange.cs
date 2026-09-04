@@ -4,10 +4,15 @@ namespace CircleToSearch.TextRecognition;
 
 public sealed record TextSelectionRange
 {
-    private TextSelectionRange(IReadOnlyList<OcrWord> words, Rectangle boundsPx, string text) =>
-        (Words, BoundsPx, Text) = (words, boundsPx, text);
+    private TextSelectionRange(
+        IReadOnlyList<OcrWord> words,
+        IReadOnlyList<TextSelectionLine> lines,
+        Rectangle boundsPx,
+        string text) =>
+        (Words, Lines, BoundsPx, Text) = (words, lines, boundsPx, text);
 
     public IReadOnlyList<OcrWord> Words { get; }
+    public IReadOnlyList<TextSelectionLine> Lines { get; }
     public IReadOnlyList<Rectangle> HighlightBoundsPx => Words.Select(word => word.BoundsPx).ToArray();
     public Rectangle BoundsPx { get; }
     public string Text { get; }
@@ -27,12 +32,32 @@ public sealed record TextSelectionRange
             .ToArray();
         if (selected.Length == 0) throw new ArgumentException("The selected words are not part of the document.");
 
-        var lineOrder = document.Lines.ToDictionary(line => line.Id, line => line.Order);
-        var text = string.Join(Environment.NewLine, selected
+        var documentLines = document.Lines.ToDictionary(line => line.Id);
+        var lines = selected
             .GroupBy(word => word.LineId)
-            .OrderBy(group => lineOrder.GetValueOrDefault(group.Key, int.MaxValue))
-            .Select(group => string.Join(' ', group.OrderBy(word => word.ReadingOrder).Select(word => word.Text))));
+            .OrderBy(group => documentLines.GetValueOrDefault(group.Key)?.Order ?? int.MaxValue)
+            .Select(group =>
+            {
+                var words = group.OrderBy(word => word.ReadingOrder).ToArray();
+                var sourceLine = documentLines[group.Key];
+                return new TextSelectionLine(
+                    sourceLine.Id,
+                    sourceLine.Order,
+                    sourceLine.LanguageTag,
+                    words,
+                    words.Select(word => word.BoundsPx).Aggregate(Rectangle.Union),
+                    string.Join(' ', words.Select(word => word.Text)));
+            }).ToArray();
+        var text = string.Join(Environment.NewLine, lines.Select(line => line.PreliminaryText));
         var bounds = selected.Select(word => word.BoundsPx).Aggregate(Rectangle.Union);
-        return new TextSelectionRange(selected, bounds, text);
+        return new TextSelectionRange(selected, lines, bounds, text);
     }
 }
+
+public sealed record TextSelectionLine(
+    int LineId,
+    int Order,
+    string LanguageTag,
+    IReadOnlyList<OcrWord> Words,
+    Rectangle BoundsPx,
+    string PreliminaryText);

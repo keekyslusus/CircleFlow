@@ -24,13 +24,24 @@ public sealed class WindowsOcrRecognizerTests
     }
 
     [Fact]
+    public void Tile_local_bounds_map_to_capture_pixels_and_are_clamped()
+    {
+        var mapped = WindowsOcrRecognizer.MapRectangle(
+            new Rectangle(10, 20, 50, 40),
+            new System.Drawing.Point(2500, 2100),
+            new GdiSize(2540, 2140));
+
+        Assert.Equal(Rectangle.FromLTRB(2510, 2120, 2540, 2140), mapped);
+    }
+
+    [Fact]
     public async Task Pre_canceled_recognition_returns_canceled_outcome()
     {
         var source = BitmapSource.Create(1, 1, 96, 96, PixelFormats.Bgra32, null, new byte[4], 4);
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
-        var outcome = await new WindowsOcrRecognizer().RecognizeAsync(source, null, cancellation.Token);
+        var outcome = await new WindowsOcrRecognizer().RecognizeAsync(source, "en-US", cancellation.Token);
 
         Assert.Equal(OcrRecognitionStatus.Canceled, outcome.Status);
     }

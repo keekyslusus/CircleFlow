@@ -93,8 +93,8 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
     private readonly Func<bool> _animationsEnabled;
     private readonly Func<MouseEventArgs, Point>? _pointerPosition;
     private readonly IOcrRecognizer _ocrRecognizer;
+    private readonly ISelectionTextRefiner _selectionTextRefiner;
     private readonly double _textHitToleranceDips;
-    private readonly Func<string?> _ocrLanguageTag;
     private readonly Func<string> _targetLanguageTag;
     private readonly Func<bool> _translationConsentAccepted;
     private readonly Action _acceptTranslationConsent;
@@ -110,8 +110,8 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         Func<bool> animationsEnabled,
         Func<MouseEventArgs, Point>? pointerPosition = null,
         IOcrRecognizer? ocrRecognizer = null,
+        ISelectionTextRefiner? selectionTextRefiner = null,
         double textHitToleranceDips = 3,
-        Func<string?>? ocrLanguageTag = null,
         Func<string>? targetLanguageTag = null,
         Func<bool>? translationConsentAccepted = null,
         Action? acceptTranslationConsent = null,
@@ -121,10 +121,10 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         _animationsEnabled = animationsEnabled ?? throw new ArgumentNullException(nameof(animationsEnabled));
         _pointerPosition = pointerPosition;
         _ocrRecognizer = ocrRecognizer ?? DisabledOcrRecognizer.Instance;
+        _selectionTextRefiner = selectionTextRefiner ?? DisabledSelectionTextRefiner.Instance;
         if (!double.IsFinite(textHitToleranceDips) || textHitToleranceDips < 0)
             throw new ArgumentOutOfRangeException(nameof(textHitToleranceDips));
         _textHitToleranceDips = textHitToleranceDips;
-        _ocrLanguageTag = ocrLanguageTag ?? (() => null);
         _targetLanguageTag = targetLanguageTag ?? (() => "en");
         _translationConsentAccepted = translationConsentAccepted ?? (() => true);
         _acceptTranslationConsent = acceptTranslationConsent ?? (() => { });
@@ -185,12 +185,16 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.SelectionHoldCompleted,
                 _pointerPosition,
                 subscribeInput: false);
+            var frameSource = (System.Windows.Media.Imaging.BitmapSource?)context.Visual.Selection.Screenshot.Source
+                ?? throw new InvalidOperationException("The overlay frame source is missing.");
             textSelection = new TextSelectionOverlayController(
                 context.Visual.TextSelection,
                 context.CoordinateRoot,
                 context.Visual.Selection.InputSurface,
                 mapper,
                 new OcrTextHitTester(_textHitToleranceDips * context.Scale),
+                frameSource,
+                _selectionTextRefiner,
                 _setClipboard,
                 toast.Show,
                 () => provider.SelectedProviderId,
@@ -220,9 +224,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 toast.Show,
                 _animationsEnabled,
                 context.Visual.LightTheme);
-            var frameSource = (System.Windows.Media.Imaging.BitmapSource?)context.Visual.Selection.Screenshot.Source
-                ?? throw new InvalidOperationException("The overlay frame source is missing.");
-            ocr = new OcrOverlayController(frameSource, context.CoordinateRoot.Dispatcher, _ocrRecognizer, _ocrLanguageTag(), outcome =>
+            ocr = new OcrOverlayController(frameSource, context.CoordinateRoot.Dispatcher, _ocrRecognizer, outcome =>
             {
                 textSelection.SetDocument(outcome.Document);
                 translation.SetOcrOutcome(outcome);

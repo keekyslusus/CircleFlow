@@ -31,9 +31,9 @@ public sealed class OverlaySessionWorkflowTests
     {
         using var harness = new Harness();
         harness.Overlay.CloseAfterTranslation = true;
-        var word = new OcrWord(0, 0, 0, "Hello", new Rectangle(0, 0, 20, 10));
+        var word = new OcrWord(0, 0, 0, "en", "Hello", new Rectangle(0, 0, 20, 10));
         var document = new OcrDocument("en", new Size(100, 50),
-            [new OcrLine(0, 0, word.BoundsPx, [word])]);
+            [new OcrLine(0, 0, "en", word.BoundsPx, [word])]);
         var requestId = Guid.NewGuid();
         harness.Overlay.Enqueue(new ScreenTranslationRequested(requestId, document, "es"));
 

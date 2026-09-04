@@ -108,6 +108,20 @@ public static class CompositionRoot
             strings,
             log);
         var ocrLanguages = new OcrLanguageCatalog();
+        var ocrLanguageResolver = new AutomaticOcrLanguageResolver();
+        var ocrScorer = new OcrTextQualityScorer();
+        var ocrMerger = new OcrDocumentMerger(ocrScorer);
+        var languageOcrRecognizer = new WindowsOcrRecognizer(new OcrFrameTiler(), maximumConcurrency: 2);
+        var automaticOcrRecognizer = new AutomaticOcrRecognizer(
+            languageOcrRecognizer,
+            ocrLanguages,
+            ocrLanguageResolver,
+            ocrMerger);
+        var selectionTextRefiner = new SelectionTextRefiner(
+            languageOcrRecognizer,
+            ocrLanguages,
+            ocrLanguageResolver,
+            ocrMerger);
         var translationHttpClient = new HttpClient
         {
             Timeout = Timeout.InfiniteTimeSpan,
@@ -126,9 +140,9 @@ public static class CompositionRoot
         var overlayControllerFactory = new OverlayControllerFactory(
             Clipboard.SetText,
             OverlayVisualResources.AnimationsEnabled,
-            ocrRecognizer: new WindowsOcrRecognizer(),
+            ocrRecognizer: automaticOcrRecognizer,
+            selectionTextRefiner: selectionTextRefiner,
             textHitToleranceDips: 3,
-            ocrLanguageTag: () => ocrLanguages.Validate(settings.OcrLanguageTag),
             targetLanguageTag: () =>
             {
                 if (!string.IsNullOrWhiteSpace(settings.TranslationTargetLanguageTag))
@@ -195,7 +209,7 @@ public static class CompositionRoot
                 ocrLanguages.AvailableLanguages),
             hotkeyWindow,
             providerRouter,
-            [musicHttpClient, musicThrottle, translationHttpClient],
+            [musicHttpClient, musicThrottle, translationHttpClient, languageOcrRecognizer],
             log);
     }
 
