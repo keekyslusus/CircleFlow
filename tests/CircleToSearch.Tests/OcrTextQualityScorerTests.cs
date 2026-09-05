@@ -37,6 +37,45 @@ public sealed class OcrTextQualityScorerTests
         Assert.Equal(0, _scorer.Score("the notification", "de-DE").ProfileRatio);
     }
 
+    [Fact]
+    public void Profile_confidence_does_not_influence_generic_score()
+    {
+        Assert.Equal(
+            _scorer.Score("notification", "de-DE").Score,
+            _scorer.Score("notification", "en-US").Score);
+    }
+
+    [Fact]
+    public void Correct_german_beats_english_profiled_lookalike()
+    {
+        var german = Line("de-DE", "größere Straße", 0);
+        var english = Line("en-US", "groBere StraBe", 1);
+
+        Assert.True(_scorer.Score(german.Text, german.LanguageTag).Score >
+                    _scorer.Score(english.Text, english.LanguageTag).Score);
+        Assert.Same(german, _scorer.Choose([german, english], ["de-DE", "en-US"]));
+    }
+
+    [Theory]
+    [InlineData("größere Straße", "de-DE", "grossere Strasse", "en-US")]
+    [InlineData("français déjà", "fr-FR", "francais deja", "en-US")]
+    public void Canonically_equivalent_variant_preserving_unicode_letters_wins(
+        string preserved,
+        string preservedLanguage,
+        string ascii,
+        string asciiLanguage)
+    {
+        var preservedLine = Line(preservedLanguage, preserved, 0);
+        var asciiLine = Line(asciiLanguage, ascii, 1);
+
+        Assert.Equal(
+            _scorer.Score(preserved, preservedLanguage).Score,
+            _scorer.Score(ascii, asciiLanguage).Score,
+            6);
+        Assert.Same(preservedLine,
+            _scorer.Choose([preservedLine, asciiLine], [preservedLanguage, asciiLanguage]));
+    }
+
     [Theory]
     [InlineData("größere Straße", "de-DE")]
     [InlineData("français déjà", "fr-FR")]

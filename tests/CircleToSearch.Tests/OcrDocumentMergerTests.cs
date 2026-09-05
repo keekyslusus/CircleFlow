@@ -20,7 +20,37 @@ public sealed class OcrDocumentMergerTests
     }
 
     [Fact]
-    public void Correct_english_wins_and_identical_candidates_are_not_duplicated()
+    public void English_profile_does_not_override_correct_german_text()
+    {
+        var merged = _merger.Merge(
+            [
+                Document("de-DE", Line("de-DE", "größere Straße", new Rectangle(10, 10, 180, 20))),
+                Document("en-US", Line("en-US", "grossere Strasse", new Rectangle(10, 10, 180, 20))),
+            ],
+            ["de-DE", "en-US"]);
+
+        Assert.Equal("größere Straße", Assert.Single(merged.Lines).Text);
+        Assert.Equal("de-DE", merged.LanguageTag);
+    }
+
+    [Fact]
+    public void Additional_unprofiled_language_does_not_disable_russian_mojibake_protection()
+    {
+        var bounds = new Rectangle(10, 10, 80, 20);
+        var merged = _merger.Merge(
+            [
+                Document("ru-RU", Line("ru-RU", "тест", bounds)),
+                Document("en-US", Line("en-US", "Tect", bounds)),
+                Document("de-DE", Line("de-DE", "Tect", bounds)),
+            ],
+            ["de-DE", "en-US", "ru-RU"]);
+
+        Assert.Equal("тест", Assert.Single(merged.Lines).Text);
+        Assert.Equal("ru-RU", merged.LanguageTag);
+    }
+
+    [Fact]
+    public void Correct_english_wins_and_identical_candidates_follow_language_order()
     {
         var merged = Merge(
             Document("ru-RU", Line("ru-RU", "Адд нот1ф1сат1он", new Rectangle(10, 10, 140, 20))),
@@ -30,7 +60,7 @@ public sealed class OcrDocumentMergerTests
         merged = Merge(
             Document("ru-RU", Line("ru-RU", "Telegram 123", new Rectangle(10, 10, 120, 20))),
             Document("en-US", Line("en-US", "Telegram 123", new Rectangle(10, 10, 120, 20))));
-        Assert.Equal("en-US", Assert.Single(merged.Lines).LanguageTag);
+        Assert.Equal("ru-RU", Assert.Single(merged.Lines).LanguageTag);
     }
 
     [Fact]
@@ -76,7 +106,7 @@ public sealed class OcrDocumentMergerTests
 
         var line = Assert.Single(merged.Lines);
         Assert.Equal("добавить notification", line.Text);
-        Assert.Equal(["ru-RU", "en-US"], line.Words.Select(word => word.LanguageTag));
+        Assert.Equal(["ru-RU", "ru-RU"], line.Words.Select(word => word.LanguageTag));
     }
 
     [Fact]
@@ -100,7 +130,7 @@ public sealed class OcrDocumentMergerTests
 
         var line = Assert.Single(merged.Lines);
         Assert.Equal("Telegram — добавить notification", line.Text);
-        Assert.Equal(["en-US", "ru-RU", "ru-RU", "en-US"], line.Words.Select(word => word.LanguageTag));
+        Assert.All(line.Words, word => Assert.Equal("ru-RU", word.LanguageTag));
     }
 
     [Fact]

@@ -104,12 +104,12 @@ public sealed class SelectionTextRefiner(
         var documents = outcomes.Where(outcome => outcome.Status == OcrRecognitionStatus.Success)
             .Select(outcome => outcome.Document!).ToArray();
         if (documents.Length == 0) return OcrRecognitionOutcome.NoText();
-        if (outcomes.Any(outcome => outcome.Status == OcrRecognitionStatus.NoText) &&
-            documents.Length == 1 &&
-            !MatchesPreliminaryScripts(preliminaryText, DocumentText(documents[0])))
-            return OcrRecognitionOutcome.NoText();
         var merged = merger.Merge(documents, languages);
-        return merged.Lines.Count == 0 ? OcrRecognitionOutcome.NoText() : OcrRecognitionOutcome.Success(merged);
+        if (merged.Lines.Count == 0) return OcrRecognitionOutcome.NoText();
+        if (outcomes.Any(outcome => outcome.Status == OcrRecognitionStatus.NoText) &&
+            !MatchesPreliminaryScripts(preliminaryText, DocumentText(merged)))
+            return OcrRecognitionOutcome.NoText();
+        return OcrRecognitionOutcome.Success(merged);
     }
 
     private bool MatchesPreliminaryScripts(string preliminaryText, string candidateText)
@@ -117,7 +117,16 @@ public sealed class SelectionTextRefiner(
         var preliminary = scriptClassifier.Analyze(preliminaryText);
         if (preliminary.LetterCount == 0) return true;
         var candidate = scriptClassifier.Analyze(candidateText);
-        return preliminary.SignificantScripts.All(script => candidate.Count(script) > 0);
+        if (candidate.LetterCount == 0) return false;
+        return preliminary.SignificantScripts.All(script =>
+        {
+            var preliminaryCount = preliminary.Count(script);
+            var candidateCount = candidate.Count(script);
+            var minimumCount = (int)Math.Ceiling(preliminaryCount * 0.5);
+            var preliminaryRatio = preliminaryCount / (double)preliminary.LetterCount;
+            var candidateRatio = candidateCount / (double)candidate.LetterCount;
+            return candidateCount >= minimumCount && candidateRatio >= preliminaryRatio * 0.5;
+        });
     }
 
     private static string DocumentText(OcrDocument document) =>

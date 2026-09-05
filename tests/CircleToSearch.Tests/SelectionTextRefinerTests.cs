@@ -150,7 +150,22 @@ public sealed class SelectionTextRefinerTests
     }
 
     [Fact]
-    public async Task Mixed_script_candidate_is_accepted_when_it_covers_all_significant_scripts()
+    public async Task Mixed_script_candidate_is_accepted_with_reasonable_coverage_of_all_significant_scripts()
+    {
+        var fake = new FakeLanguageRecognizer((source, tag, _) => Task.FromResult(
+            tag == "en-US"
+                ? OcrRecognitionOutcome.Success(Document(source, tag, "Hello ми"))
+                : OcrRecognitionOutcome.NoText()));
+
+        var outcome = await Refiner(fake, "en-US", "ru-RU").RefineAsync(
+            Frame(), Selection("Hello мир", new Rectangle(20, 20, 100, 12)), CancellationToken.None);
+
+        Assert.Equal(SelectionTextRefinementStatus.Success, outcome.Status);
+        Assert.Equal("Hello ми", outcome.Text);
+    }
+
+    [Fact]
+    public async Task Mixed_script_candidate_with_only_one_letter_of_a_significant_script_is_rejected()
     {
         var fake = new FakeLanguageRecognizer((source, tag, _) => Task.FromResult(
             tag == "en-US"
@@ -160,8 +175,39 @@ public sealed class SelectionTextRefinerTests
         var outcome = await Refiner(fake, "en-US", "ru-RU").RefineAsync(
             Frame(), Selection("Hello мир", new Rectangle(20, 20, 100, 12)), CancellationToken.None);
 
-        Assert.Equal(SelectionTextRefinementStatus.Success, outcome.Status);
-        Assert.Equal("Hello м", outcome.Text);
+        Assert.Equal(SelectionTextRefinementStatus.NoText, outcome.Status);
+    }
+
+    [Fact]
+    public async Task Two_matching_letters_cannot_replace_a_long_preliminary_line()
+    {
+        var fake = new FakeLanguageRecognizer((source, tag, _) => Task.FromResult(
+            tag == "ru-RU"
+                ? OcrRecognitionOutcome.Success(Document(source, tag, "ув"))
+                : OcrRecognitionOutcome.NoText()));
+
+        var outcome = await Refiner(fake, "ru-RU", "en-US").RefineAsync(
+            Frame(), Selection("добавить уведомление", new Rectangle(20, 20, 140, 12)), CancellationToken.None);
+
+        Assert.Equal(SelectionTextRefinementStatus.NoText, outcome.Status);
+        Assert.Null(outcome.Text);
+    }
+
+    [Fact]
+    public async Task Multiple_wrong_script_successes_cannot_bypass_no_text_safety_gate()
+    {
+        var fake = new FakeLanguageRecognizer((source, tag, _) => Task.FromResult(tag switch
+        {
+            "el-GR" => OcrRecognitionOutcome.NoText(),
+            "en-US" => OcrRecognitionOutcome.Success(Document(source, tag, "Greek text")),
+            _ => OcrRecognitionOutcome.Success(Document(source, tag, "Elliniko keimeno")),
+        }));
+
+        var outcome = await Refiner(fake, "el-GR", "en-US", "de-DE").RefineAsync(
+            Frame(), Selection("Ελληνικό κείμενο", new Rectangle(20, 20, 120, 12)), CancellationToken.None);
+
+        Assert.Equal(SelectionTextRefinementStatus.NoText, outcome.Status);
+        Assert.Null(outcome.Text);
     }
 
     [Fact]
