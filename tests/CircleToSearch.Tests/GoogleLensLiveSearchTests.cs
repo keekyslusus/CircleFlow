@@ -27,6 +27,8 @@ public sealed class GoogleLensLiveSearchTests
 
         Assert.Equal(GoogleLensSearchStatus.ResultsReady, first);
         Assert.Equal(GoogleLensSearchStatus.ResultsReady, second);
+        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_PREVIEW") == "1")
+            await Task.Delay(TimeSpan.FromSeconds(45));
     }
 
     private static byte[] CreatePng()

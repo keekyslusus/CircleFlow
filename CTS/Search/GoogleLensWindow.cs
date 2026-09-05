@@ -32,9 +32,12 @@ public sealed class GoogleLensWindow : IDisposable
     private readonly IStaDispatcher _dispatcher;
     private CoreWebView2Environment? _environment;
     private Window? _window;
+    private BottomResultsPanel? _resultsPanel;
     private WebView2? _webView;
     private Grid? _loadingOverlay;
     private TextBlock? _loadingText;
+    private TextBlock? _titleText;
+    private Button? _closeButton;
     private int _loadingGeneration;
     private bool _disposed;
 
@@ -72,7 +75,8 @@ public sealed class GoogleLensWindow : IDisposable
 
         var completion = new TaskCompletionSource<GoogleLensSearchStatus>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        if (!_dispatcher.TryPost(() => _ = ShowOnUiThreadAsync(png, cancel, completion)))
+        NativeMethods.GetCursorPos(out var anchor);
+        if (!_dispatcher.TryPost(() => _ = ShowOnUiThreadAsync(png, cancel, completion, anchor)))
             return GoogleLensSearchStatus.Failed;
 
         return await completion.Task.ConfigureAwait(false);
@@ -81,13 +85,14 @@ public sealed class GoogleLensWindow : IDisposable
     private async Task ShowOnUiThreadAsync(
         byte[] png,
         CancellationToken cancel,
-        TaskCompletionSource<GoogleLensSearchStatus> completion)
+        TaskCompletionSource<GoogleLensSearchStatus> completion,
+        POINT anchor)
     {
         try
         {
             cancel.ThrowIfCancellationRequested();
             var jpeg = GoogleLensImageEncoder.EncodeJpeg(png);
-            await EnsureWindowAsync().ConfigureAwait(true);
+            await EnsureWindowAsync(anchor).ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
 
             var window = _window!;
@@ -132,9 +137,13 @@ public sealed class GoogleLensWindow : IDisposable
         }
     }
 
-    private async Task EnsureWindowAsync()
+    private async Task EnsureWindowAsync(POINT anchor)
     {
-        if (_window is not null && _webView is not null) return;
+        if (_window is not null && _webView is not null)
+        {
+            _resultsPanel?.MoveTo(anchor);
+            return;
+        }
 
         NativeLibrary.TryLoad(Path.Combine(_pluginDirectory, "WebView2Loader.dll"), out _);
         Directory.CreateDirectory(_userDataFolder);
@@ -153,12 +162,16 @@ public sealed class GoogleLensWindow : IDisposable
             DefaultBackgroundColor = webViewBackground,
         };
         var content = new Grid { Background = background };
+        content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        content.RowDefinitions.Add(new RowDefinition());
+        Grid.SetRow(webView, 1);
         content.Children.Add(webView);
         Grid? loadingOverlay = null;
         TextBlock? loadingText = null;
         if (LoadingOverlayEnabled)
         {
             loadingOverlay = CreateLoadingOverlay(palette, out loadingText);
+            Grid.SetRow(loadingOverlay, 1);
             content.Children.Add(loadingOverlay);
         }
 
@@ -166,14 +179,36 @@ public sealed class GoogleLensWindow : IDisposable
         var window = new Window
         {
             Title = _strings.GoogleLensWindowTitle,
-            Width = 1200,
-            Height = 820,
-            MinWidth = 720,
-            MinHeight = 520,
-            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.Manual,
             Background = background,
             Content = content,
         };
+        var header = new DockPanel { Margin = new Thickness(16, 8, 12, 8) };
+        var close = new Button
+        {
+            Content = _strings.Close,
+            ToolTip = _strings.Close,
+            Padding = new Thickness(12, 4, 12, 4),
+            Background = background,
+            Foreground = Frozen(palette.PrimaryText),
+            BorderThickness = new Thickness(0),
+        };
+        close.Click += (_, _) => window.Close();
+        _closeButton = close;
+        DockPanel.SetDock(close, Dock.Right);
+        header.Children.Add(close);
+        _titleText = new TextBlock
+        {
+            Text = _strings.GoogleLensWindowTitle,
+            Foreground = Frozen(palette.PrimaryText),
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 14,
+        };
+        header.Children.Add(_titleText);
+        content.Children.Add(header);
+        _resultsPanel = new BottomResultsPanel(window, anchor);
         window.SourceInitialized += (_, _) => ApplyWindowChromeTheme(window, lightTheme);
         window.Closed += (_, _) =>
         {
@@ -182,9 +217,12 @@ public sealed class GoogleLensWindow : IDisposable
             if (ReferenceEquals(_window, window))
             {
                 _window = null;
+                _resultsPanel = null;
                 _webView = null;
                 _loadingOverlay = null;
                 _loadingText = null;
+                _titleText = null;
+                _closeButton = null;
             }
         };
         window.PreviewKeyDown += OnWindowPreviewKeyDown;
@@ -235,10 +273,13 @@ public sealed class GoogleLensWindow : IDisposable
             args.Handled = true;
             return;
         }
-        if (key != Key.W || (args.KeyboardDevice.Modifiers & ModifierKeys.Control) == 0) return;
+        if (key != Key.Escape &&
+            (key != Key.W || (args.KeyboardDevice.Modifiers & ModifierKeys.Control) == 0)) return;
 
         args.Handled = true;
-        ((Window)sender).Close();
+        var window = (Window)sender;
+        // WebView2 blocks its browser process while forwarding accelerator keys.
+        window.Dispatcher.BeginInvoke(() => { if (ReferenceEquals(_window, window)) window.Close(); });
     }
 
     private static async Task NavigateAsync(WebView2 webView, Uri target, CancellationToken cancel)
@@ -547,6 +588,12 @@ public sealed class GoogleLensWindow : IDisposable
 
         if (_loadingOverlay is not null) _loadingOverlay.Background = background;
         if (_loadingText is not null) _loadingText.Foreground = Frozen(palette.PrimaryText);
+        if (_titleText is not null) _titleText.Foreground = Frozen(palette.PrimaryText);
+        if (_closeButton is not null)
+        {
+            _closeButton.Background = background;
+            _closeButton.Foreground = Frozen(palette.PrimaryText);
+        }
         if (_webView is not null)
         {
             _webView.DefaultBackgroundColor = ToDrawingColor(palette.WindowSurface);
