@@ -1,6 +1,15 @@
 CircleFlow third-party notices
 ==============================
 
+uBlock Origin Lite
+------------------
+The unmodified official Edge package 2026.901.1442 is bundled in
+Extensions/uBlockOriginLite.zip. Copyright Raymond Hill and contributors.
+Licensed under GPL-3.0; license and dependency notices are included in the archive.
+Release: https://github.com/uBlockOrigin/uBOL-home/releases/tag/2026.901.1442
+Source: https://github.com/gorhill/uBlock/tree/master/platform/mv3
+See Extensions/README.md for package provenance and update instructions.
+
 SongRec
 -------
 

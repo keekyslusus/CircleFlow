@@ -139,7 +139,8 @@ public sealed class GoogleLensWindow : IDisposable
         NativeLibrary.TryLoad(Path.Combine(_pluginDirectory, "WebView2Loader.dll"), out _);
         Directory.CreateDirectory(_userDataFolder);
         _environment ??= await CoreWebView2Environment
-            .CreateAsync(userDataFolder: _userDataFolder)
+            .CreateAsync(userDataFolder: _userDataFolder,
+                options: new CoreWebView2EnvironmentOptions { AreBrowserExtensionsEnabled = true })
             .ConfigureAwait(true);
 
         var lightTheme = SystemTheme.IsLight();
@@ -200,6 +201,15 @@ public sealed class GoogleLensWindow : IDisposable
             controllerOptions.DefaultBackgroundColor = webViewBackground;
             await webView.EnsureCoreWebView2Async(_environment, controllerOptions).ConfigureAwait(true);
             if (closed) throw new OperationCanceledException();
+            var extensionDirectory = await Task.Run(() =>
+                LensBrowserExtension.Prepare(_pluginDirectory, _userDataFolder)).ConfigureAwait(true);
+            if (closed) throw new OperationCanceledException();
+            var extension = await webView.CoreWebView2.Profile
+                .AddBrowserExtensionAsync(extensionDirectory).ConfigureAwait(true);
+            if (closed) throw new OperationCanceledException();
+            if (!extension.IsEnabled) await extension.EnableAsync(true).ConfigureAwait(true);
+            if (closed) throw new OperationCanceledException();
+            _log.Info(nameof(GoogleLensWindow), $"uBlock Origin Lite enabled: {extension.Id}");
             webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
             webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
             webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
@@ -215,9 +225,16 @@ public sealed class GoogleLensWindow : IDisposable
         }
     }
 
-    private static void OnWindowPreviewKeyDown(object sender, KeyEventArgs args)
+    private void OnWindowPreviewKeyDown(object sender, KeyEventArgs args)
     {
         var key = args.Key == Key.System ? args.SystemKey : args.Key;
+        if (key == Key.Left && (args.KeyboardDevice.Modifiers & ModifierKeys.Alt) != 0 &&
+            _webView?.CoreWebView2 is { CanGoBack: true } core)
+        {
+            core.GoBack();
+            args.Handled = true;
+            return;
+        }
         if (key != Key.W || (args.KeyboardDevice.Modifiers & ModifierKeys.Control) == 0) return;
 
         args.Handled = true;
