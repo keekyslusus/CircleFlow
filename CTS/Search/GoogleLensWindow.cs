@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -20,7 +22,7 @@ namespace CircleToSearch.Search;
 public sealed class GoogleLensWindow : IDisposable
 {
     private const bool DebugExamplePageEnabled = true;
-    private static readonly bool LoadingOverlayEnabled = true;
+    private static readonly bool LoadingOverlayEnabled = false;
     private static readonly Uri GoogleLensHome = new("https://lens.google.com/?hl=en");
     private static readonly Uri GoogleLensUpload = new("https://lens.google.com/v3/upload");
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
@@ -201,13 +203,28 @@ public sealed class GoogleLensWindow : IDisposable
         var header = new DockPanel { Margin = new Thickness(16, 8, 12, 8) };
         var close = new Button
         {
-            Content = _strings.Close,
             ToolTip = _strings.Close,
-            Padding = new Thickness(12, 4, 12, 4),
+            Width = 32,
+            Height = 28,
+            Padding = new Thickness(0),
             Background = background,
             Foreground = Frozen(palette.PrimaryText),
             BorderThickness = new Thickness(0),
         };
+        var closeIcon = new System.Windows.Shapes.Path
+        {
+            Data = Geometry.Parse("M 0,0 L 10,10 M 10,0 L 0,10"),
+            Width = 10,
+            Height = 10,
+            StrokeThickness = 1.5,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        closeIcon.SetBinding(System.Windows.Shapes.Shape.StrokeProperty,
+            new Binding(nameof(Control.Foreground)) { Source = close });
+        close.Content = closeIcon;
+        AutomationProperties.SetName(close, _strings.Close);
         close.Click += (_, _) => window.Close();
         _closeButton = close;
         DockPanel.SetDock(close, Dock.Right);
