@@ -112,6 +112,16 @@ internal sealed class OverlaySessionWorkflow(
                         break;
 
                     case VisualSelection visual when recognitionTask is null:
+                        try
+                        {
+                            // Selection is published before its topmost confirmation overlay finishes closing.
+                            await overlay.WaitForCloseAsync(cancellationToken).ConfigureAwait(false);
+                        }
+                        catch
+                        {
+                            visual.Selection.FrozenFrame.Dispose();
+                            throw;
+                        }
                         await visualSearch.ExecuteAsync(
                             visual.Selection,
                             visual.ProviderId,

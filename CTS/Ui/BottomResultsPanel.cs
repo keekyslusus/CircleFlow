@@ -1,8 +1,11 @@
 using System.Diagnostics;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
-using System.Windows.Threading;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Shell;
 using CircleToSearch.Interop;
 using Rectangle = System.Drawing.Rectangle;
 
@@ -14,29 +17,43 @@ internal sealed class BottomResultsPanel
     private const uint AbmGetAutoHideBarEx = 0xB;
     private const uint BottomEdge = 3;
     private const int DwmwaWindowCornerPreference = 33;
+    private const int DwmwaTransitionsForceDisabled = 3;
     private const uint SwpNoZOrderOrActivate = 0x14;
     private const int WmSettingChange = 0x001A;
     private const int WmDisplayChange = 0x007E;
     private const int WmDpiChanged = 0x02E0;
     private readonly Window _window;
-    private readonly DispatcherTimer _timer;
+    private readonly bool _animationsEnabled;
+    private TaskCompletionSource _entrance = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Stopwatch _clock = new();
+    private readonly KeySpline _entranceSpline = new(0.34, 0.88, 0.34, 1.00);
+    private bool _rendering;
     private IntPtr _monitor;
     private IntPtr _hwnd;
     private HwndSource? _source;
     private Rectangle _target;
     private bool _positioning;
 
-    internal BottomResultsPanel(Window window, POINT anchor)
+    internal BottomResultsPanel(Window window, POINT anchor, bool? animationsEnabled = null)
     {
         _window = window;
         _monitor = NativeMethods.MonitorFromPoint(anchor, MonitorDefaultToNearest);
-        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render,
-            (_, _) => Tick(), window.Dispatcher);
-        _timer.Stop();
+        _animationsEnabled = animationsEnabled ?? SystemParameters.ClientAreaAnimation;
+        // Preserve the native caption style required by DWM, while drawing our own header.
+        window.WindowStyle = WindowStyle.SingleBorderWindow;
+        WindowChrome.SetWindowChrome(window, new WindowChrome
+        {
+            CaptionHeight = 0,
+            ResizeBorderThickness = new Thickness(0),
+            GlassFrameThickness = new Thickness(1),
+            UseAeroCaptionButtons = false,
+        });
         window.SourceInitialized += OnSourceInitialized;
+        window.Closing += OnClosing;
         window.Closed += OnClosed;
     }
+
+    internal Task EntranceCompleted => _entrance.Task;
 
     internal static Rectangle CalculateBounds(Rectangle monitor, Rectangle work, double scale, bool autoHideBottom)
     {
@@ -52,7 +69,7 @@ internal sealed class BottomResultsPanel
     internal void MoveTo(POINT anchor)
     {
         _monitor = NativeMethods.MonitorFromPoint(anchor, MonitorDefaultToNearest);
-        _timer.Stop();
+        FinishEntrance();
         RefreshBounds();
         Position(_target.Top);
     }
@@ -62,16 +79,35 @@ internal sealed class BottomResultsPanel
         _hwnd = new WindowInteropHelper(_window).Handle;
         _source = HwndSource.FromHwnd(_hwnd);
         _source?.AddHook(OnMessage);
+        SetNativeTransitions(false);
         RefreshBounds();
         var round = 2;
         NativeMethods.DwmSetWindowAttribute(_hwnd, DwmwaWindowCornerPreference, ref round, sizeof(int));
-        if (SystemParameters.ClientAreaAnimation)
+        Position(_animationsEnabled ? _target.Bottom : _target.Top);
+    }
+
+    internal Task ShowAsync()
+    {
+        SetNativeTransitions(false);
+        _window.Show();
+        if (_rendering) return _entrance.Task;
+        if (_entrance.Task.IsCompleted)
+        {
+            _entrance = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _clock.Reset();
+        }
+        if (_animationsEnabled)
         {
             Position(_target.Bottom);
-            _clock.Restart();
-            _timer.Start();
+            _rendering = true;
+            CompositionTarget.Rendering += OnRendering;
         }
-        else Position(_target.Top);
+        else
+        {
+            Position(_target.Top);
+            FinishEntrance();
+        }
+        return _entrance.Task;
     }
 
     private void RefreshBounds()
@@ -91,13 +127,32 @@ internal sealed class BottomResultsPanel
         _target = CalculateBounds(ToRectangle(info.Monitor), ToRectangle(info.Work), dpi / 96d, autoHideBottom);
     }
 
-    private void Tick()
+    private void OnRendering(object? sender, EventArgs args)
     {
-        var progress = Math.Clamp(_clock.Elapsed.TotalMilliseconds / 280, 0, 1);
-        var eased = 1 - Math.Pow(1 - progress, 3);
+        // Start the clock on the first actual frame, not while WPF is constructing the HWND.
+        if (!_clock.IsRunning) _clock.Start();
+        var progress = Math.Clamp(_clock.Elapsed.TotalMilliseconds / 300, 0, 1);
+        var eased = _entranceSpline.GetSplineProgress(progress);
         Position((int)Math.Round(_target.Bottom - _target.Height * eased));
-        if (progress >= 1) _timer.Stop();
+        if (progress >= 1) FinishEntrance();
     }
+
+    private void FinishEntrance()
+    {
+        if (_rendering) CompositionTarget.Rendering -= OnRendering;
+        _rendering = false;
+        SetNativeTransitions(_animationsEnabled);
+        _entrance.TrySetResult();
+    }
+
+    private void SetNativeTransitions(bool enabled)
+    {
+        if (_hwnd == IntPtr.Zero) return;
+        var disabled = enabled ? 0 : 1;
+        NativeMethods.DwmSetWindowAttribute(_hwnd, DwmwaTransitionsForceDisabled, ref disabled, sizeof(int));
+    }
+
+    private void OnClosing(object? sender, CancelEventArgs args) => FinishEntrance();
 
     private void Position(int top)
     {
@@ -126,8 +181,8 @@ internal sealed class BottomResultsPanel
                 var previous = _target;
                 RefreshBounds();
                 if (_target == previous) return;
-                _timer.Stop();
-                Position(_target.Top);
+                if (_rendering) return;
+                Position(_animationsEnabled && !_entrance.Task.IsCompleted ? _target.Bottom : _target.Top);
             });
         }
         return IntPtr.Zero;
@@ -135,10 +190,11 @@ internal sealed class BottomResultsPanel
 
     private void OnClosed(object? sender, EventArgs args)
     {
-        _timer.Stop();
+        FinishEntrance();
         _source?.RemoveHook(OnMessage);
         _source = null;
         _window.SourceInitialized -= OnSourceInitialized;
+        _window.Closing -= OnClosing;
         _window.Closed -= OnClosed;
     }
 

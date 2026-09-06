@@ -16,6 +16,7 @@ public interface IOverlaySession : IAsyncDisposable
     Task ShowTranslationFailureAsync(Guid requestId, TranslationFailure failure, CancellationToken cancellationToken) =>
         Task.CompletedTask;
     Task CloseAsync();
+    Task WaitForCloseAsync(CancellationToken cancellationToken);
 }
 
 public interface IOverlaySessionFactory
@@ -117,6 +118,9 @@ internal sealed class OverlaySession : IOverlaySession
         TranslationFailure failure,
         CancellationToken cancellationToken) =>
         InvokeAsync(window => window.ShowTranslationFailure(requestId, failure), cancellationToken);
+
+    public Task WaitForCloseAsync(CancellationToken cancellationToken) =>
+        _closed.Task.WaitAsync(cancellationToken);
 
     public async Task CloseAsync()
     {

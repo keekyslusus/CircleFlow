@@ -15,6 +15,47 @@ namespace CircleToSearch.Tests;
 public sealed class OverlaySessionWorkflowTests
 {
     [Fact]
+    public async Task Visual_search_waits_until_selection_overlay_is_gone()
+    {
+        using var harness = new Harness();
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Overlay.CloseCompletion = closed.Task;
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.GoogleLens));
+
+        var run = harness.RunAsync();
+        try
+        {
+            Assert.False(run.IsCompleted);
+            Assert.Equal(0, harness.Google.Calls);
+            Assert.Equal(0, harness.UploadStartedCalls);
+            Assert.Equal(0, harness.Overlay.CloseCalls);
+        }
+        finally { closed.TrySetResult(); }
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, harness.Google.Calls);
+        Assert.Equal(1, harness.UploadStartedCalls);
+    }
+
+    [Fact]
+    public async Task Canceling_during_selection_hold_disposes_frame_without_opening_results()
+    {
+        using var harness = new Harness();
+        using var cancellation = new CancellationTokenSource();
+        var selection = NewSelection();
+        harness.Overlay.CloseCompletion = new TaskCompletionSource().Task;
+        harness.Overlay.Enqueue(new VisualSelection(selection, SearchProviderIds.GoogleLens));
+
+        var run = harness.RunAsync(cancellation.Token);
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run.WaitAsync(TimeSpan.FromSeconds(2)));
+
+        Assert.Equal(0, harness.Google.Calls);
+        Assert.Equal(1, harness.Overlay.CloseCalls);
+        Assert.Throws<ArgumentException>(() => selection.FrozenFrame.GetHbitmap());
+    }
+
+    [Fact]
     public async Task Text_search_closes_overlay_before_opening_browser()
     {
         using var harness = new Harness();
@@ -504,6 +545,9 @@ public sealed class OverlaySessionWorkflowTests
 
     private sealed class FakeOverlay : IOverlaySession
     {
+        public Task CloseCompletion { get; set; } = Task.CompletedTask;
+        public Task WaitForCloseAsync(CancellationToken cancellationToken) =>
+            CloseCompletion.WaitAsync(cancellationToken);
         private readonly Channel<IOverlayCommand> _commands = Channel.CreateUnbounded<IOverlayCommand>();
         public void Enqueue(IOverlayCommand command) => _commands.Writer.TryWrite(command);
         public void CompleteCommands() => _commands.Writer.TryComplete();

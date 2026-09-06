@@ -19,7 +19,8 @@ namespace CircleToSearch.Search;
 
 public sealed class GoogleLensWindow : IDisposable
 {
-    private static readonly bool LoadingOverlayEnabled = false;
+    private const bool DebugExamplePageEnabled = true;
+    private static readonly bool LoadingOverlayEnabled = true;
     private static readonly Uri GoogleLensHome = new("https://lens.google.com/?hl=en");
     private static readonly Uri GoogleLensUpload = new("https://lens.google.com/v3/upload");
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
@@ -91,7 +92,6 @@ public sealed class GoogleLensWindow : IDisposable
         try
         {
             cancel.ThrowIfCancellationRequested();
-            var jpeg = GoogleLensImageEncoder.EncodeJpeg(png);
             await EnsureWindowAsync(anchor).ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
 
@@ -102,6 +102,16 @@ public sealed class GoogleLensWindow : IDisposable
             window.Show();
             window.Activate();
 
+            var debugExamplePage = DebugExamplePageEnabled;
+            if (debugExamplePage)
+            {
+                await NavigateAsync(webView, new Uri("https://example.com/"), cancel).ConfigureAwait(true);
+                HideLoadingOverlay();
+                completion.TrySetResult(GoogleLensSearchStatus.ResultsReady);
+                return;
+            }
+
+            var jpeg = GoogleLensImageEncoder.EncodeJpeg(png);
             var resultsReady = await OpenLensResultsWithUploadAsync(webView, window, jpeg, cancel)
                 .ConfigureAwait(true);
             if (!resultsReady && ReferenceEquals(_window, window))
@@ -141,7 +151,10 @@ public sealed class GoogleLensWindow : IDisposable
     {
         if (_window is not null && _webView is not null)
         {
+            var existingWindow = _window;
             _resultsPanel?.MoveTo(anchor);
+            if (_resultsPanel is not null) await _resultsPanel.ShowAsync().ConfigureAwait(true);
+            if (!ReferenceEquals(_window, existingWindow)) throw new OperationCanceledException();
             return;
         }
 
@@ -234,7 +247,9 @@ public sealed class GoogleLensWindow : IDisposable
 
         try
         {
-            window.Show();
+            // Browser initialization can block the UI thread long enough to swallow the entrance.
+            await _resultsPanel.ShowAsync().ConfigureAwait(true);
+            if (closed) throw new OperationCanceledException();
             var controllerOptions = _environment.CreateCoreWebView2ControllerOptions();
             controllerOptions.DefaultBackgroundColor = webViewBackground;
             await webView.EnsureCoreWebView2Async(_environment, controllerOptions).ConfigureAwait(true);
