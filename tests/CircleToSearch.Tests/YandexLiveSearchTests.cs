@@ -1,6 +1,8 @@
 using System.Drawing;
 using System.Drawing.Imaging;
+using CircleToSearch.Interop;
 using CircleToSearch.Search;
+using CircleToSearch.Search.Browser;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -15,13 +17,41 @@ public sealed class YandexLiveSearchTests
     {
         if (Environment.GetEnvironmentVariable("CTS_LIVE") != "1") return;
 
-        var png = EncodePng(NewGradientBitmap(64, 64));
+        using var bitmap = NewGradientBitmap(64, 64);
+        var png = EncodePng(bitmap);
 
         using var provider = new YandexImagesProvider();
-        var outcome = await provider.SearchAsync(png, CancellationToken.None);
+        var outcome = await provider.PrepareAsync(png, CancellationToken.None);
 
         Assert.True(outcome.Success, $"upload failed: {outcome.Failure} status {outcome.StatusCode}");
-        Assert.True(YandexResultUrlPolicy.IsAllowed(new Uri(outcome.ResultsUrl!)));
+        Assert.True(YandexResultUrlPolicy.IsAllowed(outcome.PreparedSearch!.RequireResultsUrl()));
+    }
+
+    [Fact]
+    [Trait("Category", "Live")]
+    public async Task Uploaded_result_opens_in_the_shared_browser_host()
+    {
+        if (Environment.GetEnvironmentVariable("CTS_LIVE") != "1" ||
+            Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.WebView2Live");
+        using var provider = new YandexImagesProvider();
+        using var bitmap = NewGradientBitmap(64, 64);
+        var preparation = await provider.PrepareAsync(EncodePng(bitmap), CancellationToken.None);
+        Assert.True(preparation.Success, $"upload failed: {preparation.Failure}");
+
+        using var host = new SearchBrowserHost(
+            AppContext.BaseDirectory,
+            Path.Combine(dataDirectory, "Profile"),
+            TestUiStrings.English,
+            new PluginLog(dataDirectory),
+            new StaDispatcher(CompositionRoot.SearchBrowserThreadName));
+        var shown = await host.ShowAsync(
+            new SearchProviderDescriptor(SearchProviderIds.YandexImages, "Yandex Images"),
+            preparation.PreparedSearch!,
+            CancellationToken.None);
+
+        Assert.Equal(SearchBrowserShowStatus.Shown, shown.Status);
     }
 
     private static Bitmap NewGradientBitmap(int width, int height)

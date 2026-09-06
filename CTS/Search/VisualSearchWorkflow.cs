@@ -8,7 +8,7 @@ namespace CircleToSearch.Search;
 internal sealed class VisualSearchWorkflow(
     VisualSearchProviderRouter providerRouter,
     Func<GdiBitmap, GdiRectangle, byte[]> crop,
-    Func<string, bool> openUrl,
+    VisualSearchResultPresenter presenter,
     IPluginNotifier notifier,
     UiStrings strings,
     PluginLog log)
@@ -26,9 +26,9 @@ internal sealed class VisualSearchWorkflow(
         onUploadStarted();
         var selectedProvider = providerRouter.GetEffectiveDescriptor(requestedProviderId);
         log.Info(nameof(VisualSearchWorkflow), $"upload started with provider '{selectedProvider.Id}'");
-        var routed = await providerRouter.SearchAsync(requestedProviderId, png, cancellationToken).ConfigureAwait(false);
+        var routed = await providerRouter.PrepareAsync(requestedProviderId, png, cancellationToken).ConfigureAwait(false);
         var result = routed.Outcome;
-        log.Info(nameof(VisualSearchWorkflow), $"provider '{routed.ProviderId}' completed with {result.Failure}");
+        log.Info(nameof(VisualSearchWorkflow), $"provider '{routed.ProviderId}' preparation completed with {result.Failure}");
         if (!result.Success)
         {
             var reason = result.Failure switch
@@ -38,8 +38,6 @@ internal sealed class VisualSearchWorkflow(
                 UploadFailure.PolicyRejection => strings.SearchUnexpectedResultsLocation,
                 UploadFailure.Timeout => strings.SearchTimedOut,
                 UploadFailure.NetworkError => strings.SearchNetworkError,
-                UploadFailure.BrowserRuntimeUnavailable => strings.BrowserRuntimeRequired(routed.ProviderDisplayName),
-                UploadFailure.BrowserAutomationFailed => strings.BrowserImageAttachmentFailed(routed.ProviderDisplayName),
                 UploadFailure.Canceled => null,
                 _ => strings.SearchUploadFailed,
             };
@@ -50,12 +48,6 @@ internal sealed class VisualSearchWorkflow(
             return;
         }
 
-        if (result.ResultsUrl is { Length: > 0 } url)
-        {
-            if (!openUrl(url)) notifier.ShowError(strings.PluginTitle, strings.ResultsUrlOpenFailed);
-            else log.Info(nameof(VisualSearchWorkflow),
-                $"provider '{routed.ProviderId}' results opened in the default browser");
-        }
-        else log.Info(nameof(VisualSearchWorkflow), $"results delivered by provider '{routed.ProviderId}'");
+        await presenter.PresentAsync(routed, cancellationToken).ConfigureAwait(false);
     }
 }

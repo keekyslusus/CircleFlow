@@ -72,8 +72,14 @@ public sealed class UiStrings
     public string SearchNetworkError => Get("plugin_circletosearch_search_network_error");
     public string SearchUploadFailed => Get("plugin_circletosearch_search_upload_failed");
     public string ResultsUrlOpenFailed => Get("plugin_circletosearch_results_url_open_failed");
-    public string GoogleLensWindowTitle => Get("plugin_circletosearch_google_lens_window_title");
-    public string GoogleLensLoading => Get("plugin_circletosearch_google_lens_loading");
+    public string SearchBrowserWindowTitle(string providerName) =>
+        Get("plugin_circletosearch_search_browser_window_title", providerName);
+
+    public string SearchBrowserLoading(string providerName) =>
+        Get("plugin_circletosearch_search_browser_loading", providerName);
+
+    public string SearchBrowserShowFailed(string providerName) =>
+        Get("plugin_circletosearch_search_browser_show_failed", providerName);
     public string TextCopy => Get("plugin_circletosearch_text_copy");
     public string TextSearch => Get("plugin_circletosearch_text_search");
     public string TextCopied => Get("plugin_circletosearch_text_copied");
@@ -110,9 +116,9 @@ public sealed class UiStrings
     public string SelectSearchProvider(string displayName) =>
         Get("plugin_circletosearch_select_search_provider", displayName);
 
-    public string GoogleLensRuntime(string? version) => version is null
-        ? Get("plugin_circletosearch_google_lens_runtime_not_detected")
-        : Get("plugin_circletosearch_google_lens_runtime", version);
+    public string SearchBrowserRuntime(string? version) => version is null
+        ? Get("plugin_circletosearch_search_browser_runtime_not_detected")
+        : Get("plugin_circletosearch_search_browser_runtime", version);
 
     public string SavingFailed(string detail) => Get("plugin_circletosearch_saving_failed", detail);
 

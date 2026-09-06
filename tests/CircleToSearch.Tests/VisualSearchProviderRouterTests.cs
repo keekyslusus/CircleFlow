@@ -15,7 +15,7 @@ public sealed class VisualSearchProviderRouterTests
     {
         using var harness = new RouterHarness();
 
-        var routed = await harness.Router.SearchAsync(requestedId, [1], CancellationToken.None);
+        var routed = await harness.Router.PrepareAsync(requestedId, [1], CancellationToken.None);
 
         Assert.Equal(expectedGoogleCalls, harness.Google.Calls);
         Assert.Equal(expectedYandexCalls, harness.Yandex.Calls);
@@ -27,7 +27,7 @@ public sealed class VisualSearchProviderRouterTests
     {
         using var harness = new RouterHarness();
 
-        var routed = await harness.Router.SearchAsync("YANDEX-IMAGES", [1], CancellationToken.None);
+        var routed = await harness.Router.PrepareAsync("YANDEX-IMAGES", [1], CancellationToken.None);
 
         Assert.Equal(SearchProviderIds.YandexImages, routed.ProviderId);
         Assert.Equal("Yandex Images", routed.ProviderDisplayName);
@@ -43,7 +43,7 @@ public sealed class VisualSearchProviderRouterTests
     {
         using var harness = new RouterHarness();
 
-        var routed = await harness.Router.SearchAsync(requestedId, [1], CancellationToken.None);
+        var routed = await harness.Router.PrepareAsync(requestedId, [1], CancellationToken.None);
 
         Assert.Equal(SearchProviderIds.GoogleLens, routed.ProviderId);
         Assert.True(routed.UsedFallback);
@@ -56,7 +56,7 @@ public sealed class VisualSearchProviderRouterTests
     {
         using var harness = new RouterHarness();
 
-        await harness.Router.SearchAsync("missing-provider", [71, 72, 73], CancellationToken.None);
+        await harness.Router.PrepareAsync("missing-provider", [71, 72, 73], CancellationToken.None);
 
         var log = File.ReadAllText(Path.Combine(harness.LogDirectory, "plugin.log"));
         Assert.Contains("missing-provider", log);
@@ -69,8 +69,8 @@ public sealed class VisualSearchProviderRouterTests
     {
         using var harness = new RouterHarness();
 
-        await harness.Router.SearchAsync(SearchProviderIds.YandexImages, [1], CancellationToken.None);
-        await harness.Router.SearchAsync(SearchProviderIds.YandexImages, [2], CancellationToken.None);
+        await harness.Router.PrepareAsync(SearchProviderIds.YandexImages, [1], CancellationToken.None);
+        await harness.Router.PrepareAsync(SearchProviderIds.YandexImages, [2], CancellationToken.None);
 
         Assert.Equal(1, harness.YandexFactoryCalls);
         Assert.Equal(2, harness.Yandex.Calls);
@@ -84,7 +84,7 @@ public sealed class VisualSearchProviderRouterTests
         harness.Yandex.Exception = new InvalidOperationException("provider failed");
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => harness.Router.SearchAsync(SearchProviderIds.YandexImages, [1], CancellationToken.None));
+            () => harness.Router.PrepareAsync(SearchProviderIds.YandexImages, [1], CancellationToken.None));
 
         Assert.Equal("provider failed", exception.Message);
         Assert.Equal(0, harness.GoogleFactoryCalls);
@@ -112,7 +112,7 @@ public sealed class VisualSearchProviderRouterTests
             SilentLog());
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => router.SearchAsync(SearchProviderIds.YandexImages, [1], CancellationToken.None));
+            () => router.PrepareAsync(SearchProviderIds.YandexImages, [1], CancellationToken.None));
 
         Assert.Equal("factory failed", exception.Message);
         Assert.Equal(0, defaultFactoryCalls);
@@ -124,7 +124,7 @@ public sealed class VisualSearchProviderRouterTests
         using var harness = new RouterHarness();
         using var cancellation = new CancellationTokenSource();
 
-        await harness.Router.SearchAsync(
+        await harness.Router.PrepareAsync(
             SearchProviderIds.GoogleLens,
             [1],
             cancellation.Token);
@@ -136,7 +136,7 @@ public sealed class VisualSearchProviderRouterTests
     public async Task Dispose_releases_only_created_providers_once_without_forcing_factories()
     {
         var harness = new RouterHarness();
-        await harness.Router.SearchAsync(SearchProviderIds.YandexImages, [1], CancellationToken.None);
+        await harness.Router.PrepareAsync(SearchProviderIds.YandexImages, [1], CancellationToken.None);
 
         harness.Router.Dispose();
         harness.Router.Dispose();
@@ -151,9 +151,9 @@ public sealed class VisualSearchProviderRouterTests
     public async Task Dispose_waits_for_an_active_search_before_releasing_its_provider()
     {
         var harness = new RouterHarness();
-        harness.Yandex.Gate = new TaskCompletionSource<VisualSearchOutcome>(
+        harness.Yandex.Gate = new TaskCompletionSource<VisualSearchPreparationOutcome>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        var search = harness.Router.SearchAsync(
+        var search = harness.Router.PrepareAsync(
             SearchProviderIds.YandexImages,
             [1],
             CancellationToken.None);
@@ -176,7 +176,7 @@ public sealed class VisualSearchProviderRouterTests
         }
         finally
         {
-            harness.Yandex.Gate.TrySetResult(VisualSearchOutcome.Handled());
+            harness.Yandex.Gate.TrySetResult(FakeProvider.Success());
         }
 
         await search;
@@ -249,15 +249,19 @@ public sealed class VisualSearchProviderRouterTests
 
         public Exception? Exception { get; set; }
 
-        public TaskCompletionSource<VisualSearchOutcome>? Gate { get; set; }
+        public TaskCompletionSource<VisualSearchPreparationOutcome>? Gate { get; set; }
 
-        public Task<VisualSearchOutcome> SearchAsync(byte[] png, CancellationToken cancel)
+        public Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel)
         {
             Calls++;
             LastToken = cancel;
-            if (Exception is not null) return Task.FromException<VisualSearchOutcome>(Exception);
-            return Gate?.Task ?? Task.FromResult(VisualSearchOutcome.Handled());
+            if (Exception is not null) return Task.FromException<VisualSearchPreparationOutcome>(Exception);
+            return Gate?.Task ?? Task.FromResult(Success());
         }
+
+        public static VisualSearchPreparationOutcome Success() =>
+            VisualSearchPreparationOutcome.Ready(
+                PreparedVisualSearch.ForUrl(new Uri("https://example.com/results"), null));
 
         public void Dispose() => DisposeCalls++;
     }

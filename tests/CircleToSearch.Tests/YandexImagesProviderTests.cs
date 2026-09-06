@@ -20,14 +20,17 @@ public sealed class YandexImagesProviderTests
     {
         var provider = new YandexImagesProvider(JsonHandler(UploadResponseJson));
 
-        var outcome = await provider.SearchAsync([1, 2, 3], CancellationToken.None);
+        var outcome = await provider.PrepareAsync([1, 2, 3], CancellationToken.None);
 
         Assert.True(outcome.Success);
         Assert.Equal(
             "https://yandex.ru/images/search?rpt=imageview" +
             "&url=https%3A%2F%2Favatars.mds.yandex.net%2Fget-images-cbir%2F1382825%2FLi2HdR6qGtqUzyErZ9utIw7363%2Forig" +
             "&cbir_id=1382825%2FLi2HdR6qGtqUzyErZ9utIw7363",
-            outcome.ResultsUrl);
+            outcome.PreparedSearch!.RequireResultsUrl().AbsoluteUri);
+        Assert.Equal(
+            outcome.PreparedSearch.RequireResultsUrl(),
+            outcome.PreparedSearch.ExternalFallbackUrl);
     }
 
     [Fact]
@@ -36,7 +39,7 @@ public sealed class YandexImagesProviderTests
         var handler = JsonHandler(UploadResponseJson);
         var provider = new YandexImagesProvider(handler);
 
-        await provider.SearchAsync([1, 2, 3], CancellationToken.None);
+        await provider.PrepareAsync([1, 2, 3], CancellationToken.None);
 
         Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.Equal(new Uri(YandexImagesProvider.UploadUrl + "?" + YandexImagesProvider.UploadQuery),
@@ -50,7 +53,7 @@ public sealed class YandexImagesProviderTests
     {
         var provider = new YandexImagesProvider(JsonHandler("""{"error":"nope"}"""));
 
-        var outcome = await provider.SearchAsync([1], CancellationToken.None);
+        var outcome = await provider.PrepareAsync([1], CancellationToken.None);
 
         Assert.False(outcome.Success);
         Assert.Equal(UploadFailure.BadResponse, outcome.Failure);
@@ -61,7 +64,7 @@ public sealed class YandexImagesProviderTests
     {
         var provider = new YandexImagesProvider(JsonHandler("not json at all"));
 
-        var outcome = await provider.SearchAsync([1], CancellationToken.None);
+        var outcome = await provider.PrepareAsync([1], CancellationToken.None);
 
         Assert.Equal(UploadFailure.BadResponse, outcome.Failure);
     }
@@ -74,7 +77,7 @@ public sealed class YandexImagesProviderTests
     {
         var provider = new YandexImagesProvider(JsonHandler("", status));
 
-        var outcome = await provider.SearchAsync([1], CancellationToken.None);
+        var outcome = await provider.PrepareAsync([1], CancellationToken.None);
 
         Assert.False(outcome.Success);
         Assert.Equal(UploadFailure.UnexpectedStatus, outcome.Failure);
@@ -87,7 +90,7 @@ public sealed class YandexImagesProviderTests
         var handler = new ThrowingHandler(new HttpRequestException("boom"));
         var provider = new YandexImagesProvider(handler);
 
-        var outcome = await provider.SearchAsync([1], CancellationToken.None);
+        var outcome = await provider.PrepareAsync([1], CancellationToken.None);
 
         Assert.Equal(UploadFailure.NetworkError, outcome.Failure);
     }
@@ -99,7 +102,7 @@ public sealed class YandexImagesProviderTests
         cancel.Cancel();
         var provider = new YandexImagesProvider(new ThrowingHandler(new OperationCanceledException(cancel.Token)), TimeSpan.FromSeconds(30));
 
-        var outcome = await provider.SearchAsync([1], cancel.Token);
+        var outcome = await provider.PrepareAsync([1], cancel.Token);
 
         Assert.Equal(UploadFailure.Canceled, outcome.Failure);
     }

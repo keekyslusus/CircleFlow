@@ -2,9 +2,9 @@ using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
 
-namespace CircleToSearch.Search;
+namespace CircleToSearch.Search.Browser;
 
-internal static class LensBrowserExtension
+internal static class SearchBrowserExtension
 {
     internal const string PackageHash = "061A5DE7B1EEDF6C1FE0AFDA40D453C427EEFC2CBCDBB680C3EED37DC5CEF2C8";
 

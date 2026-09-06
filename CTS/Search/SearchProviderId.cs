@@ -12,8 +12,8 @@ public sealed record VisualSearchProviderRegistration(
     SearchProviderDescriptor Descriptor,
     Func<IVisualSearchProvider> Factory);
 
-public sealed record RoutedVisualSearchOutcome(
+public sealed record RoutedVisualSearchPreparation(
     string ProviderId,
     string ProviderDisplayName,
-    VisualSearchOutcome Outcome,
+    VisualSearchPreparationOutcome Outcome,
     bool UsedFallback);

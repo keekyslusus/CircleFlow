@@ -31,7 +31,7 @@ public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
         _log = log;
     }
 
-    public async Task<VisualSearchOutcome> SearchAsync(byte[] png, CancellationToken cancel)
+    public async Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{UploadUrl}?{UploadQuery}")
         {
@@ -45,14 +45,16 @@ public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
                 .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancel)
                 .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
-                return VisualSearchOutcome.Fail(UploadFailure.UnexpectedStatus, (int)response.StatusCode);
+                return VisualSearchPreparationOutcome.Fail(UploadFailure.UnexpectedStatus, (int)response.StatusCode);
 
             var body = await response.Content.ReadAsStringAsync(cancel).ConfigureAwait(false);
             var parsed = Parse(body);
             if (parsed is null)
             {
-                _log?.Warn(nameof(YandexImagesProvider), $"unexpected upload response: {body[..Math.Min(200, body.Length)]}");
-                return VisualSearchOutcome.Fail(UploadFailure.BadResponse, (int)response.StatusCode);
+                _log?.Warn(
+                    nameof(YandexImagesProvider),
+                    $"unexpected upload response with {body.Length} characters");
+                return VisualSearchPreparationOutcome.Fail(UploadFailure.BadResponse, (int)response.StatusCode);
             }
 
             var (cbirId, imagePath) = parsed.Value;
@@ -60,21 +62,23 @@ public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
                              $"&url={Uri.EscapeDataString(imagePath)}" +
                              $"&cbir_id={Uri.EscapeDataString(cbirId)}";
             if (!YandexResultUrlPolicy.IsAllowed(new Uri(resultsUrl)))
-                return VisualSearchOutcome.Fail(UploadFailure.PolicyRejection, (int)response.StatusCode);
+                return VisualSearchPreparationOutcome.Fail(UploadFailure.PolicyRejection, (int)response.StatusCode);
 
-            return VisualSearchOutcome.Ok(resultsUrl);
+            var verifiedUrl = new Uri(resultsUrl);
+            return VisualSearchPreparationOutcome.Ready(
+                PreparedVisualSearch.ForUrl(verifiedUrl, verifiedUrl));
         }
         catch (OperationCanceledException) when (cancel.IsCancellationRequested)
         {
-            return VisualSearchOutcome.Fail(UploadFailure.Canceled);
+            return VisualSearchPreparationOutcome.Fail(UploadFailure.Canceled);
         }
         catch (OperationCanceledException)
         {
-            return VisualSearchOutcome.Fail(UploadFailure.Timeout);
+            return VisualSearchPreparationOutcome.Fail(UploadFailure.Timeout);
         }
         catch (HttpRequestException)
         {
-            return VisualSearchOutcome.Fail(UploadFailure.NetworkError);
+            return VisualSearchPreparationOutcome.Fail(UploadFailure.NetworkError);
         }
     }
 

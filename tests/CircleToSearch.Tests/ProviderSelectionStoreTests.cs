@@ -98,7 +98,8 @@ public sealed class ProviderSelectionStoreTests
 
     private sealed class FakeProvider : IVisualSearchProvider
     {
-        public Task<VisualSearchOutcome> SearchAsync(byte[] png, CancellationToken cancel) =>
-            Task.FromResult(VisualSearchOutcome.Handled());
+        public Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel) =>
+            Task.FromResult(VisualSearchPreparationOutcome.Ready(
+                PreparedVisualSearch.ForUrl(new Uri("https://example.com/results"), null)));
     }
 }

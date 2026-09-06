@@ -10,6 +10,7 @@ internal sealed class TestStaDispatcher : IStaDispatcher
     public int TryPostCalls { get; private set; }
     public int SendCalls { get; private set; }
     public int DisposeCalls { get; private set; }
+    public Action? BeforeSendAction { get; set; }
 
     public bool TryPost(Action action)
     {
@@ -22,6 +23,7 @@ internal sealed class TestStaDispatcher : IStaDispatcher
     public void Send(Action action)
     {
         SendCalls++;
+        BeforeSendAction?.Invoke();
         if (ExecuteSentAction) action();
     }
 

@@ -2,7 +2,7 @@ namespace CircleToSearch.Search;
 
 public interface IVisualSearchProvider
 {
-    Task<VisualSearchOutcome> SearchAsync(byte[] png, CancellationToken cancel);
+    Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel);
 }
 
 public enum UploadFailure
@@ -14,20 +14,38 @@ public enum UploadFailure
     Timeout,
     NetworkError,
     Canceled,
-    BrowserRuntimeUnavailable,
-    BrowserAutomationFailed,
 }
 
-public sealed record VisualSearchOutcome(
-    bool Success,
-    string? ResultsUrl,
-    UploadFailure Failure = UploadFailure.None,
-    int? StatusCode = null)
+public sealed class VisualSearchPreparationOutcome
 {
-    public static VisualSearchOutcome Ok(string url) => new(true, url);
+    private VisualSearchPreparationOutcome(
+        PreparedVisualSearch? preparedSearch,
+        UploadFailure failure,
+        int? statusCode)
+    {
+        PreparedSearch = preparedSearch;
+        Failure = failure;
+        StatusCode = statusCode;
+    }
 
-    public static VisualSearchOutcome Handled() => new(true, null);
+    public bool Success => PreparedSearch is not null;
 
-    public static VisualSearchOutcome Fail(UploadFailure failure, int? statusCode = null)
-        => new(false, null, failure, statusCode);
+    public PreparedVisualSearch? PreparedSearch { get; }
+
+    public UploadFailure Failure { get; }
+
+    public int? StatusCode { get; }
+
+    public static VisualSearchPreparationOutcome Ready(PreparedVisualSearch preparedSearch)
+    {
+        ArgumentNullException.ThrowIfNull(preparedSearch);
+        return new VisualSearchPreparationOutcome(preparedSearch, UploadFailure.None, null);
+    }
+
+    public static VisualSearchPreparationOutcome Fail(UploadFailure failure, int? statusCode = null)
+    {
+        if (failure == UploadFailure.None)
+            throw new ArgumentOutOfRangeException(nameof(failure));
+        return new VisualSearchPreparationOutcome(null, failure, statusCode);
+    }
 }

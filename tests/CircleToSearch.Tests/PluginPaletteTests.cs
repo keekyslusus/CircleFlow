@@ -35,7 +35,7 @@ public sealed class PluginPaletteTests
         Assert.Equal("#24FFFFFF", PluginPalette.SelectionSheen.ToString());
         Assert.Equal(
             new[] { "#FF4285F4", "#FFA142F4", "#FF0B57D0" },
-            PluginPalette.GoogleLensLoadingDots.Select(color => color.ToString()));
+            PluginPalette.SearchBrowserLoadingDots.Select(color => color.ToString()));
     }
 
     [Fact]

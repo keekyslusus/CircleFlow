@@ -25,7 +25,7 @@ internal static class PluginPalette
     public static Color ControlRipple { get; } = Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF);
     public static Color SceneRippleAudio { get; } = Color.FromRgb(0xC5, 0x9B, 0xFF);
 
-    public static IReadOnlyList<Color> GoogleLensLoadingDots { get; } = Array.AsReadOnly(
+    public static IReadOnlyList<Color> SearchBrowserLoadingDots { get; } = Array.AsReadOnly(
         new[]
         {
             Color.FromRgb(0x42, 0x85, 0xF4),

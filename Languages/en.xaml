@@ -57,8 +57,8 @@
     <system:String x:Key="plugin_circletosearch_query_title">Select screen area…</system:String>
     <system:String x:Key="plugin_circletosearch_query_subtitle">Visually search the selected region - hotkey: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_search_provider">Search provider: {0}</system:String>
-    <system:String x:Key="plugin_circletosearch_google_lens_runtime_not_detected">WebView2 Runtime: not detected</system:String>
-    <system:String x:Key="plugin_circletosearch_google_lens_runtime">Google Lens WebView2 Runtime: {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_search_browser_runtime_not_detected">WebView2 Runtime: not detected</system:String>
+    <system:String x:Key="plugin_circletosearch_search_browser_runtime">Visual search WebView2 Runtime: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_settings_hotkey_label">Hotkey (for example, Ctrl+Alt+Space)</system:String>
     <system:String x:Key="plugin_circletosearch_settings_max_image_side_label">Maximum image long side (px)</system:String>
     <system:String x:Key="plugin_circletosearch_settings_apply">Apply</system:String>
@@ -79,8 +79,9 @@
     <system:String x:Key="plugin_circletosearch_results_url_open_failed">The results URL could not be opened in the default browser.</system:String>
     <system:String x:Key="plugin_circletosearch_starting_selection_failed">Starting the selection failed: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_search_failed">The search failed: {0}</system:String>
-    <system:String x:Key="plugin_circletosearch_google_lens_window_title">CircleFlow - Google Lens</system:String>
-    <system:String x:Key="plugin_circletosearch_google_lens_loading">Searching with Google Lens…</system:String>
+    <system:String x:Key="plugin_circletosearch_search_browser_window_title">CircleFlow - {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_search_browser_loading">Searching with {0}…</system:String>
+    <system:String x:Key="plugin_circletosearch_search_browser_show_failed">{0} results could not be shown in the embedded browser.</system:String>
     <system:String x:Key="plugin_circletosearch_text_copy">Copy</system:String>
     <system:String x:Key="plugin_circletosearch_text_search">Search</system:String>
     <system:String x:Key="plugin_circletosearch_text_copied">Text copied.</system:String>

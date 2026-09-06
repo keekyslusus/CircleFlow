@@ -7,7 +7,7 @@ public sealed class VisualSearchProviderRouter : IDisposable
     private readonly Entry _defaultEntry;
     private readonly PluginLog _log;
     private readonly object _gate = new();
-    private int _activeSearches;
+    private int _activePreparations;
     private bool _disposeStarted;
     private bool _disposeCompleted;
 
@@ -49,7 +49,7 @@ public sealed class VisualSearchProviderRouter : IDisposable
     public SearchProviderDescriptor GetEffectiveDescriptor(string? requestedProviderId)
         => Resolve(requestedProviderId).Entry.Descriptor;
 
-    public async Task<RoutedVisualSearchOutcome> SearchAsync(
+    public async Task<RoutedVisualSearchPreparation> PrepareAsync(
         string? requestedProviderId,
         byte[] png,
         CancellationToken cancel)
@@ -62,7 +62,7 @@ public sealed class VisualSearchProviderRouter : IDisposable
         {
             ObjectDisposedException.ThrowIf(_disposeStarted, this);
             provider = resolution.Entry.Provider.Value;
-            _activeSearches++;
+            _activePreparations++;
         }
 
         try
@@ -77,8 +77,8 @@ public sealed class VisualSearchProviderRouter : IDisposable
                     $"visual search provider '{requested}' is unavailable; using '{resolution.Entry.Descriptor.Id}'");
             }
 
-            var outcome = await provider.SearchAsync(png, cancel).ConfigureAwait(false);
-            return new RoutedVisualSearchOutcome(
+            var outcome = await provider.PrepareAsync(png, cancel).ConfigureAwait(false);
+            return new RoutedVisualSearchPreparation(
                 resolution.Entry.Descriptor.Id,
                 resolution.Entry.Descriptor.DisplayName,
                 outcome,
@@ -88,8 +88,8 @@ public sealed class VisualSearchProviderRouter : IDisposable
         {
             lock (_gate)
             {
-                _activeSearches--;
-                if (_activeSearches == 0) Monitor.PulseAll(_gate);
+                _activePreparations--;
+                if (_activePreparations == 0) Monitor.PulseAll(_gate);
             }
         }
     }
@@ -107,7 +107,7 @@ public sealed class VisualSearchProviderRouter : IDisposable
             }
 
             _disposeStarted = true;
-            while (_activeSearches > 0) Monitor.Wait(_gate);
+            while (_activePreparations > 0) Monitor.Wait(_gate);
 
             providers = [];
             foreach (var entry in _entries)

@@ -1,6 +1,7 @@
 using System.Drawing;
 using CircleToSearch.Capture;
 using CircleToSearch.Search;
+using CircleToSearch.Search.Browser;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -8,10 +9,9 @@ namespace CircleToSearch.Tests;
 public sealed class VisualSearchWorkflowTests
 {
     [Fact]
-    public async Task Successful_url_result_disposes_bitmap_transitions_once_and_opens_url()
+    public async Task Successful_preparation_disposes_bitmap_transitions_once_and_presents_result()
     {
         using var harness = new Harness();
-        harness.Provider.Outcome = VisualSearchOutcome.Ok("https://example.com/result");
         var bitmap = new Bitmap(2, 2);
         var transitions = 0;
 
@@ -22,26 +22,15 @@ public sealed class VisualSearchWorkflowTests
             CancellationToken.None);
 
         Assert.Equal(1, transitions);
-        Assert.Equal(["https://example.com/result"], harness.Opened);
+        Assert.Equal(1, harness.Host.Calls);
         Assert.Throws<ArgumentException>(() => bitmap.GetPixel(0, 0));
-    }
-
-    [Fact]
-    public async Task Handled_result_does_not_open_an_external_url()
-    {
-        using var harness = new Harness();
-
-        await harness.ExecuteAsync();
-
-        Assert.Empty(harness.Opened);
         Assert.Empty(harness.Notifier.Errors);
     }
 
     [Fact]
-    public async Task Yandex_selection_routes_once_and_opens_one_result_url()
+    public async Task Yandex_selection_routes_once_to_the_shared_host()
     {
         using var harness = new Harness();
-        harness.Yandex.Outcome = VisualSearchOutcome.Ok("https://yandex.example/result");
 
         await harness.Workflow.ExecuteAsync(
             new SelectionOutcome(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2)),
@@ -49,9 +38,30 @@ public sealed class VisualSearchWorkflowTests
             () => { },
             CancellationToken.None);
 
-        Assert.Equal(0, harness.Provider.Calls);
+        Assert.Equal(0, harness.Google.Calls);
         Assert.Equal(1, harness.Yandex.Calls);
-        Assert.Equal(["https://yandex.example/result"], harness.Opened);
+        Assert.Equal(1, harness.Host.Calls);
+        Assert.Equal(SearchProviderIds.YandexImages, harness.Host.LastDescriptor!.Id);
+    }
+
+    [Fact]
+    public async Task Yandex_navigation_failure_does_not_repeat_preparation_and_opens_fallback_once()
+    {
+        using var harness = new Harness();
+        var results = new Uri("https://yandex.ru/images/search?rpt=imageview");
+        harness.Yandex.Outcome = VisualSearchPreparationOutcome.Ready(
+            PreparedVisualSearch.ForUrl(results, results));
+        harness.Host.Status = SearchBrowserShowStatus.NavigationFailed;
+
+        await harness.Workflow.ExecuteAsync(
+            new SelectionOutcome(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2)),
+            SearchProviderIds.YandexImages,
+            () => { },
+            CancellationToken.None);
+
+        Assert.Equal(1, harness.Yandex.Calls);
+        Assert.Equal(1, harness.Host.Calls);
+        Assert.Equal([results.AbsoluteUri], harness.Opened);
     }
 
     [Fact]
@@ -65,7 +75,7 @@ public sealed class VisualSearchWorkflowTests
             () => { },
             CancellationToken.None);
 
-        Assert.Equal(1, harness.Provider.Calls);
+        Assert.Equal(1, harness.Google.Calls);
         Assert.Equal(0, harness.Yandex.Calls);
     }
 
@@ -74,7 +84,7 @@ public sealed class VisualSearchWorkflowTests
     {
         using var harness = new Harness();
         var events = new List<string>();
-        harness.Provider.OnCall = () => events.Add("provider");
+        harness.Google.OnCall = () => events.Add("provider");
 
         await harness.Workflow.ExecuteAsync(
             new SelectionOutcome(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2)),
@@ -108,7 +118,7 @@ public sealed class VisualSearchWorkflowTests
     public async Task Provider_exception_propagates_after_bitmap_is_disposed()
     {
         using var harness = new Harness();
-        harness.Provider.Exception = new InvalidOperationException("provider failed");
+        harness.Google.Exception = new InvalidOperationException("provider failed");
         var bitmap = new Bitmap(2, 2);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => harness.Workflow.ExecuteAsync(
@@ -127,72 +137,70 @@ public sealed class VisualSearchWorkflowTests
     [InlineData(UploadFailure.PolicyRejection, "unexpected")]
     [InlineData(UploadFailure.Timeout, "timed out")]
     [InlineData(UploadFailure.NetworkError, "network error")]
-    [InlineData(UploadFailure.BrowserRuntimeUnavailable, "Google Lens")]
-    [InlineData(UploadFailure.BrowserAutomationFailed, "Google Lens")]
-    public async Task Expected_failure_maps_to_its_existing_message(UploadFailure failure, string expected)
+    public async Task Preparation_failure_maps_to_existing_message(UploadFailure failure, string expected)
     {
         using var harness = new Harness();
-        harness.Provider.Outcome = VisualSearchOutcome.Fail(failure, 503);
+        harness.Google.Outcome = VisualSearchPreparationOutcome.Fail(failure, 503);
 
         await harness.ExecuteAsync();
 
         Assert.Contains(expected, Assert.Single(harness.Notifier.Errors).Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, harness.Host.Calls);
     }
 
     [Fact]
-    public async Task Canceled_failure_does_not_notify()
+    public async Task Canceled_preparation_does_not_notify_or_show_browser()
     {
         using var harness = new Harness();
-        harness.Provider.Outcome = VisualSearchOutcome.Fail(UploadFailure.Canceled);
+        harness.Google.Outcome = VisualSearchPreparationOutcome.Fail(UploadFailure.Canceled);
 
         await harness.ExecuteAsync();
 
         Assert.Empty(harness.Notifier.Errors);
-    }
-
-    [Fact]
-    public async Task Url_open_failure_surfaces_the_existing_error()
-    {
-        using var harness = new Harness(openUrl: _ => false);
-        harness.Provider.Outcome = VisualSearchOutcome.Ok("https://example.com/result");
-
-        await harness.ExecuteAsync();
-
-        Assert.Contains("open", Assert.Single(harness.Notifier.Errors).Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, harness.Host.Calls);
     }
 
     private sealed class Harness : IDisposable
     {
         private readonly VisualSearchProviderRouter _router;
 
-        public Harness(
-            Func<Bitmap, Rectangle, byte[]>? crop = null,
-            Func<string, bool>? openUrl = null)
+        public Harness(Func<Bitmap, Rectangle, byte[]>? crop = null)
         {
             var log = NewLog();
             _router = new VisualSearchProviderRouter(
                 [
                     new VisualSearchProviderRegistration(
                         new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens"),
-                        () => Provider),
+                        () => Google),
                     new VisualSearchProviderRegistration(
                         new SearchProviderDescriptor(SearchProviderIds.YandexImages, "Yandex Images"),
                         () => Yandex),
                 ],
                 SearchProviderIds.GoogleLens,
                 log);
+            var presenter = new VisualSearchResultPresenter(
+                Host,
+                url =>
+                {
+                    Opened.Add(url);
+                    return true;
+                },
+                Notifier,
+                TestUiStrings.English,
+                log);
             Workflow = new VisualSearchWorkflow(
                 _router,
                 crop ?? ((_, _) => [1, 2, 3]),
-                openUrl ?? (url => { Opened.Add(url); return true; }),
+                presenter,
                 Notifier,
                 TestUiStrings.English,
                 log);
         }
 
         public VisualSearchWorkflow Workflow { get; }
-        public FakeProvider Provider { get; } = new();
+        public FakeProvider Google { get; } = new();
         public FakeProvider Yandex { get; } = new();
+        public FakeHost Host { get; } = new();
         public TestPluginNotifier Notifier { get; } = new();
         public List<string> Opened { get; } = [];
 
@@ -208,17 +216,36 @@ public sealed class VisualSearchWorkflowTests
     private sealed class FakeProvider : IVisualSearchProvider
     {
         public int Calls { get; private set; }
-        public VisualSearchOutcome Outcome { get; set; } = VisualSearchOutcome.Handled();
+        public VisualSearchPreparationOutcome Outcome { get; set; } =
+            VisualSearchPreparationOutcome.Ready(
+                PreparedVisualSearch.ForUrl(new Uri("https://example.com/result"), null));
         public Exception? Exception { get; set; }
         public Action? OnCall { get; set; }
 
-        public Task<VisualSearchOutcome> SearchAsync(byte[] png, CancellationToken cancel)
+        public Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel)
         {
             Calls++;
             OnCall?.Invoke();
             return Exception is null
                 ? Task.FromResult(Outcome)
-                : Task.FromException<VisualSearchOutcome>(Exception);
+                : Task.FromException<VisualSearchPreparationOutcome>(Exception);
+        }
+    }
+
+    private sealed class FakeHost : ISearchBrowserHost
+    {
+        public SearchBrowserShowStatus Status { get; set; } = SearchBrowserShowStatus.Shown;
+        public int Calls { get; private set; }
+        public SearchProviderDescriptor? LastDescriptor { get; private set; }
+
+        public Task<SearchBrowserShowResult> ShowAsync(
+            SearchProviderDescriptor descriptor,
+            PreparedVisualSearch preparedSearch,
+            CancellationToken cancel)
+        {
+            Calls++;
+            LastDescriptor = descriptor;
+            return Task.FromResult(new SearchBrowserShowResult(Status));
         }
     }
 

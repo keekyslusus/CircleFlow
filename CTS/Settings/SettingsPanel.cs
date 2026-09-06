@@ -21,7 +21,7 @@ public sealed class SettingsPanel : UserControl
         IReadOnlyList<OcrLanguageOption>? ocrLanguages = null)
     {
         var searchMode = CreateText(strings.SearchProvider(providerDisplayName));
-        var runtime = CreateText(strings.GoogleLensRuntime(webView2Version));
+        var runtime = CreateText(strings.SearchBrowserRuntime(webView2Version));
         var gestureLabel = CreateText(strings.SettingsHotkeyLabel);
         var gesture = CreateInput(settings.HotkeyGesture);
 

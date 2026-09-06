@@ -5,6 +5,7 @@ using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
+using CircleToSearch.Search.Browser;
 using CircleToSearch.Settings;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
@@ -439,10 +440,16 @@ public sealed class OverlaySessionWorkflowTests
             Overlay = overlaySessions[0];
             Factory = new FakeOverlayFactory(overlaySessions);
             Notifier = new FakeNotifier(Errors, Messages);
+            var visualPresenter = new VisualSearchResultPresenter(
+                new FakeBrowserHost(),
+                _ => true,
+                Notifier,
+                TestUiStrings.English,
+                Log);
             var visualSearch = new VisualSearchWorkflow(
                 _router,
                 (_, _) => [1],
-                _ => true,
+                visualPresenter,
                 Notifier,
                 TestUiStrings.English,
                 Log);
@@ -606,11 +613,21 @@ public sealed class OverlaySessionWorkflowTests
     private sealed class FakeProvider : IVisualSearchProvider
     {
         public int Calls { get; private set; }
-        public Task<VisualSearchOutcome> SearchAsync(byte[] png, CancellationToken cancel)
+        public Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel)
         {
             Calls++;
-            return Task.FromResult(VisualSearchOutcome.Handled());
+            return Task.FromResult(VisualSearchPreparationOutcome.Ready(
+                PreparedVisualSearch.ForUrl(new Uri("https://example.com/results"), null)));
         }
+    }
+
+    private sealed class FakeBrowserHost : ISearchBrowserHost
+    {
+        public Task<SearchBrowserShowResult> ShowAsync(
+            SearchProviderDescriptor descriptor,
+            PreparedVisualSearch preparedSearch,
+            CancellationToken cancel)
+            => Task.FromResult(new SearchBrowserShowResult(SearchBrowserShowStatus.Shown));
     }
 
     private sealed class FakeTranslationProvider : ITranslationProvider

@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using CircleToSearch.Interop;
 using CircleToSearch.Search;
+using CircleToSearch.Search.Browser;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -15,18 +16,29 @@ public sealed class GoogleLensLiveSearchTests
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
 
         var dataDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.WebView2Live");
-        using var window = new GoogleLensWindow(
+        var log = new PluginLog(dataDirectory);
+        using var host = new SearchBrowserHost(
             AppContext.BaseDirectory,
             Path.Combine(dataDirectory, "Profile"),
             TestUiStrings.English,
-            new PluginLog(dataDirectory),
-            new StaDispatcher(CompositionRoot.GoogleLensThreadName));
+            log,
+            new StaDispatcher(CompositionRoot.SearchBrowserThreadName));
+        var provider = new GoogleLensProvider(
+            png => new GoogleLensBrowserOperation(png, log));
 
-        var first = await window.ShowAsync(CreatePng(), CancellationToken.None);
-        var second = await window.ShowAsync(CreatePng(), CancellationToken.None);
+        var firstPreparation = await provider.PrepareAsync(CreatePng(), CancellationToken.None);
+        var first = await host.ShowAsync(
+            new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens"),
+            firstPreparation.PreparedSearch!,
+            CancellationToken.None);
+        var secondPreparation = await provider.PrepareAsync(CreatePng(), CancellationToken.None);
+        var second = await host.ShowAsync(
+            new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens"),
+            secondPreparation.PreparedSearch!,
+            CancellationToken.None);
 
-        Assert.Equal(GoogleLensSearchStatus.ResultsReady, first);
-        Assert.Equal(GoogleLensSearchStatus.ResultsReady, second);
+        Assert.Equal(SearchBrowserShowStatus.Shown, first.Status);
+        Assert.Equal(SearchBrowserShowStatus.Shown, second.Status);
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_PREVIEW") == "1")
             await Task.Delay(TimeSpan.FromSeconds(45));
     }

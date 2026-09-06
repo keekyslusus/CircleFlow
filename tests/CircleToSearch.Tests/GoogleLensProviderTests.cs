@@ -1,4 +1,5 @@
 using CircleToSearch.Search;
+using CircleToSearch.Search.Browser;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -6,54 +7,65 @@ namespace CircleToSearch.Tests;
 public sealed class GoogleLensProviderTests
 {
     [Fact]
-    public async Task Ready_results_are_reported_as_handled()
+    public async Task Preparation_creates_a_fresh_browser_operation_without_external_fallback()
     {
-        var provider = ProviderReturning(GoogleLensSearchStatus.ResultsReady);
+        var operations = new List<FakeOperation>();
+        var provider = new GoogleLensProvider(_ =>
+        {
+            var operation = new FakeOperation();
+            operations.Add(operation);
+            return operation;
+        });
 
-        var outcome = await provider.SearchAsync([1, 2, 3], CancellationToken.None);
+        var first = await provider.PrepareAsync([1, 2, 3], CancellationToken.None);
+        var second = await provider.PrepareAsync([4, 5, 6], CancellationToken.None);
 
-        Assert.True(outcome.Success);
-        Assert.Null(outcome.ResultsUrl);
-        Assert.Equal(UploadFailure.None, outcome.Failure);
-    }
-
-    [Theory]
-    [InlineData(GoogleLensSearchStatus.RuntimeUnavailable, UploadFailure.BrowserRuntimeUnavailable)]
-    [InlineData(GoogleLensSearchStatus.Failed, UploadFailure.BrowserAutomationFailed)]
-    [InlineData(GoogleLensSearchStatus.Canceled, UploadFailure.Canceled)]
-    public async Task Window_failure_is_mapped_to_provider_failure(
-        GoogleLensSearchStatus status,
-        UploadFailure expected)
-    {
-        var provider = ProviderReturning(status);
-
-        var outcome = await provider.SearchAsync([1], CancellationToken.None);
-
-        Assert.False(outcome.Success);
-        Assert.Equal(expected, outcome.Failure);
+        Assert.True(first.Success);
+        Assert.True(second.Success);
+        Assert.Equal(2, operations.Count);
+        Assert.Equal(PreparedVisualSearchKind.BrowserOperation, first.PreparedSearch!.Kind);
+        Assert.Same(operations[0], first.PreparedSearch.RequireBrowserOperation());
+        Assert.Same(operations[1], second.PreparedSearch!.RequireBrowserOperation());
+        Assert.Null(first.PreparedSearch.ExternalFallbackUrl);
     }
 
     [Fact]
-    public void Dispose_releases_the_owned_window_once()
+    public async Task Canceled_preparation_does_not_create_an_operation()
     {
-        var window = new TrackingDisposable();
-        var provider = new GoogleLensProvider(
-            (_, _) => Task.FromResult(GoogleLensSearchStatus.ResultsReady),
-            window);
+        var calls = 0;
+        var provider = new GoogleLensProvider(_ =>
+        {
+            calls++;
+            return new FakeOperation();
+        });
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
 
-        provider.Dispose();
-        provider.Dispose();
+        var outcome = await provider.PrepareAsync([1], cancellation.Token);
 
-        Assert.Equal(1, window.DisposeCalls);
+        Assert.False(outcome.Success);
+        Assert.Equal(UploadFailure.Canceled, outcome.Failure);
+        Assert.Equal(0, calls);
     }
 
-    private static GoogleLensProvider ProviderReturning(GoogleLensSearchStatus status)
-        => new((_, _) => Task.FromResult(status));
-
-    private sealed class TrackingDisposable : IDisposable
+    [Fact]
+    public void Provider_does_not_construct_the_browser_operation_dependency()
     {
-        public int DisposeCalls { get; private set; }
+        var source = File.ReadAllText(Path.Combine(
+            TestOutputPaths.RepoDirectory,
+            "CTS",
+            "Search",
+            "GoogleLensProvider.cs"));
 
-        public void Dispose() => DisposeCalls++;
+        Assert.DoesNotContain("new GoogleLensBrowserOperation", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("PluginLog", source, StringComparison.Ordinal);
+    }
+
+    private sealed class FakeOperation : IVisualSearchBrowserOperation
+    {
+        public Task<VisualSearchBrowserOperationStatus> ExecuteAsync(
+            IVisualSearchBrowserSession session,
+            CancellationToken cancel)
+            => Task.FromResult(VisualSearchBrowserOperationStatus.Succeeded);
     }
 }

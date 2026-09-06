@@ -1,5 +1,6 @@
 using CircleToSearch.Interop;
 using CircleToSearch.Search;
+using CircleToSearch.Search.Browser;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using System.Text;
@@ -7,7 +8,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
-public sealed class LensBrowserExtensionLiveTests
+public sealed class SearchBrowserExtensionLiveTests
 {
     [Fact]
     [Trait("Category", "Live")]
@@ -30,7 +31,7 @@ public sealed class LensBrowserExtensionLiveTests
                 await view.EnsureCoreWebView2Async(environment);
                 var core = view.CoreWebView2;
                 var extension = await core.Profile.AddBrowserExtensionAsync(
-                    LensBrowserExtension.Prepare(AppContext.BaseDirectory, profile));
+                    SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile));
                 Assert.True(extension.IsEnabled);
                 await Navigate(core, $"chrome-extension://{extension.Id}/dashboard.html");
                 Assert.Contains("uBO Lite", await core.ExecuteScriptAsync("document.title"));

@@ -8,3 +8,4 @@ tests/temp/
 # REMOVE THESE BEFORE PUBLIC RELEASE!!!:
 RELEASE_ROADMAP.md
 /poc
+*.jpg

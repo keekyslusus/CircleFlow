@@ -12,6 +12,7 @@ using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
+using CircleToSearch.Search.Browser;
 using CircleToSearch.Settings;
 using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
@@ -26,7 +27,7 @@ namespace CircleToSearch;
 public static class CompositionRoot
 {
     internal const string HotkeyThreadName = "CircleToSearch hotkey";
-    internal const string GoogleLensThreadName = "CircleToSearch WebView2";
+    internal const string SearchBrowserThreadName = "CircleToSearch WebView2";
 
     public static UiStrings CreateUiStrings(PluginInitContext context) =>
         new(context.API.GetTranslation);
@@ -40,7 +41,7 @@ public static class CompositionRoot
         var dataDirectory = api.GetDataDirectory();
         if (string.IsNullOrWhiteSpace(dataDirectory)) dataDirectory = pluginDirectory;
         var iconPath = Path.Combine(pluginDirectory, "Images", "app.png");
-        var webView2Version = GoogleLensWindow.GetRuntimeVersion(pluginDirectory);
+        var webView2Version = SearchBrowserHost.GetRuntimeVersion(pluginDirectory);
         log.Info(nameof(CompositionRoot), webView2Version is null
             ? "WebView2 Runtime was not detected"
             : $"WebView2 Runtime detected: {webView2Version}");
@@ -51,26 +52,34 @@ public static class CompositionRoot
                 api.ShowMsgWithButton(title, button, action, message, iconPath),
             (title, message) => api.ShowMsgError(title, message),
             log);
+        var searchBrowserHost = new SearchBrowserHost(
+            pluginDirectory,
+            Path.Combine(dataDirectory, "WebView2Profile"),
+            strings,
+            log,
+            new StaDispatcher(SearchBrowserThreadName));
         var providerRouter = new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(
                     new SearchProviderDescriptor(SearchProviderIds.GoogleLens, strings.GoogleLensProviderName),
-                    () => new GoogleLensProvider(new GoogleLensWindow(
-                        pluginDirectory,
-                        Path.Combine(dataDirectory, "WebView2Profile"),
-                        strings,
-                        log,
-                        new StaDispatcher(GoogleLensThreadName)))),
+                    () => new GoogleLensProvider(
+                        png => new GoogleLensBrowserOperation(png, log))),
                 new VisualSearchProviderRegistration(
                     new SearchProviderDescriptor(SearchProviderIds.YandexImages, strings.YandexImagesProviderName),
                     () => new YandexImagesProvider(log)),
             ],
             SearchProviderIds.GoogleLens,
             log);
+        var visualSearchPresenter = new VisualSearchResultPresenter(
+            searchBrowserHost,
+            OpenResultsUrl,
+            notifier,
+            strings,
+            log);
         var visualSearch = new VisualSearchWorkflow(
             providerRouter,
             (frame, bounds) => ImageCropper.Encode(frame, bounds, settings.MaxLongSidePx),
-            OpenResultsUrl,
+            visualSearchPresenter,
             notifier,
             strings,
             log);
@@ -195,6 +204,7 @@ public static class CompositionRoot
                 ocrLanguages.AvailableLanguages),
             hotkeyWindow,
             providerRouter,
+            searchBrowserHost,
             [musicHttpClient, musicThrottle, translationHttpClient],
             log);
     }
@@ -222,6 +232,7 @@ public sealed class PluginRuntime : IDisposable
     private readonly SearchCoordinator _coordinator;
     private readonly HotkeyWindow _hotkeyWindow;
     private readonly VisualSearchProviderRouter _providerRouter;
+    private readonly SearchBrowserHost _searchBrowserHost;
     private readonly IReadOnlyList<IDisposable> _musicResources;
     private readonly PluginLog _log;
 
@@ -231,6 +242,7 @@ public sealed class PluginRuntime : IDisposable
         Func<Control> createSettingPanel,
         HotkeyWindow hotkeyWindow,
         VisualSearchProviderRouter providerRouter,
+        SearchBrowserHost searchBrowserHost,
         IReadOnlyList<IDisposable> musicResources,
         PluginLog log)
     {
@@ -240,6 +252,7 @@ public sealed class PluginRuntime : IDisposable
         _coordinator = coordinator;
         _hotkeyWindow = hotkeyWindow;
         _providerRouter = providerRouter;
+        _searchBrowserHost = searchBrowserHost;
         _musicResources = musicResources;
         _log = log;
     }
@@ -269,5 +282,6 @@ public sealed class PluginRuntime : IDisposable
         foreach (var resource in _musicResources) resource.Dispose();
         _hotkeyWindow.Dispose();
         _providerRouter.Dispose();
+        _searchBrowserHost.Dispose();
     }
 }
