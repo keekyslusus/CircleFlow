@@ -75,4 +75,16 @@
     </Content>
   </ItemGroup>
 
+  <!-- Flow must resolve WinRT through its default load context. A private copy lets
+       WebView2's older assembly reference create a second global ComWrappers. -->
+  <Target Name="UseHostWinRtRuntime" AfterTargets="ResolveReferences">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
+                               Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'WinRT.Runtime'" />
+    </ItemGroup>
+  </Target>
+  <Target Name="RemoveStalePrivateWinRtRuntime" AfterTargets="Build">
+    <Delete Files="$(TargetDir)WinRT.Runtime.dll" />
+  </Target>
+
 </Project>

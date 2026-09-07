@@ -411,6 +411,35 @@ public sealed class OverlaySessionWorkflowTests
     private static ShazamRecognition Match(string? url) =>
         new("Track", "Artist", null, null, null, null, url);
 
+    [Fact]
+    public async Task Trace_search_keeps_overlay_alive_and_returns_native_result()
+    {
+        using var harness = new Harness(SearchProviderIds.TraceMoe);
+        harness.Overlay.CloseCompletion = new TaskCompletionSource().Task;
+        var selection = NewSelection();
+        harness.Overlay.Enqueue(new VisualSelection(selection, SearchProviderIds.TraceMoe));
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.NotNull(harness.Overlay.TraceResult);
+        Assert.Equal(PreparedVisualSearchKind.TraceMoe, harness.Overlay.TraceResult!.PreparedSearch!.Kind);
+        Assert.Equal(new[] { "trace", "close" }, harness.Events);
+        Assert.Equal(0, harness.UploadStartedCalls);
+        Assert.Equal(0, harness.Google.Calls);
+        Assert.Throws<ArgumentException>(() => selection.FrozenFrame.GetHbitmap());
+    }
+
+    [Fact]
+    public async Task Opening_trace_card_closes_overlay_before_opening_anilist()
+    {
+        using var harness = new Harness(SearchProviderIds.TraceMoe);
+        harness.Trace.Match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
+            "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")));
+        harness.Overlay.CommandsAfterResult.Add(new OpenTraceResult());
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.TraceMoe));
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(new[] { "trace", "close", "trace-open", "close" }, harness.Events);
+        Assert.Equal(harness.Trace.Match!.AnilistUrl, Assert.Single(harness.Opened));
+    }
+
     private sealed class Harness : IDisposable
     {
         private readonly VisualSearchProviderRouter _router;
@@ -430,6 +459,9 @@ public sealed class OverlaySessionWorkflowTests
                     new VisualSearchProviderRegistration(
                         new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens"),
                         () => Google),
+                    new VisualSearchProviderRegistration(
+                        new SearchProviderDescriptor(SearchProviderIds.TraceMoe, "trace.moe"),
+                        () => Trace),
                     new VisualSearchProviderRegistration(
                         new SearchProviderDescriptor(SearchProviderIds.YandexImages, "Yandex Images"),
                         () => Yandex),
@@ -488,7 +520,8 @@ public sealed class OverlaySessionWorkflowTests
                 TestUiStrings.English,
                 Log,
                 textSearch,
-                screenTranslation);
+                screenTranslation,
+                url => { Events.Add("trace-open"); Opened.Add(url); return true; });
         }
 
         public OverlaySessionWorkflow Workflow { get; }
@@ -497,6 +530,7 @@ public sealed class OverlaySessionWorkflowTests
         public FakeNotifier Notifier { get; }
         public FakeOverlay Overlay { get; }
         public FakeOverlayFactory Factory { get; }
+        public FakeTraceProvider Trace { get; } = new();
         public FakeProvider Google { get; } = new();
         public FakeProvider Yandex { get; } = new();
         public FakeMusicRecognizer Music { get; } = new();
@@ -583,6 +617,15 @@ public sealed class OverlaySessionWorkflowTests
             AudioFrames++;
             return Task.CompletedTask;
         }
+        public VisualSearchPreparationOutcome? TraceResult { get; private set; }
+        public Task ShowTraceResultAsync(VisualSearchPreparationOutcome outcome, CancellationToken cancellationToken)
+        {
+            TraceResult = outcome;
+            Events.Add("trace");
+            foreach (var command in CommandsAfterResult) Enqueue(command);
+            Enqueue(new CancelSession());
+            return Task.CompletedTask;
+        }
         public Task ShowMusicResultAsync(MusicRecognitionOutcome outcome, CancellationToken cancellationToken)
         {
             if (ShowResultException is not null) throw ShowResultException;
@@ -608,6 +651,13 @@ public sealed class OverlaySessionWorkflowTests
             return Task.CompletedTask;
         }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class FakeTraceProvider : IVisualSearchProvider
+    {
+        public TraceMoeMatch? Match { get; set; }
+        public Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel) =>
+            Task.FromResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(Match)));
     }
 
     private sealed class FakeProvider : IVisualSearchProvider

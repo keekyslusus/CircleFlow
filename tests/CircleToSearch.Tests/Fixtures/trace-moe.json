@@ -1,0 +1,151 @@
+{
+  "error": "",
+  "result": [
+    {
+      "episode": 1,
+      "from": 531.5315,
+      "to": 534.7431,
+      "duration": 1439.9147,
+      "similarity": 0.9258900436700559,
+      "image": "https://api.trace.moe/image/VTTqvPRfWK5vOogzll5CAN",
+      "video": "https://api.trace.moe/video/VTTqvPRfWK5vOogzll5CAN",
+      "anilist": {
+        "id": 140439,
+        "title": {
+          "native": "モブサイコ100 Ⅲ",
+          "romaji": "Mob Psycho 100 III",
+          "chinese": "Mob Psycho 100 III",
+          "english": "Mob Psycho 100 III"
+        },
+        "format": "TV",
+        "seasonYear": 2022,
+        "duration": 24,
+        "studios": {
+          "edges": [
+            {
+              "node": {
+                "id": 4,
+                "name": "bones",
+                "siteUrl": "https://anilist.co/studio/4"
+              },
+              "isMain": true
+            },
+            {
+              "node": {
+                "id": 415,
+                "name": "Warner Bros. Japan",
+                "siteUrl": "https://anilist.co/studio/415"
+              },
+              "isMain": false
+            },
+            {
+              "node": {
+                "id": 460,
+                "name": "KLOCKWORX",
+                "siteUrl": "https://anilist.co/studio/460"
+              },
+              "isMain": false
+            },
+            {
+              "node": {
+                "id": 777,
+                "name": "Hakuhodo DY Music & Pictures",
+                "siteUrl": "https://anilist.co/studio/777"
+              },
+              "isMain": false
+            },
+            {
+              "node": {
+                "id": 843,
+                "name": "BS Fuji",
+                "siteUrl": "https://anilist.co/studio/843"
+              },
+              "isMain": false
+            },
+            {
+              "node": {
+                "id": 6161,
+                "name": "Shogakukan",
+                "siteUrl": "https://anilist.co/studio/6161"
+              },
+              "isMain": false
+            },
+            {
+              "node": {
+                "id": 62,
+                "name": "Shogakukan-Shueisha Productions",
+                "siteUrl": "https://anilist.co/studio/62"
+              },
+              "isMain": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "episode": 9,
+      "from": 67.6926,
+      "to": 68.5685,
+      "duration": 1440.128,
+      "similarity": 0.21635903751148897,
+      "image": "https://api.trace.moe/image/QoPlTmSYUE43Epd9RWKGuZZ",
+      "video": "https://api.trace.moe/video/QoPlTmSYUE43Epd9RWKGuZZ",
+      "anilist": {
+        "id": 3503,
+        "title": {
+          "native": "かのこん",
+          "romaji": "Kanokon",
+          "chinese": "我的狐仙女友",
+          "english": "Kanokon: The Girl Who Cried Fox"
+        },
+        "format": "TV",
+        "seasonYear": 2008,
+        "duration": 24,
+        "studios": {
+          "edges": [
+            {
+              "node": {
+                "id": 27,
+                "name": "Xebec",
+                "siteUrl": "https://anilist.co/studio/27"
+              },
+              "isMain": true
+            },
+            {
+              "node": {
+                "id": 108,
+                "name": "Media Factory",
+                "siteUrl": "https://anilist.co/studio/108"
+              },
+              "isMain": false
+            },
+            {
+              "node": {
+                "id": 166,
+                "name": "Movic",
+                "siteUrl": "https://anilist.co/studio/166"
+              },
+              "isMain": false
+            },
+            {
+              "node": {
+                "id": 238,
+                "name": "AT-X",
+                "siteUrl": "https://anilist.co/studio/238"
+              },
+              "isMain": false
+            },
+            {
+              "node": {
+                "id": 250,
+                "name": "Media Blasters",
+                "siteUrl": "https://anilist.co/studio/250"
+              },
+              "isMain": false
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

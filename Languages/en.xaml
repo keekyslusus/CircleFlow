@@ -108,4 +108,11 @@
     <system:String x:Key="plugin_circletosearch_settings_ocr_language_label">Screen text recognition language</system:String>
     <system:String x:Key="plugin_circletosearch_settings_translation_target_label">Translation target language</system:String>
     <system:String x:Key="plugin_circletosearch_system_default_language">System default</system:String>
+    <system:String x:Key="plugin_circletosearch_trace_provider_name">trace.moe</system:String>
+    <system:String x:Key="plugin_circletosearch_trace_searching">Searching...</system:String>
+    <system:String x:Key="plugin_circletosearch_trace_no_match">No anime found</system:String>
+    <system:String x:Key="plugin_circletosearch_trace_rate_limited">trace.moe request limit reached. Try again later.</system:String>
+    <system:String x:Key="plugin_circletosearch_trace_open">Open in AniList</system:String>
+    <system:String x:Key="plugin_circletosearch_trace_copy">Copy anime info</system:String>
+    <system:String x:Key="plugin_circletosearch_trace_episode">Episode {0}</system:String>
 </ResourceDictionary>

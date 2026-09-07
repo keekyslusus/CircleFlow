@@ -1,0 +1,338 @@
+using System.Reflection;
+using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media.Effects;
+using CircleToSearch.Ui;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using CircleToSearch.Capture;
+using CircleToSearch.Capture.OverlayInteractions;
+using CircleToSearch.Search;
+using Xunit;
+
+namespace CircleToSearch.Tests;
+
+public sealed class TraceOverlayTests
+{
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void Renders_card_and_loading_and_copy_does_not_open_anilist(bool light, bool hostButtonAlignment)
+    {
+        RunSta(() =>
+        {
+            _ = Windows.Media.Ocr.OcrEngine.AvailableRecognizerLanguages;
+            var visual = OverlayVisualFactory.CreateRoot(null, new Size(960, 600), 32, light,
+                TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
+            var window = new Window { Content = new AdornerDecorator { Child = visual.Root }, Width = 960, Height = 600, ShowActivated = false, ShowInTaskbar = false };
+            if (hostButtonAlignment)
+                window.Resources.Add(typeof(Button), new Style(typeof(Button))
+                {
+                    Setters = { new Setter(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left) },
+                });
+            window.Show();
+            window.UpdateLayout();
+            int opened = 0, closed = 0;
+            string? copied = null;
+            using var trace = TraceOverlayVisual.Create(visual.Root, visual.Bottom, visual.Effects, TestUiStrings.English, light,
+                () => opened++, () => closed++, text => copied = text, video => new TraceVideoPreview(video,
+                    () => Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
+                        userDataFolder: Path.Combine(TestOutputPaths.TempDirectory, "trace-video-profile")),
+                    new PluginLog(TestOutputPaths.TempDirectory)));
+            try
+            {
+                Pump(240);
+                Assert.Single(Descendants(visual.Root).OfType<LoadingIndicatorVisual>(), x => x.IsRequestedActive);
+                var loadingText = Descendants(visual.Root).OfType<TextBlock>().Single(x => x.Text == TestUiStrings.English.TraceSearching);
+                Assert.Equal("Searching...", loadingText.Text);
+                Assert.Equal(PluginPalette.ListeningText, Assert.IsType<SolidColorBrush>(loadingText.Foreground).Color);
+                var shadow = Assert.IsType<DropShadowEffect>(loadingText.Effect);
+                Assert.Equal(10, shadow.BlurRadius);
+                Assert.Equal(1, shadow.ShadowDepth);
+                Capture(visual.Root, $"trace-{light}-loading.png");
+                var live = Environment.GetEnvironmentVariable("CTS_TRACE_LIVE_PREVIEW") == "1";
+                var match = TraceMoeProvider.Parse(File.ReadAllText(live
+                    ? Path.Combine(TestOutputPaths.TempDirectory, "trace-live.json")
+                    : Path.Combine(TestOutputPaths.RepoDirectory, "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))!;
+                trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(live ? match : match with { Image = null, Video = null })));
+                if (live)
+                {
+                    var media = Assert.Single(Descendants(visual.Root).OfType<Microsoft.Web.WebView2.Wpf.WebView2CompositionControl>());
+                    Pump(6000);
+                    Assert.NotNull(media.CoreWebView2);
+                    var state = media.CoreWebView2.ExecuteScriptAsync("JSON.stringify({ready:document.querySelector('video').readyState,muted:document.querySelector('video').muted,time:document.querySelector('video').currentTime,loop:document.querySelector('video').loop})");
+                    while (!state.IsCompleted) Pump(50);
+                    File.WriteAllText(Path.Combine(TestOutputPaths.TempDirectory, "trace-video-state.txt"), state.Result);
+                    var decoded = System.Text.Json.JsonSerializer.Deserialize<string>(state.Result)!;
+                    using var playback = System.Text.Json.JsonDocument.Parse(decoded);
+                    Assert.True(playback.RootElement.GetProperty("ready").GetInt32() >= 2);
+                    Assert.True(playback.RootElement.GetProperty("time").GetDouble() > 0);
+                    Assert.True(playback.RootElement.GetProperty("muted").GetBoolean());
+                    Assert.True(playback.RootElement.GetProperty("loop").GetBoolean());
+                    Assert.True(media.CoreWebView2.IsMuted);
+                }
+                Pump(450);
+                Assert.True(trace.Presentation.IsCompletedSuccessfully, trace.Presentation.Exception?.ToString());
+                Assert.DoesNotContain(Descendants(visual.Root).OfType<LoadingIndicatorVisual>(), x => x.IsRequestedActive);
+                Assert.Contains(Descendants(visual.Root).OfType<TextBlock>(), x => x.Text == match.Title);
+                var card = Descendants(visual.Bottom.Stack).OfType<Border>().Single(x => x.Width == 640);
+                var cardBottom = card.TranslatePoint(new Point(0, card.ActualHeight), visual.Root).Y;
+                var chipsTop = visual.Bottom.ActionSlot.TranslatePoint(new Point(), visual.Root).Y;
+                Assert.InRange(chipsTop - cardBottom, 15, 17);
+                Assert.Equal(Visibility.Visible, visual.Bottom.Root.Visibility);
+                Capture(visual.Root, $"trace-{light}-result.png");
+                var open = Descendants(card).OfType<Button>().Single(x => AutomationProperties.GetName(x).StartsWith(TestUiStrings.English.TraceOpen));
+                Assert.Equal(card.ActualWidth - 2, open.ActualWidth, 1);
+                Assert.Equal(open.ActualWidth - 20, Assert.IsType<Grid>(open.Content).ActualWidth, 1);
+                open.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent, Source = open,
+                });
+                if (OverlayVisualResources.AnimationsEnabled())
+                    Assert.Single(AdornerLayer.GetAdornerLayer(open)!.GetAdorners(open)!);
+                open.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent, Source = open,
+                });
+                var copy = Descendants(visual.Root).OfType<Button>().Single(x => AutomationProperties.GetName(x) == TestUiStrings.English.TraceCopy);
+                copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Contains(match.Title, copied);
+                Assert.Equal(0, opened);
+                var close = Descendants(visual.Root).OfType<Button>().Last(x => AutomationProperties.GetName(x) == TestUiStrings.English.Close);
+                close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Pump(200);
+                Assert.Equal(1, closed);
+            }
+            finally
+            {
+                visual.Effects.SceneRipples.Dispose();
+                visual.Bottom.LayoutTransitions.Dispose();
+                visual.Music.LoadingIndicator.Dispose();
+                visual.Music.Waveform.Dispose();
+                window.Close();
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void Trace_result_keeps_overlay_open_and_supports_close_retry_and_music(bool startMusic, bool matched)
+    {
+        RunSta(() =>
+        {
+            using var frame = new System.Drawing.Bitmap(640, 400);
+            var monitor = new System.Drawing.Rectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(frame, monitor, monitor, 1,
+                new OverlayLaunchOptions(new OverlayOptions(8, 12), TestUiStrings.English,
+                    [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe),
+                commands.Add, new OverlayControllerFactory(), overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+            typeof(OverlayWindow).GetMethod("OnSelectionCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(overlay, [new System.Drawing.Rectangle(10, 10, 100, 100)]);
+            var selection = Assert.IsType<VisualSelection>(Assert.Single(commands));
+            selection.Selection.FrozenFrame.Dispose();
+            typeof(OverlayWindow).GetMethod("OnSelectionHoldCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(overlay, null);
+            Pump(520);
+            Assert.False(overlay.Dispatcher.HasShutdownStarted);
+            Assert.Equal(OverlayInteractionMode.TraceLoading, overlay.Mode);
+            Assert.Equal(Visibility.Visible, overlay.VisualState.Bottom.Root.Visibility);
+            Assert.True(overlay.VisualState.Actions.Tray.Opacity > 0.99);
+            Assert.False(overlay.FrameTransferred);
+            Assert.Equal(640, frame.Width);
+            var match = matched ? TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
+                "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null, Video = null } : null;
+            var resultText = match?.Title ?? TestUiStrings.English.TraceNoMatch;
+            overlay.ShowTraceResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
+            Assert.Equal(OverlayInteractionMode.TraceResult, overlay.Mode);
+            Assert.Contains(Descendants(overlay.VisualState.Root).OfType<TextBlock>(), x => x.Text == resultText);
+            Pump(450);
+            var provider = overlay.VisualState.Provider!;
+            Assert.True(provider.Button.IsEnabled);
+            provider.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(Visibility.Visible, provider.Menu.Visibility);
+            provider.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.True(overlay.VisualState.Music.Button.IsEnabled);
+            if (startMusic)
+            {
+                overlay.VisualState.Music.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
+                Assert.Single(commands.OfType<StartMusicRecognition>());
+            }
+            else
+            {
+                var close = Descendants(overlay.VisualState.Bottom.Stack).OfType<Button>()
+                    .Single(x => AutomationProperties.GetName(x) == TestUiStrings.English.Close);
+                close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+                Assert.True(overlay.VisualState.TranslationAction.Button.IsEnabled);
+                typeof(OverlayWindow).GetMethod("OnSelectionHoldCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .Invoke(overlay, null);
+            }
+            Pump(300);
+            Assert.False(overlay.Dispatcher.HasShutdownStarted);
+            Assert.DoesNotContain(commands, x => x is CancelSession);
+            Assert.DoesNotContain(Descendants(overlay.VisualState.Root).OfType<TextBlock>(), x => x.Text == resultText);
+            if (!startMusic)
+            {
+                typeof(OverlayWindow).GetMethod("OnSelectionCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .Invoke(overlay, [new System.Drawing.Rectangle(20, 20, 100, 100)]);
+                Assert.Equal(OverlayInteractionMode.TraceLoading, overlay.Mode);
+                Assert.Equal(2, commands.OfType<VisualSelection>().Count());
+                commands.OfType<VisualSelection>().Last().Selection.FrozenFrame.Dispose();
+            }
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Waits_for_preview_then_fades_loading_before_revealing_card(bool videoReady)
+    {
+        RunSta(() =>
+        {
+            var visual = OverlayVisualFactory.CreateRoot(null, new Size(960, 600), 32, false,
+                TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
+            var window = new Window { Content = visual.Root, Width = 960, Height = 600, ShowActivated = false, ShowInTaskbar = false };
+            window.Show();
+            window.UpdateLayout();
+            var preview = new DeferredPreview();
+            using var trace = TraceOverlayVisual.Create(visual.Root, visual.Bottom, visual.Effects, TestUiStrings.English,
+                false, () => { }, () => { }, _ => { }, _ => preview);
+            try
+            {
+                Pump(240);
+                var loading = Descendants(visual.Root).OfType<TextBlock>().Single(x => x.Text == TestUiStrings.English.TraceSearching);
+                var loadingPanel = (StackPanel)loading.Parent;
+                var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
+                    "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null };
+                trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
+                Pump(250);
+                var card = Descendants(visual.Bottom.Stack).OfType<Border>().Single(x => x.Width == 640);
+                var slot = (Grid)card.Parent;
+                Assert.Equal(0, slot.Opacity);
+                Assert.False(slot.IsHitTestVisible);
+                Assert.True(loadingPanel.IsVisible);
+                Assert.False(trace.Presentation.IsCompleted);
+                preview.Complete(videoReady);
+                Pump(50);
+                if (OverlayVisualResources.AnimationsEnabled())
+                {
+                    Assert.True(loadingPanel.HasAnimatedProperties);
+                    Assert.InRange(loadingPanel.Opacity, 0.01, 0.99);
+                    Assert.Equal(0, slot.Opacity);
+                }
+                Pump(400);
+                Assert.True(trace.Presentation.IsCompletedSuccessfully, trace.Presentation.Exception?.ToString());
+                Assert.Equal(1, slot.Opacity);
+                Assert.True(slot.IsHitTestVisible);
+                Assert.False(loadingPanel.IsVisible);
+                Assert.Equal(!videoReady, preview.Disposed);
+            }
+            finally
+            {
+                trace.Dispose();
+                visual.Effects.SceneRipples.Dispose();
+                visual.Bottom.LayoutTransitions.Dispose();
+                visual.Music.LoadingIndicator.Dispose();
+                visual.Music.Waveform.Dispose();
+                window.Close();
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Closing_while_video_is_pending_cancels_reveal_and_releases_preview(bool beforeQueuedReveal)
+    {
+        RunSta(() =>
+        {
+            var visual = OverlayVisualFactory.CreateRoot(null, new Size(640, 400), 32, false,
+                TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
+            var window = new Window { Content = visual.Root, Width = 640, Height = 400, ShowActivated = false, ShowInTaskbar = false };
+            window.Show();
+            window.UpdateLayout();
+            var preview = new DeferredPreview();
+            var trace = TraceOverlayVisual.Create(visual.Root, visual.Bottom, visual.Effects, TestUiStrings.English,
+                false, () => { }, () => { }, _ => { }, _ => preview);
+            var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
+                "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null };
+            trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
+            if (!beforeQueuedReveal) Pump(50);
+            trace.Dispose();
+            preview.Complete(true);
+            Pump(250);
+            Assert.True(trace.Presentation.IsCompletedSuccessfully, trace.Presentation.Exception?.ToString());
+            Assert.True(preview.Disposed);
+            Assert.Equal(2, visual.Bottom.Stack.Children.Count);
+            visual.Effects.SceneRipples.Dispose();
+            visual.Bottom.LayoutTransitions.Dispose();
+            visual.Music.LoadingIndicator.Dispose();
+            visual.Music.Waveform.Dispose();
+            window.Close();
+        });
+    }
+
+    private sealed class DeferredPreview : ITraceVideoPreview
+    {
+        private readonly TaskCompletionSource<bool> _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public FrameworkElement Root { get; } = new Grid();
+        public Task<bool> Ready => _ready.Task;
+        public bool Disposed { get; private set; }
+        public void Complete(bool success) => _ready.TrySetResult(success);
+        public void Dispose() => Disposed = true;
+    }
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            yield return child;
+            foreach (var nested in Descendants(child)) yield return nested;
+        }
+    }
+
+    private static void Capture(FrameworkElement root, string name)
+    {
+        var bitmap = new RenderTargetBitmap((int)root.ActualWidth, (int)root.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(root);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        Directory.CreateDirectory(TestOutputPaths.TempDirectory);
+        using var stream = File.Create(Path.Combine(TestOutputPaths.TempDirectory, name));
+        encoder.Save(stream);
+    }
+
+    private static void Pump(int milliseconds)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(milliseconds) };
+        timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+    }
+
+    private static void RunSta(Action action)
+    {
+        Exception? failure = null;
+        var thread = new Thread(() => { try { action(); } catch (Exception exception) { failure = exception; } }) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(15)));
+        Assert.Null(failure);
+    }
+}

@@ -13,6 +13,16 @@ internal sealed class VisualSearchWorkflow(
     UiStrings strings,
     PluginLog log)
 {
+    internal async Task<VisualSearchPreparationOutcome> PrepareTraceAsync(
+        SelectionOutcome selection, CancellationToken cancellationToken)
+    {
+        byte[] png;
+        try { png = crop(selection.FrozenFrame, selection.Bounds); }
+        finally { selection.FrozenFrame.Dispose(); }
+        var routed = await providerRouter.PrepareAsync(SearchProviderIds.TraceMoe, png, cancellationToken).ConfigureAwait(false);
+        return routed.Outcome;
+    }
+
     public async Task ExecuteAsync(
         SelectionOutcome selection,
         string requestedProviderId,

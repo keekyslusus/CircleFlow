@@ -58,6 +58,8 @@ public sealed class OverlayWindow : Window
     private readonly ToastOverlayController _toast;
     private readonly DebugOverlayController _debug;
     private readonly List<IDisposable> _controlRipples = [];
+    private TraceOverlayVisual? _trace;
+    private readonly Func<Uri, ITraceVideoPreview>? _createTraceVideo;
     private bool _chipDismissed;
     private bool _cancelPublished;
     private bool _entranceRipplePending;
@@ -86,12 +88,14 @@ public sealed class OverlayWindow : Window
         GdiPoint? entranceOrigin = null,
         IReadOnlyList<SearchProviderDescriptor>? providers = null,
         string? initialProviderId = null,
-        Action<IOverlayCommand>? publishCommand = null)
+        Action<IOverlayCommand>? publishCommand = null,
+        Func<Uri, ITraceVideoPreview>? createTraceVideo = null)
     {
         _frame = frame;
         _exitFade = exitFade;
         _clickThroughOnCancel = clickThroughOnCancel;
         _publishCommand = publishCommand;
+        _createTraceVideo = createTraceVideo;
         _strings = strings;
         ArgumentNullException.ThrowIfNull(controllerFactory);
         _entranceOrigin = entranceOrigin is null
@@ -136,7 +140,7 @@ public sealed class OverlayWindow : Window
             OnSelectionStarted,
             OnSelectionCompleted,
             OnSelectionRejected,
-            FinishShutdown,
+            OnSelectionHoldCompleted,
             OnColorConfirmationStarted,
             OnColorPickFailed,
             OnColorConfirmationCompleted,
@@ -180,7 +184,8 @@ public sealed class OverlayWindow : Window
         OverlayExitFade exitFade = OverlayExitFade.Root,
         bool clickThroughOnCancel = true,
         bool overscan = true,
-        GdiPoint? entranceOrigin = null)
+        GdiPoint? entranceOrigin = null,
+        Func<Uri, ITraceVideoPreview>? createTraceVideo = null)
         : this(
             frame,
             monitor,
@@ -196,7 +201,8 @@ public sealed class OverlayWindow : Window
             entranceOrigin,
             options.Providers,
             options.InitialProviderId,
-            publishCommand)
+            publishCommand,
+            createTraceVideo)
     {
     }
 
@@ -234,6 +240,13 @@ public sealed class OverlayWindow : Window
     }
 
     internal void ReportAudio(MusicVisualizationFrame frame) => _music.ReportAudio(frame);
+
+    internal void ShowTraceResult(VisualSearchPreparationOutcome outcome)
+    {
+        if (_interaction.IsFinished || Mode != OverlayInteractionMode.TraceLoading) return;
+        ApplyModeTransition(OverlayInteractionMode.TraceResult);
+        _trace?.ShowResult(outcome);
+    }
 
     internal void ShowMusicResult(MusicRecognitionOutcome outcome)
     {
@@ -351,11 +364,29 @@ public sealed class OverlayWindow : Window
     private void OnSelectionCompleted(GdiRectangle bounds)
     {
         if (_interaction.IsFinished) return;
+        if (_provider.SelectedProviderId == SearchProviderIds.TraceMoe && _publishCommand is not null)
+        {
+            ApplyModeTransition(OverlayInteractionMode.TraceLoading);
+            _trace?.Dispose();
+            _trace = TraceOverlayVisual.Create(_visual.Root, _visual.Bottom, _visual.Effects, _strings,
+                SystemTheme.IsLight(), () => _publishCommand(new OpenTraceResult()),
+                DismissTraceResult, Clipboard.SetText, _createTraceVideo);
+            _publishCommand(new VisualSelection(new SelectionOutcome(bounds, (GdiBitmap)_frame.Clone()), SearchProviderIds.TraceMoe));
+            return;
+        }
         ApplyModeTransition(OverlayInteractionMode.Closing);
         var selection = new SelectionOutcome(bounds, _frame);
         FrameTransferred = true;
         if (_publishCommand is null) Outcome = OverlayOutcome.VisualSelection(selection);
         else _publishCommand(new VisualSelection(selection, _provider.SelectedProviderId));
+    }
+
+    private void OnSelectionHoldCompleted()
+    {
+        if (Mode is OverlayInteractionMode.TraceLoading or OverlayInteractionMode.TraceResult)
+            _selection.FadeForMusic();
+        else if (Mode == OverlayInteractionMode.Closing)
+            FinishShutdown();
     }
 
     private void OnSelectionRejected()
@@ -406,6 +437,7 @@ public sealed class OverlayWindow : Window
 
     private void StartMusicRecognition()
     {
+        if (Mode == OverlayInteractionMode.TraceResult) DismissTraceResult();
         SetDebugPanelOpen(false);
         if (_publishCommand is null)
         {
@@ -425,6 +457,12 @@ public sealed class OverlayWindow : Window
         CancelInternal(publish: false);
     }
 
+    private void DismissTraceResult()
+    {
+        if (Mode == OverlayInteractionMode.TraceResult)
+            ApplyModeTransition(OverlayInteractionMode.Selecting);
+    }
+
     private void HandleMusicResultCommand(IOverlayCommand command)
     {
         if (_interaction.IsFinished) return;
@@ -440,6 +478,23 @@ public sealed class OverlayWindow : Window
         if (!_interaction.TransitionTo(target)) return;
         switch (target)
         {
+            case OverlayInteractionMode.TraceLoading:
+            case OverlayInteractionMode.TraceResult:
+                _pointer.Cancel();
+                _textSelection.Dismiss();
+                _provider.SetOpen(false);
+                _debug.SetOpen(false);
+                _visual.Bottom.Root.Visibility = Visibility.Visible;
+                SetConflictingControlsEnabled(target == OverlayInteractionMode.TraceResult);
+                _visual.TranslationAction.Button.IsEnabled = false;
+                if (target == OverlayInteractionMode.TraceLoading)
+                {
+                    _chipDismissed = false;
+                    ActionTrayTransitions.BeginReturn(_visual.Actions);
+                }
+                _selection.FadeForMusic();
+                Cursor = Cursors.Arrow;
+                break;
             case OverlayInteractionMode.Listening:
                 _pointer.Cancel();
                 _textSelection.Dismiss();
@@ -454,6 +509,7 @@ public sealed class OverlayWindow : Window
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Selecting:
+                _trace?.DismissResult();
                 _music.DismissResult();
                 _selection.RestoreAfterMusic();
                 SetConflictingControlsEnabled(true);
@@ -606,6 +662,7 @@ public sealed class OverlayWindow : Window
         Dispatcher.ShutdownStarted -= OnDispatcherShutdownStarted;
         UnqueueEntranceRipple();
         _controllers.Dispose();
+        _trace?.Dispose();
         _visual.Bottom.LayoutTransitions.Dispose();
         _visual.Effects.SceneRipples.Dispose();
         foreach (var ripple in _controlRipples) ripple.Dispose();

@@ -166,7 +166,7 @@ internal sealed class MusicOverlayController : IDisposable
     private void OnMusicButtonClick(object sender, RoutedEventArgs e)
     {
         if (_disposed || _getMode() == OverlayInteractionMode.Closing) return;
-        if (_getMode() == OverlayInteractionMode.Selecting) _startRequested();
+        if (_getMode() is OverlayInteractionMode.Selecting or OverlayInteractionMode.TraceResult) _startRequested();
         else _cancelRequested();
         e.Handled = true;
     }

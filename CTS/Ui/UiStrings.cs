@@ -12,6 +12,13 @@ public sealed class UiStrings
         _getTranslation = getTranslation;
     }
 
+    public string TraceMoeProviderName => Get("plugin_circletosearch_trace_provider_name");
+    public string TraceSearching => Get("plugin_circletosearch_trace_searching");
+    public string TraceNoMatch => Get("plugin_circletosearch_trace_no_match");
+    public string TraceRateLimited => Get("plugin_circletosearch_trace_rate_limited");
+    public string TraceOpen => Get("plugin_circletosearch_trace_open");
+    public string TraceCopy => Get("plugin_circletosearch_trace_copy");
+    public string TraceEpisode => Get("plugin_circletosearch_trace_episode");
     public string PluginTitle => Get("plugin_circletosearch_plugin_name");
     public string PluginDescription => Get("plugin_circletosearch_plugin_description");
     public string GoogleLensProviderName => Get("plugin_circletosearch_google_lens_provider_name");

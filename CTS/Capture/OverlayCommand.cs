@@ -36,6 +36,7 @@ public sealed record CancelSession : IOverlayCommand;
 public sealed record ColorCopied : IOverlayCommand;
 public sealed record DismissMusicResult : IOverlayCommand;
 public sealed record RetryMusicRecognition : IOverlayCommand;
+public sealed record OpenTraceResult : IOverlayCommand;
 public sealed record OpenMusicResult : IOverlayCommand;
 public sealed record CopyMusicResult : IOverlayCommand;
 

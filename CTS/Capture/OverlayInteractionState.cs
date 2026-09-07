@@ -3,6 +3,8 @@ namespace CircleToSearch.Capture;
 internal enum OverlayInteractionMode
 {
     Selecting,
+    TraceLoading,
+    TraceResult,
     Listening,
     MusicResult,
     ColorConfirmation,
@@ -32,6 +34,9 @@ internal sealed class OverlayInteractionState
     private static bool IsAllowed(OverlayInteractionMode source, OverlayInteractionMode target) =>
         (source, target) switch
         {
+            (OverlayInteractionMode.Selecting, OverlayInteractionMode.TraceLoading) => true,
+            (OverlayInteractionMode.TraceLoading, OverlayInteractionMode.TraceResult) => true,
+            (OverlayInteractionMode.TraceResult, OverlayInteractionMode.Selecting) => true,
             (OverlayInteractionMode.Selecting, OverlayInteractionMode.Listening) => true,
             (OverlayInteractionMode.Listening, OverlayInteractionMode.MusicResult) => true,
             (OverlayInteractionMode.MusicResult, OverlayInteractionMode.Selecting) => true,

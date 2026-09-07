@@ -12,13 +12,13 @@ using CircleToSearch.Ui;
 
 internal static class MusicOverlayVisualPresenter
 {
-    private static readonly Geometry CloseIconGeometry = OverlayVisualResources.FrozenGeometry(
+    internal static readonly Geometry CloseIconGeometry = OverlayVisualResources.FrozenGeometry(
         "M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12Z");
     private static readonly Geometry LinkIconGeometry = OverlayVisualResources.FrozenGeometry(
         "M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1ZM8 13h8v-2H8v2Zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5Z");
-    private static readonly Geometry CopyIconGeometry = OverlayVisualResources.FrozenGeometry(
+    internal static readonly Geometry CopyIconGeometry = OverlayVisualResources.FrozenGeometry(
         "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1Zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2Zm0 16H8V7h10v14Z");
-    private static readonly Geometry CheckIconGeometry = OverlayVisualResources.FrozenGeometry(
+    internal static readonly Geometry CheckIconGeometry = OverlayVisualResources.FrozenGeometry(
         "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41Z");
     private static readonly Geometry NoSoundIconGeometry = OverlayVisualResources.FrozenGeometry(
         "M611-323l-43-43 114-113-114-113 43-43 113 114 113-114 43 43-114 113 114 113-43 43-113-114-113 114ZM120-360v-240h160l200-200v640L280-360H120Zm300-288L307-540H180v120h127l113 109v-337ZM311-481Z");
@@ -418,7 +418,7 @@ internal static class MusicOverlayVisualPresenter
         return root;
     }
 
-    private static Button IconButton(
+    internal static Button IconButton(
         Geometry geometry,
         string name,
         MusicOverlayPalette palette,

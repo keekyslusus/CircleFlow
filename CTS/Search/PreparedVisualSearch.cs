@@ -6,6 +6,7 @@ public enum PreparedVisualSearchKind
 {
     Url,
     BrowserOperation,
+    TraceMoe,
 }
 
 public sealed class PreparedVisualSearch
@@ -23,6 +24,10 @@ public sealed class PreparedVisualSearch
     }
 
     public PreparedVisualSearchKind Kind { get; }
+    public TraceMoeMatch? TraceMatch { get; private init; }
+
+    public static PreparedVisualSearch ForTraceMoe(TraceMoeMatch? match) =>
+        new(PreparedVisualSearchKind.TraceMoe, null, null, null) { TraceMatch = match };
 
     public Uri? ExternalFallbackUrl { get; }
 

@@ -17,6 +17,7 @@ public sealed class TextSearchUrlBuilder(int maximumScalarValues = 2000)
         var escaped = Uri.EscapeDataString(text);
         return providerId.ToLowerInvariant() switch
         {
+            SearchProviderIds.TraceMoe => $"https://anilist.co/search/anime?search={escaped}",
             SearchProviderIds.GoogleLens => $"https://www.google.com/search?q={escaped}",
             SearchProviderIds.YandexImages => $"https://yandex.com/search/?text={escaped}",
             _ => throw new ArgumentException("Unsupported search provider.", nameof(providerId)),

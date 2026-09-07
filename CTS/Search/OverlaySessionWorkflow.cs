@@ -23,7 +23,8 @@ internal sealed class OverlaySessionWorkflow(
     UiStrings strings,
     PluginLog log,
     TextSearchWorkflow? textSearch = null,
-    ScreenTranslationWorkflow? screenTranslation = null) : ISearchSessionWorkflow
+    ScreenTranslationWorkflow? screenTranslation = null,
+    Func<string, bool>? openTraceUrl = null) : ISearchSessionWorkflow
 {
     public async Task RunAsync(Action onUploadStarted, CancellationToken cancellationToken)
     {
@@ -44,6 +45,9 @@ internal sealed class OverlaySessionWorkflow(
         CancellationTokenSource? translationCancellation = null;
         Task<ScreenTranslationOutcome>? translationTask = null;
         Guid translationRequestId = Guid.Empty;
+        using var traceCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task<VisualSearchPreparationOutcome>? traceTask = null;
+        TraceMoeMatch? traceMatch = null;
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -52,7 +56,17 @@ internal sealed class OverlaySessionWorkflow(
                 var pending = new List<Task> { commandTask };
                 if (recognitionTask is not null) pending.Add(recognitionTask);
                 if (translationTask is not null) pending.Add(translationTask);
+                if (traceTask is not null) pending.Add(traceTask);
                 var completed = await Task.WhenAny(pending).ConfigureAwait(false);
+                if (traceTask is not null && ReferenceEquals(completed, traceTask))
+                {
+                    var outcome = await traceTask.ConfigureAwait(false);
+                    traceTask = null;
+                    traceMatch = outcome.PreparedSearch?.TraceMatch;
+                    if (!cancellationToken.IsCancellationRequested && outcome.Failure != UploadFailure.Canceled)
+                        await overlay.ShowTraceResultAsync(outcome, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
                 if (translationTask is not null && ReferenceEquals(completed, translationTask))
                 {
                     var outcome = await translationTask.ConfigureAwait(false);
@@ -109,6 +123,19 @@ internal sealed class OverlaySessionWorkflow(
                         debugScenario = selected.Scenario;
                         log.Info(nameof(OverlaySessionWorkflow),
                             $"music debug scenario changed to '{debugScenario}'");
+                        break;
+
+                    case VisualSelection visual when visual.ProviderId == SearchProviderIds.TraceMoe && traceTask is null:
+                        traceTask = visualSearch.PrepareTraceAsync(visual.Selection, traceCancellation.Token);
+                        break;
+
+                    case OpenTraceResult:
+                        if (traceMatch is not null)
+                        {
+                            await overlay.CloseAsync().ConfigureAwait(false);
+                            openTraceUrl?.Invoke(traceMatch.AnilistUrl);
+                            return;
+                        }
                         break;
 
                     case VisualSelection visual when recognitionTask is null:
@@ -195,6 +222,12 @@ internal sealed class OverlaySessionWorkflow(
         }
         finally
         {
+            traceCancellation.Cancel();
+            if (traceTask is not null)
+            {
+                try { await traceTask.ConfigureAwait(false); }
+                catch (OperationCanceledException) { }
+            }
             if (recognitionCancellation is not null)
             {
                 recognitionCancellation.Cancel();

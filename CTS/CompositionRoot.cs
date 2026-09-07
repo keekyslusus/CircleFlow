@@ -58,6 +58,7 @@ public static class CompositionRoot
             strings,
             log,
             new StaDispatcher(SearchBrowserThreadName));
+        var traceHttpClient = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
         var providerRouter = new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(
@@ -67,6 +68,9 @@ public static class CompositionRoot
                 new VisualSearchProviderRegistration(
                     new SearchProviderDescriptor(SearchProviderIds.YandexImages, strings.YandexImagesProviderName),
                     () => new YandexImagesProvider(log)),
+                new VisualSearchProviderRegistration(
+                    new SearchProviderDescriptor(SearchProviderIds.TraceMoe, strings.TraceMoeProviderName),
+                    () => new TraceMoeProvider(traceHttpClient)),
             ],
             SearchProviderIds.GoogleLens,
             log);
@@ -153,7 +157,10 @@ public static class CompositionRoot
                 api.SaveSettingJsonStorage<PluginSettings>();
             },
             log: log);
-        var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
+        var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory,
+            video => new TraceVideoPreview(video,
+                () => Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
+                    userDataFolder: Path.Combine(dataDirectory, "TraceVideoProfile")), log));
         var workflow = new OverlaySessionWorkflow(
             new OverlaySessionFactory(log, new PointerMonitorCapture(), overlayWindowFactory),
             visualSearch,
@@ -164,7 +171,8 @@ public static class CompositionRoot
             strings,
             log,
             textSearch,
-            screenTranslation);
+            screenTranslation,
+            OpenResultsUrl);
         var coordinator = new SearchCoordinator(
             workflow,
             () => api.HideMainWindow(),
@@ -205,7 +213,7 @@ public static class CompositionRoot
             hotkeyWindow,
             providerRouter,
             searchBrowserHost,
-            [musicHttpClient, musicThrottle, translationHttpClient],
+            [musicHttpClient, musicThrottle, translationHttpClient, traceHttpClient],
             log);
     }
 
