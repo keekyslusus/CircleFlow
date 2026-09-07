@@ -140,9 +140,8 @@ internal sealed class SelectionOverlayController : IDisposable
 
     internal void RestoreAfterMusic()
     {
+        ResetSelectionGesture();
         UIElement[] targets = [_visual.Screenshot, _visual.Sheen, _visual.Halo, _visual.Accent];
-        _visual.SelectionFrame.BeginAnimation(UIElement.OpacityProperty, null);
-        _visual.SelectionFrame.Opacity = 0;
         if (!OverlayVisualResources.AnimationsEnabled())
         {
             foreach (var target in targets) target.Opacity = 1;

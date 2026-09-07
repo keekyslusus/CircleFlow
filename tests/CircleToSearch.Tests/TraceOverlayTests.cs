@@ -138,8 +138,13 @@ public sealed class TraceOverlayTests
                 commands.Add, new OverlayControllerFactory(), overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
-            typeof(OverlayWindow).GetMethod("OnSelectionCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!
-                .Invoke(overlay, [new System.Drawing.Rectangle(10, 10, 100, 100)]);
+            var lasso = (SelectionOverlayController)typeof(OverlayWindow)
+                .GetField("_selection", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(overlay)!;
+            Assert.True(lasso.Begin(new Point(10, 10)));
+            lasso.Update(new Point(110, 10));
+            lasso.Update(new Point(110, 110));
+            lasso.Complete(new Point(10, 110));
+            Assert.NotEmpty(overlay.VisualState.Selection.Accent.Points);
             var selection = Assert.IsType<VisualSelection>(Assert.Single(commands));
             selection.Selection.FrozenFrame.Dispose();
             typeof(OverlayWindow).GetMethod("OnSelectionHoldCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(overlay, null);
@@ -183,10 +188,20 @@ public sealed class TraceOverlayTests
             Assert.False(overlay.Dispatcher.HasShutdownStarted);
             Assert.DoesNotContain(commands, x => x is CancelSession);
             Assert.DoesNotContain(Descendants(overlay.VisualState.Root).OfType<TextBlock>(), x => x.Text == resultText);
+            Assert.Empty(overlay.VisualState.Selection.Accent.Points);
+            Assert.Empty(overlay.VisualState.Selection.Halo.Points);
+            Assert.True(overlay.VisualState.Selection.Sheen.Data.IsEmpty());
+            Assert.True(overlay.VisualState.Selection.DimRect.Data.IsEmpty());
+            Assert.True(overlay.VisualState.Selection.SelectionFrame.Data.IsEmpty());
+            Assert.True(overlay.VisualState.Selection.Dim.Data.FillContains(new Point(50, 50)));
+            Assert.False(lasso.HasPendingHold);
+            Assert.False(lasso.HasPendingRevealUpdate);
             if (!startMusic)
             {
-                typeof(OverlayWindow).GetMethod("OnSelectionCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!
-                    .Invoke(overlay, [new System.Drawing.Rectangle(20, 20, 100, 100)]);
+                Assert.True(lasso.Begin(new Point(150, 10)));
+                Assert.Single(overlay.VisualState.Selection.Accent.Points);
+                lasso.Update(new Point(250, 10));
+                lasso.Complete(new Point(250, 100));
                 Assert.Equal(OverlayInteractionMode.TraceLoading, overlay.Mode);
                 Assert.Equal(2, commands.OfType<VisualSelection>().Count());
                 commands.OfType<VisualSelection>().Last().Selection.FrozenFrame.Dispose();
