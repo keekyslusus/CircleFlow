@@ -39,6 +39,7 @@ internal static class PluginPalette
     private static PluginThemePalette Dark { get; } = new(
         WindowSurface: Color.FromRgb(0x20, 0x21, 0x24),
         PrimaryText: Color.FromRgb(0xE8, 0xEA, 0xED),
+        SearchBrowserScrollbarThumb: Color.FromArgb(0xA6, 0xE8, 0xEA, 0xED),
         SelectionChip: new SelectionChipPalette(
             Surface: DarkDockSurface,
             Label: Color.FromRgb(0xF1, 0xF3, 0xF4),
@@ -113,6 +114,7 @@ internal static class PluginPalette
     private static PluginThemePalette Light { get; } = new(
         WindowSurface: Color.FromRgb(0xF7, 0xF9, 0xFC),
         PrimaryText: Color.FromRgb(0x30, 0x34, 0x3A),
+        SearchBrowserScrollbarThumb: Color.FromArgb(0x8F, 0x30, 0x34, 0x3A),
         SelectionChip: new SelectionChipPalette(
             Surface: LightDockSurface,
             Label: Color.FromRgb(0x1F, 0x20, 0x23),
@@ -204,6 +206,7 @@ internal static class PluginPalette
 internal sealed record PluginThemePalette(
     Color WindowSurface,
     Color PrimaryText,
+    Color SearchBrowserScrollbarThumb,
     SelectionChipPalette SelectionChip,
     MusicButtonPalette MusicButton,
     ProviderPalette Provider,

@@ -13,6 +13,7 @@ public sealed class PluginPaletteTests
 
         Assert.Equal("#FF202124", palette.WindowSurface.ToString());
         Assert.Equal("#FFE8EAED", palette.PrimaryText.ToString());
+        Assert.Equal("#A6E8EAED", palette.SearchBrowserScrollbarThumb.ToString());
         Assert.Equal("#E6202124", palette.SelectionChip.Surface.ToString());
         Assert.Equal("#FFE8EAED", palette.SelectionChip.KeycapText.ToString());
     }
@@ -24,6 +25,7 @@ public sealed class PluginPaletteTests
 
         Assert.Equal("#FFF7F9FC", palette.WindowSurface.ToString());
         Assert.Equal("#FF30343A", palette.PrimaryText.ToString());
+        Assert.Equal("#8F30343A", palette.SearchBrowserScrollbarThumb.ToString());
         Assert.Equal("#F0FCFCFD", palette.SelectionChip.Surface.ToString());
         Assert.Equal("#FF3C4043", palette.SelectionChip.KeycapText.ToString());
     }

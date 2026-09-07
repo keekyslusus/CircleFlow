@@ -403,6 +403,11 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable
             await webView.EnsureCoreWebView2Async(_environment, controllerOptions).ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
             if (closed) throw new OperationCanceledException();
+            await webView.CoreWebView2
+                .AddScriptToExecuteOnDocumentCreatedAsync(OverlayScrollbarScript.Create())
+                .ConfigureAwait(true);
+            cancel.ThrowIfCancellationRequested();
+            if (closed) throw new OperationCanceledException();
             var extensionDirectory = await Task.Run(() =>
                 SearchBrowserExtension.Prepare(_pluginDirectory, _userDataFolder), cancel).ConfigureAwait(true);
             if (closed) throw new OperationCanceledException();

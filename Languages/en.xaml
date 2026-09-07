@@ -4,7 +4,7 @@
 
     <system:String x:Key="plugin_circletosearch_plugin_name">CircleFlow</system:String>
     <system:String x:Key="plugin_circletosearch_plugin_description">Search a screen area visually or recognize music from Windows output</system:String>
-    <system:String x:Key="plugin_circletosearch_google_lens_provider_name">Google Lens - WebView window</system:String>
+    <system:String x:Key="plugin_circletosearch_google_lens_provider_name">Google Lens</system:String>
     <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images - Browser tab</system:String>
     <system:String x:Key="plugin_circletosearch_selection_prompt">Select an area</system:String>
     <system:String x:Key="plugin_circletosearch_selection_too_small">Selection is too small. Drag to select a larger area.</system:String>
@@ -79,7 +79,7 @@
     <system:String x:Key="plugin_circletosearch_results_url_open_failed">The results URL could not be opened in the default browser.</system:String>
     <system:String x:Key="plugin_circletosearch_starting_selection_failed">Starting the selection failed: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_search_failed">The search failed: {0}</system:String>
-    <system:String x:Key="plugin_circletosearch_search_browser_window_title">CircleFlow - {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_search_browser_window_title">CircleFlow: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_search_browser_loading">Searching with {0}…</system:String>
     <system:String x:Key="plugin_circletosearch_search_browser_show_failed">{0} results could not be shown in the embedded browser.</system:String>
     <system:String x:Key="plugin_circletosearch_text_copy">Copy</system:String>
