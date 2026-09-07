@@ -75,6 +75,7 @@ internal static class PluginPalette
             GoogleYellow: Color.FromRgb(0xFB, 0xBC, 0x05),
             GoogleGreen: Color.FromRgb(0x34, 0xA8, 0x53),
             Yandex: Color.FromRgb(0xFC, 0x3F, 0x1D),
+            Trace: Color.FromRgb(0xE5, 0xE8, 0xFF),
             Neutral: Color.FromRgb(0xBD, 0xC1, 0xC6)),
         MusicOverlay: new MusicOverlayPalette(
             Surface: Color.FromRgb(0x21, 0x1F, 0x26),
@@ -150,6 +151,7 @@ internal static class PluginPalette
             GoogleYellow: Color.FromRgb(0xFB, 0xBC, 0x05),
             GoogleGreen: Color.FromRgb(0x34, 0xA8, 0x53),
             Yandex: Color.FromRgb(0xFC, 0x3F, 0x1D),
+            Trace: Color.FromRgb(0x45, 0x4A, 0x75),
             Neutral: Color.FromRgb(0x5F, 0x63, 0x68)),
         MusicOverlay: new MusicOverlayPalette(
             Surface: Color.FromRgb(0xF3, 0xF3, 0xFA),
@@ -274,6 +276,7 @@ internal sealed record ProviderPalette(
     Color GoogleYellow,
     Color GoogleGreen,
     Color Yandex,
+    Color Trace,
     Color Neutral);
 
 internal sealed record MusicOverlayPalette(

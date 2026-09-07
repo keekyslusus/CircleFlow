@@ -5,7 +5,7 @@
     <system:String x:Key="plugin_circletosearch_plugin_name">CircleFlow</system:String>
     <system:String x:Key="plugin_circletosearch_plugin_description">Search a screen area visually or recognize music from Windows output</system:String>
     <system:String x:Key="plugin_circletosearch_google_lens_provider_name">Google Lens</system:String>
-    <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images - Browser tab</system:String>
+    <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images</system:String>
     <system:String x:Key="plugin_circletosearch_selection_prompt">Select an area</system:String>
     <system:String x:Key="plugin_circletosearch_selection_too_small">Selection is too small. Drag to select a larger area.</system:String>
     <system:String x:Key="plugin_circletosearch_color_copied">Copied:</system:String>
@@ -109,6 +109,7 @@
     <system:String x:Key="plugin_circletosearch_settings_translation_target_label">Translation target language</system:String>
     <system:String x:Key="plugin_circletosearch_system_default_language">System default</system:String>
     <system:String x:Key="plugin_circletosearch_trace_provider_name">trace.moe</system:String>
+    <system:String x:Key="plugin_circletosearch_trace_provider_description">Anime scene search engine</system:String>
     <system:String x:Key="plugin_circletosearch_trace_searching">Searching...</system:String>
     <system:String x:Key="plugin_circletosearch_trace_no_match">No anime found</system:String>
     <system:String x:Key="plugin_circletosearch_trace_rate_limited">trace.moe request limit reached. Try again later.</system:String>

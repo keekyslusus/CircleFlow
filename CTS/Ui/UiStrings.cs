@@ -13,6 +13,7 @@ public sealed class UiStrings
     }
 
     public string TraceMoeProviderName => Get("plugin_circletosearch_trace_provider_name");
+    public string TraceMoeProviderDescription => Get("plugin_circletosearch_trace_provider_description");
     public string TraceSearching => Get("plugin_circletosearch_trace_searching");
     public string TraceNoMatch => Get("plugin_circletosearch_trace_no_match");
     public string TraceRateLimited => Get("plugin_circletosearch_trace_rate_limited");
