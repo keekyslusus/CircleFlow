@@ -12,7 +12,7 @@ internal sealed class OcrOverlayController(
     Action<OcrRecognitionOutcome> completed,
     PluginLog? log = null) : IDisposable
 {
-    private readonly CancellationTokenSource _cancellation = new();
+    private CancellationTokenSource _cancellation = new();
     private int _generation;
     private bool _started;
     private bool _disposed;
@@ -22,7 +22,17 @@ internal sealed class OcrOverlayController(
         if (_started || _disposed) return;
         _started = true;
         var generation = ++_generation;
-        _ = RunAsync(generation);
+        _ = RunAsync(generation, source, requestedLanguageTag, _cancellation.Token);
+    }
+
+    internal void Restart(BitmapSource image, string? language)
+    {
+        if (_disposed) return;
+        _cancellation.Cancel();
+        _cancellation.Dispose();
+        _cancellation = new CancellationTokenSource();
+        _started = true;
+        _ = RunAsync(++_generation, image, language, _cancellation.Token);
     }
 
     public void Dispose()
@@ -34,12 +44,12 @@ internal sealed class OcrOverlayController(
         _cancellation.Dispose();
     }
 
-    private async Task RunAsync(int generation)
+    private async Task RunAsync(int generation, BitmapSource image, string? language, CancellationToken cancellation)
     {
         OcrRecognitionOutcome outcome;
         try
         {
-            outcome = await recognizer.RecognizeAsync(source, requestedLanguageTag, _cancellation.Token)
+            outcome = await recognizer.RecognizeAsync(image, language, cancellation)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)

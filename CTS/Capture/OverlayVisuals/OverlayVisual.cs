@@ -32,7 +32,10 @@ public sealed record SelectionOverlayVisual(
 public sealed record ActionTrayVisual(
     StackPanel Tray,
     Border Chip,
-    TranslateTransform Lift);
+    TranslateTransform Lift)
+{
+    public TextBlock? Prompt { get; init; }
+}
 
 public sealed record TextSelectionVisual(
     Canvas HighlightLayer,

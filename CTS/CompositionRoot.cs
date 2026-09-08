@@ -121,15 +121,16 @@ public static class CompositionRoot
             strings,
             log);
         var ocrLanguages = new OcrLanguageCatalog();
-        var translationHttpClient = new HttpClient
+        var translationHttpClient = new HttpClient(new SocketsHttpHandler
+        { UseCookies = false, AutomaticDecompression = DecompressionMethods.All })
         {
             Timeout = Timeout.InfiniteTimeSpan,
             DefaultRequestVersion = HttpVersion.Version20,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
         };
-        var screenTranslation = new ScreenTranslationWorkflow(
-            new MyMemoryTranslationProvider(translationHttpClient),
-            new TranslationSegmenter());
+        var imageTranslationSigner = new GoogleImageTranslationSigner(translationHttpClient,
+            new StaDispatcher("CircleToSearch image translation"), Path.Combine(dataDirectory, "ImageTranslationProfile"));
+        var screenTranslation = new ScreenTranslationWorkflow(new GoogleImageTranslationProvider(translationHttpClient, imageTranslationSigner));
         var textSearch = new TextSearchWorkflow(
             new TextSearchUrlBuilder(),
             OpenResultsUrl,
@@ -150,10 +151,10 @@ public static class CompositionRoot
                     ? "en"
                     : CultureInfo.CurrentUICulture.Name;
             },
-            translationConsentAccepted: () => settings.TranslationPrivacyConsentAccepted,
+            translationConsentAccepted: () => settings.ImageTranslationPrivacyConsentAccepted,
             acceptTranslationConsent: () =>
             {
-                settings.TranslationPrivacyConsentAccepted = true;
+                settings.ImageTranslationPrivacyConsentAccepted = true;
                 api.SaveSettingJsonStorage<PluginSettings>();
             },
             log: log);
@@ -213,7 +214,7 @@ public static class CompositionRoot
             hotkeyWindow,
             providerRouter,
             searchBrowserHost,
-            [musicHttpClient, musicThrottle, translationHttpClient, traceHttpClient],
+            [musicHttpClient, musicThrottle, imageTranslationSigner, translationHttpClient, traceHttpClient],
             log);
     }
 

@@ -347,7 +347,7 @@ public sealed class OverlayWindow : Window
             return false;
         }
         if (_textSelection.HasSelection && !actionInteraction) _textSelection.Dismiss();
-        return _interaction.CanAcceptSelectionInput && !actionInteraction;
+        return (_interaction.CanAcceptSelectionInput || (_translation.IsImageShown && Mode == OverlayInteractionMode.TranslationShown)) && !actionInteraction;
     }
 
     private void OnSelectionStarted()

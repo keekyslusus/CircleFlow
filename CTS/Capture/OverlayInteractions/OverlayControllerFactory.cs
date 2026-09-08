@@ -184,7 +184,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.CoordinateRoot,
                 selection,
                 textSelection,
-                context.CanAcceptSelectionInput,
+                () => context.CanAcceptSelectionInput() || (translation?.IsImageShown == true && context.GetMode() == OverlayInteractionMode.TranslationShown),
                 context.CanStartSelection,
                 _pointerPosition);
             translation = new ScreenTranslationOverlayController(
@@ -201,7 +201,17 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.TransitionMode,
                 toast.Show,
                 _animationsEnabled,
-                context.Visual.LightTheme);
+                context.Visual.LightTheme,
+                context.Visual.Selection.Screenshot,
+                (image, language) =>
+                {
+                    pointer.Cancel();
+                    textSelection.SetDocument(null);
+                    context.Visual.Selection.Dim.Visibility = language is null ? Visibility.Visible : Visibility.Collapsed;
+                    if (context.Visual.Actions.Prompt is { } prompt)
+                        prompt.Text = language is null ? context.Strings.SelectionPrompt : context.Strings.TranslatedTextPrompt;
+                    ocr?.Restart(image, language ?? _ocrLanguageTag());
+                });
             var frameSource = (System.Windows.Media.Imaging.BitmapSource?)context.Visual.Selection.Screenshot.Source
                 ?? throw new InvalidOperationException("The overlay frame source is missing.");
             ocr = new OcrOverlayController(frameSource, context.CoordinateRoot.Dispatcher, _ocrRecognizer, _ocrLanguageTag(), outcome =>

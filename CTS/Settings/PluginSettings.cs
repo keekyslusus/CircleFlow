@@ -19,6 +19,7 @@ public sealed class PluginSettings
     public string OcrLanguageTag { get; set; } = string.Empty;
 
     public string TranslationTargetLanguageTag { get; set; } = string.Empty;
+    public bool ImageTranslationPrivacyConsentAccepted { get; set; }
 
     public bool TranslationPrivacyConsentAccepted { get; set; }
 }

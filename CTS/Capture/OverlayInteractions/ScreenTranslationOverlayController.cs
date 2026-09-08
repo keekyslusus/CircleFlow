@@ -3,6 +3,8 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using System.Windows.Media.Imaging;
+using System.Windows.Media;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
 using CircleToSearch.Ui;
@@ -31,6 +33,10 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private bool _waitingForOcr;
     private DispatcherOperation? _completionRippleOperation;
     private bool _disposed;
+    private readonly Image? _screenshot;
+    private readonly BitmapSource? _originalImage;
+    private readonly Action<BitmapSource, string?>? _imageChanged;
+    private bool _imageShown;
 
     internal ScreenTranslationOverlayController(
         TranslationActionVisual action,
@@ -46,7 +52,9 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         Action<OverlayInteractionMode> transition,
         Action<ToastNotification> showToast,
         Func<bool> animationsEnabled,
-        bool lightTheme)
+        bool lightTheme,
+        Image? screenshot = null,
+        Action<BitmapSource, string?>? imageChanged = null)
     {
         _action = action;
         _overlay = overlay;
@@ -62,6 +70,9 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _showToast = showToast;
         _animationsEnabled = animationsEnabled;
         _lightTheme = lightTheme;
+        _screenshot = screenshot;
+        _originalImage = screenshot?.Source as BitmapSource;
+        _imageChanged = imageChanged;
         _action.Button.Click += OnTranslate;
         _overlay.ContinueButton.Click += OnContinue;
         _overlay.CancelButton.Click += OnCancelConsent;
@@ -69,7 +80,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 
     internal bool IsConsentOpen => _overlay.ConsentCard.Visibility == Visibility.Visible;
     internal bool IsTranslating => _requestId != Guid.Empty;
-    internal bool IsTranslationShown => _overlay.CardsLayer.Visibility == Visibility.Visible && _overlay.CardsLayer.Children.Count > 0;
+    internal bool IsTranslationShown => _imageShown || (_overlay.CardsLayer.Visibility == Visibility.Visible && _overlay.CardsLayer.Children.Count > 0);
+    internal bool IsImageShown => _imageShown;
     internal bool HasPendingCompletionRipple =>
         _completionRippleOperation?.Status == DispatcherOperationStatus.Pending;
 
@@ -87,7 +99,16 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _waitingForOcr = false;
         SetActionVisual(_strings.ShowOriginal, TextTranslationVisualFactory.ShowOriginalIconGeometry);
         StopLoading();
-        Render(result);
+        if (result.Image is { } image && _screenshot is not null && _originalImage is not null)
+        {
+            var scaled = new TransformedBitmap(image, new ScaleTransform(
+                (double)_originalImage.PixelWidth / image.PixelWidth, (double)_originalImage.PixelHeight / image.PixelHeight));
+            scaled.Freeze();
+            _screenshot.Source = scaled;
+            _imageShown = true;
+            _imageChanged?.Invoke(scaled, result.TargetLanguageTag);
+        }
+        else Render(result);
         _transition(OverlayInteractionMode.TranslationShown);
         QueueCompletionRipple();
         if (result.IsPartial)
@@ -200,6 +221,14 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         TranslationActionVisualPresenter.SetTranslatingState(
             _action, translating: true, _lightTheme, _animationsEnabled());
         _transition(OverlayInteractionMode.Translating);
+        if (_originalImage is not null)
+        {
+            _waitingForOcr = false;
+            var target = _targetLanguageTag();
+            if (string.IsNullOrWhiteSpace(target)) ShowFailure(_requestId, TranslationFailure.Service);
+            else _publish(new ScreenTranslationRequested(_requestId, _originalImage, target));
+            return;
+        }
         TryPublishTranslation();
     }
 
@@ -248,6 +277,12 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private void DismissTranslation()
     {
         AbortPendingCompletionRipple();
+        if (_imageShown && _screenshot is not null && _originalImage is not null)
+        {
+            _imageShown = false;
+            _screenshot.Source = _originalImage;
+            _imageChanged?.Invoke(_originalImage, null);
+        }
         _overlay.CardsLayer.Children.Clear();
         _overlay.CardsLayer.Visibility = Visibility.Collapsed;
         SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);

@@ -45,7 +45,11 @@ public sealed record ScreenTranslationLine(int LineId, Rectangle SourceBoundsPx,
 public sealed record ScreenTranslationResult(
     Guid RequestId,
     IReadOnlyList<ScreenTranslationLine> Lines,
-    bool IsPartial);
+    bool IsPartial)
+{
+    public System.Windows.Media.Imaging.BitmapSource? Image { get; init; }
+    public string? TargetLanguageTag { get; init; }
+}
 
 public sealed record ScreenTranslationOutcome(
     ScreenTranslationResult? Result,

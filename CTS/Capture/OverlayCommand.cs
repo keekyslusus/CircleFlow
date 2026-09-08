@@ -55,6 +55,15 @@ public sealed record SearchSelectedText : IOverlayCommand
 
 public sealed record ScreenTranslationRequested : IOverlayCommand
 {
+    public ScreenTranslationRequested(Guid requestId, System.Windows.Media.Imaging.BitmapSource image, string targetLanguageTag)
+    {
+        if (requestId == Guid.Empty) throw new ArgumentException("A translation request id is required.", nameof(requestId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetLanguageTag);
+        RequestId = requestId;
+        Image = image ?? throw new ArgumentNullException(nameof(image));
+        TargetLanguageTag = targetLanguageTag;
+    }
+
     public ScreenTranslationRequested(Guid requestId, OcrDocument document, string targetLanguageTag)
     {
         if (requestId == Guid.Empty) throw new ArgumentException("A translation request id is required.", nameof(requestId));
@@ -65,7 +74,8 @@ public sealed record ScreenTranslationRequested : IOverlayCommand
     }
 
     public Guid RequestId { get; }
-    public OcrDocument Document { get; }
+    public OcrDocument? Document { get; }
+    public System.Windows.Media.Imaging.BitmapSource? Image { get; }
     public string TargetLanguageTag { get; }
 }
 

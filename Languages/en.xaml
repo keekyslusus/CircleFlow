@@ -7,6 +7,7 @@
     <system:String x:Key="plugin_circletosearch_google_lens_provider_name">Google Lens</system:String>
     <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images</system:String>
     <system:String x:Key="plugin_circletosearch_selection_prompt">Select an area</system:String>
+    <system:String x:Key="plugin_circletosearch_translated_text_prompt">Select translated text</system:String>
     <system:String x:Key="plugin_circletosearch_selection_too_small">Selection is too small. Drag to select a larger area.</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_key_name">Esc</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_action">cancel</system:String>
@@ -89,8 +90,8 @@
     <system:String x:Key="plugin_circletosearch_translate">Translate</system:String>
     <system:String x:Key="plugin_circletosearch_translating">Translating…</system:String>
     <system:String x:Key="plugin_circletosearch_show_original">Show original</system:String>
-    <system:String x:Key="plugin_circletosearch_translation_consent_title">Translate recognized screen text?</system:String>
-    <system:String x:Key="plugin_circletosearch_translation_consent_message">The recognized text will be sent to MyMemory over HTTPS and may be stored and processed under its terms. The screenshot is never sent.</system:String>
+    <system:String x:Key="plugin_circletosearch_translation_consent_title">Translate this screenshot?</system:String>
+    <system:String x:Key="plugin_circletosearch_translation_consent_message">The entire captured screen, including any personal information visible on it, will be sent to Google Translate over HTTPS. Google processes it under its terms and privacy policy. Continue only if you want to share this screenshot.</system:String>
     <system:String x:Key="plugin_circletosearch_continue">Continue</system:String>
     <system:String x:Key="plugin_circletosearch_consent_cancel">Cancel</system:String>
     <system:String x:Key="plugin_circletosearch_translation_canceled">Translation canceled.</system:String>
