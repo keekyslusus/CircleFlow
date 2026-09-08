@@ -8,8 +8,6 @@
     <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images</system:String>
     <system:String x:Key="plugin_circletosearch_selection_prompt">Select an area</system:String>
     <system:String x:Key="plugin_circletosearch_selection_too_small">Selection is too small. Drag to select a larger area.</system:String>
-    <system:String x:Key="plugin_circletosearch_color_copied">Copied:</system:String>
-    <system:String x:Key="plugin_circletosearch_color_copy_failed">The color could not be copied. Try again.</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_key_name">Esc</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_action">cancel</system:String>
     <system:String x:Key="plugin_circletosearch_music_recognition_action">Recognize music</system:String>
@@ -115,5 +113,6 @@
     <system:String x:Key="plugin_circletosearch_trace_rate_limited">trace.moe request limit reached. Try again later.</system:String>
     <system:String x:Key="plugin_circletosearch_trace_open">Open in AniList</system:String>
     <system:String x:Key="plugin_circletosearch_trace_copy">Copy anime info</system:String>
+    <system:String x:Key="plugin_circletosearch_trace_copy_failed">The result could not be copied. Try again.</system:String>
     <system:String x:Key="plugin_circletosearch_trace_episode">Episode {0}</system:String>
 </ResourceDictionary>

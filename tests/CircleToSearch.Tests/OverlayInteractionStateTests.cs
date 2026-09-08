@@ -25,7 +25,6 @@ public sealed class OverlayInteractionStateTests
     [InlineData((int)OverlayInteractionMode.Listening, (int)OverlayInteractionMode.MusicResult)]
     [InlineData((int)OverlayInteractionMode.MusicResult, (int)OverlayInteractionMode.Selecting)]
     [InlineData((int)OverlayInteractionMode.MusicResult, (int)OverlayInteractionMode.Listening)]
-    [InlineData((int)OverlayInteractionMode.Selecting, (int)OverlayInteractionMode.ColorConfirmation)]
     public void Allows_feature_transitions(int sourceValue, int targetValue)
     {
         var source = (OverlayInteractionMode)sourceValue;
@@ -40,7 +39,6 @@ public sealed class OverlayInteractionStateTests
     [InlineData((int)OverlayInteractionMode.Selecting)]
     [InlineData((int)OverlayInteractionMode.Listening)]
     [InlineData((int)OverlayInteractionMode.MusicResult)]
-    [InlineData((int)OverlayInteractionMode.ColorConfirmation)]
     public void Every_unfinished_mode_can_close(int sourceValue)
     {
         var source = (OverlayInteractionMode)sourceValue;
@@ -67,7 +65,6 @@ public sealed class OverlayInteractionStateTests
     [InlineData((int)OverlayInteractionMode.Closing, (int)OverlayInteractionMode.Selecting)]
     [InlineData((int)OverlayInteractionMode.Closing, (int)OverlayInteractionMode.Listening)]
     [InlineData((int)OverlayInteractionMode.Closing, (int)OverlayInteractionMode.MusicResult)]
-    [InlineData((int)OverlayInteractionMode.ColorConfirmation, (int)OverlayInteractionMode.Selecting)]
     public void Rejects_invalid_transitions(int sourceValue, int targetValue)
     {
         var source = (OverlayInteractionMode)sourceValue;
@@ -89,8 +86,6 @@ public sealed class OverlayInteractionStateTests
         Assert.False(state.CanAcceptSelectionInput);
         state.TransitionTo(OverlayInteractionMode.Selecting);
         Assert.True(state.CanAcceptSelectionInput);
-        state.TransitionTo(OverlayInteractionMode.ColorConfirmation);
-        Assert.False(state.CanAcceptSelectionInput);
     }
 
     private static OverlayInteractionState InMode(OverlayInteractionMode mode)
@@ -109,9 +104,6 @@ public sealed class OverlayInteractionStateTests
                 break;
             case OverlayInteractionMode.Closing:
                 state.TransitionTo(OverlayInteractionMode.Closing);
-                break;
-            case OverlayInteractionMode.ColorConfirmation:
-                state.TransitionTo(OverlayInteractionMode.ColorConfirmation);
                 break;
         }
         return state;

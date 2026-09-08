@@ -46,7 +46,7 @@ public sealed class PointerGestureRouterTests
                 Raise(harness.Input, UIElement.MouseLeftButtonUpEvent);
 
                 Assert.Equal(1, harness.LassoStarts);
-                Assert.Equal(1, harness.PixelPicks);
+                Assert.Equal(1, harness.LassoRejections);
                 Assert.False(harness.Text.IsActionMenuOpen);
             }
         });
@@ -65,7 +65,7 @@ public sealed class PointerGestureRouterTests
                 RaiseGesture(harness.Input);
 
                 Assert.Equal(1, harness.LassoStarts);
-                Assert.Equal(1, harness.PixelPicks);
+                Assert.Equal(1, harness.LassoRejections);
                 Assert.False(harness.Text.IsActionMenuOpen);
             }
         });
@@ -208,9 +208,8 @@ public sealed class PointerGestureRouterTests
                 () => true,
                 (_, _) => true,
                 () => LassoStarts++,
-                _ => PixelPicks++,
                 _ => { },
-                () => { },
+                () => LassoRejections++,
                 () => { },
                 subscribeInput: false);
             Text = new TextSelectionOverlayController(
@@ -241,7 +240,7 @@ public sealed class PointerGestureRouterTests
         internal TextSelectionOverlayController Text { get; }
         internal PointerGestureRouter Router { get; }
         internal int LassoStarts { get; private set; }
-        internal int PixelPicks { get; private set; }
+        internal int LassoRejections { get; private set; }
         internal Point Pointer { get; set; }
         internal List<IOverlayCommand> Commands { get; } = [];
         internal List<ToastNotification> Notifications { get; } = [];

@@ -323,21 +323,21 @@ public sealed class OverlayWindowTests
     }
 
     [Fact]
-    public void Small_selection_resets_and_shows_toast_without_publishing_a_command()
+    public void Drag_below_minimum_resets_and_shows_toast_without_publishing_a_command()
     {
         var failure = RunOnSta(() =>
         {
             using var frame = new GdiBitmap(640, 400);
             var monitor = new GdiRectangle(0, 0, 640, 400);
             var commands = new List<IOverlayCommand>();
-            var pointerPosition = PointerPositions(new Point(100, 100), new Point(110, 100));
+            var pointerPosition = PointerPositions(new Point(100, 100), new Point(111, 100));
             var overlay = new OverlayWindow(
                 frame,
                 monitor,
                 monitor,
                 1,
                 new OverlayLaunchOptions(
-                    new OverlayOptions(8, 10_000),
+                    new OverlayOptions(8, 12),
                     TestUiStrings.English,
                     Providers,
                     SearchProviderIds.GoogleLens),
@@ -379,7 +379,7 @@ public sealed class OverlayWindowTests
     }
 
     [Fact]
-    public void Exact_click_copies_frozen_pixel_keeps_toast_for_confirmation_then_publishes_terminal_command()
+    public void Exact_click_is_rejected_and_returns_action_tray()
     {
         var failure = RunOnSta(() =>
         {
@@ -403,93 +403,37 @@ public sealed class OverlayWindowTests
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
-            frame.SetPixel((int)local.X, (int)local.Y, System.Drawing.Color.FromArgb(0x3A, 0x7B, 0xD5));
             RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
 
-            Assert.Equal(["#3A7BD5"], clipboard);
+            Assert.Empty(clipboard);
             Assert.Empty(commands);
-            Assert.Equal(OverlayInteractionMode.ColorConfirmation, overlay.Mode);
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
             Assert.False(overlay.FrameTransferred);
             Assert.False(overlay.VisualState.Selection.InputSurface.IsMouseCaptured);
-            Assert.False(overlay.VisualState.Actions.Tray.IsHitTestVisible);
+            Assert.True(overlay.VisualState.Actions.Tray.IsHitTestVisible);
             var toastSlot = Assert.IsType<Grid>(overlay.VisualState.Bottom.Stack.Children[0]);
             var toastMessage = Assert.IsType<TextBlock>(Assert.IsType<Border>(Assert.Single(toastSlot.Children)).Child);
-            Assert.Equal("Copied: #3A7BD5", AutomationProperties.GetName(toastMessage));
+            Assert.Equal(TestUiStrings.English.SelectionTooSmall, toastMessage.Text);
 
+            RaiseEscape(overlay);
             Dispatcher.Run();
 
-            Assert.IsType<ColorCopied>(Assert.Single(commands));
-            Assert.Equal(OverlayInteractionMode.Closing, overlay.Mode);
+            Assert.IsType<CancelSession>(Assert.Single(commands));
             Assert.False(overlay.FrameTransferred);
-        });
-
-        Assert.Null(failure);
-    }
-
-    [Theory]
-    [InlineData(1.0, 0, 0)]
-    [InlineData(1.0, 639, 0)]
-    [InlineData(1.0, 0, 399)]
-    [InlineData(1.0, 639, 399)]
-    [InlineData(1.5, 0, 0)]
-    [InlineData(1.5, 639, 0)]
-    [InlineData(1.5, 0, 399)]
-    [InlineData(1.5, 639, 399)]
-    public void Overscan_click_pipeline_copies_exact_frame_edge_pixel(
-        double scale,
-        int pixelX,
-        int pixelY)
-    {
-        var failure = RunOnSta(() =>
-        {
-            using var frame = new GdiBitmap(640, 400);
-            frame.SetPixel(pixelX, pixelY, System.Drawing.Color.FromArgb(0x24, 0x68, 0xAC));
-            var monitor = new GdiRectangle(0, 0, frame.Width, frame.Height);
-            var commands = new List<IOverlayCommand>();
-            var clipboard = new List<string>();
-            var rootPoint = new Point(1 + pixelX / scale, 1 + pixelY / scale);
-            var overlay = new OverlayWindow(
-                frame,
-                monitor,
-                monitor,
-                scale,
-                new OverlayLaunchOptions(
-                    new OverlayOptions(8, 12),
-                    TestUiStrings.English,
-                    Providers,
-                    SearchProviderIds.GoogleLens),
-                commands.Add,
-                new OverlayControllerFactory(
-                    clipboard.Add,
-                    () => false,
-                    PointerPositions(rootPoint, rootPoint)),
-                overscan: true);
-            overlay.Show();
-            overlay.UpdateLayout();
-
-            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
-
-            Assert.Equal(["#2468AC"], clipboard);
-            Assert.Equal(OverlayInteractionMode.ColorConfirmation, overlay.Mode);
-            Assert.False(overlay.FrameTransferred);
-            Assert.Empty(commands);
-            overlay.CloseFromSession();
-            Dispatcher.Run();
         });
 
         Assert.Null(failure);
     }
 
     [Fact]
-    public void Three_pixel_jitter_uses_mouse_up_pixel_in_color_pipeline()
+    public void Drag_at_minimum_diagonal_completes_visual_selection()
     {
         var failure = RunOnSta(() =>
         {
             using var frame = new GdiBitmap(640, 400);
-            frame.SetPixel(103, 100, System.Drawing.Color.FromArgb(0xAB, 0xCD, 0xEF));
             var monitor = new GdiRectangle(0, 0, frame.Width, frame.Height);
-            var clipboard = new List<string>();
-            var pointerPosition = PointerPositions(new Point(100, 100), new Point(103, 100));
+            var commands = new List<IOverlayCommand>();
+            var pointerPosition = PointerPositions(new Point(100, 100), new Point(112, 100));
             var overlay = new OverlayWindow(
                 frame,
                 monitor,
@@ -500,17 +444,17 @@ public sealed class OverlayWindowTests
                     TestUiStrings.English,
                     Providers,
                     SearchProviderIds.GoogleLens),
-                _ => { },
-                new OverlayControllerFactory(clipboard.Add, () => false, pointerPosition),
+                commands.Add,
+                new OverlayControllerFactory(_ => { }, () => false, pointerPosition),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
 
             RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
 
-            Assert.Equal(["#ABCDEF"], clipboard);
-            Assert.Equal(OverlayInteractionMode.ColorConfirmation, overlay.Mode);
-            overlay.CloseFromSession();
+            var selection = Assert.IsType<VisualSelection>(Assert.Single(commands));
+            Assert.Equal(new GdiRectangle(92, 92, 28, 16), selection.Selection.Bounds);
+            Assert.True(overlay.FrameTransferred);
             Dispatcher.Run();
         });
 
@@ -548,51 +492,6 @@ public sealed class OverlayWindowTests
             Assert.Equal(new GdiRectangle(92, 92, 56, 46), selection.Selection.Bounds);
             Assert.True(overlay.FrameTransferred);
             Dispatcher.Run();
-        });
-
-        Assert.Null(failure);
-    }
-
-    [Fact]
-    public void Clipboard_failure_returns_to_selecting_with_tray_and_localized_error()
-    {
-        var failure = RunOnSta(() =>
-        {
-            using var frame = new GdiBitmap(640, 400);
-            var monitor = new GdiRectangle(0, 0, 640, 400);
-            var commands = new List<IOverlayCommand>();
-            var point = new Point(120, 80);
-            var overlay = new OverlayWindow(
-                frame,
-                monitor,
-                monitor,
-                1,
-                new OverlayLaunchOptions(
-                    new OverlayOptions(8, 12),
-                    TestUiStrings.English,
-                    Providers,
-                    SearchProviderIds.GoogleLens),
-                commands.Add,
-                new OverlayControllerFactory(
-                    _ => throw new InvalidOperationException("clipboard busy"),
-                    () => false,
-                    PointerPositions(point, point)),
-                overscan: false);
-            overlay.Show();
-            overlay.UpdateLayout();
-            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
-
-            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
-            Assert.False(overlay.FrameTransferred);
-            Assert.Empty(commands);
-            Assert.True(overlay.VisualState.Actions.Tray.IsHitTestVisible);
-            var toastSlot = Assert.IsType<Grid>(overlay.VisualState.Bottom.Stack.Children[0]);
-            var toastMessage = Assert.IsType<TextBlock>(Assert.IsType<Border>(Assert.Single(toastSlot.Children)).Child);
-            Assert.Equal(TestUiStrings.English.ColorCopyFailed, toastMessage.Text);
-
-            RaiseEscape(overlay);
-            Dispatcher.Run();
-            Assert.IsType<CancelSession>(Assert.Single(commands));
         });
 
         Assert.Null(failure);

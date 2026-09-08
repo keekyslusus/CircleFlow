@@ -86,23 +86,6 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
-    public async Task Color_copied_is_terminal_without_search_music_provider_or_browser_side_effects()
-    {
-        using var harness = new Harness();
-        harness.Overlay.Enqueue(new ColorCopied());
-
-        await harness.RunAsync();
-
-        Assert.Equal(1, harness.Overlay.CloseCalls);
-        Assert.Equal(0, harness.Google.Calls);
-        Assert.Equal(0, harness.Yandex.Calls);
-        Assert.Equal(0, harness.Music.Calls);
-        Assert.Equal(0, harness.Simulator.Calls);
-        Assert.Equal(0, harness.SaveCalls);
-        Assert.Empty(harness.Opened);
-    }
-
-    [Fact]
     public async Task Provider_change_applies_to_current_visual_command_and_persists_once()
     {
         using var harness = new Harness();

@@ -211,7 +211,6 @@ internal sealed class OverlaySessionWorkflow(
                         break;
 
                     case CancelSession:
-                    case ColorCopied:
                         return;
                 }
             }

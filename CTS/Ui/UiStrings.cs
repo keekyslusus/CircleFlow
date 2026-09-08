@@ -19,6 +19,7 @@ public sealed class UiStrings
     public string TraceRateLimited => Get("plugin_circletosearch_trace_rate_limited");
     public string TraceOpen => Get("plugin_circletosearch_trace_open");
     public string TraceCopy => Get("plugin_circletosearch_trace_copy");
+    public string TraceCopyFailed => Get("plugin_circletosearch_trace_copy_failed");
     public string TraceEpisode => Get("plugin_circletosearch_trace_episode");
     public string PluginTitle => Get("plugin_circletosearch_plugin_name");
     public string PluginDescription => Get("plugin_circletosearch_plugin_description");
@@ -26,8 +27,6 @@ public sealed class UiStrings
     public string YandexImagesProviderName => Get("plugin_circletosearch_yandex_images_provider_name");
     public string SelectionPrompt => Get("plugin_circletosearch_selection_prompt");
     public string SelectionTooSmall => Get("plugin_circletosearch_selection_too_small");
-    public string ColorCopied => Get("plugin_circletosearch_color_copied");
-    public string ColorCopyFailed => Get("plugin_circletosearch_color_copy_failed");
     public string CancelKeyName => Get("plugin_circletosearch_cancel_key_name");
     public string CancelAction => Get("plugin_circletosearch_cancel_action");
     public string MusicRecognitionAction => Get("plugin_circletosearch_music_recognition_action");

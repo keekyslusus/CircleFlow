@@ -63,14 +63,6 @@ public sealed class ToastOverlayPreviewTests
         Capture(visual.Root, $"toast-preview-{themeName}-settled.png");
 
         controller.Show(new ToastNotification(
-            TestUiStrings.English.ColorCopied,
-            ToastTone.Success,
-            TimeSpan.FromSeconds(30),
-            new ToastColorSample(0x3A, 0x7B, 0xD5)));
-        Pump(TimeSpan.FromMilliseconds(220));
-        Capture(visual.Root, $"toast-preview-{themeName}-color.png");
-
-        controller.Show(new ToastNotification(
             "The selection is ready to search with the active provider.",
             ToastTone.Success,
             TimeSpan.FromSeconds(30)));

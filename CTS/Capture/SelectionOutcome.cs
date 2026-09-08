@@ -11,7 +11,6 @@ public enum OverlayAction
 {
     VisualSelection,
     MusicRecognition,
-    ColorCopied,
 }
 
 public sealed record OverlayOutcome
@@ -35,6 +34,4 @@ public sealed record OverlayOutcome
         new(OverlayAction.VisualSelection, selection ?? throw new ArgumentNullException(nameof(selection)));
 
     public static OverlayOutcome MusicRecognition() => new(OverlayAction.MusicRecognition, null);
-
-    public static OverlayOutcome ColorCopied() => new(OverlayAction.ColorCopied, null);
 }

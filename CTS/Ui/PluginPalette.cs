@@ -94,7 +94,6 @@ internal static class PluginPalette
             NeutralAccent: Color.FromRgb(0x44, 0x47, 0x46),
             ErrorAccent: Color.FromRgb(0xC9, 0x8B, 0x86),
             SuccessAccent: DarkMusicPrimary,
-            SwatchBorder: Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF),
             ShadowOpacity: 0.35),
         TextInteraction: new TextInteractionPalette(
             Hover: Color.FromArgb(0x24, 0xD0, 0xBC, 0xFF),
@@ -170,7 +169,6 @@ internal static class PluginPalette
             NeutralAccent: Color.FromRgb(0xC4, 0xC7, 0xC5),
             ErrorAccent: Color.FromRgb(0xB6, 0x5F, 0x58),
             SuccessAccent: LightMusicPrimary,
-            SwatchBorder: Color.FromArgb(0x52, 0x20, 0x21, 0x24),
             ShadowOpacity: 0.12),
         TextInteraction: new TextInteractionPalette(
             Hover: Color.FromArgb(0x24, 0x67, 0x50, 0xA4),
@@ -240,7 +238,6 @@ internal sealed record ToastPalette(
     Color NeutralAccent,
     Color ErrorAccent,
     Color SuccessAccent,
-    Color SwatchBorder,
     double ShadowOpacity);
 
 internal sealed record SelectionChipPalette(

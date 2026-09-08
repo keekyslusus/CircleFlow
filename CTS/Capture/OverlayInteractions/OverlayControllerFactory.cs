@@ -4,7 +4,6 @@ using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
 using CircleToSearch.TextRecognition;
-using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Capture.OverlayInteractions;
@@ -20,7 +19,6 @@ internal sealed class OverlayControllers(
     PointerGestureRouter pointer,
     OcrOverlayController ocr,
     ScreenTranslationOverlayController translation,
-    ColorPickController colorPick,
     ProviderMenuController provider,
     MusicOverlayController music,
     ToastOverlayController toast,
@@ -33,7 +31,6 @@ internal sealed class OverlayControllers(
     internal PointerGestureRouter Pointer { get; } = pointer;
     internal OcrOverlayController Ocr { get; } = ocr;
     internal ScreenTranslationOverlayController Translation { get; } = translation;
-    internal ColorPickController ColorPick { get; } = colorPick;
     internal ProviderMenuController Provider { get; } = provider;
     internal MusicOverlayController Music { get; } = music;
     internal ToastOverlayController Toast { get; } = toast;
@@ -51,7 +48,6 @@ internal sealed class OverlayControllers(
         TextSelection.Dispose();
         Selection.Dispose();
         Provider.Dispose();
-        ColorPick.Dispose();
         Toast.Dispose();
     }
 }
@@ -59,7 +55,6 @@ internal sealed class OverlayControllers(
 internal sealed record OverlayControllerContext(
     OverlayVisual Visual,
     FrameworkElement CoordinateRoot,
-    GdiBitmap FrozenFrame,
     GdiRectangle Monitor,
     double Scale,
     OverlayOptions Options,
@@ -74,9 +69,6 @@ internal sealed record OverlayControllerContext(
     Action<GdiRectangle> SelectionCompleted,
     Action SelectionRejected,
     Action SelectionHoldCompleted,
-    Action ColorConfirmationStarted,
-    Action ColorPickFailed,
-    Action ColorConfirmationCompleted,
     Func<bool> CanUseProvider,
     Action<string> ProviderSelected,
     Func<OverlayInteractionMode> GetMode,
@@ -139,7 +131,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         PointerGestureRouter? pointer = null;
         OcrOverlayController? ocr = null;
         ScreenTranslationOverlayController? translation = null;
-        ColorPickController? colorPick = null;
         ProviderMenuController? provider = null;
         MusicOverlayController? music = null;
         ToastOverlayController? toast = null;
@@ -150,14 +141,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.Visual.Bottom,
                 context.Visual.LightTheme,
                 _animationsEnabled);
-            colorPick = new ColorPickController(
-                context.FrozenFrame,
-                _setClipboard,
-                context.Strings,
-                toast.Show,
-                context.ColorConfirmationStarted,
-                context.ColorPickFailed,
-                context.ColorConfirmationCompleted);
             provider = new ProviderMenuController(
                 context.Visual.Provider,
                 context.Visual.Bottom.Root,
@@ -179,7 +162,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.CanAcceptSelectionInput,
                 context.CanStartSelection,
                 context.SelectionStarted,
-                colorPick.Pick,
                 context.SelectionCompleted,
                 context.SelectionRejected,
                 context.SelectionHoldCompleted,
@@ -253,7 +235,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 pointer,
                 ocr,
                 translation,
-                colorPick,
                 provider,
                 music,
                 toast,
@@ -269,7 +250,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
             textSelection?.Dispose();
             selection?.Dispose();
             provider?.Dispose();
-            colorPick?.Dispose();
             toast?.Dispose();
             throw;
         }

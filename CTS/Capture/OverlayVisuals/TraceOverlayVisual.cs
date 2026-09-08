@@ -176,7 +176,7 @@ internal sealed class TraceOverlayVisual : IDisposable
                     AutomationProperties.SetName(copy, _strings.Copied);
                     copy.Content = OverlayVisualResources.Icon(MusicOverlayVisualPresenter.CheckIconGeometry, 12, palette.Primary);
                 }
-                catch { copy.ToolTip = _strings.ColorCopyFailed; }
+                catch { copy.ToolTip = _strings.TraceCopyFailed; }
             };
             actions.Children.Add(copy);
         }
