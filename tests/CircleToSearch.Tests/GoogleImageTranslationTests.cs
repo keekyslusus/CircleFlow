@@ -147,9 +147,11 @@ public sealed class GoogleImageTranslationTests
             var visual = OverlayVisualFactory.CreateRoot(source, new Size(80, 40), 0, false, TestUiStrings.English);
             var commands = new List<IOverlayCommand>();
             var changed = new List<(BitmapSource Image, string? Language)>();
+            var target = "ru";
+            var state = new OverlayInteractionState();
             using var controller = new ScreenTranslationOverlayController(visual.TranslationAction, visual.TranslationOverlay,
                 visual.Effects, visual.Root, new OverlayCoordinateMapper(1, false, new System.Drawing.Size(80, 40)),
-                TestUiStrings.English, () => true, () => { }, () => "ru", commands.Add, _ => { }, _ => { }, () => false,
+                TestUiStrings.English, () => true, () => { }, () => target, commands.Add, mode => state.TransitionTo(mode), _ => { }, () => false,
                 false, visual.Selection.Screenshot, (image, language) => changed.Add((image, language)));
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
@@ -167,7 +169,28 @@ public sealed class GoogleImageTranslationTests
             Assert.Same(source, visual.Selection.Screenshot.Source);
             Assert.Null(changed[1].Language);
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Single(commands);
+            Assert.Same(changed[0].Image, visual.Selection.Screenshot.Source);
+            Assert.Equal(OverlayInteractionMode.TranslationShown, state.Mode);
+            Assert.False(controller.IsTranslating);
+            Assert.Equal(Visibility.Collapsed, visual.TranslationAction.LoadingIndicator.Visibility);
+            visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            target = "de";
+            visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.Same(source, Assert.IsType<ScreenTranslationRequested>(commands[1]).Image);
+            var german = Assert.IsType<ScreenTranslationRequested>(commands[1]);
+            Assert.Equal("de", german.TargetLanguageTag);
+            controller.ShowFailure(german.RequestId, TranslationFailure.Network);
+            visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var retry = Assert.IsType<ScreenTranslationRequested>(commands[2]);
+            controller.ShowResult(new(retry.RequestId, [], false) { Image = Source(), TargetLanguageTag = "de" });
+            visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(3, commands.Count);
+            Assert.Equal("de", changed[^1].Language);
+            controller.CancelForClosing();
+            visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(3, commands.Count);
             visual.Music.Waveform.Dispose();
             visual.Effects.SceneRipples.Dispose();
         });

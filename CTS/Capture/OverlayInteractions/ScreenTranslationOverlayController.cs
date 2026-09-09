@@ -37,6 +37,10 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private readonly BitmapSource? _originalImage;
     private readonly Action<BitmapSource, string?>? _imageChanged;
     private bool _imageShown;
+    private BitmapSource? _cachedImage;
+    private string? _cachedTarget;
+    private string? _requestedTarget;
+    private bool _closing;
 
     internal ScreenTranslationOverlayController(
         TranslationActionVisual action,
@@ -93,7 +97,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 
     internal void ShowResult(ScreenTranslationResult result)
     {
-        if (_disposed || result.RequestId != _requestId) return;
+        if (_disposed || _closing || _requestId == Guid.Empty || result.RequestId != _requestId) return;
         AbortPendingCompletionRipple();
         _requestId = Guid.Empty;
         _waitingForOcr = false;
@@ -104,9 +108,9 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
             var scaled = new TransformedBitmap(image, new ScaleTransform(
                 (double)_originalImage.PixelWidth / image.PixelWidth, (double)_originalImage.PixelHeight / image.PixelHeight));
             scaled.Freeze();
-            _screenshot.Source = scaled;
-            _imageShown = true;
-            _imageChanged?.Invoke(scaled, result.TargetLanguageTag);
+            _cachedImage = scaled;
+            _cachedTarget = _requestedTarget ?? result.TargetLanguageTag;
+            DisplayImage(scaled, _cachedTarget);
         }
         else Render(result);
         _transition(OverlayInteractionMode.TranslationShown);
@@ -158,6 +162,10 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 
     internal void CancelForClosing()
     {
+        _closing = true;
+        _cachedImage = null;
+        _cachedTarget = null;
+        _requestedTarget = null;
         if (_requestId != Guid.Empty) _publish(new CancelScreenTranslation(_requestId));
         _requestId = Guid.Empty;
         _waitingForOcr = false;
@@ -179,6 +187,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 
     private void OnTranslate(object sender, RoutedEventArgs e)
     {
+        if (_disposed || _closing) return;
         if (IsTranslationShown) DismissTranslation();
         else if (IsTranslating) CancelTranslation();
         else if (!_consentAccepted())
@@ -215,6 +224,15 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private void BeginTranslation()
     {
         _overlay.ConsentCard.Visibility = Visibility.Collapsed;
+        var target = _targetLanguageTag();
+        if (_cachedImage is not null && string.Equals(_cachedTarget, target, StringComparison.OrdinalIgnoreCase))
+        {
+            SetActionVisual(_strings.ShowOriginal, TextTranslationVisualFactory.ShowOriginalIconGeometry);
+            DisplayImage(_cachedImage, _cachedTarget);
+            _transition(OverlayInteractionMode.TranslationShown);
+            return;
+        }
+        _requestedTarget = target;
         _requestId = Guid.NewGuid();
         _waitingForOcr = true;
         SetActionVisual(_strings.Translating, TextTranslationVisualFactory.TranslateIconGeometry);
@@ -224,7 +242,6 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         if (_originalImage is not null)
         {
             _waitingForOcr = false;
-            var target = _targetLanguageTag();
             if (string.IsNullOrWhiteSpace(target)) ShowFailure(_requestId, TranslationFailure.Service);
             else _publish(new ScreenTranslationRequested(_requestId, _originalImage, target));
             return;
@@ -299,6 +316,13 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     {
         TranslationActionVisualPresenter.SetTranslatingState(
             _action, translating: false, _lightTheme, _animationsEnabled());
+    }
+
+    private void DisplayImage(BitmapSource image, string? target)
+    {
+        _screenshot!.Source = image;
+        _imageShown = true;
+        _imageChanged?.Invoke(image, target);
     }
 
     private void SetActionVisual(string name, System.Windows.Media.Geometry geometry)

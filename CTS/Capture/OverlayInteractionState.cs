@@ -44,6 +44,8 @@ internal sealed class OverlayInteractionState
             (OverlayInteractionMode.TranslationConsent, OverlayInteractionMode.Selecting) => true,
             (OverlayInteractionMode.TranslationConsent, OverlayInteractionMode.Translating) => true,
             (OverlayInteractionMode.Selecting, OverlayInteractionMode.Translating) => true,
+            (OverlayInteractionMode.Selecting, OverlayInteractionMode.TranslationShown) => true,
+            (OverlayInteractionMode.TranslationConsent, OverlayInteractionMode.TranslationShown) => true,
             (OverlayInteractionMode.Translating, OverlayInteractionMode.TranslationShown) => true,
             (OverlayInteractionMode.Translating, OverlayInteractionMode.Selecting) => true,
             (OverlayInteractionMode.TranslationShown, OverlayInteractionMode.Selecting) => true,

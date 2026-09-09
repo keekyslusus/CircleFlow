@@ -22,7 +22,10 @@ and restart Flow Launcher. A private copy can crash the trace.moe video preview.
 
 The Translate action sends the original captured screen to Google Translate's unofficial image endpoint
 after screenshot-sharing consent. It does not depend on local OCR or require an API key, account or backend.
-The translated image replaces the frozen screen; Show original restores the original capture. Text selection
+The translated image replaces the frozen screen; Show original restores the original capture. Within the
+same overlay, Translate shows the cached image again without a network request when the target language
+is unchanged. Changing the target starts a new translation of the original capture; closing the overlay
+releases its cached result. Text selection
 runs Windows OCR on the displayed image using the selected translation target (its OCR pack must be installed).
 
 A separate, invisible WebView2 loads Google's small service frame and current signing code. Screenshot
