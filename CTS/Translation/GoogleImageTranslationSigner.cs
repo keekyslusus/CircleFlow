@@ -2,10 +2,10 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using CircleToSearch.Interop;
 using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
 
 namespace CircleToSearch.Translation;
 
@@ -15,7 +15,8 @@ internal sealed class GoogleImageTranslationSigner(
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
     private Window? _window;
-    private WebView2? _browser;
+    private CoreWebView2? _browser;
+    private CoreWebView2Controller? _controller;
     private GoogleImageChallenge? _challenge;
     private DateTime _initialized;
     private DispatcherTimer? _idle;
@@ -46,24 +47,29 @@ internal sealed class GoogleImageTranslationSigner(
         if (_browser is null || _challenge is null || DateTime.UtcNow - _initialized > TimeSpan.FromMinutes(5))
         {
             Reset();
-            var browser = new WebView2();
-            _browser = browser;
-            _window = new Window { Width = 64, Height = 64, Content = browser, Opacity = 0,
+            _window = new Window { Width = 64, Height = 64,
                 ShowInTaskbar = false, ShowActivated = false, WindowStyle = WindowStyle.None };
-            _window.Show();
+            // WPF opacity does not hide WebView2's native child window. Never show the host HWND.
+            var handle = new WindowInteropHelper(_window).EnsureHandle();
             var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: profileDirectory).WaitAsync(cancellation);
-            await browser.EnsureCoreWebView2Async(environment).WaitAsync(cancellation);
-            browser.CoreWebView2.NewWindowRequested += (_, args) => args.Handled = true;
-            browser.CoreWebView2.DownloadStarting += (_, args) => args.Cancel = true;
-            browser.CoreWebView2.PermissionRequested += (_, args) => args.State = CoreWebView2PermissionState.Deny;
-            browser.CoreWebView2.ProcessFailed += (_, _) => _challenge = null;
-            browser.CoreWebView2.NavigationStarting += (_, args) =>
+            _controller = await environment.CreateCoreWebView2ControllerAsync(handle);
+            _controller.IsVisible = false;
+            _controller.Bounds = new System.Drawing.Rectangle(0, 0, 64, 64);
+            cancellation.ThrowIfCancellationRequested();
+            var browser = _controller.CoreWebView2;
+            _browser = browser;
+            browser.Settings.AreDefaultContextMenusEnabled = false;
+            browser.NewWindowRequested += (_, args) => args.Handled = true;
+            browser.DownloadStarting += (_, args) => args.Cancel = true;
+            browser.PermissionRequested += (_, args) => args.State = CoreWebView2PermissionState.Deny;
+            browser.ProcessFailed += (_, _) => _challenge = null;
+            browser.NavigationStarting += (_, args) =>
             {
                 if (!string.Equals(args.Uri, GoogleImageTranslationProtocol.FrameUrl, StringComparison.Ordinal)) args.Cancel = true;
             };
             using var initialization = new HttpRequestMessage(HttpMethod.Get,
                 GoogleImageTranslationProtocol.Origin + "/?sl=auto&tl=" + Uri.EscapeDataString(target) + "&op=images");
-            initialization.Headers.TryAddWithoutValidation("User-Agent", browser.CoreWebView2.Settings.UserAgent);
+            initialization.Headers.TryAddWithoutValidation("User-Agent", browser.Settings.UserAgent);
             using var response = await http.SendAsync(initialization, HttpCompletionOption.ResponseHeadersRead, cancellation);
             response.EnsureSuccessStatusCode();
             var html = await GoogleImageTranslationProtocol.ReadBoundedAsync(response.Content, 4 * 1024 * 1024, cancellation);
@@ -77,7 +83,7 @@ internal sealed class GoogleImageTranslationSigner(
             browser.NavigationCompleted += Navigated;
             try
             {
-                browser.CoreWebView2.Navigate(GoogleImageTranslationProtocol.FrameUrl);
+                browser.Navigate(GoogleImageTranslationProtocol.FrameUrl);
                 await navigation.Task.WaitAsync(TimeSpan.FromSeconds(15), cancellation);
             }
             finally { browser.NavigationCompleted -= Navigated; }
@@ -91,7 +97,7 @@ internal sealed class GoogleImageTranslationSigner(
             "try{const started=performance.now();window.ctsGenerator.ply(token=>{clearTimeout(timeout);" +
             "resolve({token,ms:performance.now()-started});},true,{mgGpzd:" + JsonSerializer.Serialize(request) +
             "});}catch(e){clearTimeout(timeout);reject(e);}})";
-        var evaluation = await _browser.CoreWebView2.CallDevToolsProtocolMethodAsync("Runtime.evaluate",
+        var evaluation = await _browser.CallDevToolsProtocolMethodAsync("Runtime.evaluate",
             JsonSerializer.Serialize(new { expression, awaitPromise = true, returnByValue = true })).WaitAsync(cancellation);
         using var json = JsonDocument.Parse(evaluation);
         if (json.RootElement.TryGetProperty("exceptionDetails", out _)) throw new InvalidDataException("Image translation signing failed.");
@@ -100,14 +106,15 @@ internal sealed class GoogleImageTranslationSigner(
             (int)value.GetProperty("ms").GetDouble(), 0, null, 0, 0, _challenge?.State });
         _idle ??= new DispatcherTimer(TimeSpan.FromMinutes(2), DispatcherPriority.Background, (_, _) => Reset(), Dispatcher.CurrentDispatcher);
         _idle.Start();
-        return new(header, _browser.CoreWebView2.Settings.UserAgent);
+        return new(header, _browser.Settings.UserAgent);
     }
 
     private void Reset()
     {
         _idle?.Stop();
         _challenge = null;
-        _browser?.Dispose();
+        _controller?.Close();
+        _controller = null;
         _browser = null;
         _window?.Close();
         _window = null;

@@ -207,7 +207,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 {
                     pointer.Cancel();
                     textSelection.SetDocument(null);
-                    context.Visual.Selection.Dim.Visibility = language is null ? Visibility.Visible : Visibility.Collapsed;
                     if (context.Visual.Actions.Prompt is { } prompt)
                         prompt.Text = language is null ? context.Strings.SelectionPrompt : context.Strings.TranslatedTextPrompt;
                     ocr?.Restart(image, language ?? _ocrLanguageTag());

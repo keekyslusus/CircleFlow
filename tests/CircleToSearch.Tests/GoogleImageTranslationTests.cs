@@ -123,7 +123,8 @@ public sealed class GoogleImageTranslationTests
                 visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
                 window.ShowTranslation(new(request.RequestId, [], false) { Image = Source(), TargetLanguageTag = "ru-RU" });
-                Assert.Equal(Visibility.Collapsed, visual.Selection.Dim.Visibility);
+                Assert.Equal(Visibility.Visible, visual.Selection.Dim.Visibility);
+                Assert.True(visual.Root.Children.IndexOf(visual.Selection.Screenshot) < visual.Root.Children.IndexOf(visual.Selection.Dim));
                 Assert.Equal(TestUiStrings.English.TranslatedTextPrompt, visual.Actions.Prompt!.Text);
                 Assert.Equal("ru-RU", Assert.Single(recognizer.Languages));
                 Assert.Equal(320, ((BitmapSource)visual.Selection.Screenshot.Source).PixelWidth);
