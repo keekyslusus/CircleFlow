@@ -28,6 +28,7 @@ public static class CompositionRoot
 {
     internal const string HotkeyThreadName = "CircleToSearch hotkey";
     internal const string SearchBrowserThreadName = "CircleToSearch WebView2";
+    internal const bool TranslationMemoryProfilingEnabled = false;
 
     public static UiStrings CreateUiStrings(PluginInitContext context) =>
         new(context.API.GetTranslation);
@@ -128,9 +129,11 @@ public static class CompositionRoot
             DefaultRequestVersion = HttpVersion.Version20,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
         };
+        var translationMemory = TranslationMemoryProfilingEnabled ? new TranslationMemoryProfiler(pluginDirectory) : null;
+        translationMemory?.Mark("runtime_ready");
         var imageTranslationSigner = new GoogleImageTranslationSigner(translationHttpClient,
-            new StaDispatcher("CircleToSearch image translation"), Path.Combine(dataDirectory, "ImageTranslationProfile"));
-        var screenTranslation = new ScreenTranslationWorkflow(new GoogleImageTranslationProvider(translationHttpClient, imageTranslationSigner));
+            new StaDispatcher("CircleToSearch image translation"), Path.Combine(dataDirectory, "ImageTranslationProfile"), translationMemory);
+        var screenTranslation = new ScreenTranslationWorkflow(new GoogleImageTranslationProvider(translationHttpClient, imageTranslationSigner, translationMemory));
         var textSearch = new TextSearchWorkflow(
             new TextSearchUrlBuilder(),
             OpenResultsUrl,
@@ -157,7 +160,8 @@ public static class CompositionRoot
                 settings.ImageTranslationPrivacyConsentAccepted = true;
                 api.SaveSettingJsonStorage<PluginSettings>();
             },
-            log: log);
+            log: log,
+            memoryProfiler: translationMemory);
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory,
             video => new TraceVideoPreview(video,
                 () => Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
@@ -214,7 +218,8 @@ public static class CompositionRoot
             hotkeyWindow,
             providerRouter,
             searchBrowserHost,
-            [musicHttpClient, musicThrottle, imageTranslationSigner, translationHttpClient, traceHttpClient],
+            new IDisposable?[] { musicHttpClient, musicThrottle, imageTranslationSigner, translationHttpClient, traceHttpClient, translationMemory }
+                .OfType<IDisposable>().ToArray(),
             log);
     }
 

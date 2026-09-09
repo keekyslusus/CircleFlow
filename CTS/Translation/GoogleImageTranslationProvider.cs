@@ -15,24 +15,36 @@ internal interface IImageTranslationSigner
     Task<ImageTranslationSignature> SignAsync(string request, string target, CancellationToken cancellation);
 }
 
-internal sealed class GoogleImageTranslationProvider(HttpClient http, IImageTranslationSigner signer) : IImageTranslationProvider
+internal sealed class GoogleImageTranslationProvider(HttpClient http, IImageTranslationSigner signer,
+    TranslationMemoryProfiler? profiler = null) : IImageTranslationProvider
 {
     public async Task<ImageTranslationData> TranslateAsync(BitmapSource source, string target, CancellationToken cancellation)
     {
-        var png = await Task.Run(() => Encode(source), cancellation).ConfigureAwait(false);
-        var requestBody = GoogleImageTranslationProtocol.CreateRequest(png, target);
-        var signature = await signer.SignAsync(requestBody, target, cancellation).ConfigureAwait(false);
-        cancellation.ThrowIfCancellationRequested();
-        using var request = new HttpRequestMessage(HttpMethod.Post, GoogleImageTranslationProtocol.Endpoint);
-        request.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["f.req"] = requestBody });
-        request.Headers.TryAddWithoutValidation("User-Agent", signature.UserAgent);
-        request.Headers.TryAddWithoutValidation("X-Goog-BatchExecute-Bgr", signature.Header);
-        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        var body = await GoogleImageTranslationProtocol.ReadBoundedAsync(response.Content,
-            GoogleImageTranslationProtocol.MaxResponseBytes, cancellation).ConfigureAwait(false);
-        cancellation.ThrowIfCancellationRequested();
-        return GoogleImageTranslationProtocol.ReadResponse(body);
+        var scope = Guid.NewGuid().ToString("N");
+        profiler?.Mark("translation_start", scope);
+        try
+        {
+            var png = await Task.Run(() => Encode(source), cancellation).ConfigureAwait(false);
+            var requestBody = GoogleImageTranslationProtocol.CreateRequest(png, target);
+            profiler?.Mark("request_encoded", scope);
+            var signature = await signer.SignAsync(requestBody, target, cancellation).ConfigureAwait(false);
+            cancellation.ThrowIfCancellationRequested();
+            profiler?.Mark("signature_ready", scope);
+            using var request = new HttpRequestMessage(HttpMethod.Post, GoogleImageTranslationProtocol.Endpoint);
+            request.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["f.req"] = requestBody });
+            request.Headers.TryAddWithoutValidation("User-Agent", signature.UserAgent);
+            request.Headers.TryAddWithoutValidation("X-Goog-BatchExecute-Bgr", signature.Header);
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            var body = await GoogleImageTranslationProtocol.ReadBoundedAsync(response.Content,
+                GoogleImageTranslationProtocol.MaxResponseBytes, cancellation).ConfigureAwait(false);
+            cancellation.ThrowIfCancellationRequested();
+            profiler?.Mark("response_received", scope);
+            var result = GoogleImageTranslationProtocol.ReadResponse(body);
+            profiler?.Mark("image_decoded", scope);
+            return result;
+        }
+        finally { profiler?.Mark("translation_end", scope); }
     }
 
     private static byte[] Encode(BitmapSource source)

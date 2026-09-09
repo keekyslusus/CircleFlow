@@ -41,6 +41,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private string? _cachedTarget;
     private string? _requestedTarget;
     private bool _closing;
+    private readonly TranslationMemoryProfiler? _profiler;
+    private readonly string _profileScope = Guid.NewGuid().ToString("N");
 
     internal ScreenTranslationOverlayController(
         TranslationActionVisual action,
@@ -58,7 +60,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         Func<bool> animationsEnabled,
         bool lightTheme,
         Image? screenshot = null,
-        Action<BitmapSource, string?>? imageChanged = null)
+        Action<BitmapSource, string?>? imageChanged = null,
+        TranslationMemoryProfiler? profiler = null)
     {
         _action = action;
         _overlay = overlay;
@@ -77,6 +80,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _screenshot = screenshot;
         _originalImage = screenshot?.Source as BitmapSource;
         _imageChanged = imageChanged;
+        _profiler = profiler;
+        _profiler?.Mark("overlay_open", _profileScope);
         _action.Button.Click += OnTranslate;
         _overlay.ContinueButton.Click += OnContinue;
         _overlay.CancelButton.Click += OnCancelConsent;
@@ -114,6 +119,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         }
         else Render(result);
         _transition(OverlayInteractionMode.TranslationShown);
+        _profiler?.Mark("translation_shown", _profileScope);
         QueueCompletionRipple();
         if (result.IsPartial)
             _showToast(new ToastNotification(_strings.TranslationPartial, ToastTone.Error));
@@ -162,6 +168,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 
     internal void CancelForClosing()
     {
+        if (!_closing) _profiler?.Mark("overlay_closing", _profileScope);
         _closing = true;
         _cachedImage = null;
         _cachedTarget = null;
@@ -223,6 +230,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 
     private void BeginTranslation()
     {
+        _profiler?.Mark("translate_clicked", _profileScope);
         _overlay.ConsentCard.Visibility = Visibility.Collapsed;
         var target = _targetLanguageTag();
         if (_cachedImage is not null && string.Equals(_cachedTarget, target, StringComparison.OrdinalIgnoreCase))
@@ -230,6 +238,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
             SetActionVisual(_strings.ShowOriginal, TextTranslationVisualFactory.ShowOriginalIconGeometry);
             DisplayImage(_cachedImage, _cachedTarget);
             _transition(OverlayInteractionMode.TranslationShown);
+            _profiler?.Mark("cached_translation_shown", _profileScope);
             return;
         }
         _requestedTarget = target;
@@ -304,6 +313,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _overlay.CardsLayer.Visibility = Visibility.Collapsed;
         SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);
         _transition(OverlayInteractionMode.Selecting);
+        _profiler?.Mark("original_shown", _profileScope);
     }
 
     private void CloseConsent()

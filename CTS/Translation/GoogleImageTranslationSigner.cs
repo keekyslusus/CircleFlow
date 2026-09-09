@@ -10,7 +10,8 @@ using Microsoft.Web.WebView2.Core;
 namespace CircleToSearch.Translation;
 
 internal sealed class GoogleImageTranslationSigner(
-    HttpClient http, IStaDispatcher dispatcher, string profileDirectory) : IImageTranslationSigner, IDisposable
+    HttpClient http, IStaDispatcher dispatcher, string profileDirectory,
+    TranslationMemoryProfiler? profiler = null) : IImageTranslationSigner, IDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
@@ -21,6 +22,7 @@ internal sealed class GoogleImageTranslationSigner(
     private DateTime _initialized;
     private DispatcherTimer? _idle;
     private int _disposed;
+    private Action? _stopTracking;
 
     public async Task<ImageTranslationSignature> SignAsync(string request, string target, CancellationToken cancellation)
     {
@@ -52,9 +54,19 @@ internal sealed class GoogleImageTranslationSigner(
             // WPF opacity does not hide WebView2's native child window. Never show the host HWND.
             var handle = new WindowInteropHelper(_window).EnsureHandle();
             var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: profileDirectory).WaitAsync(cancellation);
+            void TrackProcesses()
+            {
+                try { profiler?.TrackProcesses(environment.GetProcessInfos().Select(info => (info.ProcessId, info.Kind.ToString()))); }
+                catch (Exception e) when (e is InvalidOperationException or System.Runtime.InteropServices.COMException) { }
+            }
+            EventHandler<object> processChanged = (_, _) => TrackProcesses();
+            environment.ProcessInfosChanged += processChanged;
+            _stopTracking = () => environment.ProcessInfosChanged -= processChanged;
             _controller = await environment.CreateCoreWebView2ControllerAsync(handle);
             _controller.IsVisible = false;
             _controller.Bounds = new System.Drawing.Rectangle(0, 0, 64, 64);
+            TrackProcesses();
+            profiler?.Mark("webview_created");
             cancellation.ThrowIfCancellationRequested();
             var browser = _controller.CoreWebView2;
             _browser = browser;
@@ -92,6 +104,8 @@ internal sealed class GoogleImageTranslationSigner(
                 .WaitAsync(cancellation);
             _challenge = challenge;
             _initialized = DateTime.UtcNow;
+            TrackProcesses();
+            profiler?.Mark("webview_ready");
         }
         var expression = "new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Generator timeout')),15000);" +
             "try{const started=performance.now();window.ctsGenerator.ply(token=>{clearTimeout(timeout);" +
@@ -111,6 +125,9 @@ internal sealed class GoogleImageTranslationSigner(
 
     private void Reset()
     {
+        var hadController = _controller is not null;
+        _stopTracking?.Invoke();
+        _stopTracking = null;
         _idle?.Stop();
         _challenge = null;
         _controller?.Close();
@@ -118,6 +135,7 @@ internal sealed class GoogleImageTranslationSigner(
         _browser = null;
         _window?.Close();
         _window = null;
+        if (hadController) profiler?.Mark("webview_closed");
     }
 
     public void Dispose()

@@ -35,6 +35,25 @@ created on demand, reused for nearby requests and closed after two idle minutes.
 This is an unofficial integration: Google can change or reject requests. An image-only response is treated
 as an unconfirmed result, rather than incorrectly reporting a successful translation or a definite no-text case.
 
+## Translation memory profiling
+
+Set `TranslationMemoryProfilingEnabled` in `CTS/CompositionRoot.cs` to `true` and rebuild to enable
+profiling. It defaults to `false`; no profiler instance, sampling timer or diagnostic writes are created.
+
+Diagnostic snapshots are written to `translation-memory.jsonl` beside `plugin.log` in the installed
+plugin directory. Action markers distinguish overlay open/close, translation requests, encoding,
+WebView2 initialization, response decoding, original/cached-image display and OCR completion.
+One-second samples continue for three minutes after the last marker, including WebView2's idle shutdown.
+The file rotates at 5 MiB to `translation-memory.jsonl.old`; send both files when diagnosing a longer run.
+
+Counters are bytes: host PrivateBytes (private committed memory), WorkingSetBytes (resident pages),
+managed live memory without forcing GC, heap size at the last GC and allocation/collection counters.
+Only WebView2 processes reported by the translation environment are tracked, with PID/start-time checks.
+Their individual working sets can contain shared pages and must not be summed as unique physical RAM.
+The host counters cover ALL of Flow Launcher and its plugins; stage deltas estimate this feature's impact,
+not an exact per-plugin allocation. Sampling can miss subsecond peaks and introduces a small measurement
+overhead. No screenshots, recognized text or signing tokens are logged, and no forced GC is performed.
+
 ## License
 
 This project is distributed under GPL-3.0-or-later. See [`LICENSE`](./LICENSE), [`THIRD_PARTY_NOTICES.txt`](./THIRD_PARTY_NOTICES.txt), and [`THIRD_PARTY_LICENSES`](./THIRD_PARTY_LICENSES).
