@@ -7,7 +7,7 @@ namespace CircleToSearch.Search;
 
 public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
 {
-    private static readonly Uri GoogleLensHome = new("https://lens.google.com/?hl=en");
+    private static readonly Uri GoogleLensHome = new("https://lens.google.com/");
     private static readonly Uri GoogleLensUpload = new("https://lens.google.com/v3/upload");
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan AttachmentTimeout = TimeSpan.FromSeconds(15);
