@@ -11,13 +11,13 @@ public sealed class GoogleLensProvider : IVisualSearchProvider
         _createOperation = createOperation ?? throw new ArgumentNullException(nameof(createOperation));
     }
 
-    public Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel)
+    public Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] jpeg, CancellationToken cancel)
     {
-        ArgumentNullException.ThrowIfNull(png);
+        ArgumentNullException.ThrowIfNull(jpeg);
         if (cancel.IsCancellationRequested)
             return Task.FromResult(VisualSearchPreparationOutcome.Fail(UploadFailure.Canceled));
 
-        var operation = _createOperation(png);
+        var operation = _createOperation(jpeg);
         return Task.FromResult(VisualSearchPreparationOutcome.Ready(
             PreparedVisualSearch.ForBrowserOperation(operation, externalFallbackUrl: null)));
     }

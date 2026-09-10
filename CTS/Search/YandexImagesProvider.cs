@@ -5,10 +5,10 @@ namespace CircleToSearch.Search;
 
 // Yandex reverse image search: the raw image is POSTed to the images-apphost upload endpoint and
 // the JSON answer carries a cbir_id whose avatars.mds.yandex.net URL feeds the results page.
-// Anonymous, no API key, no cookies, png is accepted
+// Anonymous, no API key, no cookies; JPEG is accepted.
 public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
 {
-    public const string UploadUrl = "https://yandex.ru/images-apphost/image-download";
+    public const string UploadUrl = "https://yandex.com/images-apphost/image-download";
     public const string UploadQuery = "cbird=111&images_avatars_size=preview&images_avatars_namespace=images-cbir";
 
     private readonly HttpClient _client;
@@ -31,13 +31,13 @@ public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
         _log = log;
     }
 
-    public async Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel)
+    public async Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] jpeg, CancellationToken cancel)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{UploadUrl}?{UploadQuery}")
         {
-            Content = new ByteArrayContent(png),
+            Content = new ByteArrayContent(jpeg),
         };
-        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
 
         try
         {
@@ -58,7 +58,7 @@ public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
             }
 
             var (cbirId, imagePath) = parsed.Value;
-            var resultsUrl = $"https://yandex.ru/images/search?rpt=imageview" +
+            var resultsUrl = $"https://yandex.com/images/search?rpt=imageview" +
                              $"&url={Uri.EscapeDataString(imagePath)}" +
                              $"&cbir_id={Uri.EscapeDataString(cbirId)}";
             if (!YandexResultUrlPolicy.IsAllowed(new Uri(resultsUrl)))

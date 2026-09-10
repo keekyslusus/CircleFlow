@@ -24,7 +24,7 @@ public sealed class YandexImagesProviderTests
 
         Assert.True(outcome.Success);
         Assert.Equal(
-            "https://yandex.ru/images/search?rpt=imageview" +
+            "https://yandex.com/images/search?rpt=imageview" +
             "&url=https%3A%2F%2Favatars.mds.yandex.net%2Fget-images-cbir%2F1382825%2FLi2HdR6qGtqUzyErZ9utIw7363%2Forig" +
             "&cbir_id=1382825%2FLi2HdR6qGtqUzyErZ9utIw7363",
             outcome.PreparedSearch!.RequireResultsUrl().AbsoluteUri);
@@ -44,7 +44,7 @@ public sealed class YandexImagesProviderTests
         Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.Equal(new Uri(YandexImagesProvider.UploadUrl + "?" + YandexImagesProvider.UploadQuery),
             handler.LastRequest.RequestUri);
-        Assert.Equal("image/png", handler.LastRequest.Content!.Headers.ContentType!.MediaType);
+        Assert.Equal("image/jpeg", handler.LastRequest.Content!.Headers.ContentType!.MediaType);
         Assert.Equal([1, 2, 3], handler.LastBody);
     }
 

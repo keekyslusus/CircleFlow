@@ -13,13 +13,13 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
     private static readonly TimeSpan AttachmentTimeout = TimeSpan.FromSeconds(15);
 
     private readonly PluginLog _log;
-    private byte[]? _png;
+    private byte[]? _jpeg;
     private int _started;
 
-    public GoogleLensBrowserOperation(byte[] png, PluginLog log)
+    public GoogleLensBrowserOperation(byte[] jpeg, PluginLog log)
     {
-        ArgumentNullException.ThrowIfNull(png);
-        _png = png;
+        ArgumentNullException.ThrowIfNull(jpeg);
+        _jpeg = jpeg;
         _log = log ?? throw new ArgumentNullException(nameof(log));
     }
 
@@ -31,12 +31,11 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         if (Interlocked.Exchange(ref _started, 1) != 0)
             throw new InvalidOperationException("A Google Lens browser operation can only be executed once.");
 
-        var png = Interlocked.Exchange(ref _png, null)
+        var jpeg = Interlocked.Exchange(ref _jpeg, null)
                   ?? throw new InvalidOperationException("The image is no longer available.");
         try
         {
             cancel.ThrowIfCancellationRequested();
-            var jpeg = GoogleLensImageEncoder.EncodeJpeg(png);
             if (await TryDirectUploadAsync(session, jpeg, cancel).ConfigureAwait(true))
                 return VisualSearchBrowserOperationStatus.Succeeded;
 

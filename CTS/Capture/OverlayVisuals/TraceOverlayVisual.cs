@@ -170,7 +170,7 @@ internal sealed class TraceOverlayVisual : IDisposable
             copy.Click += (_, e) =>
             {
                 e.Handled = true;
-                var payload = $"{match.Title} — {string.Format(CultureInfo.CurrentCulture, _strings.TraceEpisode, match.Episode)}, {TraceMoeMatch.Timestamp(match.From)}";
+                var payload = $"{match.Title} - {string.Format(CultureInfo.CurrentCulture, _strings.TraceEpisode, match.Episode)}, {TraceMoeMatch.Timestamp(match.From)}";
                 if (_clipboardCopy.TryCopy(payload))
                 {
                     copy.ToolTip = _strings.Copied;

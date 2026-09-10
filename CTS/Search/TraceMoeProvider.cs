@@ -17,14 +17,14 @@ public sealed record TraceMoeMatch(
 
 public sealed class TraceMoeProvider(HttpClient client) : IVisualSearchProvider
 {
-    public async Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel)
+    public async Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] jpeg, CancellationToken cancel)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
         timeout.CancelAfter(TimeSpan.FromSeconds(45));
         try
         {
-            using var content = new ByteArrayContent(png);
-            content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            using var content = new ByteArrayContent(jpeg);
+            content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
             using var response = await client.PostAsync("https://api.trace.moe/search?anilistInfo", content, timeout.Token)
                 .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)

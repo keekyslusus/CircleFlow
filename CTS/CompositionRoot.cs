@@ -65,7 +65,7 @@ public static class CompositionRoot
                 new VisualSearchProviderRegistration(
                     new SearchProviderDescriptor(SearchProviderIds.GoogleLens, strings.GoogleLensProviderName),
                     () => new GoogleLensProvider(
-                        png => new GoogleLensBrowserOperation(png, log))),
+                        jpeg => new GoogleLensBrowserOperation(jpeg, log))),
                 new VisualSearchProviderRegistration(
                     new SearchProviderDescriptor(SearchProviderIds.YandexImages, strings.YandexImagesProviderName),
                     () => new YandexImagesProvider(log)),
@@ -83,7 +83,7 @@ public static class CompositionRoot
             log);
         var visualSearch = new VisualSearchWorkflow(
             providerRouter,
-            (frame, bounds) => ImageCropper.Encode(frame, bounds, settings.MaxLongSidePx),
+            (frame, bounds) => ImageCropper.EncodeJpeg(frame, bounds, settings.MaxLongSidePx),
             visualSearchPresenter,
             notifier,
             strings,

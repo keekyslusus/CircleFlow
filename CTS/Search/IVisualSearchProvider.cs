@@ -2,7 +2,7 @@ namespace CircleToSearch.Search;
 
 public interface IVisualSearchProvider
 {
-    Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel);
+    Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] jpeg, CancellationToken cancel);
 }
 
 public enum UploadFailure

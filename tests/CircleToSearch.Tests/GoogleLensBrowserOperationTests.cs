@@ -1,4 +1,5 @@
 using System.Text;
+using CircleToSearch.Capture;
 using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
 using Xunit;
@@ -133,14 +134,12 @@ public sealed class GoogleLensBrowserOperationTests
     }
 
     private static GoogleLensBrowserOperation NewOperation()
-        => new(CreatePng(), NewLog());
+        => new(CreateJpeg(), NewLog());
 
-    private static byte[] CreatePng()
+    private static byte[] CreateJpeg()
     {
         using var bitmap = new System.Drawing.Bitmap(2, 2);
-        using var stream = new MemoryStream();
-        bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-        return stream.ToArray();
+        return ImageCropper.EncodeJpeg(bitmap, new System.Drawing.Rectangle(0, 0, 2, 2), 1600);
     }
 
     private static PluginLog NewLog()

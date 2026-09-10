@@ -6,7 +6,7 @@ using CircleToSearch.Ui;
 
 internal sealed class ClipboardCopyService
 {
-    private const int PreviewTextElementLimit = 50;
+    private const int PreviewTextElementLimit = 67;
     private readonly Action<string> _setClipboard;
     private readonly Action<ToastNotification> _showToast;
     private readonly UiStrings _strings;

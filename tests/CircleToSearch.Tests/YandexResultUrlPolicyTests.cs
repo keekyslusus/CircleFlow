@@ -9,6 +9,7 @@ public sealed class YandexResultUrlPolicyTests
     [InlineData("https://yandex.ru/images/search?rpt=imageview&url=https%3A%2F%2Favatars.mds.yandex.net%2Fx")]
     [InlineData("https://yandex.kz/images/search?rpt=imageview")]
     [InlineData("https://yandex.com/images/search?rpt=imageview")]
+    [InlineData("https://images.yandex.com/images/search?rpt=imageview")]
     public void Yandex_https_results_are_allowed(string url)
     {
         Assert.True(YandexResultUrlPolicy.IsAllowed(new Uri(url)));

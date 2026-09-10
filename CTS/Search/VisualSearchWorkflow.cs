@@ -16,10 +16,10 @@ internal sealed class VisualSearchWorkflow(
     internal async Task<VisualSearchPreparationOutcome> PrepareTraceAsync(
         SelectionOutcome selection, CancellationToken cancellationToken)
     {
-        byte[] png;
-        try { png = crop(selection.FrozenFrame, selection.Bounds); }
+        byte[] jpeg;
+        try { jpeg = crop(selection.FrozenFrame, selection.Bounds); }
         finally { selection.FrozenFrame.Dispose(); }
-        var routed = await providerRouter.PrepareAsync(SearchProviderIds.TraceMoe, png, cancellationToken).ConfigureAwait(false);
+        var routed = await providerRouter.PrepareAsync(SearchProviderIds.TraceMoe, jpeg, cancellationToken).ConfigureAwait(false);
         return routed.Outcome;
     }
 
@@ -29,14 +29,14 @@ internal sealed class VisualSearchWorkflow(
         Action onUploadStarted,
         CancellationToken cancellationToken)
     {
-        byte[] png;
-        try { png = crop(selection.FrozenFrame, selection.Bounds); }
+        byte[] jpeg;
+        try { jpeg = crop(selection.FrozenFrame, selection.Bounds); }
         finally { selection.FrozenFrame.Dispose(); }
 
         onUploadStarted();
         var selectedProvider = providerRouter.GetEffectiveDescriptor(requestedProviderId);
         log.Info(nameof(VisualSearchWorkflow), $"upload started with provider '{selectedProvider.Id}'");
-        var routed = await providerRouter.PrepareAsync(requestedProviderId, png, cancellationToken).ConfigureAwait(false);
+        var routed = await providerRouter.PrepareAsync(requestedProviderId, jpeg, cancellationToken).ConfigureAwait(false);
         var result = routed.Outcome;
         log.Info(nameof(VisualSearchWorkflow), $"provider '{routed.ProviderId}' preparation completed with {result.Failure}");
         if (!result.Success)

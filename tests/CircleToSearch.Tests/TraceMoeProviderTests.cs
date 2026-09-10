@@ -50,13 +50,13 @@ public sealed class TraceMoeProviderTests
     }
 
     [Fact]
-    public async Task Posts_png_binary_and_preserves_empty_result_without_a_browser()
+    public async Task Posts_jpeg_binary_and_preserves_empty_result_without_a_browser()
     {
         using var client = new HttpClient(new Handler(async (request, cancel) =>
         {
             Assert.Equal(HttpMethod.Post, request.Method);
             Assert.Equal("https://api.trace.moe/search?anilistInfo", request.RequestUri!.AbsoluteUri);
-            Assert.Equal("image/png", request.Content!.Headers.ContentType!.MediaType);
+            Assert.Equal("image/jpeg", request.Content!.Headers.ContentType!.MediaType);
             Assert.Equal(new byte[] { 1, 2, 3 }, await request.Content.ReadAsByteArrayAsync(cancel));
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"result\":[]}") };
         }));

@@ -10,5 +10,6 @@ public static class YandexResultUrlPolicy
     private static bool HostIsYandex(string host)
         => host is "yandex.ru" or "yandex.kz" or "yandex.com"
            || host.EndsWith(".yandex.ru", StringComparison.Ordinal)
-           || host.EndsWith(".yandex.kz", StringComparison.Ordinal);
+           || host.EndsWith(".yandex.kz", StringComparison.Ordinal)
+           || host.EndsWith(".yandex.com", StringComparison.Ordinal);
 }

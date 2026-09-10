@@ -51,10 +51,10 @@ public sealed class VisualSearchProviderRouter : IDisposable
 
     public async Task<RoutedVisualSearchPreparation> PrepareAsync(
         string? requestedProviderId,
-        byte[] png,
+        byte[] jpeg,
         CancellationToken cancel)
     {
-        ArgumentNullException.ThrowIfNull(png);
+        ArgumentNullException.ThrowIfNull(jpeg);
 
         var resolution = Resolve(requestedProviderId);
         IVisualSearchProvider provider;
@@ -77,7 +77,7 @@ public sealed class VisualSearchProviderRouter : IDisposable
                     $"visual search provider '{requested}' is unavailable; using '{resolution.Entry.Descriptor.Id}'");
             }
 
-            var outcome = await provider.PrepareAsync(png, cancel).ConfigureAwait(false);
+            var outcome = await provider.PrepareAsync(jpeg, cancel).ConfigureAwait(false);
             return new RoutedVisualSearchPreparation(
                 resolution.Entry.Descriptor.Id,
                 resolution.Entry.Descriptor.DisplayName,
