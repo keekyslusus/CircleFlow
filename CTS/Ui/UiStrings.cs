@@ -19,7 +19,6 @@ public sealed class UiStrings
     public string TraceRateLimited => Get("plugin_circletosearch_trace_rate_limited");
     public string TraceOpen => Get("plugin_circletosearch_trace_open");
     public string TraceCopy => Get("plugin_circletosearch_trace_copy");
-    public string TraceCopyFailed => Get("plugin_circletosearch_trace_copy_failed");
     public string TraceEpisode => Get("plugin_circletosearch_trace_episode");
     public string PluginTitle => Get("plugin_circletosearch_plugin_name");
     public string PluginDescription => Get("plugin_circletosearch_plugin_description");
@@ -38,6 +37,7 @@ public sealed class UiStrings
     public string Retry => Get("plugin_circletosearch_music_retry");
     public string CopyTrackInfo => Get("plugin_circletosearch_music_copy_track_info");
     public string Copied => Get("plugin_circletosearch_music_copied");
+    public string CopyFailed => Get("plugin_circletosearch_copy_failed");
     public string Close => Get("plugin_circletosearch_close");
     public string MusicResultTitle => Get("plugin_circletosearch_music_result_title");
     public string MusicNoMatch => Get("plugin_circletosearch_music_no_match");
@@ -89,8 +89,6 @@ public sealed class UiStrings
         Get("plugin_circletosearch_search_browser_show_failed", providerName);
     public string TextCopy => Get("plugin_circletosearch_text_copy");
     public string TextSearch => Get("plugin_circletosearch_text_search");
-    public string TextCopied => Get("plugin_circletosearch_text_copied");
-    public string TextCopyFailed => Get("plugin_circletosearch_text_copy_failed");
     public string TextSearchTooLong => Get("plugin_circletosearch_text_search_too_long");
     public string TextSearchOpenFailed => Get("plugin_circletosearch_text_search_open_failed");
     public string Translate => Get("plugin_circletosearch_translate");
@@ -149,6 +147,9 @@ public sealed class UiStrings
         Get("plugin_circletosearch_starting_selection_failed", detail);
 
     public string SearchFailed(string detail) => Get("plugin_circletosearch_search_failed", detail);
+
+    public string CopiedText(string preview) =>
+        Get("plugin_circletosearch_copied_text", preview);
 
     public string MusicMatchSubtitle(string? album, string? genre)
     {

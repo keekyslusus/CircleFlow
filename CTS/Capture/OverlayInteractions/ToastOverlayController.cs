@@ -46,7 +46,7 @@ internal sealed class ToastOverlayController : IDisposable
         {
             _active.Add(entry);
             _bottom.Stack.Children.Insert(
-                _bottom.Stack.Children.IndexOf(_bottom.ResultSlot),
+                _active.Count - 1,
                 visual.Slot);
             RepairMargins();
         }, animationsEnabled);

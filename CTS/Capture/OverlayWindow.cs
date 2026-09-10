@@ -55,6 +55,7 @@ public sealed class OverlayWindow : Window
     private readonly ScreenTranslationOverlayController _translation;
     private readonly ProviderMenuController _provider;
     private readonly MusicOverlayController _music;
+    private readonly ClipboardCopyService _clipboardCopy;
     private readonly ToastOverlayController _toast;
     private readonly DebugOverlayController _debug;
     private readonly List<IDisposable> _controlRipples = [];
@@ -156,6 +157,7 @@ public sealed class OverlayWindow : Window
         _translation = _controllers.Translation;
         _provider = _controllers.Provider;
         _music = _controllers.Music;
+        _clipboardCopy = _controllers.ClipboardCopy;
         _toast = _controllers.Toast;
         _debug = _controllers.Debug;
 
@@ -365,7 +367,7 @@ public sealed class OverlayWindow : Window
             _trace?.Dispose();
             _trace = TraceOverlayVisual.Create(_visual.Root, _visual.Bottom, _visual.Effects, _strings,
                 SystemTheme.IsLight(), () => _publishCommand(new OpenTraceResult()),
-                DismissTraceResult, Clipboard.SetText, _createTraceVideo);
+                DismissTraceResult, _clipboardCopy, _createTraceVideo);
             _publishCommand(new VisualSelection(new SelectionOutcome(bounds, (GdiBitmap)_frame.Clone()), SearchProviderIds.TraceMoe));
             return;
         }

@@ -12,7 +12,8 @@ public sealed class UiStringsTests
 
         Assert.Equal("CircleFlow", strings.PluginTitle);
         Assert.Equal("Select an area", strings.SelectionPrompt);
-        Assert.Equal("The result could not be copied. Try again.", strings.TraceCopyFailed);
+        Assert.Equal("Copied: sample", strings.CopiedText("sample"));
+        Assert.Equal("Could not copy to clipboard.", strings.CopyFailed);
         Assert.Equal("Google Lens", strings.GoogleLensProviderName);
         Assert.Equal("Searching with Google Lens…", strings.SearchBrowserLoading("Google Lens"));
         Assert.Equal("CircleFlow: Google Lens", strings.SearchBrowserWindowTitle(strings.GoogleLensProviderName));
@@ -75,5 +76,6 @@ public sealed class UiStringsTests
         Assert.NotEmpty(strings.SearchBrowserShowFailed("provider"));
         Assert.NotEmpty(strings.StartingSelectionFailed("detail"));
         Assert.NotEmpty(strings.SearchFailed("detail"));
+        Assert.NotEmpty(strings.CopiedText("preview"));
     }
 }

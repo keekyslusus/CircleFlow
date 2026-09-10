@@ -22,6 +22,7 @@ internal sealed class OverlayControllers(
     ScreenTranslationOverlayController translation,
     ProviderMenuController provider,
     MusicOverlayController music,
+    ClipboardCopyService clipboardCopy,
     ToastOverlayController toast,
     DebugOverlayController debug) : IDisposable
 {
@@ -34,6 +35,7 @@ internal sealed class OverlayControllers(
     internal ScreenTranslationOverlayController Translation { get; } = translation;
     internal ProviderMenuController Provider { get; } = provider;
     internal MusicOverlayController Music { get; } = music;
+    internal ClipboardCopyService ClipboardCopy { get; } = clipboardCopy;
     internal ToastOverlayController Toast { get; } = toast;
     internal DebugOverlayController Debug { get; } = debug;
 
@@ -145,6 +147,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.Visual.Bottom,
                 context.Visual.LightTheme,
                 _animationsEnabled);
+            var clipboardCopy = new ClipboardCopyService(_setClipboard, toast.Show, context.Strings);
             provider = new ProviderMenuController(
                 context.Visual.Provider,
                 context.Visual.Bottom.Root,
@@ -177,8 +180,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.Visual.Selection.InputSurface,
                 mapper,
                 new OcrTextHitTester(_textHitToleranceDips * context.Scale),
-                _setClipboard,
-                toast.Show,
+                clipboardCopy,
                 () => provider.SelectedProviderId,
                 context.PublishCommand,
                 context.Strings,
@@ -240,7 +242,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.MusicStartRequested,
                 context.MusicCancelRequested,
                 context.MusicResultCommandRequested,
-                _setClipboard,
+                clipboardCopy,
                 _animationsEnabled);
             return new OverlayControllers(
                 selection,
@@ -250,6 +252,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 translation,
                 provider,
                 music,
+                clipboardCopy,
                 toast,
                 debug);
         }

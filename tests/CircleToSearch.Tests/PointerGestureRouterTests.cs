@@ -110,6 +110,9 @@ public sealed class PointerGestureRouterTests
                 harness.Visual.TextSelection.CopyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
                 Assert.Equal(["one two"], copied);
+                var toast = Assert.Single(harness.Notifications);
+                Assert.Equal("Copied: one two", toast.Message);
+                Assert.Equal(ToastTone.Success, toast.Tone);
                 Assert.True(harness.Text.IsActionMenuOpen);
             }
         });
@@ -150,7 +153,7 @@ public sealed class PointerGestureRouterTests
 
                 Assert.True(harness.Text.IsActionMenuOpen);
                 var toast = Assert.Single(harness.Notifications);
-                Assert.Equal(TestUiStrings.English.TextCopyFailed, toast.Message);
+                Assert.Equal(TestUiStrings.English.CopyFailed, toast.Message);
                 Assert.Equal(ToastTone.Error, toast.Tone);
             }
         });
@@ -218,8 +221,7 @@ public sealed class PointerGestureRouterTests
                 Visual.Selection.InputSurface,
                 mapper,
                 new OcrTextHitTester(),
-                clipboard ?? (_ => { }),
-                Notifications.Add,
+                new ClipboardCopyService(clipboard ?? (_ => { }), Notifications.Add, TestUiStrings.English),
                 () => "google-lens",
                 Commands.Add,
                 TestUiStrings.English,

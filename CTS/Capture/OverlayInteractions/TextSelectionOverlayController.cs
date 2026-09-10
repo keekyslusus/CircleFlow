@@ -16,8 +16,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
     private readonly FrameworkElement _inputSurface;
     private readonly OverlayCoordinateMapper _mapper;
     private readonly OcrTextHitTester _hitTester;
-    private readonly Action<string> _setClipboard;
-    private readonly Action<ToastNotification> _showToast;
+    private readonly ClipboardCopyService _clipboardCopy;
     private readonly Func<string> _selectedProviderId;
     private readonly Action<IOverlayCommand> _publish;
     private readonly UiStrings _strings;
@@ -37,8 +36,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         FrameworkElement inputSurface,
         OverlayCoordinateMapper mapper,
         OcrTextHitTester hitTester,
-        Action<string> setClipboard,
-        Action<ToastNotification> showToast,
+        ClipboardCopyService clipboardCopy,
         Func<string> selectedProviderId,
         Action<IOverlayCommand> publish,
         UiStrings strings,
@@ -49,8 +47,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _inputSurface = inputSurface;
         _mapper = mapper;
         _hitTester = hitTester;
-        _setClipboard = setClipboard;
-        _showToast = showToast;
+        _clipboardCopy = clipboardCopy ?? throw new ArgumentNullException(nameof(clipboardCopy));
         _selectedProviderId = selectedProviderId;
         _publish = publish;
         _strings = strings;
@@ -147,15 +144,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
     private void OnCopy(object sender, RoutedEventArgs e)
     {
         if (_selection is null) return;
-        try
-        {
-            _setClipboard(_selection.Text);
-            _showToast(new ToastNotification(_strings.TextCopied, ToastTone.Success));
-        }
-        catch
-        {
-            _showToast(new ToastNotification(_strings.TextCopyFailed, ToastTone.Error));
-        }
+        _clipboardCopy.TryCopy(_selection.Text);
         e.Handled = true;
     }
 

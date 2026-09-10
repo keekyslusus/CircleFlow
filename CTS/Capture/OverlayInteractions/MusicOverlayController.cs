@@ -21,7 +21,7 @@ internal sealed class MusicOverlayController : IDisposable
     private readonly Action _startRequested;
     private readonly Action _cancelRequested;
     private readonly Action<IOverlayCommand> _resultCommandRequested;
-    private readonly Action<string> _setClipboard;
+    private readonly ClipboardCopyService _clipboardCopy;
     private readonly Func<bool> _animationsEnabled;
     private readonly List<DispatcherTimer> _copyTimers = [];
     private readonly List<IDisposable> _resultRipples = [];
@@ -49,7 +49,7 @@ internal sealed class MusicOverlayController : IDisposable
         Action startRequested,
         Action cancelRequested,
         Action<IOverlayCommand> resultCommandRequested,
-        Action<string> setClipboard,
+        ClipboardCopyService clipboardCopy,
         Func<bool> animationsEnabled)
     {
         _visual = visual;
@@ -62,7 +62,7 @@ internal sealed class MusicOverlayController : IDisposable
         _startRequested = startRequested;
         _cancelRequested = cancelRequested;
         _resultCommandRequested = resultCommandRequested;
-        _setClipboard = setClipboard;
+        _clipboardCopy = clipboardCopy ?? throw new ArgumentNullException(nameof(clipboardCopy));
         _animationsEnabled = animationsEnabled;
 
         _visual.Button.Click += OnMusicButtonClick;
@@ -174,9 +174,8 @@ internal sealed class MusicOverlayController : IDisposable
     private void CopyTrackInfo(string text, Button button)
     {
         if (_disposed || _getMode() == OverlayInteractionMode.Closing) return;
-        try
+        if (_clipboardCopy.TryCopy(text))
         {
-            _setClipboard(text);
             MusicOverlayVisualPresenter.SetCopyConfirmed(button, confirmed: true, _strings, _lightTheme);
             var restore = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1300) };
             restore.Tick += OnRestoreCopy;
@@ -184,7 +183,7 @@ internal sealed class MusicOverlayController : IDisposable
             _copyTimers.Add(restore);
             restore.Start();
         }
-        catch
+        else
         {
             MusicOverlayVisualPresenter.SetCopyConfirmed(button, confirmed: false, _strings, _lightTheme);
         }

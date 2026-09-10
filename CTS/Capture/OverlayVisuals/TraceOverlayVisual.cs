@@ -22,7 +22,7 @@ internal sealed class TraceOverlayVisual : IDisposable
     private readonly bool _light;
     private readonly Action _open;
     private readonly Action _close;
-    private readonly Action<string> _copy;
+    private readonly ClipboardCopyService _clipboardCopy;
     private readonly Grid _host = new() { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     private readonly LoadingIndicatorVisual _loading = new() { Width = 80, Height = 80 };
     private ITraceVideoPreview? _media;
@@ -44,7 +44,7 @@ internal sealed class TraceOverlayVisual : IDisposable
     private bool _closing;
 
     private TraceOverlayVisual(Grid root, BottomOverlayVisual bottom, OverlayEffectsVisual effects, UiStrings strings,
-        bool light, Action open, Action close, Action<string> copy)
+        bool light, Action open, Action close, ClipboardCopyService clipboardCopy)
     {
         _root = root;
         _bottom = bottom;
@@ -54,13 +54,13 @@ internal sealed class TraceOverlayVisual : IDisposable
         _light = light;
         _open = open;
         _close = close;
-        _copy = copy;
+        _clipboardCopy = clipboardCopy ?? throw new ArgumentNullException(nameof(clipboardCopy));
     }
 
     internal static TraceOverlayVisual Create(Grid root, BottomOverlayVisual bottom, OverlayEffectsVisual effects, UiStrings strings,
-        bool light, Action open, Action close, Action<string> copy, Func<Uri, ITraceVideoPreview>? createVideo = null)
+        bool light, Action open, Action close, ClipboardCopyService clipboardCopy, Func<Uri, ITraceVideoPreview>? createVideo = null)
     {
-        var visual = new TraceOverlayVisual(root, bottom, effects, strings, light, open, close, copy);
+        var visual = new TraceOverlayVisual(root, bottom, effects, strings, light, open, close, clipboardCopy);
         visual._createVideo = createVideo;
         visual.ShowLoading();
         return visual;
@@ -166,17 +166,23 @@ internal sealed class TraceOverlayVisual : IDisposable
         if (match is not null)
         {
             var copy = MusicOverlayVisualPresenter.IconButton(MusicOverlayVisualPresenter.CopyIconGeometry, _strings.TraceCopy, palette, 12);
+            var copyIcon = copy.Content;
             copy.Click += (_, e) =>
             {
                 e.Handled = true;
-                try
+                var payload = $"{match.Title} — {string.Format(CultureInfo.CurrentCulture, _strings.TraceEpisode, match.Episode)}, {TraceMoeMatch.Timestamp(match.From)}";
+                if (_clipboardCopy.TryCopy(payload))
                 {
-                    _copy($"{match.Title} — {string.Format(CultureInfo.CurrentCulture, _strings.TraceEpisode, match.Episode)}, {TraceMoeMatch.Timestamp(match.From)}");
                     copy.ToolTip = _strings.Copied;
                     AutomationProperties.SetName(copy, _strings.Copied);
                     copy.Content = OverlayVisualResources.Icon(MusicOverlayVisualPresenter.CheckIconGeometry, 12, palette.Primary);
                 }
-                catch { copy.ToolTip = _strings.TraceCopyFailed; }
+                else
+                {
+                    copy.ToolTip = _strings.CopyFailed;
+                    AutomationProperties.SetName(copy, _strings.CopyFailed);
+                    copy.Content = copyIcon;
+                }
             };
             actions.Children.Add(copy);
         }

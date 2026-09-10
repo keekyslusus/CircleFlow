@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Automation;
@@ -40,8 +41,10 @@ public sealed class TraceOverlayTests
             window.UpdateLayout();
             int opened = 0, closed = 0;
             string? copied = null;
+            var notifications = new List<ToastNotification>();
+            var clipboardCopy = new ClipboardCopyService(text => copied = text, notifications.Add, TestUiStrings.English);
             using var trace = TraceOverlayVisual.Create(visual.Root, visual.Bottom, visual.Effects, TestUiStrings.English, light,
-                () => opened++, () => closed++, text => copied = text, video => new TraceVideoPreview(video,
+                () => opened++, () => closed++, clipboardCopy, video => new TraceVideoPreview(video,
                     () => Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
                         userDataFolder: Path.Combine(TestOutputPaths.TempDirectory, "trace-video-profile")),
                     new PluginLog(TestOutputPaths.TempDirectory)));
@@ -101,8 +104,16 @@ public sealed class TraceOverlayTests
                     RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent, Source = open,
                 });
                 var copy = Descendants(visual.Root).OfType<Button>().Single(x => AutomationProperties.GetName(x) == TestUiStrings.English.TraceCopy);
+                var initialCopyContent = copy.Content;
                 copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.Contains(match.Title, copied);
+                var payload = $"{match.Title} — {string.Format(CultureInfo.CurrentCulture, TestUiStrings.English.TraceEpisode, match.Episode)}, {TraceMoeMatch.Timestamp(match.From)}";
+                Assert.Equal(payload, copied);
+                var toast = Assert.Single(notifications);
+                Assert.Equal(TestUiStrings.English.CopiedText(payload), toast.Message);
+                Assert.Equal(ToastTone.Success, toast.Tone);
+                Assert.Equal(TestUiStrings.English.Copied, copy.ToolTip);
+                Assert.Equal(TestUiStrings.English.Copied, AutomationProperties.GetName(copy));
+                Assert.NotSame(initialCopyContent, copy.Content);
                 Assert.Equal(0, opened);
                 var close = Descendants(visual.Root).OfType<Button>().Last(x => AutomationProperties.GetName(x) == TestUiStrings.English.Close);
                 close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -111,6 +122,121 @@ public sealed class TraceOverlayTests
             }
             finally
             {
+                visual.Effects.SceneRipples.Dispose();
+                visual.Bottom.LayoutTransitions.Dispose();
+                visual.Music.LoadingIndicator.Dispose();
+                visual.Music.Waveform.Dispose();
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void Clipboard_failure_shows_error_without_copy_success_state()
+    {
+        RunSta(() =>
+        {
+            var visual = OverlayVisualFactory.CreateRoot(null, new Size(640, 400), 32, false,
+                TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
+            var window = new Window { Content = visual.Root, Width = 640, Height = 400, ShowActivated = false, ShowInTaskbar = false };
+            window.Show();
+            window.UpdateLayout();
+            var notifications = new List<ToastNotification>();
+            var clipboardCopy = new ClipboardCopyService(
+                _ => throw new InvalidOperationException(),
+                notifications.Add,
+                TestUiStrings.English);
+            using var trace = TraceOverlayVisual.Create(
+                visual.Root,
+                visual.Bottom,
+                visual.Effects,
+                TestUiStrings.English,
+                false,
+                () => { },
+                () => { },
+                clipboardCopy);
+            try
+            {
+                Pump(240);
+                var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
+                    "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null, Video = null };
+                trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
+                Pump(450);
+                var copy = Descendants(visual.Root).OfType<Button>()
+                    .Single(x => AutomationProperties.GetName(x) == TestUiStrings.English.TraceCopy);
+                var initialCopyContent = copy.Content;
+
+                copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                var toast = Assert.Single(notifications);
+                Assert.Equal(TestUiStrings.English.CopyFailed, toast.Message);
+                Assert.Equal(ToastTone.Error, toast.Tone);
+                Assert.Equal(TestUiStrings.English.CopyFailed, copy.ToolTip);
+                Assert.Equal(TestUiStrings.English.CopyFailed, AutomationProperties.GetName(copy));
+                Assert.Same(initialCopyContent, copy.Content);
+            }
+            finally
+            {
+                visual.Effects.SceneRipples.Dispose();
+                visual.Bottom.LayoutTransitions.Dispose();
+                visual.Music.LoadingIndicator.Dispose();
+                visual.Music.Waveform.Dispose();
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void Copy_toast_stays_above_dynamic_trace_result_host()
+    {
+        RunSta(() =>
+        {
+            var visual = OverlayVisualFactory.CreateRoot(null, new Size(640, 400), 32, false,
+                TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
+            var window = new Window { Content = visual.Root, Width = 640, Height = 400, ShowActivated = false, ShowInTaskbar = false };
+            window.Show();
+            window.UpdateLayout();
+            var toast = new ToastOverlayController(visual.Bottom, false, () => false);
+            var clipboardCopy = new ClipboardCopyService(_ => { }, toast.Show, TestUiStrings.English);
+            var trace = TraceOverlayVisual.Create(
+                visual.Root,
+                visual.Bottom,
+                visual.Effects,
+                TestUiStrings.English,
+                false,
+                () => { },
+                () => { },
+                clipboardCopy);
+            try
+            {
+                Pump(240);
+                var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
+                    "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null, Video = null };
+                trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
+                Pump(450);
+                Assert.True(trace.Presentation.IsCompletedSuccessfully, trace.Presentation.Exception?.ToString());
+                var copy = Descendants(visual.Bottom.Stack).OfType<Button>()
+                    .Single(x => AutomationProperties.GetName(x) == TestUiStrings.English.TraceCopy);
+                var actions = Assert.IsType<StackPanel>(VisualTreeHelper.GetParent(copy));
+                var content = Assert.IsType<Grid>(VisualTreeHelper.GetParent(actions));
+                var card = Assert.IsType<Border>(VisualTreeHelper.GetParent(content));
+                var traceResultHost = Assert.IsType<Grid>(VisualTreeHelper.GetParent(card));
+
+                copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.UpdateLayout();
+
+                var toastSlot = Assert.Single(toast.ActiveVisuals).Slot;
+                Assert.Equal(
+                    [toastSlot, traceResultHost, visual.Bottom.ResultSlot, visual.Bottom.ActionSlot],
+                    visual.Bottom.Stack.Children.Cast<UIElement>());
+                var toastBottom = toastSlot.TranslatePoint(new Point(0, toastSlot.ActualHeight), visual.Root).Y;
+                var traceTop = traceResultHost.TranslatePoint(new Point(), visual.Root).Y;
+                Assert.True(toastBottom < traceTop, $"Toast bottom {toastBottom} must be above trace top {traceTop}.");
+            }
+            finally
+            {
+                trace.Dispose();
+                toast.Dispose();
                 visual.Effects.SceneRipples.Dispose();
                 visual.Bottom.LayoutTransitions.Dispose();
                 visual.Music.LoadingIndicator.Dispose();
@@ -224,8 +350,9 @@ public sealed class TraceOverlayTests
             window.Show();
             window.UpdateLayout();
             var preview = new DeferredPreview();
+            var clipboardCopy = new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English);
             using var trace = TraceOverlayVisual.Create(visual.Root, visual.Bottom, visual.Effects, TestUiStrings.English,
-                false, () => { }, () => { }, _ => { }, _ => preview);
+                false, () => { }, () => { }, clipboardCopy, _ => preview);
             try
             {
                 Pump(240);
@@ -281,8 +408,9 @@ public sealed class TraceOverlayTests
             window.Show();
             window.UpdateLayout();
             var preview = new DeferredPreview();
+            var clipboardCopy = new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English);
             var trace = TraceOverlayVisual.Create(visual.Root, visual.Bottom, visual.Effects, TestUiStrings.English,
-                false, () => { }, () => { }, _ => { }, _ => preview);
+                false, () => { }, () => { }, clipboardCopy, _ => preview);
             var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
                 "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null };
             trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));

@@ -61,11 +61,17 @@ public sealed class OverlayControllerLifecycleTests
         {
             var visual = CreateVisual();
             var commands = new List<IOverlayCommand>();
-            using var controller = CreateMusicController(visual, commands, animationsEnabled: false);
+            var copied = new List<string>();
+            var notifications = new List<ToastNotification>();
+            using var controller = CreateMusicController(visual, commands, animationsEnabled: false, copied.Add, notifications);
             controller.ShowResult(MatchedOutcome());
             var copy = Descendants(visual.Music.ResultHost).OfType<Button>()
                 .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.CopyTrackInfo);
             copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(["Track - Artist"], copied);
+            var toast = Assert.Single(notifications);
+            Assert.Equal("Copied: Track - Artist", toast.Message);
+            Assert.Equal(ToastTone.Success, toast.Tone);
             Assert.Equal(TestUiStrings.English.Copied, AutomationProperties.GetName(copy));
             Assert.Equal(1, controller.PendingCopyRestoreCount);
 
@@ -75,6 +81,35 @@ public sealed class OverlayControllerLifecycleTests
 
             Assert.Equal(TestUiStrings.English.Copied, AutomationProperties.GetName(copy));
             Assert.Empty(commands);
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Clipboard_failure_shows_error_without_confirming_or_scheduling_restore()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = CreateVisual();
+            var notifications = new List<ToastNotification>();
+            using var controller = CreateMusicController(
+                visual,
+                [],
+                animationsEnabled: false,
+                _ => throw new InvalidOperationException(),
+                notifications);
+            controller.ShowResult(MatchedOutcome());
+            var copy = Descendants(visual.Music.ResultHost).OfType<Button>()
+                .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.CopyTrackInfo);
+
+            copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal(TestUiStrings.English.CopyTrackInfo, AutomationProperties.GetName(copy));
+            Assert.Equal(0, controller.PendingCopyRestoreCount);
+            var toast = Assert.Single(notifications);
+            Assert.Equal(TestUiStrings.English.CopyFailed, toast.Message);
+            Assert.Equal(ToastTone.Error, toast.Tone);
         });
 
         Assert.Null(failure);
@@ -395,7 +430,9 @@ public sealed class OverlayControllerLifecycleTests
     private static MusicOverlayController CreateMusicController(
         OverlayVisual visual,
         List<IOverlayCommand> commands,
-        bool animationsEnabled) =>
+        bool animationsEnabled,
+        Action<string>? setClipboard = null,
+        List<ToastNotification>? notifications = null) =>
         new(
             visual.Music,
             visual.Bottom.LayoutTransitions,
@@ -407,7 +444,10 @@ public sealed class OverlayControllerLifecycleTests
             () => { },
             () => { },
             commands.Add,
-            _ => { },
+            new ClipboardCopyService(
+                setClipboard ?? (_ => { }),
+                (notifications ?? []).Add,
+                TestUiStrings.English),
             () => animationsEnabled);
 
     private static OverlayVisual CreateVisual() => OverlayVisualFactory.CreateRoot(
