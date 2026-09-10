@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Effects;
 using CircleToSearch.Capture;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Shazam;
@@ -92,6 +93,14 @@ public sealed class OverlayVisualCompositionTests
             Assert.Same(visual.TranslationAction.Button, visual.Actions.Tray.Children[1]);
             Assert.Same(visual.Music.Button, visual.Actions.Tray.Children[2]);
             Assert.Empty(visual.Bottom.ProviderMenuLayer.Children);
+            Assert.Null(visual.Actions.Chip.Effect);
+            var chipLayers = Assert.IsType<Grid>(visual.Actions.Chip.Child);
+            var shadow = Assert.IsType<Border>(chipLayers.Children[0]);
+            var surface = Assert.IsType<Border>(chipLayers.Children[1]);
+            Assert.IsType<DropShadowEffect>(shadow.Effect);
+            Assert.Equal(new Thickness(), shadow.BorderThickness);
+            Assert.Null(surface.Effect);
+            Assert.Same(surface.Child, visual.Actions.Prompt!.Parent);
             visual.Music.Waveform.Dispose();
             visual.Effects.SceneRipples.Dispose();
         });

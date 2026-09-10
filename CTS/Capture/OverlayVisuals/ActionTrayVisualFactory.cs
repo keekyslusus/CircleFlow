@@ -20,7 +20,7 @@ internal static class ActionTrayVisualFactory
         TranslationActionVisual translation)
     {
         var lift = new TranslateTransform();
-        var chip = CreateChip(palette, strings);
+        var (chip, prompt) = CreateChip(palette, strings);
         var tray = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -33,11 +33,10 @@ internal static class ActionTrayVisualFactory
         tray.Children.Add(translation.Button);
         tray.Children.Add(music.Button);
 
-        return new ActionTrayVisual(tray, chip, lift)
-        { Prompt = ((StackPanel)chip.Child).Children.OfType<TextBlock>().First() };
+        return new ActionTrayVisual(tray, chip, lift) { Prompt = prompt };
     }
 
-    private static Border CreateChip(SelectionChipPalette palette, UiStrings strings)
+    private static (Border Chip, TextBlock Prompt) CreateChip(SelectionChipPalette palette, UiStrings strings)
     {
         var icon = new Path
         {
@@ -100,15 +99,12 @@ internal static class ActionTrayVisualFactory
         row.Children.Add(keycap);
         row.Children.Add(hint);
 
-        var chip = new Border
+        var background = OverlayVisualResources.Frozen(palette.Surface);
+        var outline = ChipOutlineBrush(palette);
+        var shadow = new Border
         {
-            Child = row,
-            MinHeight = 44,
-            Padding = new Thickness(18, 8, 16, 8),
-            VerticalAlignment = VerticalAlignment.Center,
-            Background = OverlayVisualResources.Frozen(palette.Surface),
-            BorderBrush = ChipOutlineBrush(palette),
-            BorderThickness = new Thickness(ChipBorderThicknessDips),
+            Background = background,
+            IsHitTestVisible = false,
             Effect = new DropShadowEffect
             {
                 Color = PluginPalette.OpaqueBlack,
@@ -118,9 +114,33 @@ internal static class ActionTrayVisualFactory
                 Opacity = palette.ShadowOpacity,
             },
         };
-        chip.CornerRadius = new CornerRadius(22);
-        chip.SizeChanged += (_, _) => chip.CornerRadius = new CornerRadius(chip.ActualHeight / 2);
-        return chip;
+        var surface = new Border
+        {
+            Child = row,
+            MinHeight = 44,
+            Padding = new Thickness(18, 8, 16, 8),
+            Background = background,
+            BorderBrush = outline,
+            BorderThickness = new Thickness(ChipBorderThicknessDips),
+        };
+        var layers = new Grid();
+        layers.Children.Add(shadow);
+        layers.Children.Add(surface);
+        var chip = new Border
+        {
+            Child = layers,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        void UpdateRadius()
+        {
+            var radius = new CornerRadius(chip.ActualHeight / 2);
+            shadow.CornerRadius = radius;
+            surface.CornerRadius = radius;
+        }
+        shadow.CornerRadius = new CornerRadius(22);
+        surface.CornerRadius = new CornerRadius(22);
+        chip.SizeChanged += (_, _) => UpdateRadius();
+        return (chip, label);
     }
 
     private static Geometry CreateChipIconGeometry()

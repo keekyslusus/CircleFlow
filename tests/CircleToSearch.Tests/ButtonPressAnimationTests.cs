@@ -18,7 +18,7 @@ public sealed class ButtonPressAnimationTests
             var button = CreateButton(animationsEnabled: true);
             button.ApplyTemplate();
 
-            AssertChromeStartsAtNormalScale(button);
+            AssertScaleHostStartsAtNormalScale(button);
             var pressed = PressedTrigger(button);
             var setter = Assert.IsType<Setter>(Assert.Single(pressed.Setters));
             Assert.Equal(0.82, Assert.IsType<double>(setter.Value));
@@ -37,7 +37,7 @@ public sealed class ButtonPressAnimationTests
             var button = CreateButton(animationsEnabled: false);
             button.ApplyTemplate();
 
-            AssertChromeStartsAtNormalScale(button);
+            AssertScaleHostStartsAtNormalScale(button);
             var pressed = PressedTrigger(button);
             var setter = Assert.IsType<Setter>(Assert.Single(pressed.Setters));
             Assert.Equal(UIElement.OpacityProperty, setter.Property);
@@ -89,6 +89,33 @@ public sealed class ButtonPressAnimationTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Applying_template_moves_shadow_behind_the_content()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var shadow = OverlayVisualResources.DockShadow(6, 0.35);
+            var button = new Button { Effect = shadow, Content = "Content" };
+
+            OverlayVisualResources.ApplyButtonTemplate(
+                button,
+                12,
+                Colors.Gray,
+                Colors.White,
+                animationsEnabled: true);
+            button.ApplyTemplate();
+
+            Assert.Null(button.Effect);
+            Assert.Same(shadow, OverlayVisualResources.GetButtonShadow(button));
+            var shadowLayer = Assert.IsType<Border>(button.Template.FindName("Shadow", button));
+            Assert.Same(shadow, shadowLayer.Effect);
+            Assert.Equal(new Thickness(), shadowLayer.BorderThickness);
+            Assert.Null(Assert.IsType<Border>(button.Template.FindName("Chrome", button)).Effect);
+        });
+
+        Assert.Null(failure);
+    }
+
     private static Button CreateButton(bool animationsEnabled)
     {
         var button = new Button();
@@ -101,11 +128,11 @@ public sealed class ButtonPressAnimationTests
         return button;
     }
 
-    private static void AssertChromeStartsAtNormalScale(Button button)
+    private static void AssertScaleHostStartsAtNormalScale(Button button)
     {
-        var chrome = Assert.IsType<Border>(button.Template.FindName("Chrome", button));
-        Assert.Equal(new Point(0.5, 0.5), chrome.RenderTransformOrigin);
-        var scale = Assert.IsType<ScaleTransform>(chrome.RenderTransform);
+        var scaleHost = Assert.IsType<Grid>(button.Template.FindName("ScaleHost", button));
+        Assert.Equal(new Point(0.5, 0.5), scaleHost.RenderTransformOrigin);
+        var scale = Assert.IsType<ScaleTransform>(scaleHost.RenderTransform);
         Assert.Equal(1, scale.ScaleX);
         Assert.Equal(1, scale.ScaleY);
     }
@@ -126,7 +153,7 @@ public sealed class ButtonPressAnimationTests
             Assert.Null(animation.From);
             Assert.Equal(expectedTo, animation.To);
             Assert.Equal(TimeSpan.FromMilliseconds(expectedDurationMs), animation.Duration.TimeSpan);
-            Assert.Equal("Chrome", Storyboard.GetTargetName(animation));
+            Assert.Equal("ScaleHost", Storyboard.GetTargetName(animation));
             var easing = Assert.IsType<CubicEase>(animation.EasingFunction);
             Assert.Equal(EasingMode.EaseOut, easing.EasingMode);
         });

@@ -146,11 +146,12 @@ internal static class TranslationActionVisualPresenter
             BlurRadius = 18,
             Opacity = 0.45,
         };
-        visual.Button.Effect = halo;
+        OverlayVisualResources.SetButtonShadow(visual.Button, halo);
         var entrance = OverlayVisualResources.Animate(0, 0.45, TimeSpan.FromMilliseconds(220));
         entrance.Completed += (_, _) =>
         {
-            if (!visual.LoadingIndicator.IsRequestedActive || !ReferenceEquals(visual.Button.Effect, halo)) return;
+            if (!visual.LoadingIndicator.IsRequestedActive ||
+                !ReferenceEquals(OverlayVisualResources.GetButtonShadow(visual.Button), halo)) return;
             BeginHaloPulse(halo);
         };
         halo.BeginAnimation(DropShadowEffect.OpacityProperty, entrance);
@@ -186,9 +187,9 @@ internal static class TranslationActionVisualPresenter
     {
         var depth = lightTheme ? 8 : 6;
         var opacity = lightTheme ? 0.3 : 0.35;
-        if (!animationsEnabled || visual.Button.Effect is not DropShadowEffect current)
+        if (!animationsEnabled || OverlayVisualResources.GetButtonShadow(visual.Button) is not DropShadowEffect current)
         {
-            visual.Button.Effect = OverlayVisualResources.DockShadow(depth, opacity);
+            OverlayVisualResources.SetButtonShadow(visual.Button, OverlayVisualResources.DockShadow(depth, opacity));
             return;
         }
 
@@ -198,8 +199,9 @@ internal static class TranslationActionVisualPresenter
         var exit = OverlayVisualResources.Animate(from, 0, TimeSpan.FromMilliseconds(180));
         exit.Completed += (_, _) =>
         {
-            if (visual.LoadingIndicator.IsRequestedActive || !ReferenceEquals(visual.Button.Effect, current)) return;
-            visual.Button.Effect = OverlayVisualResources.DockShadow(depth, opacity);
+            if (visual.LoadingIndicator.IsRequestedActive ||
+                !ReferenceEquals(OverlayVisualResources.GetButtonShadow(visual.Button), current)) return;
+            OverlayVisualResources.SetButtonShadow(visual.Button, OverlayVisualResources.DockShadow(depth, opacity));
         };
         current.BeginAnimation(DropShadowEffect.OpacityProperty, exit);
     }
