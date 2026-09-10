@@ -221,8 +221,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
             {
                 textSelection.SetDocument(outcome.Document);
                 translation.SetOcrOutcome(outcome);
-                _memoryProfiler?.Mark("ocr_complete");
-            }, _log);
+            }, _log, _memoryProfiler);
             debug = new DebugOverlayController(
                 context.Visual.Debug,
                 context.Visual.LightTheme,
