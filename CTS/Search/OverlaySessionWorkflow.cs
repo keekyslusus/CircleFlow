@@ -165,9 +165,10 @@ internal sealed class OverlaySessionWorkflow(
                         screenTranslation is not null && translationTask is null:
                         translationRequestId = requested.RequestId;
                         translationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        translationTask = screenTranslation.TranslateAsync(
+                        translationTask = requested.Image is { } image ? screenTranslation.TranslateAsync(
+                            requested.RequestId, image, requested.TargetLanguageTag, translationCancellation.Token) : screenTranslation.TranslateAsync(
                             requested.RequestId,
-                            requested.Document,
+                            requested.Document!,
                             requested.TargetLanguageTag,
                             translationCancellation.Token);
                         break;

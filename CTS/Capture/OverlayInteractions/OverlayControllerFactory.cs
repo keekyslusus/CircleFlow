@@ -4,6 +4,7 @@ using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
 using CircleToSearch.TextRecognition;
+using CircleToSearch.Translation;
 using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Capture.OverlayInteractions;
@@ -91,6 +92,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
     private readonly Func<bool> _translationConsentAccepted;
     private readonly Action _acceptTranslationConsent;
     private readonly PluginLog? _log;
+    private readonly TranslationMemoryProfiler? _memoryProfiler;
 
     internal OverlayControllerFactory()
         : this(Clipboard.SetText, OverlayVisualResources.AnimationsEnabled)
@@ -107,7 +109,8 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         Func<string>? targetLanguageTag = null,
         Func<bool>? translationConsentAccepted = null,
         Action? acceptTranslationConsent = null,
-        PluginLog? log = null)
+        PluginLog? log = null,
+        TranslationMemoryProfiler? memoryProfiler = null)
     {
         _setClipboard = setClipboard ?? throw new ArgumentNullException(nameof(setClipboard));
         _animationsEnabled = animationsEnabled ?? throw new ArgumentNullException(nameof(animationsEnabled));
@@ -121,6 +124,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         _translationConsentAccepted = translationConsentAccepted ?? (() => true);
         _acceptTranslationConsent = acceptTranslationConsent ?? (() => { });
         _log = log;
+        _memoryProfiler = memoryProfiler;
     }
 
     public OverlayControllers Create(OverlayControllerContext context)
@@ -184,7 +188,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.CoordinateRoot,
                 selection,
                 textSelection,
-                context.CanAcceptSelectionInput,
+                () => context.CanAcceptSelectionInput() || (translation?.IsImageShown == true && context.GetMode() == OverlayInteractionMode.TranslationShown),
                 context.CanStartSelection,
                 _pointerPosition);
             translation = new ScreenTranslationOverlayController(
@@ -201,14 +205,23 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.TransitionMode,
                 toast.Show,
                 _animationsEnabled,
-                context.Visual.LightTheme);
+                context.Visual.LightTheme,
+                context.Visual.Selection.Screenshot,
+                (image, language) =>
+                {
+                    pointer.Cancel();
+                    textSelection.SetDocument(null);
+                    if (context.Visual.Actions.Prompt is { } prompt)
+                        prompt.Text = language is null ? context.Strings.SelectionPrompt : context.Strings.TranslatedTextPrompt;
+                    ocr?.Restart(image, language ?? _ocrLanguageTag());
+                }, _memoryProfiler);
             var frameSource = (System.Windows.Media.Imaging.BitmapSource?)context.Visual.Selection.Screenshot.Source
                 ?? throw new InvalidOperationException("The overlay frame source is missing.");
             ocr = new OcrOverlayController(frameSource, context.CoordinateRoot.Dispatcher, _ocrRecognizer, _ocrLanguageTag(), outcome =>
             {
                 textSelection.SetDocument(outcome.Document);
                 translation.SetOcrOutcome(outcome);
-            }, _log);
+            }, _log, _memoryProfiler);
             debug = new DebugOverlayController(
                 context.Visual.Debug,
                 context.Visual.LightTheme,

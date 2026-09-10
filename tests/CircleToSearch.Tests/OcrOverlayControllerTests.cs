@@ -10,6 +10,102 @@ namespace CircleToSearch.Tests;
 
 public sealed class OcrOverlayControllerTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Original_and_translated_results_are_reused_with_image_and_language_keys(bool noText)
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var original = CreateFrozenSource();
+            var translated = CreateFrozenSource();
+            var recognizer = new CountingRecognizer { Outcome = noText ? OcrRecognitionOutcome.NoText() : OcrRecognitionOutcome.Success(Document()) };
+            var delivered = new List<OcrRecognitionOutcome>();
+            using var controller = new OcrOverlayController(original, Dispatcher.CurrentDispatcher, recognizer, "en-US", delivered.Add);
+            void Run(Action action)
+            {
+                var count = delivered.Count;
+                action();
+                PumpUntil(() => delivered.Count > count);
+            }
+            Run(controller.Start);
+            Run(() => controller.Restart(translated, "ru-RU"));
+            for (var index = 0; index < 3; index++)
+            {
+                Run(() => controller.Restart(original, "EN-us"));
+                Run(() => controller.Restart(translated, "ru-RU"));
+            }
+            Assert.Equal(2, recognizer.Calls);
+            Assert.All(delivered, result => Assert.Same(recognizer.Outcome, result));
+            Run(() => controller.Restart(translated, "de-DE"));
+            Assert.Equal(3, recognizer.Calls);
+            var replacement = CreateFrozenSource();
+            Run(() => controller.Restart(replacement, "de-DE"));
+            Assert.Equal(4, recognizer.Calls);
+            Run(() => controller.Restart(translated, "de-DE"));
+            Assert.Equal(5, recognizer.Calls);
+            Run(() => controller.Restart(original, "en-US"));
+            Assert.Equal(5, recognizer.Calls);
+            controller.Dispose();
+            controller.Restart(original, "en-US");
+            Assert.Equal(5, recognizer.Calls);
+            using var nextOverlay = new OcrOverlayController(original, Dispatcher.CurrentDispatcher, recognizer, "en-US", delivered.Add);
+            Run(nextOverlay.Start);
+            Assert.Equal(6, recognizer.Calls);
+        }));
+    }
+
+    [Theory]
+    [InlineData(OcrRecognitionStatus.Failed)]
+    [InlineData(OcrRecognitionStatus.Canceled)]
+    [InlineData(OcrRecognitionStatus.LanguageUnavailable)]
+    public void Unsuccessful_recognition_is_retried_instead_of_cached(OcrRecognitionStatus status)
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var original = CreateFrozenSource();
+            var recognizer = new CountingRecognizer { Outcome = status switch
+            {
+                OcrRecognitionStatus.Canceled => OcrRecognitionOutcome.Canceled(),
+                OcrRecognitionStatus.LanguageUnavailable => OcrRecognitionOutcome.LanguageUnavailable(),
+                _ => OcrRecognitionOutcome.Failed()
+            } };
+            var results = new List<OcrRecognitionOutcome>();
+            using var controller = new OcrOverlayController(original, Dispatcher.CurrentDispatcher, recognizer, null, results.Add);
+            controller.Start();
+            PumpUntil(() => results.Count == 1);
+            recognizer.Outcome = OcrRecognitionOutcome.Success(Document());
+            controller.Restart(original, null);
+            PumpUntil(() => results.Count == 2);
+            Assert.Equal(2, recognizer.Calls);
+            Assert.Equal(OcrRecognitionStatus.Success, results[1].Status);
+        }));
+    }
+
+    private static void PumpUntil(Func<bool> condition)
+    {
+        if (condition()) return;
+        var frame = new DispatcherFrame();
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+        timer.Tick += (_, _) => { if (condition() || DateTime.UtcNow >= deadline) frame.Continue = false; };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+        timer.Stop();
+        Assert.True(condition(), "OCR delivery timed out.");
+    }
+
+    private sealed class CountingRecognizer : IOcrRecognizer
+    {
+        internal int Calls { get; private set; }
+        internal OcrRecognitionOutcome Outcome { get; set; } = OcrRecognitionOutcome.NoText();
+        public Task<OcrRecognitionOutcome> RecognizeAsync(BitmapSource source, string? requestedLanguageTag, CancellationToken cancellationToken)
+        {
+            Calls++;
+            return Task.FromResult(Outcome);
+        }
+    }
+
     [Fact]
     public void Frozen_bitmap_result_is_delivered_through_overlay_dispatcher_and_status_is_logged()
     {

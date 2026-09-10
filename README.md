@@ -5,7 +5,7 @@
 [Circle to Search](https://search.google/ways-to-search/circle-to-search/) for Windows
 
 
-## Build and test
+## Build/test
 
 ```powershell
 dotnet test .\tests\CircleToSearch.Tests\CircleToSearch.Tests.csproj -c Release

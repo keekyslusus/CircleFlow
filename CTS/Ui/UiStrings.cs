@@ -97,6 +97,7 @@ public sealed class UiStrings
     public string Translating => Get("plugin_circletosearch_translating");
     public string ShowOriginal => Get("plugin_circletosearch_show_original");
     public string TranslationConsentTitle => Get("plugin_circletosearch_translation_consent_title");
+    public string TranslatedTextPrompt => Get("plugin_circletosearch_translated_text_prompt");
     public string TranslationConsentMessage => Get("plugin_circletosearch_translation_consent_message");
     public string Continue => Get("plugin_circletosearch_continue");
     public string ConsentCancel => Get("plugin_circletosearch_consent_cancel");

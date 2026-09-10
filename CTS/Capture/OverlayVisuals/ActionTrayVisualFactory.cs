@@ -33,7 +33,8 @@ internal static class ActionTrayVisualFactory
         tray.Children.Add(translation.Button);
         tray.Children.Add(music.Button);
 
-        return new ActionTrayVisual(tray, chip, lift);
+        return new ActionTrayVisual(tray, chip, lift)
+        { Prompt = ((StackPanel)chip.Child).Children.OfType<TextBlock>().First() };
     }
 
     private static Border CreateChip(SelectionChipPalette palette, UiStrings strings)

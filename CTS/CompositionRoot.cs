@@ -28,6 +28,7 @@ public static class CompositionRoot
 {
     internal const string HotkeyThreadName = "CircleToSearch hotkey";
     internal const string SearchBrowserThreadName = "CircleToSearch WebView2";
+    internal const bool TranslationMemoryProfilingEnabled = false;
 
     public static UiStrings CreateUiStrings(PluginInitContext context) =>
         new(context.API.GetTranslation);
@@ -121,15 +122,18 @@ public static class CompositionRoot
             strings,
             log);
         var ocrLanguages = new OcrLanguageCatalog();
-        var translationHttpClient = new HttpClient
+        var translationHttpClient = new HttpClient(new SocketsHttpHandler
+        { UseCookies = false, AutomaticDecompression = DecompressionMethods.All })
         {
             Timeout = Timeout.InfiniteTimeSpan,
             DefaultRequestVersion = HttpVersion.Version20,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
         };
-        var screenTranslation = new ScreenTranslationWorkflow(
-            new MyMemoryTranslationProvider(translationHttpClient),
-            new TranslationSegmenter());
+        var translationMemory = TranslationMemoryProfilingEnabled ? new TranslationMemoryProfiler(pluginDirectory) : null;
+        translationMemory?.Mark("runtime_ready");
+        var imageTranslationSigner = new GoogleImageTranslationSigner(translationHttpClient,
+            new StaDispatcher("CircleToSearch image translation"), Path.Combine(dataDirectory, "ImageTranslationProfile"), translationMemory);
+        var screenTranslation = new ScreenTranslationWorkflow(new GoogleImageTranslationProvider(translationHttpClient, imageTranslationSigner, translationMemory));
         var textSearch = new TextSearchWorkflow(
             new TextSearchUrlBuilder(),
             OpenResultsUrl,
@@ -150,13 +154,14 @@ public static class CompositionRoot
                     ? "en"
                     : CultureInfo.CurrentUICulture.Name;
             },
-            translationConsentAccepted: () => settings.TranslationPrivacyConsentAccepted,
+            translationConsentAccepted: () => settings.ImageTranslationPrivacyConsentAccepted,
             acceptTranslationConsent: () =>
             {
-                settings.TranslationPrivacyConsentAccepted = true;
+                settings.ImageTranslationPrivacyConsentAccepted = true;
                 api.SaveSettingJsonStorage<PluginSettings>();
             },
-            log: log);
+            log: log,
+            memoryProfiler: translationMemory);
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory,
             video => new TraceVideoPreview(video,
                 () => Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
@@ -213,7 +218,8 @@ public static class CompositionRoot
             hotkeyWindow,
             providerRouter,
             searchBrowserHost,
-            [musicHttpClient, musicThrottle, translationHttpClient, traceHttpClient],
+            new IDisposable?[] { musicHttpClient, musicThrottle, imageTranslationSigner, translationHttpClient, traceHttpClient, translationMemory }
+                .OfType<IDisposable>().ToArray(),
             log);
     }
 
