@@ -54,7 +54,7 @@ public sealed class OverlaySessionWorkflowTests
 
         Assert.Equal(0, harness.Google.Calls);
         Assert.Equal(1, harness.Overlay.CloseCalls);
-        Assert.Throws<ArgumentException>(() => selection.FrozenFrame.GetHbitmap());
+        Assert.Throws<ObjectDisposedException>(() => _ = selection.FrozenFrame);
     }
 
     [Fact]
@@ -82,6 +82,21 @@ public sealed class OverlaySessionWorkflowTests
 
         Assert.Equal(requestId, harness.Overlay.TranslationResult?.RequestId);
         Assert.Same(image, harness.Overlay.TranslationResult!.Image);
+    }
+
+    [Fact]
+    public async Task Screen_translation_failure_is_returned_to_the_matching_request()
+    {
+        var provider = new FailingTranslationProvider();
+        using var harness = new Harness(translationProvider: provider);
+        harness.Overlay.CloseAfterTranslation = true;
+        var requestId = Guid.NewGuid();
+        harness.Overlay.Enqueue(new ScreenTranslationRequested(requestId, TranslationImage(), "es"));
+
+        await harness.RunAsync();
+
+        Assert.Equal(1, harness.Overlay.TranslationFailureCalls);
+        Assert.Equal((requestId, TranslationFailure.RateLimited), harness.Overlay.TranslationFailure);
     }
 
     [Fact]
@@ -398,7 +413,7 @@ public sealed class OverlaySessionWorkflowTests
         Assert.Equal(new[] { "trace", "close" }, harness.Events);
         Assert.Equal(0, harness.UploadStartedCalls);
         Assert.Equal(0, harness.Google.Calls);
-        Assert.Throws<ArgumentException>(() => selection.FrozenFrame.GetHbitmap());
+        Assert.Throws<ObjectDisposedException>(() => _ = selection.FrozenFrame);
     }
 
     [Fact]
@@ -422,7 +437,8 @@ public sealed class OverlaySessionWorkflowTests
         public Harness(
             string providerId = SearchProviderIds.GoogleLens,
             bool saveThrows = false,
-            IReadOnlyList<FakeOverlay>? overlays = null)
+            IReadOnlyList<FakeOverlay>? overlays = null,
+            IImageTranslationProvider? translationProvider = null)
         {
             _logDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_logDirectory);
@@ -481,7 +497,7 @@ public sealed class OverlaySessionWorkflowTests
                 Notifier,
                 TestUiStrings.English,
                 Log);
-            var screenTranslation = new ScreenTranslationWorkflow(new FakeTranslationProvider());
+            var screenTranslation = new ScreenTranslationWorkflow(translationProvider ?? new FakeTranslationProvider(), Log);
             Workflow = new OverlaySessionWorkflow(
                 Factory,
                 visualSearch,
@@ -568,6 +584,8 @@ public sealed class OverlaySessionWorkflowTests
         public bool CloseAfterResult { get; set; }
         public bool CloseAfterTranslation { get; set; }
         public ScreenTranslationResult? TranslationResult { get; private set; }
+        public (Guid RequestId, TranslationFailure Failure)? TranslationFailure { get; private set; }
+        public int TranslationFailureCalls { get; private set; }
         public Exception? ShowResultException { get; set; }
         public Action<int>? OnResult { get; set; }
         public int ResultCalls { get; private set; }
@@ -622,6 +640,17 @@ public sealed class OverlaySessionWorkflowTests
             if (CloseAfterTranslation) Enqueue(new CancelSession());
             return Task.CompletedTask;
         }
+        public Task ShowTranslationFailureAsync(
+            Guid requestId,
+            TranslationFailure failure,
+            CancellationToken cancellationToken)
+        {
+            TranslationFailure = (requestId, failure);
+            TranslationFailureCalls++;
+            Events.Add("translation-failure");
+            if (CloseAfterTranslation) Enqueue(new CancelSession());
+            return Task.CompletedTask;
+        }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
@@ -658,6 +687,15 @@ public sealed class OverlaySessionWorkflowTests
             BitmapSource source,
             string target,
             CancellationToken cancellation) => Task.FromResult(source);
+    }
+
+    private sealed class FailingTranslationProvider : IImageTranslationProvider
+    {
+        public Task<BitmapSource> TranslateAsync(
+            BitmapSource source,
+            string target,
+            CancellationToken cancellation) => Task.FromException<BitmapSource>(
+                new HttpRequestException("rate limited", null, System.Net.HttpStatusCode.TooManyRequests));
     }
 
     private sealed class FakeMusicRecognizer : IMusicRecognizer

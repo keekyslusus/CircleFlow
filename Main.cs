@@ -24,8 +24,9 @@ public sealed class Main : IAsyncPlugin, ISettingProvider, IPluginI18n, IDisposa
         {
             return Task.FromResult(runtime.QueryTrigger.Build(query.Search ?? string.Empty));
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            runtime.ReportQueryFailure(exception);
             return Task.FromResult(new List<Result>());
         }
     }

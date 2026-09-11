@@ -4,8 +4,23 @@ using System.Drawing;
 
 public sealed record OverlayOptions(int PaddingPx, int MinDiagonalPx);
 
-// Bounds are physical monitor pixels; FrozenFrame is owned by the receiver, which must dispose it.
-public sealed record SelectionOutcome(Rectangle Bounds, Bitmap FrozenFrame);
+public sealed class SelectionOutcome : IDisposable
+{
+    private Bitmap? _frozenFrame;
+
+    public SelectionOutcome(Rectangle bounds, Bitmap frozenFrame)
+    {
+        Bounds = bounds;
+        _frozenFrame = frozenFrame ?? throw new ArgumentNullException(nameof(frozenFrame));
+    }
+
+    public Rectangle Bounds { get; }
+
+    public Bitmap FrozenFrame => Volatile.Read(ref _frozenFrame)
+        ?? throw new ObjectDisposedException(nameof(SelectionOutcome));
+
+    public void Dispose() => Interlocked.Exchange(ref _frozenFrame, null)?.Dispose();
+}
 
 public enum OverlayAction
 {

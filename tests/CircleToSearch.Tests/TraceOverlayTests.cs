@@ -272,7 +272,7 @@ public sealed class TraceOverlayTests
             lasso.Complete(new Point(10, 110));
             Assert.NotEmpty(overlay.VisualState.Selection.Accent.Points);
             var selection = Assert.IsType<VisualSelection>(Assert.Single(commands));
-            selection.Selection.FrozenFrame.Dispose();
+            selection.Selection.Dispose();
             typeof(OverlayWindow).GetMethod("OnSelectionHoldCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(overlay, null);
             Pump(520);
             Assert.False(overlay.Dispatcher.HasShutdownStarted);
@@ -330,7 +330,7 @@ public sealed class TraceOverlayTests
                 lasso.Complete(new Point(250, 100));
                 Assert.Equal(OverlayInteractionMode.TraceLoading, overlay.Mode);
                 Assert.Equal(2, commands.OfType<VisualSelection>().Count());
-                commands.OfType<VisualSelection>().Last().Selection.FrozenFrame.Dispose();
+                commands.OfType<VisualSelection>().Last().Selection.Dispose();
             }
             overlay.CloseFromSession();
             Dispatcher.Run();

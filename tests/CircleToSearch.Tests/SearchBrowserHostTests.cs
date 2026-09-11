@@ -47,7 +47,7 @@ public sealed class SearchBrowserHostTests
         host.Dispose();
         host.Dispose();
 
-        Assert.Equal(1, dispatcher.SendCalls);
+        Assert.Equal(1, dispatcher.StopCalls);
         Assert.Equal(1, dispatcher.DisposeCalls);
     }
 

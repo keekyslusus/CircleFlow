@@ -45,8 +45,8 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable
     private int _loadingGeneration;
     private long _showGeneration;
     private SearchBrowserUiOperation? _activeOperation;
-    private int _dispatcherDisposeStarted;
     private int _disposed;
+    private Task? _stopTask;
 
     internal SearchBrowserHost(
         string pluginDirectory,
@@ -616,38 +616,98 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        _lifetime.Cancel();
-        SearchBrowserUiOperation? activeOperation;
-        lock (_lifecycleGate) activeOperation = _activeOperation;
-        _dispatcher.Send(() =>
+        var stop = StopAsync();
+        try { stop.WaitAsync(_shutdownTimeout).GetAwaiter().GetResult(); }
+        catch (TimeoutException)
         {
-            _showGeneration++;
-            _window?.Close();
-            _webView?.Dispose();
-            _window = null;
-            _webView = null;
-            activeOperation?.CancelBeforeStart();
-        });
-        if (activeOperation is null || activeOperation.UiFinished.Wait(_shutdownTimeout))
-        {
-            DisposeDispatcher();
-            return;
+            _log.Warn(
+                nameof(SearchBrowserHost),
+                "browser UI operation did not stop within the shutdown timeout; dispatcher cleanup was deferred");
+            _ = stop.ContinueWith(
+                task =>
+                {
+                    if (task.IsFaulted)
+                    {
+                        var aggregate = task.Exception!.Flatten();
+                        var exception = aggregate.InnerExceptions.Count == 1
+                            ? aggregate.InnerExceptions[0]
+                            : aggregate;
+                        _log.SafeError(nameof(SearchBrowserHost), "deferred-browser-cleanup", exception);
+                    }
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
-
-        _log.Warn(
-            nameof(SearchBrowserHost),
-            "browser UI operation did not stop within the shutdown timeout; dispatcher cleanup was deferred");
-        _ = activeOperation.UiFinished.ContinueWith(
-            _ => DisposeDispatcher(),
-            CancellationToken.None,
-            TaskContinuationOptions.None,
-            TaskScheduler.Default);
+        catch (Exception exception)
+        {
+            _log.SafeError(nameof(SearchBrowserHost), "dispose", exception);
+        }
     }
 
-    private void DisposeDispatcher()
+    public Task StopAsync()
     {
-        if (Interlocked.Exchange(ref _dispatcherDisposeStarted, 1) != 0) return;
-        _dispatcher.Dispose();
+        TaskCompletionSource completion;
+        SearchBrowserUiOperation? activeOperation;
+        lock (_lifecycleGate)
+        {
+            if (_stopTask is not null) return _stopTask;
+            completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _stopTask = completion.Task;
+            Interlocked.Exchange(ref _disposed, 1);
+            activeOperation = _activeOperation;
+        }
+        try { _lifetime.Cancel(); }
+        catch (Exception exception)
+        {
+            _log.SafeError(nameof(SearchBrowserHost), "cancel-browser-lifetime", exception);
+        }
+        activeOperation?.CancelBeforeStart();
+        _ = CompleteStopAsync(activeOperation, completion);
+        return completion.Task;
+    }
+
+    private async Task CompleteStopAsync(
+        SearchBrowserUiOperation? activeOperation,
+        TaskCompletionSource completion)
+    {
+        try
+        {
+            await StopCoreAsync(activeOperation).ConfigureAwait(false);
+            completion.TrySetResult();
+        }
+        catch (Exception exception) { completion.TrySetException(exception); }
+    }
+
+    private async Task StopCoreAsync(SearchBrowserUiOperation? activeOperation)
+    {
+        var uiCleanup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (_window is null && _webView is null)
+        {
+            uiCleanup.TrySetResult();
+        }
+        else if (!_dispatcher.TryPost(() =>
+            {
+                try
+                {
+                    _showGeneration++;
+                    _window?.Close();
+                    _webView?.Dispose();
+                    _window = null;
+                    _webView = null;
+                }
+                catch (Exception exception)
+                {
+                    _log.SafeError(nameof(SearchBrowserHost), "close-browser-ui", exception);
+                }
+                finally { uiCleanup.TrySetResult(); }
+            }))
+        {
+            uiCleanup.TrySetResult();
+        }
+
+        await uiCleanup.Task.ConfigureAwait(false);
+        if (activeOperation is not null) await activeOperation.UiFinished.ConfigureAwait(false);
+        await _dispatcher.StopAsync().ConfigureAwait(false);
     }
 }

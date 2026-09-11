@@ -36,6 +36,7 @@ public static class CompositionRoot
         var api = context.API;
         var pluginDirectory = context.CurrentPluginMetadata.PluginDirectory;
         var log = new PluginLog(pluginDirectory);
+        using var rollback = new ResourceRollbackScope(log);
         var settings = api.LoadSettingJsonStorage<PluginSettings>();
         var dataDirectory = api.GetDataDirectory();
         if (string.IsNullOrWhiteSpace(dataDirectory)) dataDirectory = pluginDirectory;
@@ -51,14 +52,15 @@ public static class CompositionRoot
                 api.ShowMsgWithButton(title, button, action, message, iconPath),
             (title, message) => api.ShowMsgError(title, message),
             log);
-        var searchBrowserHost = new SearchBrowserHost(
+        var searchBrowserDispatcher = rollback.Own(new StaDispatcher(SearchBrowserThreadName));
+        var searchBrowserHost = rollback.Replace(searchBrowserDispatcher, new SearchBrowserHost(
             pluginDirectory,
             Path.Combine(dataDirectory, "WebView2Profile"),
             strings,
             log,
-            new StaDispatcher(SearchBrowserThreadName));
-        var traceHttpClient = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
-        var providerRouter = new VisualSearchProviderRouter(
+            searchBrowserDispatcher));
+        var traceHttpClient = rollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
+        var providerRouter = rollback.Own(new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(
                     new SearchProviderDescriptor(SearchProviderIds.GoogleLens, strings.GoogleLensProviderName),
@@ -72,7 +74,7 @@ public static class CompositionRoot
                     () => new TraceMoeProvider(traceHttpClient)),
             ],
             SearchProviderIds.GoogleLens,
-            log);
+            log));
         var visualSearchPresenter = new VisualSearchResultPresenter(
             searchBrowserHost,
             OpenResultsUrl,
@@ -87,13 +89,13 @@ public static class CompositionRoot
             strings,
             log);
         var musicClock = new SystemMusicRecognitionClock();
-        var musicThrottle = new ShazamRequestThrottle(musicClock);
-        var musicHttpClient = new HttpClient
+        var musicThrottle = rollback.Own(new ShazamRequestThrottle(musicClock));
+        var musicHttpClient = rollback.Own(new HttpClient
         {
             Timeout = Timeout.InfiniteTimeSpan,
             DefaultRequestVersion = HttpVersion.Version11,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact,
-        };
+        });
         var shazamClient = new ShazamClient(
             musicHttpClient,
             new PixelUserAgentProvider(),
@@ -120,18 +122,25 @@ public static class CompositionRoot
             strings,
             log);
         var ocrLanguages = new OcrLanguageCatalog();
-        var translationHttpClient = new HttpClient(new SocketsHttpHandler
+        var translationHttpClient = rollback.Own(new HttpClient(new SocketsHttpHandler
         { UseCookies = false, AutomaticDecompression = DecompressionMethods.All })
         {
             Timeout = Timeout.InfiniteTimeSpan,
             DefaultRequestVersion = HttpVersion.Version20,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
-        };
+        });
         var translationMemory = TranslationMemoryProfilingEnabled ? new TranslationMemoryProfiler(pluginDirectory) : null;
+        if (translationMemory is not null) rollback.Own(translationMemory);
         translationMemory?.Mark("runtime_ready");
-        var imageTranslationSigner = new GoogleImageTranslationSigner(translationHttpClient,
-            new StaDispatcher("CircleToSearch image translation"), Path.Combine(dataDirectory, "ImageTranslationProfile"), translationMemory);
-        var screenTranslation = new ScreenTranslationWorkflow(new GoogleImageTranslationProvider(translationHttpClient, imageTranslationSigner, translationMemory));
+        var translationDispatcher = rollback.Own(new StaDispatcher("CircleToSearch image translation"));
+        var imageTranslationSigner = rollback.Replace(translationDispatcher, new GoogleImageTranslationSigner(
+            translationHttpClient,
+            translationDispatcher,
+            Path.Combine(dataDirectory, "ImageTranslationProfile"),
+            translationMemory));
+        var screenTranslation = new ScreenTranslationWorkflow(
+            new GoogleImageTranslationProvider(translationHttpClient, imageTranslationSigner, translationMemory),
+            log);
         var textSearch = new TextSearchWorkflow(
             new TextSearchUrlBuilder(),
             OpenResultsUrl,
@@ -183,9 +192,41 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
-        var hotkeyWindow = new HotkeyWindow(new StaDispatcher(HotkeyThreadName), log);
+        var hotkeyDispatcher = rollback.Own(new StaDispatcher(HotkeyThreadName));
+        var hotkeyWindow = rollback.Replace(hotkeyDispatcher, new HotkeyWindow(hotkeyDispatcher, log));
         var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
         var queryTrigger = new QueryTrigger(coordinator, iconPath, registrar.DescribeStatus, strings);
+        var lifetime = new PluginRuntimeLifetime(
+            coordinator.StopAsync,
+            hotkeyWindow.StopAsync,
+            searchBrowserHost.StopAsync,
+            imageTranslationSigner.StopAsync,
+            providerRouter.StopAsync,
+            musicHttpClient,
+            musicThrottle,
+            translationHttpClient,
+            traceHttpClient,
+            translationMemory,
+            log);
+        var stopAdapter = new PluginRuntimeStopAdapter(
+            coordinator.RequestStop,
+            lifetime.StopAsync,
+            log,
+            TimeSpan.FromSeconds(2));
+        var runtime = new PluginRuntime(
+            coordinator,
+            queryTrigger,
+            () => new SettingsPanel(
+                settings,
+                registrar.TryApply,
+                api.SaveSettingJsonStorage<PluginSettings>,
+                webView2Version,
+                providerRouter.GetEffectiveDescriptor(settings.SearchProviderId).DisplayName,
+                strings,
+                ocrLanguages.AvailableLanguages),
+            stopAdapter,
+            log);
+        rollback.TransferAllTo(stopAdapter);
 
         hotkeyWindow.HotkeyPressed += () =>
         {
@@ -201,24 +242,8 @@ public static class CompositionRoot
 
         if (!registrar.TryApply(settings.HotkeyGesture))
             log.Warn(nameof(CompositionRoot), $"hotkey '{settings.HotkeyGesture}' is not active");
-
-        return new PluginRuntime(
-            coordinator,
-            queryTrigger,
-            () => new SettingsPanel(
-                settings,
-                registrar.TryApply,
-                api.SaveSettingJsonStorage<PluginSettings>,
-                webView2Version,
-                providerRouter.GetEffectiveDescriptor(settings.SearchProviderId).DisplayName,
-                strings,
-                ocrLanguages.AvailableLanguages),
-            hotkeyWindow,
-            providerRouter,
-            searchBrowserHost,
-            new IDisposable?[] { musicHttpClient, musicThrottle, imageTranslationSigner, translationHttpClient, traceHttpClient, translationMemory }
-                .OfType<IDisposable>().ToArray(),
-            log);
+        rollback.Commit();
+        return runtime;
     }
 
     private static bool OpenResultsUrl(string url)
@@ -241,31 +266,20 @@ public static class CompositionRoot
 
 public sealed class PluginRuntime : IDisposable
 {
-    private readonly SearchCoordinator _coordinator;
-    private readonly HotkeyWindow _hotkeyWindow;
-    private readonly VisualSearchProviderRouter _providerRouter;
-    private readonly SearchBrowserHost _searchBrowserHost;
-    private readonly IReadOnlyList<IDisposable> _musicResources;
+    private readonly PluginRuntimeStopAdapter _stopAdapter;
     private readonly PluginLog _log;
 
-    public PluginRuntime(
+    internal PluginRuntime(
         SearchCoordinator coordinator,
         QueryTrigger queryTrigger,
         Func<Control> createSettingPanel,
-        HotkeyWindow hotkeyWindow,
-        VisualSearchProviderRouter providerRouter,
-        SearchBrowserHost searchBrowserHost,
-        IReadOnlyList<IDisposable> musicResources,
+        PluginRuntimeStopAdapter stopAdapter,
         PluginLog log)
     {
         Coordinator = coordinator;
         QueryTrigger = queryTrigger;
         CreateSettingPanel = createSettingPanel;
-        _coordinator = coordinator;
-        _hotkeyWindow = hotkeyWindow;
-        _providerRouter = providerRouter;
-        _searchBrowserHost = searchBrowserHost;
-        _musicResources = musicResources;
+        _stopAdapter = stopAdapter;
         _log = log;
     }
 
@@ -275,25 +289,11 @@ public sealed class PluginRuntime : IDisposable
 
     public Func<Control> CreateSettingPanel { get; }
 
+    public void ReportQueryFailure(Exception exception) =>
+        _log.SafeError(nameof(PluginRuntime), "build-query-results", exception);
+
     public void Dispose()
-    {
-        // logged so it is visible whether the host disposes the plugin on "Reload plugin data";
-        // if this line never appears, every reload leaks a hotkey hook and an STA thread
-        _log.Info(nameof(PluginRuntime), "disposing: canceling the active session and unregistering the hotkey");
-        try
-        {
-            _coordinator.CancelActiveSession()
-                .WaitAsync(TimeSpan.FromSeconds(2))
-                .GetAwaiter()
-                .GetResult();
-        }
-        catch (TimeoutException)
-        {
-            _log.Warn(nameof(PluginRuntime), "active session did not stop within the shutdown timeout");
-        }
-        foreach (var resource in _musicResources) resource.Dispose();
-        _hotkeyWindow.Dispose();
-        _providerRouter.Dispose();
-        _searchBrowserHost.Dispose();
-    }
+        => _stopAdapter.Dispose();
+
+    public Task StopAsync() => _stopAdapter.StopAsync();
 }

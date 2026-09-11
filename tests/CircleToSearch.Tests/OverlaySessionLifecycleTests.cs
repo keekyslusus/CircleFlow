@@ -111,7 +111,7 @@ public sealed class OverlaySessionLifecycleTests
         finally
         {
             SetCursorPos(originalPointer.X, originalPointer.Y);
-            selection?.Selection.FrozenFrame.Dispose();
+            selection?.Selection.Dispose();
         }
 
         Assert.Throws<ArgumentException>(() => frame.GetHbitmap());

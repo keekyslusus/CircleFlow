@@ -99,7 +99,7 @@ public sealed class GoogleImageTranslationTests
     {
         using var cancellation = new CancellationTokenSource();
         var provider = new DelayedProvider();
-        var workflow = new ScreenTranslationWorkflow(provider);
+        var workflow = new ScreenTranslationWorkflow(provider, NewLog());
         var task = workflow.TranslateAsync(Guid.NewGuid(), Source(), "ru-RU", cancellation.Token);
         cancellation.Cancel();
         provider.Completion.SetResult(Source());
@@ -112,7 +112,7 @@ public sealed class GoogleImageTranslationTests
     public async Task Empty_request_id_is_rejected_before_provider_call()
     {
         var provider = new DelayedProvider();
-        var workflow = new ScreenTranslationWorkflow(provider);
+        var workflow = new ScreenTranslationWorkflow(provider, NewLog());
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             workflow.TranslateAsync(Guid.Empty, Source(), "ru-RU", CancellationToken.None));
@@ -260,6 +260,13 @@ public sealed class GoogleImageTranslationTests
         thread.Start();
         Assert.True(thread.Join(TimeSpan.FromSeconds(10)));
         Assert.Null(failure);
+    }
+
+    private static PluginLog NewLog()
+    {
+        var directory = Path.Combine(TestOutputPaths.TempDirectory, "translation-log-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        return new PluginLog(directory);
     }
 
     private sealed class DelayedProvider : IImageTranslationProvider

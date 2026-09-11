@@ -18,7 +18,7 @@ internal sealed class VisualSearchWorkflow(
     {
         byte[] jpeg;
         try { jpeg = crop(selection.FrozenFrame, selection.Bounds); }
-        finally { selection.FrozenFrame.Dispose(); }
+        finally { selection.Dispose(); }
         var routed = await providerRouter.PrepareAsync(SearchProviderIds.TraceMoe, jpeg, cancellationToken).ConfigureAwait(false);
         return routed.Outcome;
     }
@@ -31,7 +31,7 @@ internal sealed class VisualSearchWorkflow(
     {
         byte[] jpeg;
         try { jpeg = crop(selection.FrozenFrame, selection.Bounds); }
-        finally { selection.FrozenFrame.Dispose(); }
+        finally { selection.Dispose(); }
 
         onUploadStarted();
         var selectedProvider = providerRouter.GetEffectiveDescriptor(requestedProviderId);

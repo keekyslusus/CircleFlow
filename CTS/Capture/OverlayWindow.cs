@@ -368,14 +368,28 @@ public sealed class OverlayWindow : Window
             _trace = TraceOverlayVisual.Create(_visual.Root, _visual.Bottom, _visual.Effects, _strings,
                 SystemTheme.IsLight(), () => _publishCommand(new OpenTraceResult()),
                 DismissTraceResult, _clipboardCopy, _createTraceVideo);
-            _publishCommand(new VisualSelection(new SelectionOutcome(bounds, (GdiBitmap)_frame.Clone()), SearchProviderIds.TraceMoe));
+            var traceSelection = new SelectionOutcome(bounds, (GdiBitmap)_frame.Clone());
+            try { _publishCommand(new VisualSelection(traceSelection, SearchProviderIds.TraceMoe)); }
+            catch
+            {
+                traceSelection.Dispose();
+                throw;
+            }
             return;
         }
         ApplyModeTransition(OverlayInteractionMode.Closing);
         var selection = new SelectionOutcome(bounds, _frame);
         FrameTransferred = true;
         if (_publishCommand is null) Outcome = OverlayOutcome.VisualSelection(selection);
-        else _publishCommand(new VisualSelection(selection, _provider.SelectedProviderId));
+        else
+        {
+            try { _publishCommand(new VisualSelection(selection, _provider.SelectedProviderId)); }
+            catch
+            {
+                selection.Dispose();
+                throw;
+            }
+        }
     }
 
     private void OnSelectionHoldCompleted()

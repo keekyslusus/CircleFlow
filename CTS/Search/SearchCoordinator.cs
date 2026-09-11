@@ -13,10 +13,14 @@ public sealed class SearchCoordinator
     private readonly IPluginNotifier _notifier;
     private readonly UiStrings _strings;
     private readonly PluginLog _log;
-    private readonly SemaphoreSlim _session = new(1, 1);
+    private readonly object _lifecycleGate = new();
     private int _state;
-    private CancellationTokenSource? _cancellation;
+    private SessionCancellation? _cancellation;
     private Task _activeSession = Task.CompletedTask;
+    private Task? _stopTask;
+    private TaskCompletionSource? _stopCompletion;
+    private bool _stopWorkStarted;
+    private bool _stopping;
 
     internal SearchCoordinator(
         ISearchSessionWorkflow workflow,
@@ -40,6 +44,10 @@ public sealed class SearchCoordinator
     {
         try
         {
+            lock (_lifecycleGate)
+            {
+                if (_stopping) return IgnoreTrigger("runtime is stopping");
+            }
             return State switch
             {
                 SearchState.Cancelable => CancelActiveSession(),
@@ -58,6 +66,10 @@ public sealed class SearchCoordinator
     {
         try
         {
+            lock (_lifecycleGate)
+            {
+                if (_stopping) return IgnoreTrigger("runtime is stopping");
+            }
             return State == SearchState.Idle ? StartSession("query") : IgnoreTrigger("another session is active");
         }
         catch (Exception exception)
@@ -69,38 +81,86 @@ public sealed class SearchCoordinator
 
     public Task CancelActiveSession()
     {
+        SessionCancellation? cancellation;
+        Task activeSession;
+        lock (_lifecycleGate)
+        {
+            cancellation = _cancellation;
+            activeSession = _activeSession;
+        }
         try
         {
             _log.Info(nameof(SearchCoordinator), "canceling the active session");
-            Volatile.Read(ref _cancellation)?.Cancel();
+            cancellation?.Cancel();
         }
         catch (Exception exception)
         {
             _log.Error(nameof(SearchCoordinator), "canceling the session failed", exception);
         }
-        return Volatile.Read(ref _activeSession);
+        return activeSession;
+    }
+
+    internal void RequestStop()
+    {
+        lock (_lifecycleGate)
+        {
+            if (_stopping) return;
+            _stopping = true;
+            _stopCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _stopTask = _stopCompletion.Task;
+        }
+    }
+
+    public Task StopAsync()
+    {
+        SessionCancellation? cancellation;
+        TaskCompletionSource completion;
+        Task activeSession;
+        lock (_lifecycleGate)
+        {
+            if (!_stopping)
+            {
+                _stopping = true;
+                _stopCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _stopTask = _stopCompletion.Task;
+            }
+            if (_stopWorkStarted) return _stopTask!;
+            _stopWorkStarted = true;
+            cancellation = _cancellation;
+            activeSession = _activeSession;
+            completion = _stopCompletion!;
+        }
+
+        _ = FinishStopAsync(activeSession, cancellation, completion);
+        return _stopTask!;
     }
 
     private Task StartSession(string trigger)
     {
-        var session = RunSessionAsync(trigger);
-        Volatile.Write(ref _activeSession, session);
-        return session;
-    }
-
-    private async Task RunSessionAsync(string trigger)
-    {
-        if (!await _session.WaitAsync(0).ConfigureAwait(false))
+        SessionCancellation cancellation;
+        TaskCompletionSource completion;
+        lock (_lifecycleGate)
         {
-            _log.Info(nameof(SearchCoordinator), $"trigger '{trigger}' ignored: session already active");
-            return;
+            if (_stopping) return IgnoreTrigger("runtime is stopping");
+            if (!_activeSession.IsCompleted) return IgnoreTrigger("session already active");
+            cancellation = new SessionCancellation();
+            completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _cancellation = cancellation;
+            _activeSession = completion.Task;
+            SetState(SearchState.Cancelable);
         }
 
-        using var cancellation = new CancellationTokenSource();
-        Volatile.Write(ref _cancellation, cancellation);
+        _ = RunSessionAsync(trigger, cancellation, completion);
+        return completion.Task;
+    }
+
+    private async Task RunSessionAsync(
+        string trigger,
+        SessionCancellation cancellation,
+        TaskCompletionSource completion)
+    {
         try
         {
-            SetState(SearchState.Cancelable);
             _log.Info(nameof(SearchCoordinator), $"selection started via {trigger}");
             SafeHideMainWindow();
             try
@@ -126,10 +186,55 @@ public sealed class SearchCoordinator
         }
         finally
         {
-            SetState(SearchState.Idle);
-            Volatile.Write(ref _cancellation, null);
-            _session.Release();
+            lock (_lifecycleGate)
+            {
+                if (ReferenceEquals(_cancellation, cancellation))
+                {
+                    _cancellation = null;
+                    SetState(SearchState.Idle);
+                }
+            }
+            cancellation.Complete();
+            completion.TrySetResult();
         }
+    }
+
+    private async Task FinishStopAsync(
+        Task activeSession,
+        SessionCancellation? cancellation,
+        TaskCompletionSource completion)
+    {
+        Exception? stopFailure = null;
+
+        try
+        {
+            if (cancellation is not null)
+                await Task.Run(cancellation.Cancel).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            stopFailure = exception;
+        }
+
+        try
+        {
+            await activeSession.ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            stopFailure = stopFailure is null
+                ? exception
+                : new AggregateException(stopFailure, exception);
+        }
+
+        if (stopFailure is not null)
+        {
+            _log.SafeError(nameof(SearchCoordinator), "stop-active-session", stopFailure);
+            completion.TrySetException(stopFailure);
+            return;
+        }
+
+        completion.TrySetResult();
     }
 
     private Task IgnoreTrigger(string reason)
@@ -154,4 +259,42 @@ public sealed class SearchCoordinator
     }
 
     private void SetState(SearchState state) => Volatile.Write(ref _state, (int)state);
+
+    private sealed class SessionCancellation
+    {
+        private readonly CancellationTokenSource _source = new();
+        private readonly object _gate = new();
+        private int _cancelers;
+        private bool _completed;
+
+        public CancellationToken Token => _source.Token;
+
+        public void Cancel()
+        {
+            lock (_gate)
+            {
+                if (_completed) return;
+                _cancelers++;
+            }
+            try { _source.Cancel(); }
+            finally
+            {
+                lock (_gate)
+                {
+                    _cancelers--;
+                    if (_completed && _cancelers == 0) _source.Dispose();
+                }
+            }
+        }
+
+        public void Complete()
+        {
+            lock (_gate)
+            {
+                if (_completed) return;
+                _completed = true;
+                if (_cancelers == 0) _source.Dispose();
+            }
+        }
+    }
 }

@@ -7,9 +7,13 @@ namespace CircleToSearch.Translation;
 public sealed class ScreenTranslationWorkflow
 {
     private readonly IImageTranslationProvider _images;
+    private readonly PluginLog _log;
 
-    internal ScreenTranslationWorkflow(IImageTranslationProvider images) =>
+    internal ScreenTranslationWorkflow(IImageTranslationProvider images, PluginLog log)
+    {
         _images = images ?? throw new ArgumentNullException(nameof(images));
+        _log = log ?? throw new ArgumentNullException(nameof(log));
+    }
 
     public async Task<ScreenTranslationOutcome> TranslateAsync(Guid requestId, BitmapSource image,
         string targetLanguageTag, CancellationToken cancellationToken)
@@ -36,7 +40,11 @@ public sealed class ScreenTranslationWorkflow
             return ScreenTranslationOutcome.Failed(error.StatusCode == HttpStatusCode.TooManyRequests
                 ? TranslationFailure.RateLimited : error.StatusCode is null ? TranslationFailure.Network : TranslationFailure.Service);
         }
-        catch { return ScreenTranslationOutcome.Failed(TranslationFailure.BadResponse); }
+        catch (Exception exception)
+        {
+            _log.SafeError(nameof(ScreenTranslationWorkflow), "translate", exception);
+            return ScreenTranslationOutcome.Failed(TranslationFailure.BadResponse);
+        }
     }
 
     internal static string NormalizeTarget(string target)

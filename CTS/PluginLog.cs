@@ -27,6 +27,18 @@ public sealed class PluginLog
     public void Error(string source, string message, Exception exception)
         => Write("ERROR", source, $"{message}{Environment.NewLine}{exception}");
 
+    public void SafeError(string source, string operation, Exception exception)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        ArgumentNullException.ThrowIfNull(exception);
+        Write(
+            "ERROR",
+            source,
+            $"operation={operation} exceptionType={exception.GetType().FullName} " +
+            $"hresult=0x{exception.HResult:X8}{Environment.NewLine}{exception.StackTrace ?? "<no stack trace>"}");
+    }
+
     private void Write(string level, string source, string message)
     {
         var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {source} {message}{Environment.NewLine}";

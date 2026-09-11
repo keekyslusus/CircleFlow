@@ -11,10 +11,29 @@ internal sealed class StaDispatcher : IStaDispatcher
 
     private readonly Thread _thread;
     private readonly ManualResetEventSlim _ready = new(false);
+    private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly Action? _beforeDispatcherRun;
+    private readonly Action? _afterStopped;
     private Dispatcher? _dispatcher;
+    private int _stopping;
+    private int _readyDisposeStarted;
 
     public StaDispatcher(string threadName)
+        : this(threadName, ShutdownTimeout, null, null, null)
     {
+    }
+
+    internal StaDispatcher(
+        string threadName,
+        TimeSpan initializationTimeout,
+        Func<ManualResetEventSlim, TimeSpan, bool>? waitForReady,
+        Action? beforeDispatcherRun,
+        Action? afterStopped)
+    {
+        if (initializationTimeout < TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(initializationTimeout));
+        _beforeDispatcherRun = beforeDispatcherRun;
+        _afterStopped = afterStopped;
         _thread = new Thread(Pump)
         {
             IsBackground = true,
@@ -22,7 +41,17 @@ internal sealed class StaDispatcher : IStaDispatcher
         };
         _thread.SetApartmentState(ApartmentState.STA);
         _thread.Start();
-        _ready.Wait(ShutdownTimeout);
+        var ready = waitForReady?.Invoke(_ready, initializationTimeout)
+            ?? _ready.Wait(initializationTimeout);
+        if (ready) return;
+
+        RequestShutdown();
+        _ = _stopped.Task.ContinueWith(
+            _ => DisposeReadySignal(),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+        throw new TimeoutException($"STA dispatcher '{threadName}' did not initialize in time.");
     }
 
     public async Task<T?> InvokeAsync<T>(Func<T?> callback, CancellationToken token)
@@ -42,10 +71,19 @@ internal sealed class StaDispatcher : IStaDispatcher
 
     public bool TryPost(Action action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+        if (Volatile.Read(ref _stopping) != 0) return false;
         var dispatcher = _dispatcher;
-        if (dispatcher is null || dispatcher.HasShutdownStarted) return false;
-        dispatcher.InvokeAsync(action, DispatcherPriority.Normal);
-        return true;
+        if (dispatcher is null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished) return false;
+        try
+        {
+            var operation = dispatcher.InvokeAsync(action, DispatcherPriority.Normal);
+            return operation.Status != DispatcherOperationStatus.Aborted;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     public void Send(Action action)
@@ -67,15 +105,59 @@ internal sealed class StaDispatcher : IStaDispatcher
 
     private void Pump()
     {
-        _dispatcher = Dispatcher.CurrentDispatcher;
-        _ready.Set();
-        Dispatcher.Run();
+        try
+        {
+            Volatile.Write(ref _dispatcher, Dispatcher.CurrentDispatcher);
+            _ready.Set();
+            var stopping = Volatile.Read(ref _stopping) != 0;
+            _beforeDispatcherRun?.Invoke();
+            if (stopping) RequestShutdown();
+            Dispatcher.Run();
+        }
+        finally
+        {
+            _stopped.TrySetResult();
+            _afterStopped?.Invoke();
+        }
     }
 
     public void Dispose()
     {
-        _dispatcher?.InvokeShutdown();
-        _thread.Join(ShutdownTimeout);
-        _ready.Dispose();
+        var stop = StopAsync();
+        if (Environment.CurrentManagedThreadId != _thread.ManagedThreadId)
+        {
+            try { stop.Wait(ShutdownTimeout); }
+            catch (AggregateException) { }
+        }
+        if (stop.IsCompleted) DisposeReadySignal();
+    }
+
+    public Task StopAsync()
+    {
+        RequestShutdown();
+        if (_stopped.Task.IsCompleted) DisposeReadySignal();
+        else
+        {
+            _ = _stopped.Task.ContinueWith(
+                _ => DisposeReadySignal(),
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+        return _stopped.Task;
+    }
+
+    private void RequestShutdown()
+    {
+        Interlocked.Exchange(ref _stopping, 1);
+        var dispatcher = Volatile.Read(ref _dispatcher);
+        if (dispatcher is null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished) return;
+        try { dispatcher.BeginInvokeShutdown(DispatcherPriority.Send); }
+        catch (InvalidOperationException) { }
+    }
+
+    private void DisposeReadySignal()
+    {
+        if (Interlocked.Exchange(ref _readyDisposeStarted, 1) == 0) _ready.Dispose();
     }
 }

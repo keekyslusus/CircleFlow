@@ -155,6 +155,61 @@ public sealed class SearchCoordinatorTests
         Assert.Equal(SearchState.Idle, harness.Coordinator.State);
     }
 
+    [Fact]
+    public async Task Stop_is_idempotent_and_permanently_rejects_new_sessions()
+    {
+        var harness = new Harness();
+
+        var first = harness.Coordinator.StopAsync();
+        var second = harness.Coordinator.StopAsync();
+        await first;
+        await harness.Coordinator.StartFromHotkeyAsync();
+        await harness.Coordinator.StartFromQueryAsync();
+
+        Assert.Same(first, second);
+        Assert.Equal(0, harness.Workflow.Calls);
+        Assert.Equal(0, harness.Hidden);
+    }
+
+    [Fact]
+    public async Task Stop_cancels_and_waits_for_the_published_active_session()
+    {
+        var harness = new Harness();
+        harness.Workflow.BlockUntilCanceled = true;
+        var session = harness.Coordinator.StartFromQueryAsync();
+        Assert.True(WaitForState(harness.Coordinator, SearchState.Cancelable));
+
+        var stop = harness.Coordinator.StopAsync();
+
+        await stop.WaitAsync(TimeSpan.FromSeconds(2));
+        await session;
+        Assert.True(harness.Workflow.CancellationObserved);
+        await harness.Coordinator.StartFromQueryAsync();
+        Assert.Equal(1, harness.Workflow.Calls);
+    }
+
+    [Fact]
+    public async Task Stop_waits_for_the_active_session_when_a_cancellation_callback_throws()
+    {
+        var harness = new Harness();
+        harness.Workflow.Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Workflow.CompleteOnCancellation = false;
+        harness.Workflow.CancellationCallbackException = new InvalidOperationException("cancel failed");
+        var session = harness.Coordinator.StartFromQueryAsync();
+        Assert.True(WaitForState(harness.Coordinator, SearchState.Cancelable));
+
+        var stop = harness.Coordinator.StopAsync();
+
+        Assert.True(SpinWait.SpinUntil(
+            () => harness.Workflow.CancellationObserved,
+            TimeSpan.FromSeconds(2)));
+        Assert.False(stop.IsCompleted);
+
+        harness.Workflow.Completion.SetResult();
+        await session;
+        await Assert.ThrowsAnyAsync<Exception>(() => stop);
+    }
+
     private static bool WaitForState(SearchCoordinator coordinator, SearchState state) =>
         SpinWait.SpinUntil(() => coordinator.State == state, TimeSpan.FromSeconds(5));
 
@@ -193,7 +248,9 @@ public sealed class SearchCoordinatorTests
         public bool BlockUntilCanceled { get; set; }
         public bool CancellationObserved { get; private set; }
         public bool StartUploadBeforeBlocking { get; set; }
+        public bool CompleteOnCancellation { get; set; } = true;
         public TaskCompletionSource? Completion { get; set; }
+        public Exception? CancellationCallbackException { get; set; }
         public Exception? Exception { get; set; }
 
         public async Task RunAsync(Action onUploadStarted, CancellationToken cancellationToken)
@@ -215,7 +272,10 @@ public sealed class SearchCoordinatorTests
                 using var registration = cancellationToken.Register(() =>
                 {
                     CancellationObserved = true;
-                    Completion.TrySetCanceled(cancellationToken);
+                    if (CompleteOnCancellation)
+                        Completion.TrySetCanceled(cancellationToken);
+                    if (CancellationCallbackException is not null)
+                        throw CancellationCallbackException;
                 });
                 await Completion.Task;
             }

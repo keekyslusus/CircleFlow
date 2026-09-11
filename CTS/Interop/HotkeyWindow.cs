@@ -4,7 +4,7 @@ namespace CircleToSearch.Interop;
 
 // message-only window on a dedicated STA thread. RegisterHotKey is thread-bound: it must be
 // called from the same thread that owns the window, and WM_HOTKEY arrives on that thread's pump.
-public sealed class HotkeyWindow : IDisposable
+public sealed class HotkeyWindow : IDisposable, IAsyncDisposable
 {
     private const string ClassName = "CircleToSearch_HotkeyWindow";
     private const int HotkeyId = 1;
@@ -17,7 +17,9 @@ public sealed class HotkeyWindow : IDisposable
     private readonly IStaDispatcher _dispatcher;
     private readonly PluginLog _log;
     private readonly IntPtr _hwnd;
-    private bool _disposed;
+    private int _disposed;
+    private readonly object _stopGate = new();
+    private Task? _stopTask;
 
     public event Action? HotkeyPressed;
 
@@ -65,7 +67,7 @@ public sealed class HotkeyWindow : IDisposable
     {
         var registered = false;
         var lastError = 0;
-        if (_hwnd != IntPtr.Zero)
+        if (_hwnd != IntPtr.Zero && Volatile.Read(ref _disposed) == 0)
         {
             _dispatcher.Send(() =>
             {
@@ -92,19 +94,48 @@ public sealed class HotkeyWindow : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
+        try { StopAsync().WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult(); }
+        catch (TimeoutException) { }
+    }
 
+    public ValueTask DisposeAsync() => new(StopAsync());
+
+    public Task StopAsync()
+    {
+        lock (_stopGate)
+        {
+            if (_stopTask is not null) return _stopTask;
+            Interlocked.Exchange(ref _disposed, 1);
+            _stopTask = StopCoreAsync();
+            return _stopTask;
+        }
+    }
+
+    private async Task StopCoreAsync()
+    {
         if (_hwnd != IntPtr.Zero)
         {
-            _dispatcher.Send(() =>
+            var cleanup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!_dispatcher.TryPost(() =>
+                {
+                    try
+                    {
+                        NativeMethods.UnregisterHotKey(_hwnd, HotkeyId);
+                        NativeMethods.DestroyWindow(_hwnd);
+                    }
+                    catch (Exception exception)
+                    {
+                        _log.SafeError(nameof(HotkeyWindow), "destroy-hotkey-window", exception);
+                    }
+                    finally { cleanup.TrySetResult(); }
+                }))
             {
-                NativeMethods.UnregisterHotKey(_hwnd, HotkeyId);
-                NativeMethods.DestroyWindow(_hwnd);
-            });
+                cleanup.TrySetResult();
+            }
+            await cleanup.Task.ConfigureAwait(false);
             lock (RegistrationGate) Windows.Remove(_hwnd);
         }
-        _dispatcher.Dispose();
+        await _dispatcher.StopAsync().ConfigureAwait(false);
     }
 
     private static bool EnsureWindowClass()
@@ -136,7 +167,7 @@ public sealed class HotkeyWindow : IDisposable
         {
             HotkeyWindow? window;
             lock (RegistrationGate) Windows.TryGetValue(hwnd, out window);
-            if (window is not null)
+            if (window is not null && Volatile.Read(ref window._disposed) == 0)
             {
                 try
                 {

@@ -184,6 +184,30 @@ public sealed class VisualSearchProviderRouterTests
         Assert.Equal(1, harness.Yandex.DisposeCalls);
     }
 
+    [Fact]
+    public async Task Stop_does_not_capture_the_calling_synchronization_context()
+    {
+        var harness = new RouterHarness();
+        await harness.Router.PrepareAsync(SearchProviderIds.YandexImages, [1], CancellationToken.None);
+        var previous = SynchronizationContext.Current;
+        var context = new NonPumpingSynchronizationContext();
+        Task stop;
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(context);
+            stop = harness.Router.StopAsync();
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+
+        await stop.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(0, context.PostCalls);
+        Assert.Equal(1, harness.Yandex.DisposeCalls);
+    }
+
     private sealed class RouterHarness : IDisposable
     {
         public RouterHarness()
@@ -264,5 +288,12 @@ public sealed class VisualSearchProviderRouterTests
                 PreparedVisualSearch.ForUrl(new Uri("https://example.com/results"), null));
 
         public void Dispose() => DisposeCalls++;
+    }
+
+    private sealed class NonPumpingSynchronizationContext : SynchronizationContext
+    {
+        public int PostCalls { get; private set; }
+
+        public override void Post(SendOrPostCallback callback, object? state) => PostCalls++;
     }
 }

@@ -10,12 +10,11 @@ public interface IOverlaySession : IAsyncDisposable
 {
     Task<IOverlayCommand> ReadCommandAsync(CancellationToken cancellationToken);
     Task ShowListeningAsync(CancellationToken cancellationToken);
-    Task ShowTraceResultAsync(Search.VisualSearchPreparationOutcome outcome, CancellationToken cancellationToken) => Task.CompletedTask;
+    Task ShowTraceResultAsync(Search.VisualSearchPreparationOutcome outcome, CancellationToken cancellationToken);
     Task ReportAudioAsync(MusicVisualizationFrame frame, CancellationToken cancellationToken);
     Task ShowMusicResultAsync(MusicRecognitionOutcome outcome, CancellationToken cancellationToken);
-    Task ShowTranslationAsync(ScreenTranslationResult result, CancellationToken cancellationToken) => Task.CompletedTask;
-    Task ShowTranslationFailureAsync(Guid requestId, TranslationFailure failure, CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    Task ShowTranslationAsync(ScreenTranslationResult result, CancellationToken cancellationToken);
+    Task ShowTranslationFailureAsync(Guid requestId, TranslationFailure failure, CancellationToken cancellationToken);
     Task CloseAsync();
     Task WaitForCloseAsync(CancellationToken cancellationToken);
 }
@@ -47,9 +46,18 @@ internal sealed class OverlaySession : IOverlaySession
 
     public void Publish(IOverlayCommand command)
     {
-        if (Volatile.Read(ref _disposed) != 0) return;
+        ArgumentNullException.ThrowIfNull(command);
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            Reject(command);
+            return;
+        }
         if (_commands.Writer.TryWrite(command))
+        {
             _log.Info(nameof(OverlaySession), $"command '{command.GetType().Name}' published");
+            return;
+        }
+        Reject(command);
     }
 
     public Task<IOverlayCommand> ReadCommandAsync(CancellationToken cancellationToken) =>
@@ -147,11 +155,19 @@ internal sealed class OverlaySession : IOverlaySession
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        try { await CloseAsync().ConfigureAwait(false); }
-        catch (TaskCanceledException) { }
-        catch (InvalidOperationException) when (_window?.Dispatcher.HasShutdownStarted == true) { }
-        if (_window is not null) await _closed.Task.ConfigureAwait(false);
-        Complete();
+        try
+        {
+            try { await CloseAsync().ConfigureAwait(false); }
+            catch (TaskCanceledException) { }
+            catch (InvalidOperationException) when (_window?.Dispatcher.HasShutdownStarted == true) { }
+            if (_window is not null) await _closed.Task.ConfigureAwait(false);
+        }
+        finally
+        {
+            Complete();
+            while (_commands.Reader.TryRead(out var command))
+                OverlayCommandOwnership.DisposePayload(command);
+        }
     }
 
     private Task InvokeAsync(Action<OverlayWindow> action, CancellationToken cancellationToken)
@@ -208,5 +224,11 @@ internal sealed class OverlaySession : IOverlaySession
             _log.Info(nameof(OverlaySession), exception is null
                 ? "command channel completed"
                 : $"command channel faulted: {exception.GetType().Name}");
+    }
+
+    private void Reject(IOverlayCommand command)
+    {
+        OverlayCommandOwnership.DisposePayload(command);
+        _log.Warn(nameof(OverlaySession), $"command '{command.GetType().Name}' rejected");
     }
 }

@@ -37,6 +37,14 @@ public sealed record RetryMusicRecognition : IOverlayCommand;
 public sealed record OpenTraceResult : IOverlayCommand;
 public sealed record OpenMusicResult : IOverlayCommand;
 
+internal static class OverlayCommandOwnership
+{
+    public static void DisposePayload(IOverlayCommand command)
+    {
+        if (command is VisualSelection visual) visual.Selection.Dispose();
+    }
+}
+
 public sealed record SearchSelectedText : IOverlayCommand
 {
     public SearchSelectedText(string text, string providerId)

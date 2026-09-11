@@ -10,6 +10,7 @@ internal sealed class TestStaDispatcher : IStaDispatcher
     public int TryPostCalls { get; private set; }
     public int SendCalls { get; private set; }
     public int DisposeCalls { get; private set; }
+    public int StopCalls { get; private set; }
     public Action? BeforeSendAction { get; set; }
 
     public bool TryPost(Action action)
@@ -28,4 +29,11 @@ internal sealed class TestStaDispatcher : IStaDispatcher
     }
 
     public void Dispose() => DisposeCalls++;
+
+    public Task StopAsync()
+    {
+        StopCalls++;
+        Dispose();
+        return Task.CompletedTask;
+    }
 }

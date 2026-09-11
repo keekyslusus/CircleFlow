@@ -1,6 +1,6 @@
 namespace CircleToSearch.Search;
 
-public sealed class VisualSearchProviderRouter : IDisposable
+public sealed class VisualSearchProviderRouter : IDisposable, IAsyncDisposable
 {
     private readonly IReadOnlyList<Entry> _entries;
     private readonly Dictionary<string, Entry> _entriesById;
@@ -9,7 +9,8 @@ public sealed class VisualSearchProviderRouter : IDisposable
     private readonly object _gate = new();
     private int _activePreparations;
     private bool _disposeStarted;
-    private bool _disposeCompleted;
+    private Task? _stopTask;
+    private TaskCompletionSource? _drained;
 
     public VisualSearchProviderRouter(
         IEnumerable<VisualSearchProviderRegistration> registrations,
@@ -89,26 +90,42 @@ public sealed class VisualSearchProviderRouter : IDisposable
             lock (_gate)
             {
                 _activePreparations--;
-                if (_activePreparations == 0) Monitor.PulseAll(_gate);
+                if (_activePreparations == 0) _drained?.TrySetResult();
             }
         }
     }
 
     public void Dispose()
     {
+        try { StopAsync().Wait(TimeSpan.FromSeconds(2)); }
+        catch (AggregateException exception)
+        {
+            _log.SafeError(nameof(VisualSearchProviderRouter), "dispose", exception.Flatten());
+        }
+    }
+
+    public ValueTask DisposeAsync() => new(StopAsync());
+
+    public Task StopAsync()
+    {
+        lock (_gate)
+        {
+            if (_stopTask is not null) return _stopTask;
+            _disposeStarted = true;
+            var drained = _activePreparations == 0
+                ? Task.CompletedTask
+                : (_drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
+            _stopTask = Task.Run(() => StopCoreAsync(drained));
+            return _stopTask;
+        }
+    }
+
+    private async Task StopCoreAsync(Task drained)
+    {
+        await drained.ConfigureAwait(false);
         List<(SearchProviderDescriptor Descriptor, IDisposable Provider)> providers;
         lock (_gate)
         {
-            if (_disposeCompleted) return;
-            if (_disposeStarted)
-            {
-                while (!_disposeCompleted) Monitor.Wait(_gate);
-                return;
-            }
-
-            _disposeStarted = true;
-            while (_activePreparations > 0) Monitor.Wait(_gate);
-
             providers = [];
             foreach (var entry in _entries)
             {
@@ -118,29 +135,15 @@ public sealed class VisualSearchProviderRouter : IDisposable
             }
         }
 
-        try
+        foreach (var provider in providers)
         {
-            foreach (var provider in providers)
+            try { provider.Provider.Dispose(); }
+            catch (Exception exception)
             {
-                try
-                {
-                    provider.Provider.Dispose();
-                }
-                catch (Exception exception)
-                {
-                    _log.Error(
-                        nameof(VisualSearchProviderRouter),
-                        $"disposing visual search provider '{provider.Descriptor.Id}' failed",
-                        exception);
-                }
-            }
-        }
-        finally
-        {
-            lock (_gate)
-            {
-                _disposeCompleted = true;
-                Monitor.PulseAll(_gate);
+                _log.SafeError(
+                    nameof(VisualSearchProviderRouter),
+                    "dispose-provider",
+                    exception);
             }
         }
     }
