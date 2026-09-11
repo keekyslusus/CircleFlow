@@ -20,4 +20,4 @@ and restart Flow Launcher. A private copy can crash the trace.moe video preview.
 
 ## License
 
-This project is distributed under GPL-3.0-or-later. See [`LICENSE`](./LICENSE), [`THIRD_PARTY_NOTICES.txt`](./THIRD_PARTY_NOTICES.txt), and [`THIRD_PARTY_LICENSES`](./THIRD_PARTY_LICENSES).
+This project is distributed under GPL-3.0-or-later: [`LICENSE`](./LICENSE), [`THIRD_PARTY_NOTICES.txt`](./THIRD_PARTY_NOTICES.txt), [`THIRD_PARTY_LICENSES`](./THIRD_PARTY_LICENSES)
