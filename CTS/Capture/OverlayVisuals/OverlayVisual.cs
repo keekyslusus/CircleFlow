@@ -50,7 +50,6 @@ public sealed record TranslationActionVisual(
     LoadingIndicatorVisual LoadingIndicator);
 
 public sealed record TranslationOverlayVisual(
-    Canvas CardsLayer,
     Border ConsentCard,
     Button ContinueButton,
     Button CancelButton);

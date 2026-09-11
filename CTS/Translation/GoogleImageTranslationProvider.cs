@@ -7,7 +7,7 @@ namespace CircleToSearch.Translation;
 
 internal interface IImageTranslationProvider
 {
-    Task<ImageTranslationData> TranslateAsync(BitmapSource source, string target, CancellationToken cancellation);
+    Task<BitmapSource> TranslateAsync(BitmapSource source, string target, CancellationToken cancellation);
 }
 
 internal interface IImageTranslationSigner
@@ -18,7 +18,7 @@ internal interface IImageTranslationSigner
 internal sealed class GoogleImageTranslationProvider(HttpClient http, IImageTranslationSigner signer,
     TranslationMemoryProfiler? profiler = null) : IImageTranslationProvider
 {
-    public async Task<ImageTranslationData> TranslateAsync(BitmapSource source, string target, CancellationToken cancellation)
+    public async Task<BitmapSource> TranslateAsync(BitmapSource source, string target, CancellationToken cancellation)
     {
         var scope = Guid.NewGuid().ToString("N");
         profiler?.Mark("translation_start", scope);

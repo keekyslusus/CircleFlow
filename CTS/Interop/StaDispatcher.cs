@@ -40,9 +40,6 @@ internal sealed class StaDispatcher : IStaDispatcher
         }
     }
 
-    public void Post(Action action)
-        => TryPost(action);
-
     public bool TryPost(Action action)
     {
         var dispatcher = _dispatcher;

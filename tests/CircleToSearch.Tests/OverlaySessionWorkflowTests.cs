@@ -1,5 +1,7 @@
 using System.Drawing;
 using System.Threading.Channels;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using CircleToSearch.Capture;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
@@ -7,7 +9,6 @@ using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
 using CircleToSearch.Settings;
-using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
 using Xunit;
 
@@ -73,16 +74,14 @@ public sealed class OverlaySessionWorkflowTests
     {
         using var harness = new Harness();
         harness.Overlay.CloseAfterTranslation = true;
-        var word = new OcrWord(0, 0, 0, "Hello", new Rectangle(0, 0, 20, 10));
-        var document = new OcrDocument("en", new Size(100, 50),
-            [new OcrLine(0, 0, word.BoundsPx, [word])]);
+        var image = TranslationImage();
         var requestId = Guid.NewGuid();
-        harness.Overlay.Enqueue(new ScreenTranslationRequested(requestId, document, "es"));
+        harness.Overlay.Enqueue(new ScreenTranslationRequested(requestId, image, "es"));
 
         await harness.RunAsync();
 
         Assert.Equal(requestId, harness.Overlay.TranslationResult?.RequestId);
-        Assert.Equal("translated", Assert.Single(harness.Overlay.TranslationResult!.Lines).TranslatedText);
+        Assert.Same(image, harness.Overlay.TranslationResult!.Image);
     }
 
     [Fact]
@@ -361,21 +360,6 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
-    public async Task Copy_music_result_has_no_workflow_side_effect()
-    {
-        using var harness = new Harness();
-        harness.Music.Outcome = MusicRecognitionOutcome.Matched(Match("https://www.shazam.com/track/1"));
-        harness.Overlay.CommandsAfterResult.Add(new CopyMusicResult());
-        harness.Overlay.CommandsAfterResult.Add(new CancelSession());
-        harness.Overlay.Enqueue(new StartMusicRecognition());
-
-        await harness.RunAsync();
-
-        Assert.Empty(harness.Opened);
-        Assert.Empty(harness.Errors);
-    }
-
-    [Fact]
     public async Task Recognition_visualization_is_forwarded_to_overlay()
     {
         using var harness = new Harness();
@@ -390,6 +374,13 @@ public sealed class OverlaySessionWorkflowTests
 
     private static SelectionOutcome NewSelection() =>
         new(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2));
+
+    private static BitmapSource TranslationImage()
+    {
+        var image = BitmapSource.Create(8, 4, 96, 96, PixelFormats.Bgra32, null, new byte[8 * 4 * 4], 8 * 4);
+        image.Freeze();
+        return image;
+    }
 
     private static ShazamRecognition Match(string? url) =>
         new("Track", "Artist", null, null, null, null, url);
@@ -490,9 +481,7 @@ public sealed class OverlaySessionWorkflowTests
                 Notifier,
                 TestUiStrings.English,
                 Log);
-            var screenTranslation = new ScreenTranslationWorkflow(
-                new FakeTranslationProvider(),
-                new TranslationSegmenter());
+            var screenTranslation = new ScreenTranslationWorkflow(new FakeTranslationProvider());
             Workflow = new OverlaySessionWorkflow(
                 Factory,
                 visualSearch,
@@ -663,14 +652,12 @@ public sealed class OverlaySessionWorkflowTests
             => Task.FromResult(new SearchBrowserShowResult(SearchBrowserShowStatus.Shown));
     }
 
-    private sealed class FakeTranslationProvider : ITranslationProvider
+    private sealed class FakeTranslationProvider : IImageTranslationProvider
     {
-        public Task<TranslationBatchOutcome> TranslateAsync(
-            IReadOnlyList<TranslationChunk> chunks,
-            string sourceLanguageTag,
-            string targetLanguageTag,
-            CancellationToken cancellationToken) => Task.FromResult(new TranslationBatchOutcome(chunks.Select(chunk =>
-                new TranslatedChunk(chunk.LineId, chunk.Order, chunk.Text, "translated", TranslationFailure.None)).ToArray()));
+        public Task<BitmapSource> TranslateAsync(
+            BitmapSource source,
+            string target,
+            CancellationToken cancellation) => Task.FromResult(source);
     }
 
     private sealed class FakeMusicRecognizer : IMusicRecognizer

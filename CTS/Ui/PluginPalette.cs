@@ -22,7 +22,6 @@ internal static class PluginPalette
     public static Color SelectionFrameFill { get; } = Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF);
     public static Color EntranceParticle { get; } = Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF);
     public static Color ListeningText { get; } = Color.FromRgb(0xF4, 0xF5, 0xF8);
-    public static Color ControlRipple { get; } = Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF);
     public static Color SceneRippleAudio { get; } = Color.FromRgb(0xC5, 0x9B, 0xFF);
 
     public static IReadOnlyList<Color> SearchBrowserLoadingDots { get; } = Array.AsReadOnly(
@@ -106,10 +105,7 @@ internal static class PluginPalette
             Surface: DarkDockSurface,
             Text: Color.FromRgb(0xF1, 0xF3, 0xF4),
             Border: Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF),
-            Hover: Composite(DarkDockSurface, DarkDockHoverOverlay),
-            CardSurface: Color.FromArgb(0xF2, 0x21, 0x1F, 0x26),
-            CardText: Color.FromRgb(0xE6, 0xE1, 0xE5),
-            SourceDim: Color.FromArgb(0x80, 0x00, 0x00, 0x00)));
+            Hover: Composite(DarkDockSurface, DarkDockHoverOverlay)));
 
     private static PluginThemePalette Light { get; } = new(
         WindowSurface: Color.FromRgb(0xF7, 0xF9, 0xFC),
@@ -181,10 +177,7 @@ internal static class PluginPalette
             Surface: LightDockSurface,
             Text: Color.FromRgb(0x3C, 0x40, 0x43),
             Border: Color.FromArgb(0x2E, 0x20, 0x21, 0x24),
-            Hover: Composite(LightDockSurface, LightDockHoverOverlay),
-            CardSurface: Color.FromArgb(0xF5, 0xF3, 0xF3, 0xFA),
-            CardText: Color.FromRgb(0x1C, 0x1B, 0x1F),
-            SourceDim: Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF)));
+            Hover: Composite(LightDockSurface, LightDockHoverOverlay)));
 
     internal static Color Composite(Color background, Color foreground)
     {
@@ -227,10 +220,7 @@ internal sealed record TranslationPalette(
     Color Surface,
     Color Text,
     Color Border,
-    Color Hover,
-    Color CardSurface,
-    Color CardText,
-    Color SourceDim);
+    Color Hover);
 
 internal sealed record ToastPalette(
     Color Surface,

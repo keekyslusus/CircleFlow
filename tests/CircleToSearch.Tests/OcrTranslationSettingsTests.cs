@@ -14,14 +14,14 @@ public sealed class OcrTranslationSettingsTests
         {
             OcrLanguageTag = "ru-RU",
             TranslationTargetLanguageTag = "en-US",
-            TranslationPrivacyConsentAccepted = true,
+            ImageTranslationPrivacyConsentAccepted = true,
         };
 
         var restored = JsonSerializer.Deserialize<PluginSettings>(JsonSerializer.Serialize(settings))!;
 
         Assert.Equal("ru-RU", restored.OcrLanguageTag);
         Assert.Equal("en-US", restored.TranslationTargetLanguageTag);
-        Assert.True(restored.TranslationPrivacyConsentAccepted);
+        Assert.True(restored.ImageTranslationPrivacyConsentAccepted);
     }
 
     [Fact]

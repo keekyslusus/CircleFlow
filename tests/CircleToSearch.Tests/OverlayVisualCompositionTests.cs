@@ -40,7 +40,6 @@ public sealed class OverlayVisualCompositionTests
                 visual.Selection.SelectionFrame,
                 visual.TextSelection.HighlightLayer,
                 visual.Selection.InputSurface,
-                visual.TranslationOverlay.CardsLayer,
                 visual.Effects.SceneRippleLayer,
                 visual.Music.ListeningLayer,
                 visual.TextSelection.ActionLayer,

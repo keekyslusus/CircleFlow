@@ -63,7 +63,6 @@ public static class OverlayVisualFactory
         root.Children.Add(selection.SelectionFrame);
         root.Children.Add(textSelection.HighlightLayer);
         root.Children.Add(selection.InputSurface);
-        root.Children.Add(translationOverlay.CardsLayer);
         root.Children.Add(effects.SceneRippleLayer);
         root.Children.Add(music.ListeningLayer);
         root.Children.Add(textSelection.ActionLayer);

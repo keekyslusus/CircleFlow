@@ -165,12 +165,8 @@ internal sealed class OverlaySessionWorkflow(
                         screenTranslation is not null && translationTask is null:
                         translationRequestId = requested.RequestId;
                         translationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        translationTask = requested.Image is { } image ? screenTranslation.TranslateAsync(
-                            requested.RequestId, image, requested.TargetLanguageTag, translationCancellation.Token) : screenTranslation.TranslateAsync(
-                            requested.RequestId,
-                            requested.Document!,
-                            requested.TargetLanguageTag,
-                            translationCancellation.Token);
+                        translationTask = screenTranslation.TranslateAsync(
+                            requested.RequestId, requested.Image, requested.TargetLanguageTag, translationCancellation.Token);
                         break;
 
                     case CancelScreenTranslation canceled when
@@ -202,9 +198,6 @@ internal sealed class OverlaySessionWorkflow(
                             musicResultPresenter.Open(match);
                             return;
                         }
-                        break;
-
-                    case CopyMusicResult:
                         break;
 
                     case DismissMusicResult:

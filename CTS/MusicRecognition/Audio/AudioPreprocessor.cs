@@ -15,12 +15,6 @@ public static class AudioPreprocessor
         return ConvertAndSelect(raw.ToSampleProvider(), maximumSeconds);
     }
 
-    public static float[] FromFile(string path, int maximumSeconds)
-    {
-        using var reader = new AudioFileReader(path);
-        return ConvertAndSelect(reader, maximumSeconds, selectMiddle: true);
-    }
-
     public static double CalculateRms(ReadOnlySpan<float> samples)
     {
         if (samples.IsEmpty) return 0;
@@ -29,7 +23,7 @@ public static class AudioPreprocessor
         return Math.Sqrt(sum / samples.Length);
     }
 
-    private static float[] ConvertAndSelect(ISampleProvider source, int maximumSeconds, bool selectMiddle = false)
+    private static float[] ConvertAndSelect(ISampleProvider source, int maximumSeconds)
     {
         ISampleProvider mono = source.WaveFormat.Channels == 1 ? source : new MonoSampleProvider(source);
         ISampleProvider resampled = mono.WaveFormat.SampleRate == TargetSampleRate
@@ -44,7 +38,7 @@ public static class AudioPreprocessor
 
         var maximum = maximumSeconds * TargetSampleRate;
         if (samples.Count <= maximum) return samples.ToArray();
-        var start = selectMiddle ? (samples.Count - maximum) / 2 : samples.Count - maximum;
+        var start = samples.Count - maximum;
         return samples.GetRange(start, maximum).ToArray();
     }
 }

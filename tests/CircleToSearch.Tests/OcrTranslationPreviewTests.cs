@@ -13,7 +13,7 @@ namespace CircleToSearch.Tests;
 public sealed class OcrTranslationPreviewTests
 {
     [Fact]
-    public void Renders_text_consent_and_translation_previews()
+    public void Renders_text_selection_and_translation_consent_previews()
     {
         if (Environment.GetEnvironmentVariable("CTS_OCR_TRANSLATION_PREVIEW") != "1") return;
         Assert.Null(RunOnSta(() =>
@@ -41,13 +41,6 @@ public sealed class OcrTranslationPreviewTests
             visual.TranslationOverlay.ConsentCard.Visibility = Visibility.Visible;
             Capture(visual.Root, Path.Combine(directory, "ocr-translation-consent-preview.png"));
 
-            visual.TranslationOverlay.ConsentCard.Visibility = Visibility.Collapsed;
-            AddTranslationCard(visual.TranslationOverlay.CardsLayer, "Hello from the translated screen", 120, 120, 300);
-            AddTranslationCard(visual.TranslationOverlay.CardsLayer, "A longer translated line wraps without clipping.", 120, 178, 360);
-            visual.TranslationOverlay.CardsLayer.Visibility = Visibility.Visible;
-            visual.TranslationAction.Icon.Data = TextTranslationVisualFactory.ShowOriginalIconGeometry;
-            Capture(visual.Root, Path.Combine(directory, "ocr-translation-cards-preview.png"));
-
             visual.Music.Waveform.Dispose();
             visual.TranslationAction.LoadingIndicator.Dispose();
             visual.Effects.SceneRipples.Dispose();
@@ -68,29 +61,6 @@ public sealed class OcrTranslationPreviewTests
         Canvas.SetLeft(rectangle, bounds.Left);
         Canvas.SetTop(rectangle, bounds.Top);
         canvas.Children.Add(rectangle);
-    }
-
-    private static void AddTranslationCard(Canvas canvas, string text, double left, double top, double width)
-    {
-        var palette = PluginPalette.For(false).Translation;
-        var card = new Border
-        {
-            Width = width,
-            Background = OverlayVisualResources.Frozen(palette.CardSurface),
-            CornerRadius = new CornerRadius(5),
-            Padding = new Thickness(8, 5, 8, 5),
-            Child = new TextBlock
-            {
-                Text = text,
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = OverlayVisualResources.Frozen(palette.CardText),
-                FontFamily = OverlayVisualResources.Font,
-                FontSize = 15,
-            },
-        };
-        Canvas.SetLeft(card, left);
-        Canvas.SetTop(card, top);
-        canvas.Children.Add(card);
     }
 
     private static void Capture(UIElement element, string path)

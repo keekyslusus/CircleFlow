@@ -19,8 +19,6 @@ using CircleToSearch.Ui;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
 using System.Globalization;
-using GdiBitmap = System.Drawing.Bitmap;
-using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch;
 

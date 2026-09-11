@@ -64,9 +64,7 @@ public sealed class GoogleImageTranslationTests
         var payload = new List<object> { new[] { Convert.ToBase64String(Png()), "image/png" }, "Hello Привет", "Hallo Hallo" };
         if (includeLanguage) payload.Add("en");
         var result = GoogleImageTranslationProtocol.ReadResponse(Response(payload));
-        Assert.Equal("Hallo Hallo", result.TranslatedText);
-        Assert.Equal(includeLanguage ? "en" : null, result.DetectedLanguage);
-        Assert.True(result.Image.IsFrozen);
+        Assert.True(result.IsFrozen);
     }
 
     [Fact]
@@ -77,7 +75,7 @@ public sealed class GoogleImageTranslationTests
         await Task.Run(() =>
         {
             var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(result.Image));
+            encoder.Frames.Add(BitmapFrame.Create(result));
             using var stream = new MemoryStream();
             encoder.Save(stream);
             Assert.True(stream.Length > 0);
@@ -89,6 +87,13 @@ public sealed class GoogleImageTranslationTests
         Assert.Throws<InvalidDataException>(() => GoogleImageTranslationProtocol.ReadResponse(
             Response(new object[] { new[] { Convert.ToBase64String(Png()), "image/png" } })));
 
+    [Theory]
+    [InlineData("", "translated")]
+    [InlineData("source", " ")]
+    public void Blank_required_text_is_not_reported_as_translation(string source, string translated) =>
+        Assert.Throws<InvalidDataException>(() => GoogleImageTranslationProtocol.ReadResponse(
+            Response(new object[] { new[] { Convert.ToBase64String(Png()), "image/png" }, source, translated })));
+
     [Fact]
     public async Task Canceled_provider_cannot_publish_a_late_success()
     {
@@ -97,10 +102,22 @@ public sealed class GoogleImageTranslationTests
         var workflow = new ScreenTranslationWorkflow(provider);
         var task = workflow.TranslateAsync(Guid.NewGuid(), Source(), "ru-RU", cancellation.Token);
         cancellation.Cancel();
-        provider.Completion.SetResult(new(Source(), "hello", "привет", "en"));
+        provider.Completion.SetResult(Source());
         var result = await task;
         Assert.Equal(TranslationFailure.Canceled, result.Failure);
         Assert.Null(result.Result);
+    }
+
+    [Fact]
+    public async Task Empty_request_id_is_rejected_before_provider_call()
+    {
+        var provider = new DelayedProvider();
+        var workflow = new ScreenTranslationWorkflow(provider);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            workflow.TranslateAsync(Guid.Empty, Source(), "ru-RU", CancellationToken.None));
+
+        Assert.Equal(0, provider.Calls);
     }
 
     [Fact]
@@ -122,7 +139,7 @@ public sealed class GoogleImageTranslationTests
                 var original = visual.Selection.Screenshot.Source;
                 visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
-                window.ShowTranslation(new(request.RequestId, [], false) { Image = Source(), TargetLanguageTag = "ru-RU" });
+                window.ShowTranslation(new(request.RequestId, Source()));
                 Assert.Equal(Visibility.Visible, visual.Selection.Dim.Visibility);
                 Assert.True(visual.Root.Children.IndexOf(visual.Selection.Screenshot) < visual.Root.Children.IndexOf(visual.Selection.Dim));
                 Assert.Equal(TestUiStrings.English.TranslatedTextPrompt, visual.Actions.Prompt!.Text);
@@ -150,18 +167,15 @@ public sealed class GoogleImageTranslationTests
             var target = "ru";
             var state = new OverlayInteractionState();
             using var controller = new ScreenTranslationOverlayController(visual.TranslationAction, visual.TranslationOverlay,
-                visual.Effects, visual.Root, new OverlayCoordinateMapper(1, false, new System.Drawing.Size(80, 40)),
-                TestUiStrings.English, () => true, () => { }, () => target, commands.Add, mode => state.TransitionTo(mode), _ => { }, () => false,
+                visual.Effects, visual.Root, TestUiStrings.English, () => true, () => { }, () => target, commands.Add, mode => state.TransitionTo(mode), _ => { }, () => false,
                 false, visual.Selection.Screenshot, (image, language) => changed.Add((image, language)));
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
             Assert.Same(source, request.Image);
-            Assert.Null(request.Document);
-            controller.SetOcrOutcome(OcrRecognitionOutcome.Failed());
             Assert.True(controller.IsTranslating);
-            controller.ShowResult(new(Guid.NewGuid(), [], false) { Image = Source(), TargetLanguageTag = "ru" });
+            controller.ShowResult(new(Guid.NewGuid(), Source()));
             Assert.Same(source, visual.Selection.Screenshot.Source);
-            controller.ShowResult(new(request.RequestId, [], false) { Image = Source(), TargetLanguageTag = "ru" });
+            controller.ShowResult(new(request.RequestId, Source()));
             Assert.True(controller.IsImageShown);
             Assert.Equal("ru", Assert.Single(changed).Language);
             Assert.Equal(source.PixelWidth, changed[0].Image.PixelWidth);
@@ -183,7 +197,7 @@ public sealed class GoogleImageTranslationTests
             controller.ShowFailure(german.RequestId, TranslationFailure.Network);
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var retry = Assert.IsType<ScreenTranslationRequested>(commands[2]);
-            controller.ShowResult(new(retry.RequestId, [], false) { Image = Source(), TargetLanguageTag = "de" });
+            controller.ShowResult(new(retry.RequestId, Source()));
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.Equal(3, commands.Count);
@@ -205,13 +219,12 @@ public sealed class GoogleImageTranslationTests
             var visual = OverlayVisualFactory.CreateRoot(source, new Size(80, 40), 0, false, TestUiStrings.English);
             var commands = new List<IOverlayCommand>();
             using var controller = new ScreenTranslationOverlayController(visual.TranslationAction, visual.TranslationOverlay,
-                visual.Effects, visual.Root, new OverlayCoordinateMapper(1, false, new System.Drawing.Size(80, 40)),
-                TestUiStrings.English, () => true, () => { }, () => "ru", commands.Add, _ => { }, _ => { }, () => false,
+                visual.Effects, visual.Root, TestUiStrings.English, () => true, () => { }, () => "ru", commands.Add, _ => { }, _ => { }, () => false,
                 false, visual.Selection.Screenshot);
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var request = Assert.IsType<ScreenTranslationRequested>(commands[0]);
             controller.CancelForClosing();
-            controller.ShowResult(new(request.RequestId, [], false) { Image = Source(), TargetLanguageTag = "ru" });
+            controller.ShowResult(new(request.RequestId, Source()));
             Assert.False(controller.IsImageShown);
             Assert.Same(source, visual.Selection.Screenshot.Source);
             Assert.IsType<CancelScreenTranslation>(commands[1]);
@@ -251,8 +264,13 @@ public sealed class GoogleImageTranslationTests
 
     private sealed class DelayedProvider : IImageTranslationProvider
     {
-        public TaskCompletionSource<ImageTranslationData> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public Task<ImageTranslationData> TranslateAsync(BitmapSource source, string target, CancellationToken cancellation) => Completion.Task;
+        public TaskCompletionSource<BitmapSource> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int Calls { get; private set; }
+        public Task<BitmapSource> TranslateAsync(BitmapSource source, string target, CancellationToken cancellation)
+        {
+            Calls++;
+            return Completion.Task;
+        }
     }
 
     private sealed class DeferredRecognizer : IOcrRecognizer

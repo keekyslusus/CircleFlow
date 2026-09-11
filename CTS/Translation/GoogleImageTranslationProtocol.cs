@@ -5,7 +5,6 @@ using System.Windows.Media.Imaging;
 
 namespace CircleToSearch.Translation;
 
-internal sealed record ImageTranslationData(BitmapSource Image, string SourceText, string TranslatedText, string? DetectedLanguage);
 internal sealed record GoogleImageChallenge(string Program, string Interpreter, string? State);
 internal sealed record ImageTranslationSignature(string Header, string UserAgent);
 
@@ -34,7 +33,7 @@ internal static class GoogleImageTranslationProtocol
         return new GoogleImageChallenge(fields[0].GetString()!, fields[5][5].GetString()!, fields[7].GetString());
     }
 
-    internal static ImageTranslationData ReadResponse(string body)
+    internal static BitmapSource ReadResponse(string body)
     {
         foreach (var line in body.Split('\n'))
         {
@@ -51,6 +50,7 @@ internal static class GoogleImageTranslationProtocol
                     data[2].ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(data[1].GetString()) ||
                     string.IsNullOrWhiteSpace(data[2].GetString()))
                     throw new InvalidDataException("No confirmed image translation was returned.");
+                _ = data.GetArrayLength() > 3 ? data[3].GetString() : null;
                 var mime = data[0][1].GetString();
                 if (mime is not ("image/png" or "image/jpeg")) throw new InvalidDataException("Unexpected image type.");
                 var bytes = Convert.FromBase64String(data[0][0].GetString()!);
@@ -67,7 +67,7 @@ internal static class GoogleImageTranslationProtocol
                 var image = BitmapSource.Create(frame.PixelWidth, frame.PixelHeight, 96, 96,
                     System.Windows.Media.PixelFormats.Bgra32, null, pixels, stride);
                 image.Freeze();
-                return new(image, data[1].GetString()!, data[2].GetString()!, data.GetArrayLength() > 3 ? data[3].GetString() : null);
+                return image;
             }
         }
         throw new InvalidDataException("Translation RPC is absent.");

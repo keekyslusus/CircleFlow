@@ -76,12 +76,4 @@ public static class ShazamSignatureCodec
         return buffer;
     }
 
-    public static bool HasValidHeader(ReadOnlySpan<byte> buffer)
-    {
-        if (buffer.Length < HeaderSize + 8) return false;
-        if (BinaryPrimitives.ReadUInt32LittleEndian(buffer) != Magic1) return false;
-        if (BinaryPrimitives.ReadUInt32LittleEndian(buffer[12..]) != Magic2) return false;
-        if (BinaryPrimitives.ReadUInt32LittleEndian(buffer[8..]) != buffer.Length - HeaderSize) return false;
-        return BinaryPrimitives.ReadUInt32LittleEndian(buffer[4..]) == Crc32.Compute(buffer[8..]);
-    }
 }

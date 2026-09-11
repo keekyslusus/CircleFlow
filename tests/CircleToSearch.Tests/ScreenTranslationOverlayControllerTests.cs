@@ -2,16 +2,14 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
-using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
 using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
 using Xunit;
-using GdiRectangle = System.Drawing.Rectangle;
-using GdiSize = System.Drawing.Size;
 
 namespace CircleToSearch.Tests;
 
@@ -22,7 +20,7 @@ public sealed class ScreenTranslationOverlayControllerTests
     {
         var failure = RunOnSta(() =>
         {
-            var visual = OverlayVisualFactory.CreateRoot(null, new System.Windows.Size(640, 400), 20, false, TestUiStrings.English);
+            var visual = OverlayVisualFactory.CreateRoot(Source(640, 400), new System.Windows.Size(640, 400), 20, false, TestUiStrings.English);
             var window = new Window { Width = 640, Height = 400, Content = visual.Root };
             window.Show();
             window.UpdateLayout();
@@ -34,7 +32,6 @@ public sealed class ScreenTranslationOverlayControllerTests
                 visual.TranslationOverlay,
                 visual.Effects,
                 visual.Root,
-                new OverlayCoordinateMapper(1, false, new GdiSize(640, 400)),
                 TestUiStrings.English,
                 () => consent,
                 () => consent = true,
@@ -43,7 +40,8 @@ public sealed class ScreenTranslationOverlayControllerTests
                 target => state.TransitionTo(target),
                 _ => { },
                 () => false,
-                false);
+                false,
+                visual.Selection.Screenshot);
 
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.Equal(OverlayInteractionMode.TranslationConsent, state.Mode);
@@ -58,12 +56,8 @@ public sealed class ScreenTranslationOverlayControllerTests
             Assert.Equal(Visibility.Visible, visual.TranslationAction.LoadingIndicator.Visibility);
             Assert.Equal(1, visual.TranslationAction.LoadingIndicator.Opacity);
             Assert.Equal(0, visual.TranslationAction.Icon.Opacity);
-            Assert.Empty(commands);
-
-            controller.SetOcrOutcome(OcrRecognitionOutcome.Success(Document()));
             var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
-            controller.ShowResult(new ScreenTranslationResult(request.RequestId,
-                [new ScreenTranslationLine(0, new GdiRectangle(20, 20, 120, 20), "Hello", "Hola")], false));
+            controller.ShowResult(new ScreenTranslationResult(request.RequestId, Source(640, 400)));
             Assert.Equal(OverlayInteractionMode.TranslationShown, state.Mode);
             Assert.True(controller.IsTranslationShown);
             Assert.Equal(TestUiStrings.English.ShowOriginal, visual.TranslationAction.Button.ToolTip);
@@ -98,7 +92,7 @@ public sealed class ScreenTranslationOverlayControllerTests
         var failure = RunOnSta(() =>
         {
             var visual = OverlayVisualFactory.CreateRoot(
-                null,
+                Source(640, 400),
                 new System.Windows.Size(640, 400),
                 20,
                 false,
@@ -120,7 +114,6 @@ public sealed class ScreenTranslationOverlayControllerTests
                 visual.TranslationOverlay,
                 effects,
                 visual.Root,
-                new OverlayCoordinateMapper(1, false, new GdiSize(640, 400)),
                 TestUiStrings.English,
                 () => true,
                 () => { },
@@ -129,13 +122,12 @@ public sealed class ScreenTranslationOverlayControllerTests
                 target => state.TransitionTo(target),
                 _ => { },
                 () => true,
-                false);
-            controller.SetOcrOutcome(OcrRecognitionOutcome.Success(Document()));
+                false,
+                visual.Selection.Screenshot);
 
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
-            controller.ShowResult(new ScreenTranslationResult(request.RequestId,
-                [new ScreenTranslationLine(0, new GdiRectangle(20, 20, 120, 20), "Hello", "Hola")], false));
+            controller.ShowResult(new ScreenTranslationResult(request.RequestId, Source(640, 400)));
             Assert.True(controller.HasPendingCompletionRipple);
 
             Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
@@ -159,7 +151,7 @@ public sealed class ScreenTranslationOverlayControllerTests
     {
         var failure = RunOnSta(() =>
         {
-            var visual = OverlayVisualFactory.CreateRoot(null, new System.Windows.Size(320, 200), 10, false, TestUiStrings.English);
+            var visual = OverlayVisualFactory.CreateRoot(Source(320, 200), new System.Windows.Size(320, 200), 10, false, TestUiStrings.English);
             var state = new OverlayInteractionState();
             var commands = new List<IOverlayCommand>();
             using var controller = new ScreenTranslationOverlayController(
@@ -167,7 +159,6 @@ public sealed class ScreenTranslationOverlayControllerTests
                 visual.TranslationOverlay,
                 visual.Effects,
                 visual.Root,
-                new OverlayCoordinateMapper(1, false, new GdiSize(320, 200)),
                 TestUiStrings.English,
                 () => true,
                 () => { },
@@ -176,8 +167,8 @@ public sealed class ScreenTranslationOverlayControllerTests
                 target => state.TransitionTo(target),
                 _ => { },
                 () => false,
-                false);
-            controller.SetOcrOutcome(OcrRecognitionOutcome.Success(Document()));
+                false,
+                visual.Selection.Screenshot);
 
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
@@ -193,10 +184,13 @@ public sealed class ScreenTranslationOverlayControllerTests
         Assert.Null(failure);
     }
 
-    private static OcrDocument Document()
+    private static BitmapSource Source(int width, int height)
     {
-        var word = new OcrWord(0, 0, 0, "Hello", new GdiRectangle(20, 20, 120, 20));
-        return new OcrDocument("en", new GdiSize(320, 200), [new OcrLine(0, 0, word.BoundsPx, [word])]);
+        var stride = width * 4;
+        var image = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null,
+            new byte[stride * height], stride);
+        image.Freeze();
+        return image;
     }
 
     private static Exception? RunOnSta(Action action)

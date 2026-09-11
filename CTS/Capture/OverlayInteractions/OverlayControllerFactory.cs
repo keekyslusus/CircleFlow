@@ -198,7 +198,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.Visual.TranslationOverlay,
                 context.Visual.Effects,
                 context.CoordinateRoot,
-                mapper,
                 context.Strings,
                 _translationConsentAccepted,
                 _acceptTranslationConsent,
@@ -222,7 +221,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
             ocr = new OcrOverlayController(frameSource, context.CoordinateRoot.Dispatcher, _ocrRecognizer, _ocrLanguageTag(), outcome =>
             {
                 textSelection.SetDocument(outcome.Document);
-                translation.SetOcrOutcome(outcome);
             }, _log, _memoryProfiler);
             debug = new DebugOverlayController(
                 context.Visual.Debug,

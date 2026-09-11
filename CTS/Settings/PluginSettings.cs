@@ -20,6 +20,4 @@ public sealed class PluginSettings
 
     public string TranslationTargetLanguageTag { get; set; } = string.Empty;
     public bool ImageTranslationPrivacyConsentAccepted { get; set; }
-
-    public bool TranslationPrivacyConsentAccepted { get; set; }
 }

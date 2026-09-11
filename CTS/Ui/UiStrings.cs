@@ -99,16 +99,10 @@ public sealed class UiStrings
     public string TranslationConsentMessage => Get("plugin_circletosearch_translation_consent_message");
     public string Continue => Get("plugin_circletosearch_continue");
     public string ConsentCancel => Get("plugin_circletosearch_consent_cancel");
-    public string TranslationCanceled => Get("plugin_circletosearch_translation_canceled");
-    public string OcrNoText => Get("plugin_circletosearch_ocr_no_text");
-    public string OcrLanguageUnavailable => Get("plugin_circletosearch_ocr_language_unavailable");
-    public string OcrFailed => Get("plugin_circletosearch_ocr_failed");
-    public string ScreenAlreadyTargetLanguage => Get("plugin_circletosearch_screen_already_target_language");
     public string TranslationNetworkError => Get("plugin_circletosearch_translation_network_error");
     public string TranslationTimedOut => Get("plugin_circletosearch_translation_timed_out");
     public string TranslationRateLimited => Get("plugin_circletosearch_translation_rate_limited");
     public string TranslationFailed => Get("plugin_circletosearch_translation_failed");
-    public string TranslationPartial => Get("plugin_circletosearch_translation_partial");
     public string SettingsOcrLanguageLabel => Get("plugin_circletosearch_settings_ocr_language_label");
     public string SettingsTranslationTargetLabel => Get("plugin_circletosearch_settings_translation_target_label");
     public string SystemDefaultLanguage => Get("plugin_circletosearch_system_default_language");

@@ -137,7 +137,7 @@ internal static class TextTranslationVisualFactory
         };
         AutomationProperties.SetName(proceed, strings.Continue);
         AutomationProperties.SetName(cancel, strings.ConsentCancel);
-        return new TranslationOverlayVisual(new Canvas { IsHitTestVisible = false }, consent, proceed, cancel);
+        return new TranslationOverlayVisual(consent, proceed, cancel);
     }
 
     private static Button CreateCardButton(string text, TextInteractionPalette palette)

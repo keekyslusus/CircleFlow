@@ -94,16 +94,10 @@
     <system:String x:Key="plugin_circletosearch_translation_consent_message">The entire captured screen, including any personal information visible on it, will be sent to Google Translate over HTTPS. Google processes it under its terms and privacy policy. Continue only if you want to share this screenshot.</system:String>
     <system:String x:Key="plugin_circletosearch_continue">Continue</system:String>
     <system:String x:Key="plugin_circletosearch_consent_cancel">Cancel</system:String>
-    <system:String x:Key="plugin_circletosearch_translation_canceled">Translation canceled.</system:String>
-    <system:String x:Key="plugin_circletosearch_ocr_no_text">No text was recognized on this screen.</system:String>
-    <system:String x:Key="plugin_circletosearch_ocr_language_unavailable">The selected Windows OCR language is not installed.</system:String>
-    <system:String x:Key="plugin_circletosearch_ocr_failed">Screen text recognition is unavailable.</system:String>
-    <system:String x:Key="plugin_circletosearch_screen_already_target_language">The screen is already in the target language.</system:String>
     <system:String x:Key="plugin_circletosearch_translation_network_error">Translation failed because the network is unavailable.</system:String>
     <system:String x:Key="plugin_circletosearch_translation_timed_out">Translation timed out.</system:String>
     <system:String x:Key="plugin_circletosearch_translation_rate_limited">The translation service rate limit was reached.</system:String>
     <system:String x:Key="plugin_circletosearch_translation_failed">The screen could not be translated.</system:String>
-    <system:String x:Key="plugin_circletosearch_translation_partial">Some screen text could not be translated.</system:String>
     <system:String x:Key="plugin_circletosearch_settings_ocr_language_label">Screen text recognition language</system:String>
     <system:String x:Key="plugin_circletosearch_settings_translation_target_label">Translation target language</system:String>
     <system:String x:Key="plugin_circletosearch_system_default_language">System default</system:String>

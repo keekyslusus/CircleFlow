@@ -1,6 +1,5 @@
 using CircleToSearch.Search;
 using CircleToSearch.MusicRecognition;
-using CircleToSearch.TextRecognition;
 
 namespace CircleToSearch.Capture;
 
@@ -37,7 +36,6 @@ public sealed record DismissMusicResult : IOverlayCommand;
 public sealed record RetryMusicRecognition : IOverlayCommand;
 public sealed record OpenTraceResult : IOverlayCommand;
 public sealed record OpenMusicResult : IOverlayCommand;
-public sealed record CopyMusicResult : IOverlayCommand;
 
 public sealed record SearchSelectedText : IOverlayCommand
 {
@@ -64,18 +62,8 @@ public sealed record ScreenTranslationRequested : IOverlayCommand
         TargetLanguageTag = targetLanguageTag;
     }
 
-    public ScreenTranslationRequested(Guid requestId, OcrDocument document, string targetLanguageTag)
-    {
-        if (requestId == Guid.Empty) throw new ArgumentException("A translation request id is required.", nameof(requestId));
-        RequestId = requestId;
-        Document = document ?? throw new ArgumentNullException(nameof(document));
-        ArgumentException.ThrowIfNullOrWhiteSpace(targetLanguageTag);
-        TargetLanguageTag = targetLanguageTag;
-    }
-
     public Guid RequestId { get; }
-    public OcrDocument? Document { get; }
-    public System.Windows.Media.Imaging.BitmapSource? Image { get; }
+    public System.Windows.Media.Imaging.BitmapSource Image { get; }
     public string TargetLanguageTag { get; }
 }
 
