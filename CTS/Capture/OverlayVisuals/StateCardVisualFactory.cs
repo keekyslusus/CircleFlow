@@ -80,14 +80,16 @@ internal static class StateCardVisualFactory
             VerticalAlignment = VerticalAlignment.Center,
         };
         var row = new StackPanel { Orientation = Orientation.Horizontal };
-        row.Children.Add(new Border
+        var iconContainer = new Border
         {
             Width = 44,
             Height = 44,
             CornerRadius = new CornerRadius(22),
             Background = OverlayVisualResources.Frozen(palette.SecondaryContainer),
             Child = icon,
-        });
+        };
+        if (options.Title is not null) iconContainer.VerticalAlignment = VerticalAlignment.Top;
+        row.Children.Add(iconContainer);
         TextBlock? title = null;
         if (options.Title is { } titleText)
         {
@@ -111,6 +113,7 @@ internal static class StateCardVisualFactory
                 title.Width = textWidth - 18;
                 message.Width = textWidth - 18;
                 column.Margin = new Thickness();
+                column.HorizontalAlignment = HorizontalAlignment.Left;
                 row.Children.Add(new ScrollViewer
                 {
                     Content = column,

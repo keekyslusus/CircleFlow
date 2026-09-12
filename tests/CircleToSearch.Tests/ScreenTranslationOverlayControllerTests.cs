@@ -40,10 +40,14 @@ public sealed class ScreenTranslationOverlayControllerTests
             Assert.True(bounds.Bottom <= window.ActualHeight, $"Card bottom edge: {bounds.Bottom}");
             var scroll = Assert.IsType<ScrollViewer>(Row(card).Children[1]);
             Assert.True(scroll.ScrollableHeight > 0);
-            Assert.Equal(TestUiStrings.English.TranslationConsentTitle,
-                Assert.IsType<TextBlock>(Assert.IsType<StackPanel>(scroll.Content).Children[0]).Text);
+            var title = Assert.IsType<TextBlock>(Assert.IsType<StackPanel>(scroll.Content).Children[0]);
+            Assert.Equal(TestUiStrings.English.TranslationConsentTitle, title.Text);
             Assert.Equal(TestUiStrings.English.TranslationConsentMessage,
                 Assert.IsType<TextBlock>(Assert.IsType<StackPanel>(scroll.Content).Children[1]).Text);
+            var iconContainer = Assert.IsType<Border>(Row(card).Children[0]);
+            var iconTop = iconContainer.TransformToAncestor(card).Transform(new Point()).Y;
+            var titleTop = title.TransformToAncestor(card).Transform(new Point()).Y;
+            Assert.InRange(Math.Abs(iconTop - titleTop), 0, 4);
             var action = Primary(card);
             var actionBounds = action.TransformToAncestor(window).TransformBounds(new Rect(action.RenderSize));
             Assert.True(actionBounds.Top >= 0 && actionBounds.Bottom <= window.ActualHeight);

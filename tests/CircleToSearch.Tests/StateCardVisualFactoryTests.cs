@@ -127,8 +127,10 @@ public sealed class StateCardVisualFactoryTests
             var visual = StateCardVisualFactory.Create(Options() with { Title = "Privacy consent" }, palette);
             var row = Assert.IsType<StackPanel>(Assert.IsType<Grid>(visual.Card.Child).Children[1]);
             var column = Assert.IsType<StackPanel>(row.Children[1]);
+            var iconContainer = Assert.IsType<Border>(row.Children[0]);
             var title = Assert.IsType<TextBlock>(visual.Title);
 
+            Assert.Equal(VerticalAlignment.Top, iconContainer.VerticalAlignment);
             Assert.Same(title, column.Children[0]);
             Assert.Same(visual.Message, column.Children[1]);
             Assert.Equal("Privacy consent", title.Text);
@@ -137,6 +139,29 @@ public sealed class StateCardVisualFactoryTests
             Assert.Equal(palette.Text, BrushColor(title.Foreground));
             Assert.Equal(TextWrapping.Wrap, title.TextWrapping);
             Assert.Equal(TextWrapping.Wrap, visual.Message.TextWrapping);
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Titled_card_aligns_the_icon_with_the_title_even_for_a_long_message()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = StateCardVisualFactory.Create(Options() with
+            {
+                Title = "Translate this screenshot?",
+                Message = string.Join(' ', Enumerable.Repeat("Personal information will be shared.", 12)),
+            }, PluginPalette.For(lightTheme: false).StateCard);
+            visual.Card.Measure(new Size(340, double.PositiveInfinity));
+            visual.Card.Arrange(new Rect(0, 0, 340, visual.Card.DesiredSize.Height));
+
+            var row = Assert.IsType<StackPanel>(Assert.IsType<Grid>(visual.Card.Child).Children[1]);
+            var iconContainer = Assert.IsType<Border>(row.Children[0]);
+            var iconTop = iconContainer.TransformToAncestor(visual.Card).Transform(new Point()).Y;
+            var titleTop = Assert.IsType<TextBlock>(visual.Title)
+                .TransformToAncestor(visual.Card).Transform(new Point()).Y;
+            Assert.InRange(Math.Abs(iconTop - titleTop), 0, 4);
         });
         Assert.Null(failure);
     }
@@ -155,6 +180,7 @@ public sealed class StateCardVisualFactoryTests
                 }, PluginPalette.For(lightTheme: false).StateCard);
             var root = Assert.IsType<Grid>(visual.Card.Child);
             var row = Assert.IsType<StackPanel>(root.Children[1]);
+            Assert.Equal(VerticalAlignment.Top, Assert.IsType<Border>(row.Children[0]).VerticalAlignment);
             var scroll = Assert.IsType<ScrollViewer>(row.Children[1]);
 
             Assert.Equal(304, visual.Card.Width);
@@ -164,6 +190,38 @@ public sealed class StateCardVisualFactoryTests
             Assert.Same(visual.Title, Assert.IsType<StackPanel>(scroll.Content).Children[0]);
             Assert.Same(visual.Message, Assert.IsType<StackPanel>(scroll.Content).Children[1]);
             Assert.Same(visual.PrimaryActionButton, root.Children[2]);
+        });
+        Assert.Null(failure);
+    }
+
+    [Theory]
+    [InlineData(120)]
+    [InlineData(320)]
+    public void Constrained_title_and_message_share_the_compact_card_text_edge(double maxHeight)
+    {
+        var failure = RunOnSta(() =>
+        {
+            var palette = PluginPalette.For(lightTheme: false).StateCard;
+            var message = string.Join(' ', Enumerable.Repeat("Personal information will be shared.", 12));
+            var compact = StateCardVisualFactory.Create(Options() with { Message = message }, palette);
+            var consent = StateCardVisualFactory.Create(Options(action: new StateCardAction("Continue", () => { })) with
+            {
+                Message = message,
+                Title = "Translate this screenshot?",
+                CardMaxHeight = maxHeight,
+            }, palette);
+            foreach (var card in new[] { compact.Card, consent.Card })
+            {
+                card.Measure(new Size(340, double.PositiveInfinity));
+                card.Arrange(new Rect(0, 0, 340, card.DesiredSize.Height));
+            }
+
+            var compactX = compact.Message.TransformToAncestor(compact.Card).Transform(new Point()).X;
+            var messageX = consent.Message.TransformToAncestor(consent.Card).Transform(new Point()).X;
+            var titleX = Assert.IsType<TextBlock>(consent.Title)
+                .TransformToAncestor(consent.Card).Transform(new Point()).X;
+            Assert.Equal(compactX, messageX);
+            Assert.Equal(compactX, titleX);
         });
         Assert.Null(failure);
     }
