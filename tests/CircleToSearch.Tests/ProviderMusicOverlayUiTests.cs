@@ -605,7 +605,8 @@ public sealed class ProviderMusicOverlayUiTests
     [InlineData(MusicRecognitionStatus.RateLimited)]
     [InlineData(MusicRecognitionStatus.ServiceError)]
     [InlineData(MusicRecognitionStatus.DeviceError)]
-    public void Every_music_state_close_action_dismisses_only_the_result(
+    [InlineData(MusicRecognitionStatus.Matched)]
+    public void State_card_statuses_show_expected_content_and_close(
         MusicRecognitionStatus status)
     {
         var failure = RunOnSta(() =>
@@ -626,6 +627,30 @@ public sealed class ProviderMusicOverlayUiTests
                 lightTheme: false,
                 commands.Add,
                 (_, _) => { });
+            var expectedMessage = status switch
+            {
+                MusicRecognitionStatus.NoMatch => TestUiStrings.English.MusicNoMatch,
+                MusicRecognitionStatus.NoAudio => TestUiStrings.English.MusicNoAudio,
+                MusicRecognitionStatus.RateLimited => TestUiStrings.English.MusicRateLimited,
+                MusicRecognitionStatus.DeviceError => TestUiStrings.English.MusicDeviceError,
+                _ => TestUiStrings.English.MusicNetworkError,
+            };
+            var expectedAction = status == MusicRecognitionStatus.RateLimited
+                ? null
+                : status == MusicRecognitionStatus.NoMatch
+                    ? TestUiStrings.English.TryAgain
+                    : TestUiStrings.English.Retry;
+            Assert.Contains(
+                Descendants(visual.Music.ResultHost).OfType<TextBlock>(),
+                text => text.Text == expectedMessage);
+            var actionNames = Descendants(visual.Music.ResultHost).OfType<Button>()
+                .Select(AutomationProperties.GetName)
+                .Where(name => name != TestUiStrings.English.Close)
+                .ToArray();
+            if (expectedAction is null)
+                Assert.Empty(actionNames);
+            else
+                Assert.Equal([expectedAction], actionNames);
             var close = Descendants(visual.Music.ResultHost).OfType<Button>()
                 .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.Close);
 

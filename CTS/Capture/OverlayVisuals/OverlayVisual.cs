@@ -67,6 +67,13 @@ internal sealed record ToastOverlayVisual(
     Border Card,
     TextBlock Message);
 
+internal sealed record ResultStateCardVisual(
+    Border Card,
+    Path Icon,
+    TextBlock Message,
+    Button CloseButton,
+    Button? PrimaryActionButton);
+
 public sealed record ProviderMenuVisual(
     Button Button,
     ContentControl Content,

@@ -191,7 +191,13 @@ internal sealed class TraceOverlayVisual : IDisposable
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 6, 0) };
         if (match is not null)
         {
-            var copy = MusicOverlayVisualPresenter.IconButton(MusicOverlayVisualPresenter.CopyIconGeometry, _strings.TraceCopy, palette, 12);
+            var copy = OverlayVisualResources.IconButton(
+                MusicOverlayVisualPresenter.CopyIconGeometry,
+                _strings.TraceCopy,
+                palette.MutedText,
+                palette.SecondaryContainer,
+                palette.OnSecondaryContainer,
+                12);
             var copyIcon = copy.Content;
             copy.Click += (_, e) =>
             {
@@ -212,7 +218,13 @@ internal sealed class TraceOverlayVisual : IDisposable
             };
             actions.Children.Add(copy);
         }
-        var close = MusicOverlayVisualPresenter.IconButton(MusicOverlayVisualPresenter.CloseIconGeometry, _strings.Close, palette, 12);
+        var close = OverlayVisualResources.IconButton(
+            OverlayVisualResources.CloseIconGeometry,
+            _strings.Close,
+            palette.MutedText,
+            palette.SecondaryContainer,
+            palette.OnSecondaryContainer,
+            12);
         close.Click += (_, e) =>
         {
             e.Handled = true;

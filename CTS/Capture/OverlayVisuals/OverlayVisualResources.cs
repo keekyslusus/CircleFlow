@@ -1,9 +1,11 @@
 namespace CircleToSearch.Capture;
 
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
@@ -20,6 +22,8 @@ internal static class OverlayVisualResources
 
     internal static readonly FontFamily Font = new("Segoe UI Variable Text");
     internal static readonly TimeSpan EntranceDuration = TimeSpan.FromMilliseconds(200);
+    internal static readonly Geometry CloseIconGeometry = FrozenGeometry(
+        "M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12Z");
 
     internal static SolidColorBrush Frozen(Color color)
     {
@@ -54,6 +58,33 @@ internal static class OverlayVisualResources
         HorizontalAlignment = HorizontalAlignment.Center,
         IsHitTestVisible = false,
     };
+
+    internal static Button IconButton(
+        Geometry geometry,
+        string name,
+        Color foreground,
+        Color hoverBackground,
+        Color hoverForeground,
+        double iconSize = 15)
+    {
+        var button = new Button
+        {
+            Content = Icon(geometry, iconSize, foreground),
+            Width = 30,
+            Height = 30,
+            Margin = new Thickness(2, 0, 0, 0),
+            Padding = new Thickness(7.5),
+            Foreground = Frozen(foreground),
+            Background = Frozen(PluginPalette.Transparent),
+            BorderBrush = Frozen(PluginPalette.Transparent),
+            BorderThickness = new Thickness(0),
+            Cursor = Cursors.Hand,
+            ToolTip = name,
+        };
+        ApplyButtonTemplate(button, 15, hoverBackground, hoverForeground);
+        AutomationProperties.SetName(button, name);
+        return button;
+    }
 
     internal static DropShadowEffect DockShadow(double depth, double opacity) => new()
     {
