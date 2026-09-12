@@ -93,52 +93,13 @@ internal static class TextTranslationVisualFactory
         return new TranslationActionVisual(button, icon, loading);
     }
 
-    internal static TranslationOverlayVisual CreateTranslationOverlay(bool lightTheme, UiStrings strings)
+    internal static TranslationOverlayVisual CreateTranslationOverlay() => new(new Grid
     {
-        var palette = PluginPalette.For(lightTheme).TextInteraction;
-        var title = new TextBlock
-        {
-            Text = strings.TranslationConsentTitle,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 17,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = OverlayVisualResources.Frozen(palette.CardText),
-            TextWrapping = TextWrapping.Wrap,
-        };
-        var message = new TextBlock
-        {
-            Text = strings.TranslationConsentMessage,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 13,
-            Foreground = OverlayVisualResources.Frozen(palette.CardText),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 8, 0, 14),
-        };
-        var proceed = CreateCardButton(strings.Continue, palette);
-        var cancel = CreateCardButton(strings.ConsentCancel, palette);
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        buttons.Children.Add(cancel);
-        buttons.Children.Add(proceed);
-        var content = new StackPanel { Width = 360 };
-        content.Children.Add(title);
-        content.Children.Add(message);
-        content.Children.Add(buttons);
-        var consent = new Border
-        {
-            Child = content,
-            Background = OverlayVisualResources.Frozen(palette.CardSurface),
-            BorderBrush = OverlayVisualResources.Frozen(palette.CardBorder),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(16),
-            Padding = new Thickness(20),
-            Visibility = Visibility.Collapsed,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        AutomationProperties.SetName(proceed, strings.Continue);
-        AutomationProperties.SetName(cancel, strings.ConsentCancel);
-        return new TranslationOverlayVisual(consent, proceed, cancel);
-    }
+        Visibility = Visibility.Collapsed,
+        Opacity = 0,
+        IsHitTestVisible = false,
+        HorizontalAlignment = HorizontalAlignment.Center,
+    });
 
     private static Button CreateCardButton(string text, TextInteractionPalette palette)
     {

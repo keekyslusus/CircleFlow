@@ -62,6 +62,9 @@ public sealed class UiStrings
     public string DebugToastNeutral => Get("plugin_circletosearch_debug_toast_neutral");
     public string DebugToastError => Get("plugin_circletosearch_debug_toast_error");
     public string DebugToastSuccess => Get("plugin_circletosearch_debug_toast_success");
+    public string DebugTranslationSection => Get("plugin_circletosearch_debug_translation_section");
+    public string DebugResetTranslationConsent => Get("plugin_circletosearch_debug_reset_translation_consent");
+    public string DebugTranslationConsentReset => Get("plugin_circletosearch_debug_translation_consent_reset");
     public string DebugMusicTrackTitle => Get("plugin_circletosearch_debug_music_track_title");
     public string DebugMusicTrackArtist => Get("plugin_circletosearch_debug_music_track_artist");
     public string DebugMusicTrackAlbum => Get("plugin_circletosearch_debug_music_track_album");
@@ -95,6 +98,7 @@ public sealed class UiStrings
     public string Translating => Get("plugin_circletosearch_translating");
     public string ShowOriginal => Get("plugin_circletosearch_show_original");
     public string TranslationConsentTitle => Get("plugin_circletosearch_translation_consent_title");
+    public string TranslationResultTitle => Get("plugin_circletosearch_translation_result_title");
     public string TranslatedTextPrompt => Get("plugin_circletosearch_translated_text_prompt");
     public string TranslationConsentMessage => Get("plugin_circletosearch_translation_consent_message");
     public string Continue => Get("plugin_circletosearch_continue");

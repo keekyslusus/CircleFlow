@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using CircleToSearch.MusicRecognition;
+using CircleToSearch.Ui;
 
 namespace CircleToSearch.Capture.OverlayInteractions;
 
@@ -12,6 +13,8 @@ internal sealed class DebugOverlayController : IDisposable
     private readonly Func<OverlayInteractionMode> _getMode;
     private readonly Action<MusicDebugScenario> _musicScenarioSelected;
     private readonly Action<ToastNotification> _showToast;
+    private readonly Action? _resetTranslationConsent;
+    private readonly UiStrings _strings;
     private readonly List<Button> _musicScenarioButtons = [];
     private readonly List<Button> _toastButtons = [];
     private bool _disposed;
@@ -22,7 +25,9 @@ internal sealed class DebugOverlayController : IDisposable
         bool debugEnabled,
         Func<OverlayInteractionMode> getMode,
         Action<MusicDebugScenario> musicScenarioSelected,
-        Action<ToastNotification> showToast)
+        Action<ToastNotification> showToast,
+        Action? resetTranslationConsent,
+        UiStrings strings)
     {
         _visual = visual;
         _lightTheme = lightTheme;
@@ -30,6 +35,9 @@ internal sealed class DebugOverlayController : IDisposable
         _getMode = getMode;
         _musicScenarioSelected = musicScenarioSelected;
         _showToast = showToast;
+        _resetTranslationConsent = resetTranslationConsent;
+        _strings = strings;
+        _visual.ResetTranslationConsentButton.IsEnabled = resetTranslationConsent is not null;
 
         foreach (var button in _visual.MusicScenarioButtons.Children.OfType<Button>())
         {
@@ -41,6 +49,7 @@ internal sealed class DebugOverlayController : IDisposable
             button.Click += OnToastClick;
             _toastButtons.Add(button);
         }
+        _visual.ResetTranslationConsentButton.Click += OnResetTranslationConsentClick;
     }
 
     internal bool IsOpen { get; private set; }
@@ -60,6 +69,7 @@ internal sealed class DebugOverlayController : IDisposable
         _musicScenarioButtons.Clear();
         foreach (var button in _toastButtons) button.Click -= OnToastClick;
         _toastButtons.Clear();
+        _visual.ResetTranslationConsentButton.Click -= OnResetTranslationConsentClick;
     }
 
     private void OnMusicScenarioClick(object sender, RoutedEventArgs e)
@@ -68,6 +78,7 @@ internal sealed class DebugOverlayController : IDisposable
             sender is not Button { Tag: MusicDebugScenario scenario }) return;
         DebugOverlayVisualPresenter.SetMusicScenario(_visual, scenario, _lightTheme);
         _musicScenarioSelected(scenario);
+        SetOpen(false);
     }
 
     private void OnToastClick(object sender, RoutedEventArgs e)
@@ -75,5 +86,19 @@ internal sealed class DebugOverlayController : IDisposable
         if (_disposed || _getMode() == OverlayInteractionMode.Closing ||
             sender is not Button { Tag: ToastTone tone, Content: string message }) return;
         _showToast(new ToastNotification(message, tone));
+    }
+
+    private void OnResetTranslationConsentClick(object sender, RoutedEventArgs e)
+    {
+        if (_disposed || !_debugEnabled || !IsOpen || _getMode() == OverlayInteractionMode.Closing ||
+            _resetTranslationConsent is null) return;
+        try { _resetTranslationConsent(); }
+        catch (Exception exception)
+        {
+            _showToast(new ToastNotification(_strings.SavingFailed(exception.Message), ToastTone.Error));
+            return;
+        }
+        SetOpen(false);
+        _showToast(new ToastNotification(_strings.DebugTranslationConsentReset, ToastTone.Success));
     }
 }

@@ -218,15 +218,12 @@ public sealed class OverlayWindow : Window
         return IsWithin(originalSource as DependencyObject, _visual.Bottom.Root) ||
                IsWithin(originalSource as DependencyObject, _visual.Debug.Panel) ||
                IsWithin(originalSource as DependencyObject, _visual.TextSelection.ActionCard) ||
-               IsWithin(originalSource as DependencyObject, _visual.TranslationOverlay.ConsentCard) ||
                IsWithin(hit, _visual.Bottom.Root) ||
                IsWithin(hit, _visual.Debug.Panel) ||
                IsWithin(hit, _visual.TextSelection.ActionCard) ||
-               IsWithin(hit, _visual.TranslationOverlay.ConsentCard) ||
                _visual.Bottom.Root.IsMouseOver ||
                _visual.Debug.Panel.IsMouseOver ||
-               _visual.TextSelection.ActionCard.IsMouseOver ||
-               _visual.TranslationOverlay.ConsentCard.IsMouseOver;
+               _visual.TextSelection.ActionCard.IsMouseOver;
     }
 
     internal void ShowListening()
@@ -500,11 +497,13 @@ public sealed class OverlayWindow : Window
             case OverlayInteractionMode.Selecting:
                 _trace?.DismissResult();
                 _music.DismissResult();
+                _translation.DismissStateCard();
                 _selection.RestoreAfterMusic();
                 SetConflictingControlsEnabled(true);
                 Cursor = Cursors.Cross;
                 break;
             case OverlayInteractionMode.TranslationConsent:
+            case OverlayInteractionMode.TranslationResult:
             case OverlayInteractionMode.Translating:
             case OverlayInteractionMode.TranslationShown:
                 _pointer.Cancel();
@@ -512,6 +511,7 @@ public sealed class OverlayWindow : Window
                 _provider.SetOpen(false);
                 _debug.SetOpen(false);
                 SetConflictingControlsEnabled(false);
+                _visual.TranslationAction.Button.IsEnabled = target is OverlayInteractionMode.Translating or OverlayInteractionMode.TranslationShown;
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Closing:

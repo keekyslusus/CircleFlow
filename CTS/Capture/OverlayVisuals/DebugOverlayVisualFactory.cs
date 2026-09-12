@@ -57,6 +57,11 @@ internal static class DebugOverlayVisualFactory
         toastTitle.Margin = new Thickness(0, 10, 0, 4);
         content.Children.Add(toastTitle);
         content.Children.Add(toastButtons);
+        var translationTitle = CreateDebugSectionTitle(palette, strings.DebugTranslationSection);
+        translationTitle.Margin = new Thickness(0, 10, 0, 4);
+        content.Children.Add(translationTitle);
+        var resetTranslationConsent = CreateDebugButton(palette, strings.DebugResetTranslationConsent, null);
+        content.Children.Add(resetTranslationConsent);
 
         var panel = new Border
         {
@@ -81,7 +86,7 @@ internal static class DebugOverlayVisualFactory
             },
         };
         Panel.SetZIndex(panel, 3);
-        var visual = new DebugOverlayVisual(panel, scenarioButtons, toastButtons);
+        var visual = new DebugOverlayVisual(panel, scenarioButtons, toastButtons, resetTranslationConsent);
         DebugOverlayVisualPresenter.SetMusicScenario(visual, MusicDebugScenario.Live, lightTheme);
         return visual;
     }
@@ -89,7 +94,7 @@ internal static class DebugOverlayVisualFactory
     private static Button CreateDebugButton(
         MusicOverlayPalette palette,
         string label,
-        object tag)
+        object? tag)
     {
         var button = new Button
         {

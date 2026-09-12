@@ -9,7 +9,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
-public sealed class ResultStateCardVisualFactoryTests
+public sealed class StateCardVisualFactoryTests
 {
     [Theory]
     [InlineData(false)]
@@ -18,16 +18,16 @@ public sealed class ResultStateCardVisualFactoryTests
     {
         var failure = RunOnSta(() =>
         {
-            var palette = PluginPalette.For(lightTheme).ResultStateCard;
+            var palette = PluginPalette.For(lightTheme).StateCard;
             var geometry = OverlayVisualResources.FrozenGeometry("M0 0 10 0 10 10Z");
-            var visual = ResultStateCardVisualFactory.Create(
-                new ResultStateCardOptions(
+            var visual = StateCardVisualFactory.Create(
+                new StateCardOptions(
                     geometry,
                     "Result message",
                     "Result state",
                     "Close result",
                     () => { },
-                    new ResultStateCardAction("Try again", () => { })),
+                    new StateCardAction("Try again", () => { })),
                 palette);
 
             Assert.Equal(340, visual.Card.Width);
@@ -52,6 +52,7 @@ public sealed class ResultStateCardVisualFactoryTests
             Assert.Equal("Result message", visual.Message.Text);
             Assert.Equal(palette.Text, BrushColor(visual.Message.Foreground));
             Assert.Equal(230, visual.Message.Width);
+            Assert.Null(visual.Title);
 
             var root = Assert.IsType<Grid>(visual.Card.Child);
             Assert.Equal(2, root.RowDefinitions.Count);
@@ -74,11 +75,11 @@ public sealed class ResultStateCardVisualFactoryTests
         {
             var closeCalls = 0;
             var actionCalls = 0;
-            var visual = ResultStateCardVisualFactory.Create(
+            var visual = StateCardVisualFactory.Create(
                 Options(
                     close: () => closeCalls++,
-                    action: new ResultStateCardAction("Retry now", () => actionCalls++)),
-                PluginPalette.For(lightTheme: false).ResultStateCard);
+                    action: new StateCardAction("Retry now", () => actionCalls++)),
+                PluginPalette.For(lightTheme: false).StateCard);
 
             Assert.Equal("Close card", visual.CloseButton.ToolTip);
             Assert.Equal("Close card", AutomationProperties.GetName(visual.CloseButton));
@@ -102,12 +103,13 @@ public sealed class ResultStateCardVisualFactoryTests
     {
         var failure = RunOnSta(() =>
         {
-            var visual = ResultStateCardVisualFactory.Create(
+            var visual = StateCardVisualFactory.Create(
                 Options(action: null),
-                PluginPalette.For(lightTheme: true).ResultStateCard);
+                PluginPalette.For(lightTheme: true).StateCard);
             var root = Assert.IsType<Grid>(visual.Card.Child);
 
             Assert.Null(visual.PrimaryActionButton);
+            Assert.Null(visual.Title);
             Assert.Single(root.RowDefinitions);
             Assert.Equal(2, root.Children.Count);
             Assert.Single(root.Children.OfType<Button>());
@@ -117,32 +119,85 @@ public sealed class ResultStateCardVisualFactoryTests
     }
 
     [Fact]
+    public void Optional_title_uses_the_card_palette_and_wraps_above_the_message()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var palette = PluginPalette.For(lightTheme: true).StateCard;
+            var visual = StateCardVisualFactory.Create(Options() with { Title = "Privacy consent" }, palette);
+            var row = Assert.IsType<StackPanel>(Assert.IsType<Grid>(visual.Card.Child).Children[1]);
+            var column = Assert.IsType<StackPanel>(row.Children[1]);
+            var title = Assert.IsType<TextBlock>(visual.Title);
+
+            Assert.Same(title, column.Children[0]);
+            Assert.Same(visual.Message, column.Children[1]);
+            Assert.Equal("Privacy consent", title.Text);
+            Assert.Equal(FontWeights.SemiBold, title.FontWeight);
+            Assert.Equal(OverlayVisualResources.Font, title.FontFamily);
+            Assert.Equal(palette.Text, BrushColor(title.Foreground));
+            Assert.Equal(TextWrapping.Wrap, title.TextWrapping);
+            Assert.Equal(TextWrapping.Wrap, visual.Message.TextWrapping);
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Constrained_titled_card_scrolls_its_text_without_resizing_the_action_row()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = StateCardVisualFactory.Create(
+                Options(action: new StateCardAction("Continue", () => { })) with
+                {
+                    Title = "Consent",
+                    CardWidth = 304,
+                    CardMaxHeight = 120,
+                }, PluginPalette.For(lightTheme: false).StateCard);
+            var root = Assert.IsType<Grid>(visual.Card.Child);
+            var row = Assert.IsType<StackPanel>(root.Children[1]);
+            var scroll = Assert.IsType<ScrollViewer>(row.Children[1]);
+
+            Assert.Equal(304, visual.Card.Width);
+            Assert.Equal(120, visual.Card.MaxHeight);
+            Assert.Equal(194, scroll.Width);
+            Assert.Equal(50, scroll.MaxHeight);
+            Assert.Same(visual.Title, Assert.IsType<StackPanel>(scroll.Content).Children[0]);
+            Assert.Same(visual.Message, Assert.IsType<StackPanel>(scroll.Content).Children[1]);
+            Assert.Same(visual.PrimaryActionButton, root.Children[2]);
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Invalid_required_options_are_rejected()
     {
         var failure = RunOnSta(() =>
         {
-            var palette = PluginPalette.For(lightTheme: false).ResultStateCard;
+            var palette = PluginPalette.For(lightTheme: false).StateCard;
 
-            Assert.Throws<ArgumentNullException>(() => ResultStateCardVisualFactory.Create(null!, palette));
-            Assert.Throws<ArgumentNullException>(() => ResultStateCardVisualFactory.Create(Options() with { Icon = null! }, palette));
-            Assert.Throws<ArgumentException>(() => ResultStateCardVisualFactory.Create(Options() with { Message = " " }, palette));
-            Assert.Throws<ArgumentException>(() => ResultStateCardVisualFactory.Create(Options() with { AccessibleName = "" }, palette));
-            Assert.Throws<ArgumentException>(() => ResultStateCardVisualFactory.Create(Options() with { CloseLabel = "\t" }, palette));
-            Assert.Throws<ArgumentNullException>(() => ResultStateCardVisualFactory.Create(Options() with { Close = null! }, palette));
-            Assert.Throws<ArgumentException>(() => ResultStateCardVisualFactory.Create(
-                Options(action: new ResultStateCardAction(" ", () => { })),
+            Assert.Throws<ArgumentNullException>(() => StateCardVisualFactory.Create(null!, palette));
+            Assert.Throws<ArgumentNullException>(() => StateCardVisualFactory.Create(Options() with { Icon = null! }, palette));
+            Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(Options() with { Message = " " }, palette));
+            Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(Options() with { AccessibleName = "" }, palette));
+            Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(Options() with { CloseLabel = "\t" }, palette));
+            Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(Options() with { Title = " " }, palette));
+            Assert.Throws<ArgumentOutOfRangeException>(() => StateCardVisualFactory.Create(Options() with { CardWidth = 100 }, palette));
+            Assert.Throws<ArgumentOutOfRangeException>(() => StateCardVisualFactory.Create(Options() with { CardMaxHeight = 100 }, palette));
+            Assert.Throws<ArgumentNullException>(() => StateCardVisualFactory.Create(Options() with { Close = null! }, palette));
+            Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(
+                Options(action: new StateCardAction(" ", () => { })),
                 palette));
-            Assert.Throws<ArgumentNullException>(() => ResultStateCardVisualFactory.Create(
-                Options(action: new ResultStateCardAction("Retry", null!)),
+            Assert.Throws<ArgumentNullException>(() => StateCardVisualFactory.Create(
+                Options(action: new StateCardAction("Retry", null!)),
                 palette));
         });
 
         Assert.Null(failure);
     }
 
-    private static ResultStateCardOptions Options(
+    private static StateCardOptions Options(
         Action? close = null,
-        ResultStateCardAction? action = null) => new(
+        StateCardAction? action = null) => new(
         OverlayVisualResources.CloseIconGeometry,
         "Message",
         "Accessible card",

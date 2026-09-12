@@ -93,6 +93,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
     private readonly Func<string> _targetLanguageTag;
     private readonly Func<bool> _translationConsentAccepted;
     private readonly Action _acceptTranslationConsent;
+    private readonly Action? _resetTranslationConsent;
     private readonly PluginLog? _log;
     private readonly TranslationMemoryProfiler? _memoryProfiler;
 
@@ -111,6 +112,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         Func<string>? targetLanguageTag = null,
         Func<bool>? translationConsentAccepted = null,
         Action? acceptTranslationConsent = null,
+        Action? resetTranslationConsent = null,
         PluginLog? log = null,
         TranslationMemoryProfiler? memoryProfiler = null)
     {
@@ -125,6 +127,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         _targetLanguageTag = targetLanguageTag ?? (() => "en");
         _translationConsentAccepted = translationConsentAccepted ?? (() => true);
         _acceptTranslationConsent = acceptTranslationConsent ?? (() => { });
+        _resetTranslationConsent = resetTranslationConsent;
         _log = log;
         _memoryProfiler = memoryProfiler;
     }
@@ -196,6 +199,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
             translation = new ScreenTranslationOverlayController(
                 context.Visual.TranslationAction,
                 context.Visual.TranslationOverlay,
+                context.Visual.Bottom,
                 context.Visual.Effects,
                 context.CoordinateRoot,
                 context.Strings,
@@ -228,7 +232,9 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.DebugEnabled,
                 context.GetMode,
                 context.DebugScenarioSelected,
-                toast.Show);
+                toast.Show,
+                _resetTranslationConsent,
+                context.Strings);
             music = new MusicOverlayController(
                 context.Visual.Music,
                 context.Visual.Bottom.LayoutTransitions,

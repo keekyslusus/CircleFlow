@@ -12,6 +12,8 @@ public sealed class UiStringsTests
 
         Assert.Equal("CircleFlow", strings.PluginTitle);
         Assert.Equal("Select an area", strings.SelectionPrompt);
+        Assert.Equal("Translation result", strings.TranslationResultTitle);
+        Assert.Equal("Reset privacy consent", strings.DebugResetTranslationConsent);
         Assert.Equal("Copied: sample", strings.CopiedText("sample"));
         Assert.Equal("Could not copy to clipboard.", strings.CopyFailed);
         Assert.Equal("Google Lens", strings.GoogleLensProviderName);

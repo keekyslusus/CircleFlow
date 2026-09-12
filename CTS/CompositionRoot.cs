@@ -162,11 +162,10 @@ public static class CompositionRoot
                     : CultureInfo.CurrentUICulture.Name;
             },
             translationConsentAccepted: () => settings.ImageTranslationPrivacyConsentAccepted,
-            acceptTranslationConsent: () =>
-            {
-                settings.ImageTranslationPrivacyConsentAccepted = true;
-                api.SaveSettingJsonStorage<PluginSettings>();
-            },
+            acceptTranslationConsent: () => SaveTranslationConsent(
+                settings, true, () => api.SaveSettingJsonStorage<PluginSettings>()),
+            resetTranslationConsent: () => SaveTranslationConsent(
+                settings, false, () => api.SaveSettingJsonStorage<PluginSettings>()),
             log: log,
             memoryProfiler: translationMemory);
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory,
@@ -244,6 +243,20 @@ public static class CompositionRoot
             log.Warn(nameof(CompositionRoot), $"hotkey '{settings.HotkeyGesture}' is not active");
         rollback.Commit();
         return runtime;
+    }
+
+    internal static void SaveTranslationConsent(PluginSettings settings, bool accepted, Action save)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(save);
+        var previous = settings.ImageTranslationPrivacyConsentAccepted;
+        settings.ImageTranslationPrivacyConsentAccepted = accepted;
+        try { save(); }
+        catch
+        {
+            settings.ImageTranslationPrivacyConsentAccepted = previous;
+            throw;
+        }
     }
 
     private static bool OpenResultsUrl(string url)

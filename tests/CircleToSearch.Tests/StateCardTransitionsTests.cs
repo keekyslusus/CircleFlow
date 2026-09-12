@@ -8,7 +8,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
-public sealed class MusicResultTransitionsTests
+public sealed class StateCardTransitionsTests
 {
     [Theory]
     [InlineData(48)]
@@ -32,8 +32,8 @@ public sealed class MusicResultTransitionsTests
             var cardSlot = LayoutInformation.GetLayoutSlot(card);
             var trayOrigin = tray.TranslatePoint(new Point(), stack);
 
-            MusicResultTransitions.BeginEntrance(card, animationsEnabled: true);
-            var transforms = MusicResultTransitions.GetTransforms(card);
+            StateCardTransitions.BeginEntrance(card, animationsEnabled: true);
+            var transforms = StateCardTransitions.GetTransforms(card);
             var group = Assert.IsType<TransformGroup>(card.RenderTransform);
             PumpFor(TimeSpan.FromMilliseconds(15));
 
@@ -73,15 +73,15 @@ public sealed class MusicResultTransitionsTests
             var window = new Window { Width = 320, Height = 200, Content = card };
             window.Show();
             window.UpdateLayout();
-            MusicResultTransitions.BeginEntrance(card, animationsEnabled: true);
+            StateCardTransitions.BeginEntrance(card, animationsEnabled: true);
             PumpFor(TimeSpan.FromMilliseconds(70));
-            var transforms = MusicResultTransitions.GetTransforms(card);
+            var transforms = StateCardTransitions.GetTransforms(card);
             var opacityBeforeExit = card.Opacity;
             var scaleBeforeExit = transforms.Scale.ScaleX;
             var offsetBeforeExit = transforms.Translate.Y;
             var completions = 0;
 
-            using var exit = MusicResultTransitions.BeginExit(
+            using var exit = StateCardTransitions.BeginExit(
                 card,
                 animationsEnabled: true,
                 () => completions++);
@@ -114,8 +114,8 @@ public sealed class MusicResultTransitionsTests
         {
             var card = new Border();
 
-            MusicResultTransitions.BeginEntrance(card, animationsEnabled: false);
-            var transforms = MusicResultTransitions.GetTransforms(card);
+            StateCardTransitions.BeginEntrance(card, animationsEnabled: false);
+            var transforms = StateCardTransitions.GetTransforms(card);
 
             Assert.Equal(1, card.Opacity);
             Assert.Equal(1, transforms.Scale.ScaleX);
@@ -126,7 +126,7 @@ public sealed class MusicResultTransitionsTests
             Assert.False(transforms.Translate.HasAnimatedProperties);
             var completed = false;
 
-            using var exit = MusicResultTransitions.BeginExit(
+            using var exit = StateCardTransitions.BeginExit(
                 card,
                 animationsEnabled: false,
                 () => completed = true);

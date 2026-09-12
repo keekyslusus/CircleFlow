@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-internal static class MusicResultTransitions
+internal static class StateCardTransitions
 {
     internal static readonly TimeSpan EntranceDuration = TimeSpan.FromMilliseconds(200);
     internal static readonly TimeSpan ExitDuration = TimeSpan.FromMilliseconds(160);

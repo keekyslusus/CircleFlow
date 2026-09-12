@@ -14,6 +14,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 {
     private readonly TranslationActionVisual _action;
     private readonly TranslationOverlayVisual _overlay;
+    private readonly BottomOverlayVisual _bottom;
     private readonly OverlayEffectsVisual _effects;
     private readonly FrameworkElement _coordinateRoot;
     private readonly UiStrings _strings;
@@ -38,10 +39,18 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private bool _closing;
     private readonly TranslationMemoryProfiler? _profiler;
     private readonly string _profileScope = Guid.NewGuid().ToString("N");
+    private StateCardVisual? _stateCard;
+    private TranslationCardKind _cardKind;
+    private StateCardTransitions.ExitHandle? _pendingCardExit;
+    private long _cardGeneration;
+    private readonly List<IDisposable> _cardRipples = [];
+
+    private enum TranslationCardKind { None, Consent, Failure }
 
     internal ScreenTranslationOverlayController(
         TranslationActionVisual action,
         TranslationOverlayVisual overlay,
+        BottomOverlayVisual bottom,
         OverlayEffectsVisual effects,
         FrameworkElement coordinateRoot,
         UiStrings strings,
@@ -59,6 +68,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     {
         _action = action;
         _overlay = overlay;
+        _bottom = bottom;
         _effects = effects;
         _coordinateRoot = coordinateRoot;
         _strings = strings;
@@ -77,11 +87,9 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _profiler = profiler;
         _profiler?.Mark("overlay_open", _profileScope);
         _action.Button.Click += OnTranslate;
-        _overlay.ContinueButton.Click += OnContinue;
-        _overlay.CancelButton.Click += OnCancelConsent;
     }
 
-    internal bool IsConsentOpen => _overlay.ConsentCard.Visibility == Visibility.Visible;
+    internal bool IsConsentOpen => _cardKind == TranslationCardKind.Consent;
     internal bool IsTranslating => _requestId != Guid.Empty;
     internal bool IsTranslationShown => _imageShown;
     internal bool IsImageShown => _imageShown;
@@ -111,27 +119,45 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 
     internal void ShowFailure(Guid requestId, TranslationFailure failure)
     {
-        if (_disposed || requestId != _requestId) return;
+        if (_disposed || _closing || _requestId == Guid.Empty || requestId != _requestId) return;
         _requestId = Guid.Empty;
         SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);
         StopLoading();
-        _transition(OverlayInteractionMode.Selecting);
+        if (failure == TranslationFailure.Canceled)
+        {
+            _transition(OverlayInteractionMode.Selecting);
+            return;
+        }
         var message = failure switch
         {
             TranslationFailure.Network => _strings.TranslationNetworkError,
             TranslationFailure.Timeout => _strings.TranslationTimedOut,
             TranslationFailure.RateLimited => _strings.TranslationRateLimited,
-            TranslationFailure.Canceled => null,
             _ => _strings.TranslationFailed,
         };
-        if (message is not null) _showToast(new ToastNotification(message, ToastTone.Error));
+        var retry = failure == TranslationFailure.RateLimited
+            ? null
+            : new StateCardAction(_strings.Retry, RetryTranslation);
+        ShowCard(new StateCardOptions(
+            TextTranslationVisualFactory.TranslateIconGeometry,
+            message,
+            _strings.TranslationResultTitle,
+            _strings.Close,
+            DismissFailure,
+            retry), TranslationCardKind.Failure);
+        _transition(OverlayInteractionMode.TranslationResult);
     }
 
     internal bool HandleEscape()
     {
-        if (IsConsentOpen)
+        if (_cardKind == TranslationCardKind.Consent)
         {
-            CloseConsent();
+            DismissConsent();
+            return true;
+        }
+        if (_cardKind == TranslationCardKind.Failure)
+        {
+            DismissFailure();
             return true;
         }
         if (IsTranslating)
@@ -158,6 +184,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _requestId = Guid.Empty;
         AbortPendingCompletionRipple();
         StopLoading();
+        ClearCardImmediately();
     }
 
     public void Dispose()
@@ -165,8 +192,6 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         if (_disposed) return;
         _disposed = true;
         _action.Button.Click -= OnTranslate;
-        _overlay.ContinueButton.Click -= OnContinue;
-        _overlay.CancelButton.Click -= OnCancelConsent;
         CancelForClosing();
         _action.LoadingIndicator.Dispose();
     }
@@ -176,43 +201,62 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         if (_disposed || _closing) return;
         if (IsTranslationShown) DismissTranslation();
         else if (IsTranslating) CancelTranslation();
-        else if (!_consentAccepted())
-        {
-            _overlay.ConsentCard.Visibility = Visibility.Visible;
-            _transition(OverlayInteractionMode.TranslationConsent);
-            _overlay.ContinueButton.Focus();
-        }
+        else if (_cardKind != TranslationCardKind.None) return;
+        else if (!_consentAccepted()) ShowConsent();
         else BeginTranslation();
         e.Handled = true;
     }
 
-    private void OnContinue(object sender, RoutedEventArgs e)
+    private void ShowConsent()
     {
+        _coordinateRoot.UpdateLayout();
+        var availableWidth = _coordinateRoot.ActualWidth;
+        var availableHeight = _coordinateRoot.ActualHeight;
+        var cardWidth = availableWidth > 0 ? Math.Clamp(availableWidth - 16, 160, 340) : 340;
+        var cardMaxHeight = availableHeight > 0
+            ? Math.Max(112, availableHeight - _bottom.Stack.Margin.Bottom -
+                _bottom.ActionSlot.ActualHeight - _bottom.ResultSlot.Margin.Bottom - 8)
+            : (double?)null;
+        ShowCard(new StateCardOptions(
+            TextTranslationVisualFactory.TranslateIconGeometry,
+            _strings.TranslationConsentMessage,
+            _strings.TranslationConsentTitle,
+            _strings.ConsentCancel,
+            DismissConsent,
+            new StateCardAction(_strings.Continue, ContinueConsent),
+            _strings.TranslationConsentTitle,
+            cardWidth,
+            cardMaxHeight), TranslationCardKind.Consent);
+        _transition(OverlayInteractionMode.TranslationConsent);
+        _stateCard?.PrimaryActionButton?.Focus();
+    }
+
+    private void ContinueConsent()
+    {
+        if (_disposed || _closing || _cardKind != TranslationCardKind.Consent) return;
         try { _acceptConsent(); }
         catch (Exception exception)
         {
+            DismissConsent();
             _showToast(new ToastNotification(_strings.SavingFailed(exception.Message), ToastTone.Error));
-            CloseConsent();
-            e.Handled = true;
             return;
         }
-        _overlay.ConsentCard.Visibility = Visibility.Collapsed;
+        BeginCardExit();
         BeginTranslation();
-        e.Handled = true;
     }
 
-    private void OnCancelConsent(object sender, RoutedEventArgs e)
+    private void DismissConsent()
     {
-        CloseConsent();
-        e.Handled = true;
+        if (_cardKind != TranslationCardKind.Consent) return;
+        BeginCardExit();
+        _transition(OverlayInteractionMode.Selecting);
     }
 
-    private void BeginTranslation()
+    private void BeginTranslation(string? retryTarget = null)
     {
         _profiler?.Mark("translate_clicked", _profileScope);
-        _overlay.ConsentCard.Visibility = Visibility.Collapsed;
-        var target = _targetLanguageTag();
-        if (_cachedImage is not null && string.Equals(_cachedTarget, target, StringComparison.OrdinalIgnoreCase))
+        var target = retryTarget ?? _targetLanguageTag();
+        if (retryTarget is null && _cachedImage is not null && string.Equals(_cachedTarget, target, StringComparison.OrdinalIgnoreCase))
         {
             SetActionVisual(_strings.ShowOriginal, TextTranslationVisualFactory.ShowOriginalIconGeometry);
             DisplayImage(_cachedImage, _cachedTarget);
@@ -253,10 +297,95 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _profiler?.Mark("original_shown", _profileScope);
     }
 
-    private void CloseConsent()
+    private void RetryTranslation()
     {
-        _overlay.ConsentCard.Visibility = Visibility.Collapsed;
+        if (_disposed || _closing || _cardKind != TranslationCardKind.Failure) return;
+        var target = _requestedTarget;
+        BeginCardExit();
+        BeginTranslation(target);
+    }
+
+    private void DismissFailure()
+    {
+        if (_cardKind != TranslationCardKind.Failure) return;
+        BeginCardExit();
         _transition(OverlayInteractionMode.Selecting);
+    }
+
+    internal void DismissStateCard()
+    {
+        if (_cardKind != TranslationCardKind.None) BeginCardExit();
+    }
+
+    private void ShowCard(StateCardOptions options, TranslationCardKind kind)
+    {
+        ClearCardImmediately();
+        var card = StateCardVisualFactory.Create(options, PluginPalette.For(_lightTheme).StateCard);
+        _cardKind = kind;
+        _stateCard = card;
+        var host = _overlay.StateHost;
+        _bottom.LayoutTransitions.Apply(() =>
+        {
+            host.Children.Add(card.Card);
+            host.Visibility = Visibility.Visible;
+            host.Opacity = 1;
+            host.IsHitTestVisible = true;
+            host.Margin = _bottom.ResultSlot.Margin;
+            _bottom.Stack.Children.Insert(_bottom.Stack.Children.IndexOf(_bottom.ResultSlot), host);
+        }, _animationsEnabled());
+        StateCardTransitions.BeginEntrance(card.Card, _animationsEnabled());
+        _cardRipples.AddRange(OverlayVisualResources.AttachControlRipples(host));
+    }
+
+    private void BeginCardExit()
+    {
+        if (_cardKind == TranslationCardKind.None) return;
+        _cardKind = TranslationCardKind.None;
+        DisposeCardRipples();
+        _overlay.StateHost.IsHitTestVisible = false;
+        var card = _stateCard;
+        if (card is null) return;
+        var generation = ++_cardGeneration;
+        var animationsEnabled = _animationsEnabled();
+        var exit = StateCardTransitions.BeginExit(card.Card, animationsEnabled, () =>
+        {
+            if (_disposed || generation != _cardGeneration || !ReferenceEquals(_stateCard, card)) return;
+            _pendingCardExit?.Dispose();
+            _pendingCardExit = null;
+            _bottom.LayoutTransitions.Apply(RemoveCardHost, animationsEnabled);
+        });
+        if (!exit.IsCompleted && generation == _cardGeneration && ReferenceEquals(_stateCard, card))
+            _pendingCardExit = exit;
+        else exit.Dispose();
+    }
+
+    private void ClearCardImmediately()
+    {
+        ++_cardGeneration;
+        _pendingCardExit?.Dispose();
+        _pendingCardExit = null;
+        DisposeCardRipples();
+        if (_bottom.Stack.Children.Contains(_overlay.StateHost))
+            _bottom.LayoutTransitions.Apply(RemoveCardHost, _animationsEnabled());
+        else RemoveCardHost();
+    }
+
+    private void RemoveCardHost()
+    {
+        var host = _overlay.StateHost;
+        host.Children.Clear();
+        host.Visibility = Visibility.Collapsed;
+        host.Opacity = 0;
+        host.IsHitTestVisible = false;
+        _bottom.Stack.Children.Remove(host);
+        _stateCard = null;
+        _cardKind = TranslationCardKind.None;
+    }
+
+    private void DisposeCardRipples()
+    {
+        foreach (var ripple in _cardRipples) ripple.Dispose();
+        _cardRipples.Clear();
     }
 
     private void StopLoading()

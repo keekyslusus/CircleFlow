@@ -2,9 +2,11 @@ using System.Windows.Threading;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.Search;
+using CircleToSearch.Translation;
 using Xunit;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiPoint = System.Drawing.Point;
@@ -14,6 +16,102 @@ namespace CircleToSearch.Tests;
 
 public sealed class OverlayWindowTests
 {
+    [Fact]
+    public void Debug_reset_makes_the_next_translate_show_privacy_consent()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var bounds = new GdiRectangle(0, 0, 640, 400);
+            var settings = new CircleToSearch.Settings.PluginSettings
+            {
+                ImageTranslationPrivacyConsentAccepted = true,
+            };
+            var saves = 0;
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(frame, bounds, bounds, 1, new OverlayOptions(8, 12),
+                TestUiStrings.English,
+                new OverlayControllerFactory(Clipboard.SetText, () => false,
+                    translationConsentAccepted: () => settings.ImageTranslationPrivacyConsentAccepted,
+                    resetTranslationConsent: () => CircleToSearch.CompositionRoot.SaveTranslationConsent(
+                        settings, false, () => saves++)),
+                overscan: false, publishCommand: commands.Add);
+            overlay.Show();
+            overlay.SetDebugPanelOpen(true);
+            var visual = overlay.VisualState;
+            visual.Debug.ResetTranslationConsentButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
+            Assert.Equal(1, saves);
+            Assert.Equal(Visibility.Collapsed, visual.Debug.Panel.Visibility);
+            visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(OverlayInteractionMode.TranslationConsent, overlay.Mode);
+            Assert.Empty(commands);
+            Assert.Single(visual.TranslationOverlay.StateHost.Children);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Translation_cards_block_conflicting_controls_and_restore_them_on_dismiss()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var bounds = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var consent = false;
+            var overlay = new OverlayWindow(frame, bounds, bounds, 1, new OverlayOptions(8, 12),
+                TestUiStrings.English,
+                new OverlayControllerFactory(Clipboard.SetText, () => false,
+                    translationConsentAccepted: () => consent,
+                    acceptTranslationConsent: () => consent = true),
+                overscan: false, publishCommand: commands.Add);
+            overlay.Show();
+            var visual = overlay.VisualState;
+            var translate = visual.TranslationAction.Button;
+            translate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(OverlayInteractionMode.TranslationConsent, overlay.Mode);
+            Assert.False(translate.IsEnabled);
+            Assert.False(visual.Music.Button.IsEnabled);
+            Assert.Equal(System.Windows.Input.Cursors.Arrow, overlay.Cursor);
+            var consentCard = Assert.IsType<Border>(Assert.Single(visual.TranslationOverlay.StateHost.Children));
+            overlay.UpdateLayout();
+            Assert.True(consentCard.ActualHeight > 0);
+            Assert.True(consentCard.TransformToAncestor(overlay).Transform(new Point()).Y >= 0);
+            var continueButton = Assert.IsType<Button>(Assert.IsType<Grid>(consentCard.Child).Children[2]);
+            Assert.True(continueButton.IsFocused);
+            continueButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.True(consent);
+            Assert.Equal(OverlayInteractionMode.Translating, overlay.Mode);
+            Assert.True(translate.IsEnabled);
+            var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
+            overlay.ShowTranslationFailure(request.RequestId, TranslationFailure.Network);
+            Assert.Equal(OverlayInteractionMode.TranslationResult, overlay.Mode);
+            Assert.False(translate.IsEnabled);
+            Assert.False(visual.Music.Button.IsEnabled);
+            RaiseEscape(overlay);
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            Assert.True(translate.IsEnabled);
+            Assert.True(visual.Music.Button.IsEnabled);
+            Assert.False(visual.Bottom.Stack.Children.Contains(visual.TranslationOverlay.StateHost));
+            Assert.Single(commands);
+            translate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var second = Assert.IsType<ScreenTranslationRequested>(commands[1]);
+            overlay.ShowTranslation(new ScreenTranslationResult(second.RequestId, (BitmapSource)visual.Selection.Screenshot.Source));
+            Assert.Equal(OverlayInteractionMode.TranslationShown, overlay.Mode);
+            Assert.True(translate.IsEnabled);
+            Assert.Equal(TestUiStrings.English.ShowOriginal, translate.ToolTip);
+            translate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+        Assert.Null(failure);
+    }
+
     private static readonly SearchProviderDescriptor[] Providers =
     [
         new(SearchProviderIds.GoogleLens, "Google Lens"),

@@ -34,11 +34,11 @@ internal sealed class TraceOverlayVisual : IDisposable
         HorizontalAlignment = HorizontalAlignment.Center,
     };
     private StackPanel? _loadingPanel;
-    private MusicResultTransitions.ExitHandle? _loadingExit;
+    private StateCardTransitions.ExitHandle? _loadingExit;
     internal Task Presentation { get; private set; } = Task.CompletedTask;
     private Func<Uri, ITraceVideoPreview>? _createVideo;
     private Border? _card;
-    private MusicResultTransitions.ExitHandle? _exit;
+    private StateCardTransitions.ExitHandle? _exit;
     private DispatcherOperation? _ripple;
     private readonly List<IDisposable> _controlRipples = [];
     private bool _disposed;
@@ -86,7 +86,7 @@ internal sealed class TraceOverlayVisual : IDisposable
         panel.Children.Add(label);
         _host.Children.Add(panel);
         _loading.Start(OverlayVisualResources.AnimationsEnabled());
-        MusicResultTransitions.BeginEntrance(panel, OverlayVisualResources.AnimationsEnabled());
+        StateCardTransitions.BeginEntrance(panel, OverlayVisualResources.AnimationsEnabled());
     }
 
     internal void ShowResult(VisualSearchPreparationOutcome outcome)
@@ -225,13 +225,13 @@ internal sealed class TraceOverlayVisual : IDisposable
                 UploadFailure.UnexpectedStatus => _strings.SearchUnexpectedStatus(outcome.StatusCode),
                 _ => _strings.SearchNetworkError,
             };
-            var options = new ResultStateCardOptions(
+            var options = new StateCardOptions(
                 ProviderVisualCatalog.TraceMoeMark,
                 message,
                 _strings.TraceMoeProviderName,
                 _strings.Close,
                 CloseResult);
-            _card = ResultStateCardVisualFactory.Create(options, theme.ResultStateCard).Card;
+            _card = StateCardVisualFactory.Create(options, theme.StateCard).Card;
         }
         _resultHost.Children.Add(_card);
         _bottom.LayoutTransitions.Apply(() =>
@@ -266,7 +266,7 @@ internal sealed class TraceOverlayVisual : IDisposable
             {
                 _loading.BeginStop();
                 var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                _loadingExit = MusicResultTransitions.BeginExit(_loadingPanel,
+                _loadingExit = StateCardTransitions.BeginExit(_loadingPanel,
                     OverlayVisualResources.AnimationsEnabled(), () => finished.TrySetResult());
                 await finished.Task.WaitAsync(_lifetime.Token);
                 if (_disposed || _closing) return;
@@ -278,7 +278,7 @@ internal sealed class TraceOverlayVisual : IDisposable
             _resultHost.Opacity = 1;
             _resultHost.IsHitTestVisible = true;
             _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_resultHost));
-            MusicResultTransitions.BeginEntrance(_card!, OverlayVisualResources.AnimationsEnabled());
+            StateCardTransitions.BeginEntrance(_card!, OverlayVisualResources.AnimationsEnabled());
             if (!matched || !OverlayVisualResources.AnimationsEnabled()) return;
             _ripple = _root.Dispatcher.BeginInvoke(() =>
             {
@@ -352,7 +352,7 @@ internal sealed class TraceOverlayVisual : IDisposable
         _ripple?.Abort();
         _resultHost.IsHitTestVisible = false;
         _media?.Dispose();
-        _exit = MusicResultTransitions.BeginExit(_card, OverlayVisualResources.AnimationsEnabled(),
+        _exit = StateCardTransitions.BeginExit(_card, OverlayVisualResources.AnimationsEnabled(),
             () => _bottom.LayoutTransitions.Apply(Dispose, OverlayVisualResources.AnimationsEnabled()));
     }
 

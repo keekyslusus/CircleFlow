@@ -10,7 +10,7 @@ internal static class PluginPalette
     private static Color DarkDockHoverOverlay { get; } = Color.FromArgb(0x12, 0x00, 0x00, 0x00);
     private static Color LightDockSurface { get; } = Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD);
     private static Color LightDockHoverOverlay { get; } = Color.FromArgb(0x0D, 0x20, 0x21, 0x24);
-    private static ResultStateCardPalette DarkResultStateCard { get; } = new(
+    private static StateCardPalette DarkStateCard { get; } = new(
         Surface: Color.FromRgb(0x21, 0x1F, 0x26),
         Text: Color.FromRgb(0xE6, 0xE1, 0xE5),
         MutedText: Color.FromRgb(0xCA, 0xC4, 0xD0),
@@ -20,7 +20,7 @@ internal static class PluginPalette
         SecondaryContainer: Color.FromRgb(0x4A, 0x44, 0x58),
         OnSecondaryContainer: Color.FromRgb(0xE8, 0xDE, 0xF8),
         ShadowOpacity: 0.35);
-    private static ResultStateCardPalette LightResultStateCard { get; } = new(
+    private static StateCardPalette LightStateCard { get; } = new(
         Surface: Color.FromRgb(0xF3, 0xF3, 0xFA),
         Text: Color.FromRgb(0x1C, 0x1B, 0x1F),
         MutedText: Color.FromRgb(0x49, 0x45, 0x4F),
@@ -103,17 +103,17 @@ internal static class PluginPalette
             Trace: Color.FromRgb(0xE5, 0xE8, 0xFF),
             Neutral: Color.FromRgb(0xBD, 0xC1, 0xC6)),
         MusicOverlay: new MusicOverlayPalette(
-            Surface: DarkResultStateCard.Surface,
-            Text: DarkResultStateCard.Text,
-            MutedText: DarkResultStateCard.MutedText,
-            Border: DarkResultStateCard.Border,
+            Surface: DarkStateCard.Surface,
+            Text: DarkStateCard.Text,
+            MutedText: DarkStateCard.MutedText,
+            Border: DarkStateCard.Border,
             Primary: DarkMusicPrimary,
-            PrimaryContainer: DarkResultStateCard.PrimaryContainer,
-            OnPrimaryContainer: DarkResultStateCard.OnPrimaryContainer,
-            SecondaryContainer: DarkResultStateCard.SecondaryContainer,
-            OnSecondaryContainer: DarkResultStateCard.OnSecondaryContainer,
-            ShadowOpacity: DarkResultStateCard.ShadowOpacity),
-        ResultStateCard: DarkResultStateCard,
+            PrimaryContainer: DarkStateCard.PrimaryContainer,
+            OnPrimaryContainer: DarkStateCard.OnPrimaryContainer,
+            SecondaryContainer: DarkStateCard.SecondaryContainer,
+            OnSecondaryContainer: DarkStateCard.OnSecondaryContainer,
+            ShadowOpacity: DarkStateCard.ShadowOpacity),
+        StateCard: DarkStateCard,
         Toast: new ToastPalette(
             Surface: Color.FromRgb(0x21, 0x1F, 0x26),
             Text: Color.FromRgb(0xE6, 0xE1, 0xE5),
@@ -176,17 +176,17 @@ internal static class PluginPalette
             Trace: Color.FromRgb(0x45, 0x4A, 0x75),
             Neutral: Color.FromRgb(0x5F, 0x63, 0x68)),
         MusicOverlay: new MusicOverlayPalette(
-            Surface: LightResultStateCard.Surface,
-            Text: LightResultStateCard.Text,
-            MutedText: LightResultStateCard.MutedText,
-            Border: LightResultStateCard.Border,
+            Surface: LightStateCard.Surface,
+            Text: LightStateCard.Text,
+            MutedText: LightStateCard.MutedText,
+            Border: LightStateCard.Border,
             Primary: LightMusicPrimary,
-            PrimaryContainer: LightResultStateCard.PrimaryContainer,
-            OnPrimaryContainer: LightResultStateCard.OnPrimaryContainer,
-            SecondaryContainer: LightResultStateCard.SecondaryContainer,
-            OnSecondaryContainer: LightResultStateCard.OnSecondaryContainer,
-            ShadowOpacity: LightResultStateCard.ShadowOpacity),
-        ResultStateCard: LightResultStateCard,
+            PrimaryContainer: LightStateCard.PrimaryContainer,
+            OnPrimaryContainer: LightStateCard.OnPrimaryContainer,
+            SecondaryContainer: LightStateCard.SecondaryContainer,
+            OnSecondaryContainer: LightStateCard.OnSecondaryContainer,
+            ShadowOpacity: LightStateCard.ShadowOpacity),
+        StateCard: LightStateCard,
         Toast: new ToastPalette(
             Surface: Color.FromRgb(0xF3, 0xF3, 0xFA),
             Text: Color.FromRgb(0x1C, 0x1B, 0x1F),
@@ -232,7 +232,7 @@ internal sealed record PluginThemePalette(
     MusicButtonPalette MusicButton,
     ProviderPalette Provider,
     MusicOverlayPalette MusicOverlay,
-    ResultStateCardPalette ResultStateCard,
+    StateCardPalette StateCard,
     ToastPalette Toast,
     TextInteractionPalette TextInteraction,
     TranslationPalette Translation);
@@ -307,7 +307,7 @@ internal sealed record MusicOverlayPalette(
     Color OnSecondaryContainer,
     double ShadowOpacity);
 
-internal sealed record ResultStateCardPalette(
+internal sealed record StateCardPalette(
     Color Surface,
     Color Text,
     Color MutedText,

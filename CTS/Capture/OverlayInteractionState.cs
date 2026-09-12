@@ -9,6 +9,7 @@ internal enum OverlayInteractionMode
     MusicResult,
     TranslationConsent,
     Translating,
+    TranslationResult,
     TranslationShown,
     Closing,
 }
@@ -47,6 +48,9 @@ internal sealed class OverlayInteractionState
             (OverlayInteractionMode.Selecting, OverlayInteractionMode.TranslationShown) => true,
             (OverlayInteractionMode.TranslationConsent, OverlayInteractionMode.TranslationShown) => true,
             (OverlayInteractionMode.Translating, OverlayInteractionMode.TranslationShown) => true,
+            (OverlayInteractionMode.Translating, OverlayInteractionMode.TranslationResult) => true,
+            (OverlayInteractionMode.TranslationResult, OverlayInteractionMode.Selecting) => true,
+            (OverlayInteractionMode.TranslationResult, OverlayInteractionMode.Translating) => true,
             (OverlayInteractionMode.Translating, OverlayInteractionMode.Selecting) => true,
             (OverlayInteractionMode.TranslationShown, OverlayInteractionMode.Selecting) => true,
             (_, OverlayInteractionMode.Closing) when source != OverlayInteractionMode.Closing => true,

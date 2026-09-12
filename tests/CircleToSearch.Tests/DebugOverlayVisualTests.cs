@@ -32,6 +32,18 @@ public sealed class DebugOverlayVisualTests
                 visual.ToastButtons.Children.OfType<Button>()
                     .Select(button => Assert.IsType<ToastTone>(button.Tag))
                     .ToArray());
+            Assert.Equal(TestUiStrings.English.DebugResetTranslationConsent,
+                visual.ResetTranslationConsentButton.Content);
+            Assert.Equal(TestUiStrings.English.DebugResetTranslationConsent,
+                System.Windows.Automation.AutomationProperties.GetName(visual.ResetTranslationConsentButton));
+            visual.Panel.Visibility = Visibility.Visible;
+            var root = new Grid();
+            root.Children.Add(visual.Panel);
+            root.Measure(new Size(640, 400));
+            root.Arrange(new Rect(0, 0, 640, 400));
+            var resetBounds = visual.ResetTranslationConsentButton.TransformToAncestor(root)
+                .TransformBounds(new Rect(visual.ResetTranslationConsentButton.RenderSize));
+            Assert.True(resetBounds.Top >= 0 && resetBounds.Bottom <= 400);
 
             var live = visual.MusicScenarioButtons.Children.OfType<Button>()
                 .Single(button => Equals(button.Tag, MusicDebugScenario.Live));

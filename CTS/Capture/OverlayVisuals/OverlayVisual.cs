@@ -49,10 +49,7 @@ public sealed record TranslationActionVisual(
     Path Icon,
     LoadingIndicatorVisual LoadingIndicator);
 
-public sealed record TranslationOverlayVisual(
-    Border ConsentCard,
-    Button ContinueButton,
-    Button CancelButton);
+public sealed record TranslationOverlayVisual(Grid StateHost);
 
 public sealed record BottomOverlayVisual(
     Grid Root,
@@ -67,12 +64,13 @@ internal sealed record ToastOverlayVisual(
     Border Card,
     TextBlock Message);
 
-internal sealed record ResultStateCardVisual(
+internal sealed record StateCardVisual(
     Border Card,
     Path Icon,
     TextBlock Message,
     Button CloseButton,
-    Button? PrimaryActionButton);
+    Button? PrimaryActionButton,
+    TextBlock? Title);
 
 public sealed record ProviderMenuVisual(
     Button Button,
@@ -91,7 +89,8 @@ public sealed record MusicOverlayVisual(
 public sealed record DebugOverlayVisual(
     Border Panel,
     Panel MusicScenarioButtons,
-    Panel ToastButtons);
+    Panel ToastButtons,
+    Button ResetTranslationConsentButton);
 
 public sealed record OverlayEffectsVisual(
     Canvas SceneRippleLayer,

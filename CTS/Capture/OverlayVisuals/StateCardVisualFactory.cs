@@ -8,23 +8,26 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using CircleToSearch.Ui;
 
-internal sealed record ResultStateCardAction(
+internal sealed record StateCardAction(
     string Label,
     Action Execute);
 
-internal sealed record ResultStateCardOptions(
+internal sealed record StateCardOptions(
     Geometry Icon,
     string Message,
     string AccessibleName,
     string CloseLabel,
     Action Close,
-    ResultStateCardAction? PrimaryAction = null);
+    StateCardAction? PrimaryAction = null,
+    string? Title = null,
+    double? CardWidth = null,
+    double? CardMaxHeight = null);
 
-internal static class ResultStateCardVisualFactory
+internal static class StateCardVisualFactory
 {
-    internal static ResultStateCardVisual Create(
-        ResultStateCardOptions options,
-        ResultStateCardPalette palette)
+    internal static StateCardVisual Create(
+        StateCardOptions options,
+        StateCardPalette palette)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(palette);
@@ -33,12 +36,19 @@ internal static class ResultStateCardVisualFactory
         ArgumentException.ThrowIfNullOrWhiteSpace(options.AccessibleName);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.CloseLabel);
         ArgumentNullException.ThrowIfNull(options.Close);
+        if (options.Title is not null) ArgumentException.ThrowIfNullOrWhiteSpace(options.Title);
+        if (options.CardWidth is { } width && (!double.IsFinite(width) || width < 160))
+            throw new ArgumentOutOfRangeException(nameof(options.CardWidth));
+        if (options.CardMaxHeight is { } maxHeight && (!double.IsFinite(maxHeight) || maxHeight < 112))
+            throw new ArgumentOutOfRangeException(nameof(options.CardMaxHeight));
         if (options.PrimaryAction is { } action)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(action.Label);
             ArgumentNullException.ThrowIfNull(action.Execute);
         }
 
+        var cardWidth = options.CardWidth ?? 340;
+        var textWidth = cardWidth - 110;
         var root = new Grid();
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -65,7 +75,7 @@ internal static class ResultStateCardVisualFactory
             LineHeight = 19,
             TextWrapping = TextWrapping.Wrap,
             Foreground = OverlayVisualResources.Frozen(palette.Text),
-            Width = 230,
+            Width = textWidth,
             Margin = new Thickness(12, 2, 26, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -78,7 +88,43 @@ internal static class ResultStateCardVisualFactory
             Background = OverlayVisualResources.Frozen(palette.SecondaryContainer),
             Child = icon,
         });
-        row.Children.Add(message);
+        TextBlock? title = null;
+        if (options.Title is { } titleText)
+        {
+            title = new TextBlock
+            {
+                Text = titleText,
+                FontFamily = OverlayVisualResources.Font,
+                FontSize = 14,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = OverlayVisualResources.Frozen(palette.Text),
+                TextWrapping = TextWrapping.Wrap,
+                Width = textWidth,
+            };
+            message.Margin = new Thickness(0, 6, 0, 0);
+            message.VerticalAlignment = VerticalAlignment.Top;
+            var column = new StackPanel { Margin = new Thickness(12, 2, 26, 0) };
+            column.Children.Add(title);
+            column.Children.Add(message);
+            if (options.CardMaxHeight is { } cardMaxHeight)
+            {
+                title.Width = textWidth - 18;
+                message.Width = textWidth - 18;
+                column.Margin = new Thickness();
+                row.Children.Add(new ScrollViewer
+                {
+                    Content = column,
+                    Width = textWidth,
+                    MaxHeight = Math.Max(42, cardMaxHeight - 26 -
+                        (options.PrimaryAction is null ? 0 : 44)),
+                    Margin = new Thickness(12, 2, 26, 0),
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                });
+            }
+            else row.Children.Add(column);
+        }
+        else row.Children.Add(message);
         Grid.SetRow(row, 0);
         root.Children.Add(row);
 
@@ -96,8 +142,9 @@ internal static class ResultStateCardVisualFactory
 
         var card = new Border
         {
-            Width = 340,
+            Width = cardWidth,
             MaxWidth = 540,
+            MaxHeight = options.CardMaxHeight ?? double.PositiveInfinity,
             Child = root,
             Background = OverlayVisualResources.Frozen(palette.Surface),
             BorderBrush = OverlayVisualResources.Frozen(palette.Border),
@@ -107,10 +154,10 @@ internal static class ResultStateCardVisualFactory
             Effect = OverlayVisualResources.DockShadow(10, palette.ShadowOpacity),
         };
         AutomationProperties.SetName(card, options.AccessibleName);
-        return new ResultStateCardVisual(card, icon, message, close, primaryActionButton);
+        return new StateCardVisual(card, icon, message, close, primaryActionButton, title);
     }
 
-    private static Button TextPillButton(string label, ResultStateCardPalette palette)
+    private static Button TextPillButton(string label, StateCardPalette palette)
     {
         var button = new Button
         {

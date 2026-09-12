@@ -47,6 +47,9 @@
     <system:String x:Key="plugin_circletosearch_debug_toast_neutral">Neutral toast</system:String>
     <system:String x:Key="plugin_circletosearch_debug_toast_error">Error toast</system:String>
     <system:String x:Key="plugin_circletosearch_debug_toast_success">Success toast</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_translation_section">Screen translation</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_reset_translation_consent">Reset privacy consent</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_translation_consent_reset">Privacy consent reset. Click Translate to preview it.</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_track_title">Midnight Debug</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_track_artist">CircleFlow</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_track_album">Local Simulation</system:String>
@@ -91,7 +94,8 @@
     <system:String x:Key="plugin_circletosearch_translating">Translating…</system:String>
     <system:String x:Key="plugin_circletosearch_show_original">Show original</system:String>
     <system:String x:Key="plugin_circletosearch_translation_consent_title">Translate this screenshot?</system:String>
-    <system:String x:Key="plugin_circletosearch_translation_consent_message">The entire captured screen, including any personal information visible on it, will be sent to Google Translate over HTTPS. Google processes it under its terms and privacy policy. Continue only if you want to share this screenshot.</system:String>
+    <system:String x:Key="plugin_circletosearch_translation_result_title">Translation result</system:String>
+    <system:String x:Key="plugin_circletosearch_translation_consent_message">The entire captured screen, including any personal information visible on it, will be sent to Google Translate. Google processes it under its terms and privacy policy. Continue only if you want to share this screenshot.</system:String>
     <system:String x:Key="plugin_circletosearch_continue">Continue</system:String>
     <system:String x:Key="plugin_circletosearch_consent_cancel">Cancel</system:String>
     <system:String x:Key="plugin_circletosearch_translation_network_error">Translation failed because the network is unavailable.</system:String>

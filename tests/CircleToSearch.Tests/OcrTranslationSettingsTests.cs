@@ -25,6 +25,37 @@ public sealed class OcrTranslationSettingsTests
     }
 
     [Fact]
+    public void Consent_flag_is_committed_only_if_storage_succeeds()
+    {
+        var settings = new PluginSettings();
+        var saves = 0;
+
+        Assert.Throws<InvalidOperationException>(() =>
+            CircleToSearch.CompositionRoot.SaveTranslationConsent(settings, true, () =>
+            {
+                saves++;
+                Assert.True(settings.ImageTranslationPrivacyConsentAccepted);
+                throw new InvalidOperationException("storage failed");
+            }));
+        Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
+        CircleToSearch.CompositionRoot.SaveTranslationConsent(settings, true, () => saves++);
+        Assert.True(settings.ImageTranslationPrivacyConsentAccepted);
+        Assert.Equal(2, saves);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            CircleToSearch.CompositionRoot.SaveTranslationConsent(settings, false, () =>
+            {
+                saves++;
+                Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
+                throw new InvalidOperationException("storage failed");
+            }));
+        Assert.True(settings.ImageTranslationPrivacyConsentAccepted);
+        CircleToSearch.CompositionRoot.SaveTranslationConsent(settings, false, () => saves++);
+        Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
+        Assert.Equal(4, saves);
+    }
+
+    [Fact]
     public void Catalog_validates_case_insensitively_and_falls_back_for_missing_pack()
     {
         var catalog = new OcrLanguageCatalog([new OcrLanguageOption("en-US", "English")]);

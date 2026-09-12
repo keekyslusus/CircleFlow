@@ -25,6 +25,9 @@ public sealed class OverlayInteractionStateTests
     [InlineData((int)OverlayInteractionMode.Listening, (int)OverlayInteractionMode.MusicResult)]
     [InlineData((int)OverlayInteractionMode.MusicResult, (int)OverlayInteractionMode.Selecting)]
     [InlineData((int)OverlayInteractionMode.MusicResult, (int)OverlayInteractionMode.Listening)]
+    [InlineData((int)OverlayInteractionMode.Translating, (int)OverlayInteractionMode.TranslationResult)]
+    [InlineData((int)OverlayInteractionMode.TranslationResult, (int)OverlayInteractionMode.Selecting)]
+    [InlineData((int)OverlayInteractionMode.TranslationResult, (int)OverlayInteractionMode.Translating)]
     public void Allows_feature_transitions(int sourceValue, int targetValue)
     {
         var source = (OverlayInteractionMode)sourceValue;
@@ -39,6 +42,7 @@ public sealed class OverlayInteractionStateTests
     [InlineData((int)OverlayInteractionMode.Selecting)]
     [InlineData((int)OverlayInteractionMode.Listening)]
     [InlineData((int)OverlayInteractionMode.MusicResult)]
+    [InlineData((int)OverlayInteractionMode.TranslationResult)]
     public void Every_unfinished_mode_can_close(int sourceValue)
     {
         var source = (OverlayInteractionMode)sourceValue;
@@ -61,6 +65,7 @@ public sealed class OverlayInteractionStateTests
 
     [Theory]
     [InlineData((int)OverlayInteractionMode.Selecting, (int)OverlayInteractionMode.MusicResult)]
+    [InlineData((int)OverlayInteractionMode.Selecting, (int)OverlayInteractionMode.TranslationResult)]
     [InlineData((int)OverlayInteractionMode.Listening, (int)OverlayInteractionMode.Selecting)]
     [InlineData((int)OverlayInteractionMode.Closing, (int)OverlayInteractionMode.Selecting)]
     [InlineData((int)OverlayInteractionMode.Closing, (int)OverlayInteractionMode.Listening)]
@@ -104,6 +109,13 @@ public sealed class OverlayInteractionStateTests
                 break;
             case OverlayInteractionMode.Closing:
                 state.TransitionTo(OverlayInteractionMode.Closing);
+                break;
+            case OverlayInteractionMode.Translating:
+                state.TransitionTo(OverlayInteractionMode.Translating);
+                break;
+            case OverlayInteractionMode.TranslationResult:
+                state.TransitionTo(OverlayInteractionMode.Translating);
+                state.TransitionTo(OverlayInteractionMode.TranslationResult);
                 break;
         }
         return state;

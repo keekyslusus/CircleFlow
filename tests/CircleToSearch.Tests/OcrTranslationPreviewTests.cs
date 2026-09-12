@@ -38,7 +38,17 @@ public sealed class OcrTranslationPreviewTests
 
             visual.TextSelection.ActionCard.Visibility = Visibility.Collapsed;
             visual.TextSelection.HighlightLayer.Children.Clear();
-            visual.TranslationOverlay.ConsentCard.Visibility = Visibility.Visible;
+            var consent = StateCardVisualFactory.Create(new StateCardOptions(
+                TextTranslationVisualFactory.TranslateIconGeometry,
+                TestUiStrings.English.TranslationConsentMessage,
+                TestUiStrings.English.TranslationConsentTitle,
+                TestUiStrings.English.ConsentCancel,
+                () => { },
+                new StateCardAction(TestUiStrings.English.Continue, () => { }),
+                TestUiStrings.English.TranslationConsentTitle), PluginPalette.For(false).StateCard);
+            visual.TranslationOverlay.StateHost.Children.Add(consent.Card);
+            visual.TranslationOverlay.StateHost.Visibility = Visibility.Visible;
+            visual.Bottom.Stack.Children.Insert(0, visual.TranslationOverlay.StateHost);
             Capture(visual.Root, Path.Combine(directory, "ocr-translation-consent-preview.png"));
 
             visual.Music.Waveform.Dispose();

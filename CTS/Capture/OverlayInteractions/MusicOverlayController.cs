@@ -27,7 +27,7 @@ internal sealed class MusicOverlayController : IDisposable
     private readonly List<IDisposable> _resultRipples = [];
     private DispatcherOperation? _matchRippleOperation;
     private FrameworkElement? _currentResultCard;
-    private MusicResultTransitions.ExitHandle? _pendingResultExit;
+    private StateCardTransitions.ExitHandle? _pendingResultExit;
     private long _resultGeneration;
     private bool _disposed;
 
@@ -103,7 +103,7 @@ internal sealed class MusicOverlayController : IDisposable
             _currentResultCard = presented;
             return presented;
         }, animationsEnabled);
-        MusicResultTransitions.BeginEntrance(card, animationsEnabled);
+        StateCardTransitions.BeginEntrance(card, animationsEnabled);
         _resultRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.ResultHost));
         if (outcome.Status != MusicRecognitionStatus.Matched || !animationsEnabled) return;
 
@@ -221,7 +221,7 @@ internal sealed class MusicOverlayController : IDisposable
 
         var generation = ++_resultGeneration;
         var animationsEnabled = _animationsEnabled();
-        var exit = MusicResultTransitions.BeginExit(
+        var exit = StateCardTransitions.BeginExit(
             card,
             animationsEnabled,
             () => CompleteResultExit(card, generation, animationsEnabled));

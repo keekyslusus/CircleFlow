@@ -273,7 +273,7 @@ public sealed class OverlayControllerLifecycleTests
             Assert.InRange(toastOffset.Y, 63, 65);
             Assert.Same(trayLift, visual.Actions.Tray.RenderTransform);
             var matchedCard = Assert.Single(visual.Music.ResultHost.Children.OfType<FrameworkElement>());
-            var matchedTransforms = MusicResultTransitions.GetTransforms(matchedCard);
+            var matchedTransforms = StateCardTransitions.GetTransforms(matchedCard);
             Assert.Same(matchedTransforms.Translate,
                 Assert.IsType<TransformGroup>(matchedCard.RenderTransform).Children[1]);
             PumpFor(TimeSpan.FromMilliseconds(260));

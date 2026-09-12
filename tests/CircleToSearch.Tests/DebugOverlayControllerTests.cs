@@ -41,6 +41,7 @@ public sealed class DebugOverlayControllerTests
             disabled.SetOpen(true);
             Assert.False(disabled.IsOpen);
             Assert.Equal(Visibility.Collapsed, disabledVisual.Panel.Visibility);
+            Assert.False(disabledVisual.ResetTranslationConsentButton.IsEnabled);
 
             var mode = OverlayInteractionMode.Selecting;
             var closingVisual = CreateVisual();
@@ -70,9 +71,11 @@ public sealed class DebugOverlayControllerTests
 
             foreach (var button in visual.MusicScenarioButtons.Children.OfType<Button>())
             {
+                controller.SetOpen(true);
                 button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 var scenario = Assert.IsType<MusicDebugScenario>(button.Tag);
                 Assert.Equal(scenario, selected[^1]);
+                Assert.False(controller.IsOpen);
                 Assert.Equal(palette.PrimaryContainer, Assert.IsType<SolidColorBrush>(button.Background).Color);
                 Assert.Equal(palette.OnPrimaryContainer, Assert.IsType<SolidColorBrush>(button.Foreground).Color);
                 Assert.All(
@@ -114,6 +117,46 @@ public sealed class DebugOverlayControllerTests
     }
 
     [Fact]
+    public void Reset_translation_consent_saves_and_closes_debug_only_on_success()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var visual = CreateVisual();
+            var settings = new CircleToSearch.Settings.PluginSettings
+            {
+                ImageTranslationPrivacyConsentAccepted = true,
+            };
+            var saves = 0;
+            var notifications = new List<ToastNotification>();
+            var failSave = true;
+            using var controller = CreateController(visual, showToast: notifications.Add,
+                resetTranslationConsent: () =>
+                    CircleToSearch.CompositionRoot.SaveTranslationConsent(settings, false, () =>
+                    {
+                        saves++;
+                        if (failSave) throw new InvalidOperationException("disk");
+                    }));
+            controller.SetOpen(true);
+            visual.ResetTranslationConsentButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.True(settings.ImageTranslationPrivacyConsentAccepted);
+            Assert.True(controller.IsOpen);
+            Assert.Equal(TestUiStrings.English.SavingFailed("disk"), Assert.Single(notifications).Message);
+            Assert.Equal(ToastTone.Error, notifications[0].Tone);
+
+            failSave = false;
+            visual.ResetTranslationConsentButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
+            Assert.Equal(2, saves);
+            Assert.False(controller.IsOpen);
+            Assert.Equal(TestUiStrings.English.DebugTranslationConsentReset, notifications[1].Message);
+            Assert.Equal(ToastTone.Success, notifications[1].Tone);
+            visual.ResetTranslationConsentButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(2, saves);
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Closing_and_dispose_prevent_callbacks_and_dispose_is_idempotent()
     {
         var failure = RunOnSta(() =>
@@ -121,11 +164,13 @@ public sealed class DebugOverlayControllerTests
             var visual = CreateVisual();
             var scenarios = new List<MusicDebugScenario>();
             var notifications = new List<ToastNotification>();
+            var resets = 0;
             var mode = OverlayInteractionMode.Closing;
             var controller = CreateController(
                 visual,
                 scenarios.Add,
                 notifications.Add,
+                resetTranslationConsent: () => resets++,
                 getMode: () => mode);
             var scenarioButton = Assert.Single(
                 visual.MusicScenarioButtons.Children.OfType<Button>(),
@@ -136,16 +181,20 @@ public sealed class DebugOverlayControllerTests
 
             scenarioButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             toastButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            visual.ResetTranslationConsentButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.Empty(scenarios);
             Assert.Empty(notifications);
+            Assert.Equal(0, resets);
 
             mode = OverlayInteractionMode.Selecting;
             controller.Dispose();
             controller.Dispose();
             scenarioButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             toastButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            visual.ResetTranslationConsentButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.Empty(scenarios);
             Assert.Empty(notifications);
+            Assert.Equal(0, resets);
         });
 
         Assert.Null(failure);
@@ -158,6 +207,7 @@ public sealed class DebugOverlayControllerTests
         DebugOverlayVisual visual,
         Action<MusicDebugScenario>? musicScenarioSelected = null,
         Action<ToastNotification>? showToast = null,
+        Action? resetTranslationConsent = null,
         bool debugEnabled = true,
         Func<OverlayInteractionMode>? getMode = null) =>
         new(
@@ -166,7 +216,9 @@ public sealed class DebugOverlayControllerTests
             debugEnabled,
             getMode ?? (() => OverlayInteractionMode.Selecting),
             musicScenarioSelected ?? (_ => { }),
-            showToast ?? (_ => { }));
+            showToast ?? (_ => { }),
+            resetTranslationConsent,
+            TestUiStrings.English);
 
     private static Exception? RunOnSta(Action action)
     {

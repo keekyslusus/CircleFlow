@@ -167,7 +167,7 @@ public sealed class GoogleImageTranslationTests
             var target = "ru";
             var state = new OverlayInteractionState();
             using var controller = new ScreenTranslationOverlayController(visual.TranslationAction, visual.TranslationOverlay,
-                visual.Effects, visual.Root, TestUiStrings.English, () => true, () => { }, () => target, commands.Add, mode => state.TransitionTo(mode), _ => { }, () => false,
+                visual.Bottom, visual.Effects, visual.Root, TestUiStrings.English, () => true, () => { }, () => target, commands.Add, mode => state.TransitionTo(mode), _ => { }, () => false,
                 false, visual.Selection.Screenshot, (image, language) => changed.Add((image, language)));
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
@@ -195,7 +195,9 @@ public sealed class GoogleImageTranslationTests
             var german = Assert.IsType<ScreenTranslationRequested>(commands[1]);
             Assert.Equal("de", german.TargetLanguageTag);
             controller.ShowFailure(german.RequestId, TranslationFailure.Network);
-            visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var failureCard = Assert.IsType<Border>(Assert.Single(visual.TranslationOverlay.StateHost.Children));
+            var retryButton = Assert.IsType<Button>(Assert.IsType<Grid>(failureCard.Child).Children[2]);
+            retryButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var retry = Assert.IsType<ScreenTranslationRequested>(commands[2]);
             controller.ShowResult(new(retry.RequestId, Source()));
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -219,7 +221,7 @@ public sealed class GoogleImageTranslationTests
             var visual = OverlayVisualFactory.CreateRoot(source, new Size(80, 40), 0, false, TestUiStrings.English);
             var commands = new List<IOverlayCommand>();
             using var controller = new ScreenTranslationOverlayController(visual.TranslationAction, visual.TranslationOverlay,
-                visual.Effects, visual.Root, TestUiStrings.English, () => true, () => { }, () => "ru", commands.Add, _ => { }, _ => { }, () => false,
+                visual.Bottom, visual.Effects, visual.Root, TestUiStrings.English, () => true, () => { }, () => "ru", commands.Add, _ => { }, _ => { }, () => false,
                 false, visual.Selection.Screenshot);
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var request = Assert.IsType<ScreenTranslationRequested>(commands[0]);

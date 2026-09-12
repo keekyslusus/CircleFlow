@@ -268,7 +268,7 @@ internal static class MusicOverlayVisualPresenter
         else
         {
             var options = CreateStateCardOptions(outcome.Status, strings, publish);
-            card = ResultStateCardVisualFactory.Create(options, theme.ResultStateCard).Card;
+            card = StateCardVisualFactory.Create(options, theme.StateCard).Card;
         }
         visual.ResultHost.Children.Add(card);
         visual.ResultHost.Visibility = Visibility.Visible;
@@ -350,7 +350,7 @@ internal static class MusicOverlayVisualPresenter
         return row;
     }
 
-    private static ResultStateCardOptions CreateStateCardOptions(
+    private static StateCardOptions CreateStateCardOptions(
         MusicRecognitionStatus status,
         UiStrings strings,
         Action<IOverlayCommand> publish)
@@ -366,8 +366,8 @@ internal static class MusicOverlayVisualPresenter
         };
         var action = actionLabel is null
             ? null
-            : new ResultStateCardAction(actionLabel, () => publish(new RetryMusicRecognition()));
-        return new ResultStateCardOptions(
+            : new StateCardAction(actionLabel, () => publish(new RetryMusicRecognition()));
+        return new StateCardOptions(
             icon,
             message,
             strings.MusicResultTitle,

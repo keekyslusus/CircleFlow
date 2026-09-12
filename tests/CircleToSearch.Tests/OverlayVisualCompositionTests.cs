@@ -43,7 +43,6 @@ public sealed class OverlayVisualCompositionTests
                 visual.Effects.SceneRippleLayer,
                 visual.Music.ListeningLayer,
                 visual.TextSelection.ActionLayer,
-                visual.TranslationOverlay.ConsentCard,
                 visual.Bottom.Root,
                 visual.Debug.Panel,
             ];
