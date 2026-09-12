@@ -43,6 +43,6 @@ internal sealed class ClipboardCopyService
         var normalized = Regex.Replace(text.Trim(), @"\s+", " ");
         var elementIndexes = StringInfo.ParseCombiningCharacters(normalized);
         if (elementIndexes.Length <= PreviewTextElementLimit) return normalized;
-        return normalized[..elementIndexes[PreviewTextElementLimit]] + "...";
+        return normalized[..elementIndexes[PreviewTextElementLimit]].TrimEnd() + "...";
     }
 }

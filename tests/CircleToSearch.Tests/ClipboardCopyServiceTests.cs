@@ -41,12 +41,26 @@ public sealed class ClipboardCopyServiceTests
         string? copied = null;
         var notifications = new List<ToastNotification>();
         var service = new ClipboardCopyService(text => copied = text, notifications.Add, TestUiStrings.English);
-        var text = new string('a', 51);
+        var text = new string('a', 68);
 
         Assert.True(service.TryCopy(text));
 
         Assert.Equal(text, copied);
-        Assert.Equal("Copied: " + new string('a', 50) + "...", Assert.Single(notifications).Message);
+        Assert.Equal("Copied: " + new string('a', 67) + "...", Assert.Single(notifications).Message);
+    }
+
+    [Fact]
+    public void Truncated_preview_does_not_leave_space_before_ellipsis()
+    {
+        string? copied = null;
+        var notifications = new List<ToastNotification>();
+        var service = new ClipboardCopyService(text => copied = text, notifications.Add, TestUiStrings.English);
+        var text = new string('a', 66) + " more text";
+
+        Assert.True(service.TryCopy(text));
+
+        Assert.Equal(text, copied);
+        Assert.Equal("Copied: " + new string('a', 66) + "...", Assert.Single(notifications).Message);
     }
 
     [Fact]
@@ -70,7 +84,7 @@ public sealed class ClipboardCopyServiceTests
     {
         var notifications = new List<ToastNotification>();
         var service = new ClipboardCopyService(_ => { }, notifications.Add, TestUiStrings.English);
-        var prefix = new string('a', 49);
+        var prefix = new string('a', 66);
 
         Assert.True(service.TryCopy(prefix + boundaryElement + "z"));
 
