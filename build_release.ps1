@@ -5,6 +5,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$e = [char]27
+$lavenderish = "$e[38;2;208;188;255m"
+$reset = "$e[0m"
+
 Set-Location $PSScriptRoot
 
 function Wait-BeforeClosing {
@@ -13,7 +17,8 @@ function Wait-BeforeClosing {
     if ([Console]::IsInputRedirected) { return }
 
     Write-Host ''
-    Write-Host 'Done. Press any key to close this window...' -ForegroundColor Cyan
+    Write-Host "${lavenderish}Done. " -NoNewline
+    Write-Host 'Press any key to close this window...'
 
     try {
         $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
@@ -31,7 +36,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Build of CircleFlow failed.' }
 
     Write-Host ''
-    Write-Host "CircleFlow built to -> $output" -ForegroundColor Green
+    Write-Host 'CircleFlow built to: ' -NoNewline
+    Write-Host "${lavenderish}$output"
 }
 catch {
     $exitCode = 1
