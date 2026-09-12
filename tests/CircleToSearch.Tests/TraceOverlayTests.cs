@@ -118,7 +118,7 @@ public sealed class TraceOverlayTests
                 var copy = Descendants(visual.Root).OfType<Button>().Single(x => AutomationProperties.GetName(x) == TestUiStrings.English.TraceCopy);
                 var initialCopyContent = copy.Content;
                 copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                var payload = $"{match.Title} — {string.Format(CultureInfo.CurrentCulture, TestUiStrings.English.TraceEpisode, match.Episode)}, {TraceMoeMatch.Timestamp(match.From)}";
+                var payload = $"{match.Title} - {string.Format(CultureInfo.CurrentCulture, TestUiStrings.English.TraceEpisode, match.Episode)}, {TraceMoeMatch.Timestamp(match.From)}";
                 Assert.Equal(payload, copied);
                 var toast = Assert.Single(notifications);
                 Assert.Equal(TestUiStrings.English.CopiedText(payload), toast.Message);

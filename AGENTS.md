@@ -10,3 +10,4 @@
 - No XML docs (`/// <summary>`) and no comments that restate the code; comment only non-obvious why.
 - Use `CTS/Ui/PluginPalette.cs` for all fixed UI colors; do not hardcode colors elsewhere.
 - Put all user-visible strings in `Languages/*.xaml`; do not hardcode them in C#.
+- Do not use em dashes (U+2014); use hyphens (-) instead.
