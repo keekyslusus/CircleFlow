@@ -92,20 +92,21 @@ internal sealed class TraceOverlayVisual : IDisposable
     internal void ShowResult(VisualSearchPreparationOutcome outcome)
     {
         if (_disposed || _closing || _card is not null) return;
-        var palette = PluginPalette.For(_light).MusicOverlay;
+        var theme = PluginPalette.For(_light);
+        var palette = theme.MusicOverlay;
         var match = outcome.PreparedSearch?.TraceMatch;
-        var content = new Grid();
-        _card = new Border
-        {
-            Child = content, Width = Math.Min(640, Math.Max(240, _root.ActualWidth - 32)),
-            Background = OverlayVisualResources.Frozen(palette.Surface),
-            BorderBrush = OverlayVisualResources.Frozen(PluginPalette.For(_light).SelectionChip.Divider),
-            BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(24),
-            Padding = new Thickness(0), Effect = OverlayVisualResources.DockShadow(10, palette.ShadowOpacity),
-        };
 
         if (match is not null)
         {
+            var content = new Grid();
+            _card = new Border
+            {
+                Child = content, Width = Math.Min(640, Math.Max(240, _root.ActualWidth - 32)),
+                Background = OverlayVisualResources.Frozen(palette.Surface),
+                BorderBrush = OverlayVisualResources.Frozen(theme.SelectionChip.Divider),
+                BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(24),
+                Padding = new Thickness(0), Effect = OverlayVisualResources.DockShadow(10, palette.ShadowOpacity),
+            };
             _card.ClearValue(Border.BackgroundProperty);
             var cardStyle = new Style(typeof(Border));
             cardStyle.Setters.Add(new Setter(Border.BackgroundProperty, OverlayVisualResources.Frozen(palette.Surface)));
@@ -171,26 +172,7 @@ internal sealed class TraceOverlayVisual : IDisposable
             AutomationProperties.SetName(openButton, $"{_strings.TraceOpen}: {match.Title}");
             openButton.Click += (_, e) => { if (!_closing) _open(); e.Handled = true; };
             content.Children.Add(openButton);
-        }
-        else
-        {
-            var message = outcome.Failure switch
-            {
-                UploadFailure.None => _strings.TraceNoMatch,
-                UploadFailure.Timeout => _strings.SearchTimedOut,
-                UploadFailure.BadResponse => _strings.SearchUnexpectedResponse,
-                UploadFailure.UnexpectedStatus when outcome.StatusCode == 429 => _strings.TraceRateLimited,
-                UploadFailure.UnexpectedStatus => _strings.SearchUnexpectedStatus(outcome.StatusCode),
-                _ => _strings.SearchNetworkError,
-            };
-            var label = Text(message, 14);
-            label.TextWrapping = TextWrapping.Wrap;
-            label.Margin = new Thickness(20, 26, 50, 26);
-            content.Children.Add(label);
-        }
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 6, 0) };
-        if (match is not null)
-        {
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 6, 0) };
             var copy = OverlayVisualResources.IconButton(
                 MusicOverlayVisualPresenter.CopyIconGeometry,
                 _strings.TraceCopy,
@@ -217,23 +199,40 @@ internal sealed class TraceOverlayVisual : IDisposable
                 }
             };
             actions.Children.Add(copy);
+            var close = OverlayVisualResources.IconButton(
+                OverlayVisualResources.CloseIconGeometry,
+                _strings.Close,
+                palette.MutedText,
+                palette.SecondaryContainer,
+                palette.OnSecondaryContainer,
+                12);
+            close.Click += (_, e) =>
+            {
+                e.Handled = true;
+                CloseResult();
+            };
+            actions.Children.Add(close);
+            content.Children.Add(actions);
         }
-        var close = OverlayVisualResources.IconButton(
-            OverlayVisualResources.CloseIconGeometry,
-            _strings.Close,
-            palette.MutedText,
-            palette.SecondaryContainer,
-            palette.OnSecondaryContainer,
-            12);
-        close.Click += (_, e) =>
+        else
         {
-            e.Handled = true;
-            if (_closing) return;
-            DismissResult();
-            _close();
-        };
-        actions.Children.Add(close);
-        content.Children.Add(actions);
+            var message = outcome.Failure switch
+            {
+                UploadFailure.None => _strings.TraceNoMatch,
+                UploadFailure.Timeout => _strings.SearchTimedOut,
+                UploadFailure.BadResponse => _strings.SearchUnexpectedResponse,
+                UploadFailure.UnexpectedStatus when outcome.StatusCode == 429 => _strings.TraceRateLimited,
+                UploadFailure.UnexpectedStatus => _strings.SearchUnexpectedStatus(outcome.StatusCode),
+                _ => _strings.SearchNetworkError,
+            };
+            var options = new ResultStateCardOptions(
+                ProviderVisualCatalog.TraceMoeMark,
+                message,
+                _strings.TraceMoeProviderName,
+                _strings.Close,
+                CloseResult);
+            _card = ResultStateCardVisualFactory.Create(options, theme.ResultStateCard).Card;
+        }
         _resultHost.Children.Add(_card);
         _bottom.LayoutTransitions.Apply(() =>
         {
@@ -241,6 +240,13 @@ internal sealed class TraceOverlayVisual : IDisposable
             _resultHost.Visibility = Visibility.Visible;
         }, OverlayVisualResources.AnimationsEnabled());
         Presentation = _root.Dispatcher.InvokeAsync(() => RevealWhenReadyAsync(match is not null)).Task.Unwrap();
+    }
+
+    private void CloseResult()
+    {
+        if (_closing) return;
+        DismissResult();
+        _close();
     }
 
     private async Task RevealWhenReadyAsync(bool matched)

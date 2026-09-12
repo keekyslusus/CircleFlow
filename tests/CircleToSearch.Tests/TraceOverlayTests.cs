@@ -299,6 +299,15 @@ public sealed class TraceOverlayTests
             overlay.ShowTraceResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
             Assert.Equal(OverlayInteractionMode.TraceResult, overlay.Mode);
             Assert.Contains(Descendants(overlay.VisualState.Root).OfType<TextBlock>(), x => x.Text == resultText);
+            if (!matched)
+            {
+                var stateCard = Descendants(overlay.VisualState.Bottom.Stack).OfType<Border>()
+                    .Single(x => AutomationProperties.GetName(x) == TestUiStrings.English.TraceMoeProviderName);
+                Assert.Equal(340, stateCard.Width);
+                Assert.Equal(new CornerRadius(18), stateCard.CornerRadius);
+                Assert.Contains(Descendants(stateCard).OfType<System.Windows.Shapes.Path>(),
+                    icon => ReferenceEquals(icon.Data, ProviderVisualCatalog.TraceMoeMark));
+            }
             Pump(450);
             var provider = overlay.VisualState.Provider!;
             Assert.True(provider.Button.IsEnabled);
