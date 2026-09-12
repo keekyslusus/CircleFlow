@@ -90,6 +90,18 @@ public sealed class TraceOverlayTests
                 Assert.InRange(chipsTop - cardBottom, 15, 17);
                 Assert.Equal(Visibility.Visible, visual.Bottom.Root.Visibility);
                 Capture(visual.Root, $"trace-{light}-result.png");
+                var segment = Descendants(card).OfType<Border>().Single(x => x.Height == 15 && x.Child is Border);
+                var mouseOverKey = (DependencyPropertyKey)typeof(UIElement)
+                    .GetField("IsMouseOverPropertyKey", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+                foreach (var hovered in new[] { true, false })
+                {
+                    card.SetValue(mouseOverKey, hovered);
+                    Pump(20);
+                    var surface = hovered ? PluginPalette.TraceCardHover(light) : PluginPalette.For(light).MusicOverlay.Surface;
+                    Assert.Equal(surface, Assert.IsType<SolidColorBrush>(card.Background).Color);
+                    Assert.Equal(surface, Assert.IsType<SolidColorBrush>(segment.Background).Color);
+                    if (hovered) Capture(visual.Root, $"trace-{light}-hover.png");
+                }
                 var open = Descendants(card).OfType<Button>().Single(x => AutomationProperties.GetName(x).StartsWith(TestUiStrings.English.TraceOpen));
                 Assert.Equal(card.ActualWidth - 2, open.ActualWidth, 1);
                 Assert.Equal(open.ActualWidth - 20, Assert.IsType<Grid>(open.Content).ActualWidth, 1);

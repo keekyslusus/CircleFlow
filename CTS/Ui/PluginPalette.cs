@@ -13,6 +13,12 @@ internal static class PluginPalette
 
     public static PluginThemePalette For(bool lightTheme) => lightTheme ? Light : Dark;
 
+    internal static Color TraceCardHover(bool lightTheme) => Composite(For(lightTheme).MusicOverlay.Surface,
+        lightTheme ? Color.FromArgb(15, 0, 0, 0) : Color.FromArgb(20, 255, 255, 255));
+
+    internal static Color TraceTimelineTrack(bool lightTheme) => Composite(For(lightTheme).MusicOverlay.Surface,
+        WithAlpha(For(lightTheme).MusicOverlay.Primary, 0.2));
+
     public static Color SystemAccentFallback { get; } = Color.FromRgb(0x00, 0x78, 0xD4);
     public static Color Transparent { get; } = Colors.Transparent;
     public static Color OpaqueBlack { get; } = Colors.Black;

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -105,29 +106,54 @@ internal sealed class TraceOverlayVisual : IDisposable
 
         if (match is not null)
         {
-            var row = new Grid { Margin = new Thickness(0, 0, 0, 0) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(_card.Width < 480 ? 120 : 172) });
+            _card.ClearValue(Border.BackgroundProperty);
+            var cardStyle = new Style(typeof(Border));
+            cardStyle.Setters.Add(new Setter(Border.BackgroundProperty, OverlayVisualResources.Frozen(palette.Surface)));
+            var hover = new System.Windows.Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+            hover.Setters.Add(new Setter(Border.BackgroundProperty, OverlayVisualResources.Frozen(PluginPalette.TraceCardHover(_light))));
+            cardStyle.Triggers.Add(hover);
+            _card.Style = cardStyle;
+            var compact = _card.Width < 480;
+            var row = new Grid();
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(compact ? 0 : 172) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.Children.Add(CreateMedia(match, row.ColumnDefinitions[0].Width.Value));
-            var info = new StackPanel { Margin = new Thickness(14, 12, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+            row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var media = CreateMedia(match, 172);
+            if (compact) Grid.SetColumn(media, 1);
+            media.HorizontalAlignment = HorizontalAlignment.Left;
+            row.Children.Add(media);
+            var info = new StackPanel { Margin = compact ? new Thickness(0, 14, 0, 0) : new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(info, 1);
-            var titleRow = new DockPanel { Margin = new Thickness(0, 0, 50, 0) };
+            if (compact) Grid.SetRow(info, 1);
+            var titleRow = new DockPanel { Margin = new Thickness(0, 0, compact ? 0 : 56, 0) };
+            var percentText = Text(match.Similarity.ToString("P1", CultureInfo.CurrentCulture), 11);
+            percentText.FontWeight = FontWeights.SemiBold;
+            percentText.Foreground = OverlayVisualResources.Frozen(palette.OnSecondaryContainer);
+            percentText.LineHeight = 16.5;
+            percentText.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
             var percent = new Border
             {
-                Child = Text(match.Similarity.ToString("P1", CultureInfo.CurrentCulture), 12.5, primary: true),
-                BorderBrush = OverlayVisualResources.Frozen(palette.Primary), BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(14), Padding = new Thickness(9, 2, 9, 2), Margin = new Thickness(0, 0, 8, 0),
+                Child = percentText, Background = OverlayVisualResources.Frozen(palette.SecondaryContainer),
+                Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center,
             };
+            // WPF does not clamp oversized radii to semicircular ends like CSS does.
+            percent.SizeChanged += (_, _) => percent.CornerRadius = new CornerRadius(percent.ActualHeight / 2);
             DockPanel.SetDock(percent, Dock.Left);
             titleRow.Children.Add(percent);
-            var title = Text(match.Title, 15.5);
-            title.FontWeight = FontWeights.Bold;
+            var title = Text(match.Title, 17);
+            title.FontWeight = FontWeights.SemiBold;
             title.VerticalAlignment = VerticalAlignment.Center;
             titleRow.Children.Add(title);
             info.Children.Add(titleRow);
-            info.Children.Add(Text(match.NativeTitle, 12, muted: true));
+            var native = Text(match.NativeTitle, 12, muted: true);
+            native.Margin = new Thickness(0, 3, 0, 0);
+            info.Children.Add(native);
             var episode = string.IsNullOrEmpty(match.Episode) ? "" : string.Format(CultureInfo.CurrentCulture, _strings.TraceEpisode, match.Episode);
-            info.Children.Add(Text(string.Join(" · ", new[] { episode, match.Format, match.Year, match.Studio }.Where(s => !string.IsNullOrEmpty(s))), 12, muted: true));
+            var metadata = Text(string.Join(" · ", new[] { episode, match.Format, match.Year, match.Studio }.Where(s => !string.IsNullOrEmpty(s))), 12, muted: true);
+            metadata.Margin = new Thickness(0, 4, 0, 0);
+            info.Children.Add(metadata);
             info.Children.Add(CreateTimeline(match));
             row.Children.Add(info);
             row.IsHitTestVisible = false;
@@ -141,7 +167,7 @@ internal sealed class TraceOverlayVisual : IDisposable
                 Cursor = Cursors.Hand, ToolTip = _strings.TraceOpen,
             };
             OverlayVisualResources.ApplyButtonTemplate(openButton, 24,
-                PluginPalette.Composite(palette.Surface, PluginPalette.For(_light).SelectionChip.KeycapBackground), palette.Primary);
+                PluginPalette.Transparent, palette.Primary);
             AutomationProperties.SetName(openButton, $"{_strings.TraceOpen}: {match.Title}");
             openButton.Click += (_, e) => { if (!_closing) _open(); e.Handled = true; };
             content.Children.Add(openButton);
@@ -170,7 +196,7 @@ internal sealed class TraceOverlayVisual : IDisposable
             copy.Click += (_, e) =>
             {
                 e.Handled = true;
-                var payload = $"{match.Title} - {string.Format(CultureInfo.CurrentCulture, _strings.TraceEpisode, match.Episode)}, {TraceMoeMatch.Timestamp(match.From)}";
+                var payload = $"{match.Title} — {string.Format(CultureInfo.CurrentCulture, _strings.TraceEpisode, match.Episode)}, {TraceMoeMatch.Timestamp(match.From)}";
                 if (_clipboardCopy.TryCopy(payload))
                 {
                     copy.ToolTip = _strings.Copied;
@@ -250,7 +276,8 @@ internal sealed class TraceOverlayVisual : IDisposable
 
     private FrameworkElement CreateMedia(TraceMoeMatch match, double width)
     {
-        var grid = new Grid { Width = width, Height = 97, Clip = new RectangleGeometry(new Rect(0, 0, width, 97), 14, 14) };
+        var grid = new Grid { Width = width, Height = 97, Background = OverlayVisualResources.Frozen(PluginPalette.OpaqueBlack),
+            Clip = new RectangleGeometry(new Rect(0, 0, width, 97), 14, 14) };
         if (match.Image is not null)
             grid.Children.Add(new Image { Source = new BitmapImage(match.Image), Stretch = Stretch.UniformToFill });
         if (match.Video is not null && _createVideo is not null)
@@ -258,33 +285,33 @@ internal sealed class TraceOverlayVisual : IDisposable
             _media = _createVideo(match.Video);
             grid.Children.Add(_media.Root);
         }
-        grid.Children.Add(new Border
-        {
-            Child = Text(TraceMoeMatch.Timestamp(match.From), 11), CornerRadius = new CornerRadius(7),
-            Background = OverlayVisualResources.Frozen(PluginPalette.For(_light).MusicOverlay.Surface),
-            HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom,
-            Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(8),
-        });
         return grid;
     }
 
     private FrameworkElement CreateTimeline(TraceMoeMatch match)
     {
-        var panel = new StackPanel { Margin = new Thickness(0, 7, 0, 0) };
-        var track = new Grid { Height = 8, Background = OverlayVisualResources.Frozen(PluginPalette.For(_light).SelectionChip.KeycapBackground) };
-        var segment = new Border { Height = 10, CornerRadius = new CornerRadius(5), HorizontalAlignment = HorizontalAlignment.Left,
-            Background = OverlayVisualResources.Frozen(PluginPalette.For(_light).MusicOverlay.Primary) };
+        var panel = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
+        var track = new Grid { Height = 5 };
+        track.Children.Add(new Border { CornerRadius = new CornerRadius(2.5),
+            Background = OverlayVisualResources.Frozen(PluginPalette.TraceTimelineTrack(_light)) });
+        var segment = new Border { Height = 15, CornerRadius = new CornerRadius(7.5), HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(3),
+            Child = new Border { CornerRadius = new CornerRadius(4.5),
+                Background = OverlayVisualResources.Frozen(PluginPalette.For(_light).MusicOverlay.Primary) } };
+        // The cutout must follow the actual card surface, including its hover state.
+        segment.SetBinding(Border.BackgroundProperty, new Binding(nameof(Border.Background)) { Source = _card });
         track.Children.Add(segment);
         track.SizeChanged += (_, _) =>
         {
             var duration = Math.Max(1, match.Duration);
-            segment.Width = Math.Min(track.ActualWidth, Math.Max(26, track.ActualWidth * (match.To - match.From) / duration));
-            segment.Margin = new Thickness(Math.Clamp(track.ActualWidth * match.From / duration, 0, Math.Max(0, track.ActualWidth - segment.Width)), 0, 0, 0);
+            var width = Math.Min(track.ActualWidth, Math.Max(15, track.ActualWidth * Math.Max(0, match.To - match.From) / duration));
+            segment.Width = width + 6;
+            segment.Margin = new Thickness(Math.Clamp(track.ActualWidth * match.From / duration, 0, Math.Max(0, track.ActualWidth - width)) - 3, -5, -3, -5);
         };
         panel.Children.Add(track);
-        var scale = new Grid();
-        scale.Children.Add(Text(TraceMoeMatch.Timestamp(0), 10.5, muted: true));
-        var end = Text(TraceMoeMatch.Timestamp(match.Duration), 10.5, muted: true);
+        var scale = new Grid { Margin = new Thickness(0, 5, 0, 0) };
+        scale.Children.Add(Text(TraceMoeMatch.Timestamp(0), 11, muted: true));
+        var end = Text(TraceMoeMatch.Timestamp(match.Duration), 11, muted: true);
         end.HorizontalAlignment = HorizontalAlignment.Right;
         scale.Children.Add(end);
         panel.Children.Add(scale);
@@ -296,7 +323,7 @@ internal sealed class TraceOverlayVisual : IDisposable
         var palette = PluginPalette.For(_light).MusicOverlay;
         return new TextBlock { Text = value, FontFamily = OverlayVisualResources.Font, FontSize = size,
             Foreground = OverlayVisualResources.Frozen(primary ? palette.Primary : muted ? palette.MutedText : palette.Text),
-            TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 2, 0, 0) };
+            TextTrimming = TextTrimming.CharacterEllipsis };
     }
 
     internal void DismissResult()
