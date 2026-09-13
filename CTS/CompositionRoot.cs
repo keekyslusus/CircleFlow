@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Windows;
@@ -27,12 +26,52 @@ public static class CompositionRoot
     internal const string SearchBrowserThreadName = "CircleToSearch WebView2";
     internal const bool TranslationMemoryProfilingEnabled = false;
 
-    public static int Run()
+    public static int Run() => Run(new AppPaths(),
+        (message, title, icon) => MessageBox.Show(message, title, MessageBoxButton.OK, icon));
+
+    internal static int Run(AppPaths paths, Action<string, string, MessageBoxImage> reportStartupMessage,
+        string? instanceName = null)
     {
         var application = CreateApplication();
-        // Runtime startup awaits the local paths, settings and shell from migration stages 2-4.
-        var lifetime = new AppLifetime(application, () => Task.CompletedTask);
-        return lifetime.Run();
+        UiStrings strings;
+        try
+        {
+            var localStrings = LocalUiStrings.Load(paths.LanguagesDirectory, CultureInfo.CurrentUICulture);
+            strings = new UiStrings(localStrings.Get);
+        }
+        catch
+        {
+            var fallback = LocalUiStrings.LoadEmbeddedEnglish();
+            strings = new UiStrings(fallback.Get);
+            reportStartupMessage(strings.StartupLanguageFailed, strings.PluginTitle, MessageBoxImage.Error);
+            return 1;
+        }
+
+        try
+        {
+            using var instance = SingleInstanceCoordinator.TryAcquire(instanceName ?? SingleInstanceCoordinator.CurrentSessionName);
+            if (instance is null)
+            {
+                reportStartupMessage(strings.ActivationAlreadyRunning, strings.PluginTitle, MessageBoxImage.Information);
+                return 1;
+            }
+            try { AppDataDirectory.Initialize(paths); }
+            catch
+            {
+                reportStartupMessage(strings.StartupDataFailed(paths.DataDirectory), strings.PluginTitle, MessageBoxImage.Error);
+                return 1;
+            }
+            var log = new PluginLog(paths.LogsDirectory);
+            log.Info(nameof(CompositionRoot), "standalone host initialized");
+            // Runtime startup awaits the settings and shell from migration stages 3-4.
+            var lifetime = new AppLifetime(application, () => Task.CompletedTask);
+            return lifetime.Run();
+        }
+        catch
+        {
+            reportStartupMessage(strings.StartupFailed, strings.PluginTitle, MessageBoxImage.Error);
+            return 1;
+        }
     }
 
     internal static Application CreateApplication() => new()
@@ -41,8 +80,7 @@ public static class CompositionRoot
     };
 
     internal static AppRuntime Create(
-        string assetDirectory,
-        string dataDirectory,
+        AppPaths paths,
         PluginSettings settings,
         Action saveSettings,
         UiStrings strings,
@@ -51,13 +89,15 @@ public static class CompositionRoot
         PluginLog log)
     {
         using var rollback = new ResourceRollbackScope(log);
+        var environments = new WebViewEnvironmentFactory(paths, strings, notifier);
         var searchBrowserDispatcher = rollback.Own(new StaDispatcher(SearchBrowserThreadName));
         var searchBrowserHost = rollback.Replace(searchBrowserDispatcher, new SearchBrowserHost(
-            assetDirectory,
-            Path.Combine(dataDirectory, "WebView2Profile"),
+            paths.RootDirectory,
+            paths.SearchProfileDirectory,
             strings,
             log,
-            searchBrowserDispatcher));
+            searchBrowserDispatcher,
+            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true)));
         var traceHttpClient = rollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
         var providerRouter = rollback.Own(new VisualSearchProviderRouter(
             [
@@ -128,14 +168,14 @@ public static class CompositionRoot
             DefaultRequestVersion = HttpVersion.Version20,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
         });
-        var translationMemory = TranslationMemoryProfilingEnabled ? new TranslationMemoryProfiler(assetDirectory) : null;
+        var translationMemory = TranslationMemoryProfilingEnabled ? new TranslationMemoryProfiler(paths.LogsDirectory) : null;
         if (translationMemory is not null) rollback.Own(translationMemory);
         translationMemory?.Mark("runtime_ready");
         var translationDispatcher = rollback.Own(new StaDispatcher("CircleToSearch image translation"));
         var imageTranslationSigner = rollback.Replace(translationDispatcher, new GoogleImageTranslationSigner(
             translationHttpClient,
             translationDispatcher,
-            Path.Combine(dataDirectory, "ImageTranslationProfile"),
+            () => environments.CreateAsync(paths.ImageTranslationProfileDirectory),
             translationMemory));
         var screenTranslation = new ScreenTranslationWorkflow(
             new GoogleImageTranslationProvider(translationHttpClient, imageTranslationSigner, translationMemory),
@@ -169,8 +209,7 @@ public static class CompositionRoot
             memoryProfiler: translationMemory);
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory,
             video => new TraceVideoPreview(video,
-                () => Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
-                    userDataFolder: Path.Combine(dataDirectory, "TraceVideoProfile")), log));
+                () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log));
         var workflow = new OverlaySessionWorkflow(
             new OverlaySessionFactory(log, new PointerMonitorCapture(), overlayWindowFactory),
             visualSearch,

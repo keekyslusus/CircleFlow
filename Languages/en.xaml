@@ -3,6 +3,24 @@
                     xmlns:system="clr-namespace:System;assembly=mscorlib">
 
     <system:String x:Key="plugin_circletosearch_plugin_name">CircleFlow</system:String>
+    <system:String x:Key="app_tray_open">Open</system:String>
+    <system:String x:Key="app_tray_settings">Settings</system:String>
+    <system:String x:Key="app_tray_support">Support the project</system:String>
+    <system:String x:Key="app_tray_exit">Exit</system:String>
+    <system:String x:Key="app_settings_window_title">CircleFlow Settings</system:String>
+    <system:String x:Key="app_startup_failed">CircleFlow could not start. Extract a complete copy of the application and try again.</system:String>
+    <system:String x:Key="app_startup_language_failed">CircleFlow could not load its language files. Extract a complete copy of the application, including Languages/en.xaml, and try again.</system:String>
+    <system:String x:Key="app_startup_data_failed">CircleFlow cannot write to {0}. Move the complete application folder to a location you can write to, such as %LocalAppData%\Programs\CircleFlow, and try again.</system:String>
+    <system:String x:Key="app_storage_save_failed">Could not save settings. Your previous settings are still in use.</system:String>
+    <system:String x:Key="app_storage_recovered">The settings file was damaged. A copy was preserved in Data, and a backup or default settings were loaded.</system:String>
+    <system:String x:Key="app_storage_recovery_failed">The damaged settings file could not be preserved. It has not been overwritten.</system:String>
+    <system:String x:Key="app_hotkey_conflict">The shortcut {0} could not be registered. You can still use Open from the tray menu.</system:String>
+    <system:String x:Key="app_hotkey_rollback_failed">The previous shortcut could not be restored. Use Open from the tray menu and try applying a shortcut again.</system:String>
+    <system:String x:Key="app_activation_already_running">CircleFlow is already running in this Windows session. Opening the existing instance from a second launch is not available yet.</system:String>
+    <system:String x:Key="app_activation_failed">Could not contact the running CircleFlow instance. Wait a moment and try again.</system:String>
+    <system:String x:Key="app_shutdown_failed">CircleFlow could not finish shutting down. See Data/Logs for details.</system:String>
+    <system:String x:Key="app_shutdown_timed_out">CircleFlow took too long to shut down and must exit. See Data/Logs for details.</system:String>
+    <system:String x:Key="app_browser_profile_outside_data">The browser profile is outside CircleFlow's Data folder. Check the WebView2 user data folder policy or environment override and try again.</system:String>
     <system:String x:Key="plugin_circletosearch_plugin_description">Search a screen area visually or recognize music from Windows output</system:String>
     <system:String x:Key="plugin_circletosearch_google_lens_provider_name">Google Lens</system:String>
     <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images</system:String>

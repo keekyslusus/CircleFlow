@@ -11,15 +11,14 @@ internal static class TestUiStrings
 
     private static UiStrings LoadEnglish()
     {
-        var values = EnglishValues;
-        return new UiStrings(key => values.TryGetValue(key, out var value)
-            ? value
-            : throw new KeyNotFoundException($"Translation key '{key}' was not found."));
+        var source = LocalUiStrings.Load(Path.Combine(AppContext.BaseDirectory, "Languages"),
+            System.Globalization.CultureInfo.GetCultureInfo("en"));
+        return new UiStrings(source.Get);
     }
 
     private static IReadOnlyDictionary<string, string> LoadEnglishValues()
     {
-        var path = Path.Combine(TestOutputPaths.RepoDirectory, "Languages", "en.xaml");
+        var path = Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml");
         var document = XDocument.Load(path, LoadOptions.PreserveWhitespace);
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
         return document.Root!.Elements().ToDictionary(

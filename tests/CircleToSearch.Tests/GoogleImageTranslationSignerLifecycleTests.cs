@@ -14,7 +14,7 @@ public sealed class GoogleImageTranslationSignerLifecycleTests
         var signer = new GoogleImageTranslationSigner(
             http,
             dispatcher,
-            Path.Combine(TestOutputPaths.TempDirectory, "signer-profile-" + Guid.NewGuid().ToString("N")));
+            () => throw new InvalidOperationException("A queued operation must not create a browser environment."));
         var sign = signer.SignAsync("request", "en", CancellationToken.None);
         Assert.False(sign.IsCompleted);
         dispatcher.TryPostResult = false;

@@ -180,7 +180,7 @@ CircleFlow/
 
 ### Этап 4. Трей, плейсхолдер и собственные уведомления
 
-Файлы: новые CTS/Shell/TrayIcon.cs, SettingsWindowController.cs, CTS/Ui/NotificationPresenter.cs; CTS/Interop для native tray; Images/app.ico (для конвертации app.png в app.ico используйте tool magick(ImageMagick)); en.xaml.
+Файлы: новые CTS/Shell/TrayIcon.cs, SettingsWindowController.cs, CTS/Ui/NotificationPresenter.cs; CTS/Interop для native tray; Images/app.ico (для конвертации app.png в app.ico используйте tool magick(ImageMagick) С упаковкой нескольких размеров в один .ico - стандарт для Windows); en.xaml.
 
 1. Сделать трей через Shell_NotifyIcon и скрытый HWND/HwndSource на главном STA dispatcher; меню через WPF ContextMenu. Использовать штатные Windows/WPF API без стороннего Fluent UI framework и без WebView2 для настроек.
 2. Обеспечить NIM_ADD / NIM_SETVERSION / NIM_DELETE, восстановление после TaskbarCreated, закрытие меню при потере фокуса, владение и освобождение HWND/icon handles. Скрытый HWND для восстановления после Explorer restart должен получать соответствующие broadcast-сообщения; не полагаться только на message-only HWND.

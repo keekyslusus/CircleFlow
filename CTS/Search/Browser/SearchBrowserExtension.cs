@@ -8,9 +8,9 @@ internal static class SearchBrowserExtension
 {
     internal const string PackageHash = "061A5DE7B1EEDF6C1FE0AFDA40D453C427EEFC2CBCDBB680C3EED37DC5CEF2C8";
 
-    internal static string Prepare(string pluginDirectory, string userDataFolder)
+    internal static string Prepare(string assetDirectory, string userDataFolder)
     {
-        var archive = Path.Combine(pluginDirectory, "Extensions", "uBlockOriginLite.zip");
+        var archive = Path.Combine(assetDirectory, "Extensions", "uBlockOriginLite.zip");
         using var stream = File.OpenRead(archive);
         if (Convert.ToHexString(SHA256.HashData(stream)) != PackageHash)
             throw new InvalidDataException("The bundled uBlock Origin Lite package checksum does not match.");

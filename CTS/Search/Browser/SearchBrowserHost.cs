@@ -23,7 +23,7 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(2);
 
-    private readonly string _pluginDirectory;
+    private readonly string _assetDirectory;
     private readonly string _userDataFolder;
     private readonly UiStrings _strings;
     private readonly PluginLog _log;
@@ -49,32 +49,30 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable
     private Task? _stopTask;
 
     internal SearchBrowserHost(
-        string pluginDirectory,
+        string assetDirectory,
         string userDataFolder,
         UiStrings strings,
         PluginLog log,
         IStaDispatcher dispatcher,
-        Func<Task<CoreWebView2Environment>>? createEnvironment = null,
+        Func<Task<CoreWebView2Environment>> createEnvironment,
         TimeSpan? shutdownTimeout = null)
     {
-        _pluginDirectory = pluginDirectory;
+        _assetDirectory = assetDirectory;
         _userDataFolder = userDataFolder;
         _strings = strings;
         _log = log;
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-        _createEnvironment = createEnvironment ?? (() => CoreWebView2Environment.CreateAsync(
-            userDataFolder: _userDataFolder,
-            options: new CoreWebView2EnvironmentOptions { AreBrowserExtensionsEnabled = true }));
+        _createEnvironment = createEnvironment ?? throw new ArgumentNullException(nameof(createEnvironment));
         _shutdownTimeout = shutdownTimeout ?? ShutdownTimeout;
         if (_shutdownTimeout < TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(shutdownTimeout));
     }
 
-    public static string? GetRuntimeVersion(string pluginDirectory)
+    public static string? GetRuntimeVersion(string assetDirectory)
     {
         try
         {
-            NativeLibrary.TryLoad(Path.Combine(pluginDirectory, "WebView2Loader.dll"), out _);
+            NativeLibrary.TryLoad(Path.Combine(assetDirectory, "WebView2Loader.dll"), out _);
             return CoreWebView2Environment.GetAvailableBrowserVersionString();
         }
         catch
@@ -286,8 +284,7 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable
             return;
         }
 
-        NativeLibrary.TryLoad(Path.Combine(_pluginDirectory, "WebView2Loader.dll"), out _);
-        Directory.CreateDirectory(_userDataFolder);
+        NativeLibrary.TryLoad(Path.Combine(_assetDirectory, "WebView2Loader.dll"), out _);
         _environment ??= await _createEnvironment().ConfigureAwait(true);
         cancel.ThrowIfCancellationRequested();
 
@@ -409,7 +406,7 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable
             cancel.ThrowIfCancellationRequested();
             if (closed) throw new OperationCanceledException();
             var extensionDirectory = await Task.Run(() =>
-                SearchBrowserExtension.Prepare(_pluginDirectory, _userDataFolder), cancel).ConfigureAwait(true);
+                SearchBrowserExtension.Prepare(_assetDirectory, _userDataFolder), cancel).ConfigureAwait(true);
             if (closed) throw new OperationCanceledException();
             var extension = await webView.CoreWebView2.Profile
                 .AddBrowserExtensionAsync(extensionDirectory).ConfigureAwait(true);

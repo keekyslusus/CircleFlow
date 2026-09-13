@@ -21,6 +21,7 @@ public sealed class TranslationMemoryProfilerTests
         Assert.Equal("overlay_open", first.RootElement.GetProperty("stage").GetString());
         Assert.Equal("session-a", first.RootElement.GetProperty("scope").GetString());
         var host = first.RootElement.GetProperty("host");
+        Assert.Equal("CircleFlow", host.GetProperty("Kind").GetString());
         Assert.Equal(Environment.ProcessId, host.GetProperty("Pid").GetInt32());
         Assert.True(host.GetProperty("PrivateBytes").GetInt64() > 0);
         Assert.True(host.GetProperty("WorkingSetBytes").GetInt64() > 0);

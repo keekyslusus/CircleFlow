@@ -73,7 +73,7 @@ internal sealed class TranslationMemoryProfiler : IDisposable
             {
                 schema = 1, run = _run, sequence = ++_sequence, utc = DateTime.UtcNow,
                 elapsedMs = _clock.Elapsed.TotalMilliseconds, stage, scope,
-                host = ReadProcess(Environment.ProcessId, "FlowLauncher", null), webview,
+                host = ReadProcess(Environment.ProcessId, "CircleFlow", null), webview,
                 managedLiveBytes = GC.GetTotalMemory(false),
                 managedHeapBytesAtLastGc = GC.GetGCMemoryInfo().HeapSizeBytes,
                 totalAllocatedBytes = GC.GetTotalAllocatedBytes(),

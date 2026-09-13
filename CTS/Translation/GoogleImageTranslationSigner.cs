@@ -10,7 +10,7 @@ using Microsoft.Web.WebView2.Core;
 namespace CircleToSearch.Translation;
 
 internal sealed class GoogleImageTranslationSigner(
-    HttpClient http, IStaDispatcher dispatcher, string profileDirectory,
+    HttpClient http, IStaDispatcher dispatcher, Func<Task<CoreWebView2Environment>> createEnvironment,
     TranslationMemoryProfiler? profiler = null) : IImageTranslationSigner, IDisposable, IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -75,7 +75,7 @@ internal sealed class GoogleImageTranslationSigner(
                 ShowInTaskbar = false, ShowActivated = false, WindowStyle = WindowStyle.None };
             // WPF opacity does not hide WebView2's native child window. Never show the host HWND.
             var handle = new WindowInteropHelper(_window).EnsureHandle();
-            var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: profileDirectory).WaitAsync(cancellation);
+            var environment = await createEnvironment().WaitAsync(cancellation);
             void TrackProcesses()
             {
                 try { profiler?.TrackProcesses(environment.GetProcessInfos().Select(info => (info.ProcessId, info.Kind.ToString()))); }

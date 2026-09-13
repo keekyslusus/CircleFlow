@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.PortableExecutable;
 using System.Windows;
@@ -27,32 +26,7 @@ public sealed class AppLifetimeTests
     public async Task Last_window_close_keeps_dispatching_and_explicit_exit_waits_for_cleanup_once()
     {
         // WPF cannot create another Application after shutdown, including on other test threads.
-        const string isolatedHostVariable = "CIRCLEFLOW_LIFETIME_TEST_HOST";
-        if (Environment.GetEnvironmentVariable(isolatedHostVariable) != "1")
-        {
-            var start = new ProcessStartInfo("dotnet")
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
-            start.ArgumentList.Add("vstest");
-            start.ArgumentList.Add(typeof(AppLifetimeTests).Assembly.Location);
-            start.ArgumentList.Add("/TestCaseFilter:FullyQualifiedName=" + typeof(AppLifetimeTests).FullName + "." +
-                nameof(Last_window_close_keeps_dispatching_and_explicit_exit_waits_for_cleanup_once));
-            start.Environment[isolatedHostVariable] = "1";
-            using var process = Process.Start(start)!;
-            var output = process.StandardOutput.ReadToEndAsync();
-            var error = process.StandardError.ReadToEndAsync();
-            if (!process.WaitForExit(30000))
-            {
-                process.Kill(entireProcessTree: true);
-                Assert.Fail("The isolated WPF lifetime test timed out.");
-            }
-            Assert.True(process.ExitCode == 0, await output + await error);
-            return;
-        }
+        if (await IsolatedTestHost.RunAsync<AppLifetimeTests>()) return;
 
         Exception? failure = null;
         var exitCode = -1;
