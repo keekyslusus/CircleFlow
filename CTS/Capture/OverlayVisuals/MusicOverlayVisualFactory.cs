@@ -98,6 +98,7 @@ internal static class MusicOverlayVisualFactory
         {
             Visibility = Visibility.Collapsed,
             HorizontalAlignment = HorizontalAlignment.Center,
+            MaxWidth = Math.Max(0, size.Width - 32),
         };
         Panel.SetZIndex(resultHost, 1);
         return new MusicOverlayVisual(

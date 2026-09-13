@@ -500,7 +500,7 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ResultHost.Visibility);
             Assert.Same(overlay.VisualState.Bottom.ResultSlot, overlay.VisualState.Music.ResultHost.Parent);
             var card = Assert.Single(overlay.VisualState.Music.ResultHost.Children.OfType<Border>());
-            Assert.Equal(48, card.Height);
+            Assert.Equal(120, card.ActualHeight);
             Assert.Equal(new CornerRadius(24), card.CornerRadius);
             var actionNames = Descendants(overlay.VisualState.Music.ResultHost).OfType<Button>()
                 .Select(AutomationProperties.GetName)
@@ -509,7 +509,8 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Contains(TestUiStrings.English.OpenInShazam, actionNames);
             Assert.Contains(TestUiStrings.English.Close, actionNames);
             Assert.All(
-                Descendants(overlay.VisualState.Music.ResultHost).OfType<Button>(),
+                Descendants(overlay.VisualState.Music.ResultHost).OfType<Button>()
+                    .Where(button => AutomationProperties.GetName(button) != TestUiStrings.English.OpenInShazam),
                 button => Assert.Equal(30, button.Width));
             var copy = Descendants(overlay.VisualState.Music.ResultHost).OfType<Button>()
                 .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.CopyTrackInfo);
@@ -521,8 +522,8 @@ public sealed class ProviderMusicOverlayUiTests
             var restoredCopyIcon = Assert.IsType<System.Windows.Shapes.Path>(copy.Content);
 
             Assert.Equal(new Thickness(0), copyChrome.BorderThickness);
-            Assert.Equal(15, restoredCopyIcon.Width);
-            Assert.Equal(15, restoredCopyIcon.Height);
+            Assert.Equal(12, restoredCopyIcon.Width);
+            Assert.Equal(12, restoredCopyIcon.Height);
             var copyIconOrigin = restoredCopyIcon.TranslatePoint(new Point(), copy);
             Assert.InRange(copyIconOrigin.X, 0, copy.ActualWidth - restoredCopyIcon.ActualWidth);
             Assert.InRange(copyIconOrigin.Y, 0, copy.ActualHeight - restoredCopyIcon.ActualHeight);

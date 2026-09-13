@@ -270,7 +270,7 @@ public sealed class OverlayControllerLifecycleTests
 
             var toastOffset = Assert.IsType<TranslateTransform>(toastSlot.RenderTransform);
             Assert.Equal(oldToastY, toastSlot.TranslatePoint(new Point(), visual.Root).Y, 2);
-            Assert.InRange(toastOffset.Y, 63, 65);
+            Assert.InRange(toastOffset.Y, 135, 137);
             Assert.Same(trayLift, visual.Actions.Tray.RenderTransform);
             var matchedCard = Assert.Single(visual.Music.ResultHost.Children.OfType<FrameworkElement>());
             var matchedTransforms = StateCardTransitions.GetTransforms(matchedCard);
@@ -289,7 +289,7 @@ public sealed class OverlayControllerLifecycleTests
             Assert.IsType<TransformGroup>(replacement.RenderTransform);
             PumpFor(TimeSpan.FromMilliseconds(260));
             var tallToastY = toastSlot.TranslatePoint(new Point(), visual.Root).Y;
-            Assert.True(tallToastY < matchedToastY);
+            Assert.Equal(matchedToastY + matchedCard.ActualHeight - replacement.ActualHeight, tallToastY, 2);
 
             controller.DismissResult();
             Assert.Equal(Visibility.Visible, visual.Music.ResultHost.Visibility);

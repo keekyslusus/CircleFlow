@@ -15,6 +15,76 @@ namespace CircleToSearch.Tests;
 public sealed class MusicOverlayVisualTests
 {
     [Theory]
+    [InlineData(false, 960)]
+    [InlineData(true, 960)]
+    [InlineData(false, 360)]
+    public void Match_card_fits_metadata_and_viewport_without_overlapping_actions(bool lightTheme, double viewportWidth)
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var visual = MusicOverlayVisualFactory.Create(new Size(viewportWidth, 400), lightTheme, TestUiStrings.English);
+            var host = new Grid();
+            host.Children.Add(visual.ResultHost);
+            var widths = new List<double>();
+            var tracks = new[]
+            {
+                new ShazamRecognition("Go", "M83", null, null, null, null, "https://www.shazam.com/track/1"),
+                new ShazamRecognition("Midnight City", "M83", "Hurry Up, We're Dreaming", null, null, null, "https://www.shazam.com/track/1"),
+                new ShazamRecognition(new string('W', 180), new string('A', 180), new string('B', 180), null, null, "invalid", "https://www.shazam.com/track/1"),
+            };
+            try
+            {
+                for (var index = 0; index < tracks.Length; index++)
+                {
+                    var commands = new List<IOverlayCommand>();
+                    string? copied = null;
+                    var card = MusicOverlayVisualPresenter.PresentResult(visual,
+                        MusicRecognitionOutcome.Matched(tracks[index]), TestUiStrings.English, lightTheme,
+                        commands.Add, (text, _) => copied = text);
+                    host.Measure(new Size(viewportWidth, 180));
+                    host.Arrange(new Rect(0, 0, viewportWidth, 180));
+                    host.UpdateLayout();
+                    widths.Add(card.ActualWidth);
+                    Assert.InRange(card.ActualWidth, Math.Min(360, viewportWidth - 32), Math.Min(640, viewportWidth - 32));
+                    Assert.Equal(120, card.ActualHeight);
+                    var texts = Descendants(card).OfType<TextBlock>().ToArray();
+                    Assert.Equal(index == 0 ? 2 : 3, texts.Length);
+                    var buttons = Descendants(card).OfType<Button>().ToArray();
+                    var copy = buttons.Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.CopyTrackInfo);
+                    var close = buttons.Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.Close);
+                    var open = buttons.Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.OpenInShazam);
+                    Assert.True(texts[0].TranslatePoint(new Point(texts[0].ActualWidth, 0), card).X <= copy.TranslatePoint(new Point(), card).X);
+                    copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.Equal($"{tracks[index].Title} - {tracks[index].Artist}", copied);
+                    Assert.Empty(commands);
+                    close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.IsType<DismissMusicResult>(Assert.Single(commands));
+                    commands.Clear();
+                    open.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.IsType<OpenMusicResult>(Assert.Single(commands));
+
+                    var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)viewportWidth, 180, 96, 96, PixelFormats.Pbgra32);
+                    bitmap.Render(host);
+                    var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                    encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+                    System.IO.Directory.CreateDirectory(TestOutputPaths.TempDirectory);
+                    using var output = System.IO.File.Create(System.IO.Path.Combine(TestOutputPaths.TempDirectory, $"music-card-{lightTheme}-{viewportWidth}-{index}.png"));
+                    encoder.Save(output);
+                }
+                Assert.Equal(Math.Min(360, viewportWidth - 32), widths[0]);
+                Assert.Equal(widths[0], widths[1]);
+                Assert.True(widths[2] >= widths[1]);
+                if (viewportWidth > 392) Assert.True(widths[2] > widths[1]);
+            }
+            finally
+            {
+                visual.LoadingIndicator.Dispose();
+                visual.Waveform.Dispose();
+            }
+        }));
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void Listening_label_stays_light_with_a_dark_shadow_in_both_themes(bool lightTheme)
@@ -68,11 +138,10 @@ public sealed class MusicOverlayVisualTests
                 (track, _) => copiedTrack = track);
 
             Assert.Equal(Visibility.Visible, root.Music.ResultHost.Visibility);
-            Assert.Equal(48, card.Height);
-            var trackText = Assert.Single(Descendants(card).OfType<TextBlock>());
-            Assert.Equal(
-                "Track - Artist",
-                string.Concat(trackText.Inlines.OfType<System.Windows.Documents.Run>().Select(run => run.Text)));
+            root.Root.Measure(new Size(640, 400));
+            root.Root.Arrange(new Rect(0, 0, 640, 400));
+            Assert.Equal(120, card.ActualHeight);
+            Assert.Equal(new[] { "Track", "Artist" }, Descendants(card).OfType<TextBlock>().Select(text => text.Text));
             var names = Descendants(root.Music.ResultHost).OfType<Button>()
                 .Select(AutomationProperties.GetName)
                 .ToArray();

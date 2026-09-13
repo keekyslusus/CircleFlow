@@ -11,8 +11,6 @@ using CircleToSearch.Ui;
 
 internal static class MusicOverlayVisualPresenter
 {
-    private static readonly Geometry LinkIconGeometry = OverlayVisualResources.FrozenGeometry(
-        "M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1ZM8 13h8v-2H8v2Zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5Z");
     internal static readonly Geometry CopyIconGeometry = OverlayVisualResources.FrozenGeometry(
         "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1Zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2Zm0 16H8V7h10v14Z");
     internal static readonly Geometry CheckIconGeometry = OverlayVisualResources.FrozenGeometry(
@@ -250,20 +248,8 @@ internal static class MusicOverlayVisualPresenter
         Border card;
         if (outcome.Status == MusicRecognitionStatus.Matched && outcome.Recognition is { } recognition)
         {
-            var palette = theme.MusicOverlay;
-            card = new Border
-            {
-                Child = CreateMatchPill(recognition, palette, strings, publish, copy),
-                Background = OverlayVisualResources.Frozen(palette.Surface),
-                BorderBrush = OverlayVisualResources.Frozen(palette.Border),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(24),
-                Padding = new Thickness(14, 0, 6, 0),
-                MaxWidth = 540,
-                Height = 48,
-                Effect = OverlayVisualResources.DockShadow(10, palette.ShadowOpacity),
-            };
-            AutomationProperties.SetName(card, strings.MusicResultTitle);
+            card = MusicResultCardVisualFactory.Create(recognition, lightTheme, strings, publish, copy,
+                visual.ResultHost.MaxWidth);
         }
         else
         {
@@ -280,74 +266,11 @@ internal static class MusicOverlayVisualPresenter
         var palette = PluginPalette.For(lightTheme).MusicOverlay;
         button.Content = OverlayVisualResources.Icon(
             confirmed ? CheckIconGeometry : CopyIconGeometry,
-            15,
-            palette.MutedText);
+            12,
+            confirmed ? palette.Primary : palette.MutedText);
         var name = confirmed ? strings.Copied : strings.CopyTrackInfo;
         button.ToolTip = name;
         AutomationProperties.SetName(button, name);
-    }
-
-    private static FrameworkElement CreateMatchPill(
-        MusicRecognition.Shazam.ShazamRecognition recognition,
-        MusicOverlayPalette palette,
-        UiStrings strings,
-        Action<IOverlayCommand> publish,
-        Action<string, Button> copy)
-    {
-        var row = new DockPanel { LastChildFill = true };
-        var close = OverlayVisualResources.IconButton(
-            OverlayVisualResources.CloseIconGeometry,
-            strings.Close,
-            palette.MutedText,
-            palette.SecondaryContainer,
-            palette.OnSecondaryContainer,
-            iconSize: 12);
-        close.Margin = new Thickness(0);
-        close.Click += (_, _) => publish(new DismissMusicResult());
-        DockPanel.SetDock(close, Dock.Right);
-        row.Children.Add(close);
-        if (Search.MusicResultPresenter.IsSafeShazamUrl(recognition.ShazamUrl))
-        {
-            var open = OverlayVisualResources.IconButton(
-                LinkIconGeometry,
-                strings.OpenInShazam,
-                palette.MutedText,
-                palette.SecondaryContainer,
-                palette.OnSecondaryContainer);
-            open.Click += (_, _) => publish(new OpenMusicResult());
-            DockPanel.SetDock(open, Dock.Right);
-            row.Children.Add(open);
-        }
-        var copyButton = OverlayVisualResources.IconButton(
-            CopyIconGeometry,
-            strings.CopyTrackInfo,
-            palette.MutedText,
-            palette.SecondaryContainer,
-            palette.OnSecondaryContainer);
-        copyButton.Click += (_, _) => copy($"{recognition.Title} - {recognition.Artist}", copyButton);
-        DockPanel.SetDock(copyButton, Dock.Right);
-        row.Children.Add(copyButton);
-        var note = OverlayVisualResources.Icon(MusicOverlayVisualFactory.MusicIconGeometry, 16, palette.Primary);
-        note.Margin = new Thickness(0, 0, 6, 0);
-        DockPanel.SetDock(note, Dock.Left);
-        row.Children.Add(note);
-        var text = new TextBlock
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 13,
-            Foreground = OverlayVisualResources.Frozen(palette.Text),
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            MaxWidth = 390,
-            Margin = new Thickness(0, 0, 4, 0),
-        };
-        text.Inlines.Add(new System.Windows.Documents.Run(recognition.Title) { FontWeight = FontWeights.SemiBold });
-        text.Inlines.Add(new System.Windows.Documents.Run($" - {recognition.Artist}")
-        {
-            Foreground = OverlayVisualResources.Frozen(palette.MutedText),
-        });
-        row.Children.Add(text);
-        return row;
     }
 
     private static StateCardOptions CreateStateCardOptions(
