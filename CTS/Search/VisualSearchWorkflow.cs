@@ -7,17 +7,17 @@ namespace CircleToSearch.Search;
 
 internal sealed class VisualSearchWorkflow(
     VisualSearchProviderRouter providerRouter,
-    Func<GdiBitmap, GdiRectangle, byte[]> crop,
+    Func<GdiBitmap, GdiRectangle, int, byte[]> crop,
     VisualSearchResultPresenter presenter,
     IPluginNotifier notifier,
     UiStrings strings,
     PluginLog log)
 {
     internal async Task<VisualSearchPreparationOutcome> PrepareTraceAsync(
-        SelectionOutcome selection, CancellationToken cancellationToken)
+        SelectionOutcome selection, int maxLongSidePx, CancellationToken cancellationToken)
     {
         byte[] jpeg;
-        try { jpeg = crop(selection.FrozenFrame, selection.Bounds); }
+        try { jpeg = crop(selection.FrozenFrame, selection.Bounds, maxLongSidePx); }
         finally { selection.Dispose(); }
         var routed = await providerRouter.PrepareAsync(SearchProviderIds.TraceMoe, jpeg, cancellationToken).ConfigureAwait(false);
         return routed.Outcome;
@@ -27,10 +27,11 @@ internal sealed class VisualSearchWorkflow(
         SelectionOutcome selection,
         string requestedProviderId,
         Action onUploadStarted,
+        int maxLongSidePx,
         CancellationToken cancellationToken)
     {
         byte[] jpeg;
-        try { jpeg = crop(selection.FrozenFrame, selection.Bounds); }
+        try { jpeg = crop(selection.FrozenFrame, selection.Bounds, maxLongSidePx); }
         finally { selection.Dispose(); }
 
         onUploadStarted();

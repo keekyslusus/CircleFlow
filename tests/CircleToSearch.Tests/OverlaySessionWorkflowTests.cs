@@ -115,7 +115,7 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
-    public async Task Persistence_failure_keeps_current_provider_and_allows_visual_search()
+    public async Task Persistence_failure_keeps_saved_provider_and_allows_visual_search_with_the_current_UI_selection()
     {
         using var harness = new Harness(saveThrows: true);
         harness.Overlay.Enqueue(new ProviderSelected(SearchProviderIds.YandexImages));
@@ -123,7 +123,7 @@ public sealed class OverlaySessionWorkflowTests
 
         await harness.RunAsync();
 
-        Assert.Equal(SearchProviderIds.YandexImages, harness.Settings.SearchProviderId);
+        Assert.Equal(SearchProviderIds.GoogleLens, harness.Settings.SearchProviderId);
         Assert.Equal(1, harness.Yandex.Calls);
         Assert.Single(harness.Errors);
     }
@@ -429,6 +429,31 @@ public sealed class OverlaySessionWorkflowTests
         Assert.Equal(harness.Trace.Match!.AnilistUrl, Assert.Single(harness.Opened));
     }
 
+    [Theory]
+    [InlineData(SearchProviderIds.GoogleLens)]
+    [InlineData(SearchProviderIds.TraceMoe)]
+    public async Task Active_session_keeps_its_crop_limit_and_the_next_session_uses_updated_options(string provider)
+    {
+        var first = new FakeOverlay();
+        var second = new FakeOverlay();
+        using var harness = new Harness(provider, overlays: [first, second]);
+        var run = harness.RunAsync();
+        var originalLaunch = harness.Factory.Options!;
+        Assert.True(harness.Service.Apply(new SettingsEdits { MaxLongSidePx = 256, PaddingPx = 18,
+            LassoMinDiagonalPx = 30, TranslationTargetLanguageTag = "ja-JP" }).Success);
+        first.Enqueue(new VisualSelection(NewSelection(), provider));
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(new[] { 1600 }, harness.CropLimits);
+        Assert.Equal(8, originalLaunch.CaptureOptions.PaddingPx);
+        var next = harness.RunAsync();
+        second.Enqueue(new VisualSelection(NewSelection(), provider));
+        await next.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(new[] { 1600, 256 }, harness.CropLimits);
+        Assert.Equal(18, harness.Factory.Options!.CaptureOptions.PaddingPx);
+        Assert.Equal(30, harness.Factory.Options.CaptureOptions.MinDiagonalPx);
+        Assert.Equal("ja-JP", harness.Factory.Options.SessionOptions.TranslationTargetLanguageTag);
+    }
+
     private sealed class Harness : IDisposable
     {
         private readonly VisualSearchProviderRouter _router;
@@ -443,7 +468,11 @@ public sealed class OverlaySessionWorkflowTests
             _logDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_logDirectory);
             Log = new PluginLog(_logDirectory);
-            Settings = new PluginSettings { SearchProviderId = providerId, HideDelayMilliseconds = 0 };
+            Service = TestSettings.Create(SettingsValidator.Normalize(new AppSettings { SearchProviderId = providerId, HideDelayMilliseconds = 0 }, out _), _ =>
+            {
+                SaveCalls++;
+                if (saveThrows) throw new IOException("disk unavailable");
+            });
             _router = new VisualSearchProviderRouter(
                 [
                     new VisualSearchProviderRegistration(
@@ -470,7 +499,7 @@ public sealed class OverlaySessionWorkflowTests
                 Log);
             var visualSearch = new VisualSearchWorkflow(
                 _router,
-                (_, _) => [1],
+                (_, _, max) => { CropLimits.Add(max); return [1]; },
                 visualPresenter,
                 Notifier,
                 TestUiStrings.English,
@@ -482,12 +511,7 @@ public sealed class OverlaySessionWorkflowTests
                 TestUiStrings.English);
             var providerSelection = new ProviderSelectionStore(
                 _router,
-                Settings,
-                () =>
-                {
-                    SaveCalls++;
-                    if (saveThrows) throw new IOException("disk unavailable");
-                },
+                Service,
                 Notifier,
                 TestUiStrings.English,
                 Log);
@@ -504,7 +528,6 @@ public sealed class OverlaySessionWorkflowTests
                 musicRecognition,
                 musicPresenter,
                 providerSelection,
-                Settings,
                 TestUiStrings.English,
                 Log,
                 textSearch,
@@ -513,7 +536,8 @@ public sealed class OverlaySessionWorkflowTests
         }
 
         public OverlaySessionWorkflow Workflow { get; }
-        public PluginSettings Settings { get; }
+        public SettingsService Service { get; }
+        public AppSettings Settings => Service.Snapshot;
         public PluginLog Log { get; }
         public FakeNotifier Notifier { get; }
         public FakeOverlay Overlay { get; }
@@ -529,14 +553,18 @@ public sealed class OverlaySessionWorkflowTests
         public List<string> Events => Overlay.Events;
         public int UploadStartedCalls { get; private set; }
         public int SaveCalls { get; private set; }
+        public List<int> CropLimits { get; } = [];
 
         public Task RunAsync(CancellationToken cancellationToken = default) =>
-            Workflow.RunAsync(() => UploadStartedCalls++, cancellationToken);
+            Workflow.RunAsync(GetSessionOptions(), () => UploadStartedCalls++, cancellationToken);
+
+        private SearchSessionOptions GetSessionOptions() => SearchSessionOptions.From(Settings,
+            new CircleToSearch.TextRecognition.OcrLanguageCatalog([]), System.Globalization.CultureInfo.CurrentUICulture);
 
         public SearchCoordinator CreateCoordinator() => new(
             Workflow,
             () => { },
-            Settings,
+            GetSessionOptions,
             Notifier,
             TestUiStrings.English,
             Log);

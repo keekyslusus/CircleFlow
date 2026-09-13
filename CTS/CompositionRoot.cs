@@ -63,7 +63,20 @@ public static class CompositionRoot
             }
             var log = new PluginLog(paths.LogsDirectory);
             log.Info(nameof(CompositionRoot), "standalone host initialized");
-            // Runtime startup awaits the settings and shell from migration stages 3-4.
+            var store = new SettingsStore(paths);
+            SettingsLoadResult loaded;
+            try { loaded = store.Load(); }
+            catch (Exception exception)
+            {
+                log.SafeError(nameof(CompositionRoot), "load-settings", exception);
+                reportStartupMessage(strings.StorageLoadFailed, strings.PluginTitle, MessageBoxImage.Error);
+                return 1;
+            }
+            if (loaded.ResetFields.Count != 0)
+                log.Warn(nameof(CompositionRoot), $"settings reset to defaults: {string.Join(", ", loaded.ResetFields)}");
+            if (loaded.Recovered)
+                reportStartupMessage(strings.StorageRecovered, strings.PluginTitle, MessageBoxImage.Warning);
+            // Runtime startup awaits the shell from migration stage 4.
             var lifetime = new AppLifetime(application, () => Task.CompletedTask);
             return lifetime.Run();
         }
@@ -81,14 +94,18 @@ public static class CompositionRoot
 
     internal static AppRuntime Create(
         AppPaths paths,
-        PluginSettings settings,
-        Action saveSettings,
+        AppSettings initialSettings,
+        SettingsStore settingsStore,
         UiStrings strings,
         IPluginNotifier notifier,
         Action hideOwnWindows,
         PluginLog log)
     {
         using var rollback = new ResourceRollbackScope(log);
+        var hotkeyDispatcher = rollback.Own(new StaDispatcher(HotkeyThreadName));
+        var hotkeyWindow = rollback.Replace(hotkeyDispatcher, new HotkeyWindow(hotkeyDispatcher, log));
+        var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
+        var settings = new SettingsService(initialSettings, settingsStore.Save, registrar.TryApply, log);
         var environments = new WebViewEnvironmentFactory(paths, strings, notifier);
         var searchBrowserDispatcher = rollback.Own(new StaDispatcher(SearchBrowserThreadName));
         var searchBrowserHost = rollback.Replace(searchBrowserDispatcher, new SearchBrowserHost(
@@ -122,7 +139,7 @@ public static class CompositionRoot
             log);
         var visualSearch = new VisualSearchWorkflow(
             providerRouter,
-            (frame, bounds) => ImageCropper.EncodeJpeg(frame, bounds, settings.MaxLongSidePx),
+            ImageCropper.EncodeJpeg,
             visualSearchPresenter,
             notifier,
             strings,
@@ -156,7 +173,6 @@ public static class CompositionRoot
         var providerSelection = new ProviderSelectionStore(
             providerRouter,
             settings,
-            saveSettings,
             notifier,
             strings,
             log);
@@ -191,20 +207,9 @@ public static class CompositionRoot
             OverlayVisualResources.AnimationsEnabled,
             ocrRecognizer: new WindowsOcrRecognizer(),
             textHitToleranceDips: 3,
-            ocrLanguageTag: () => ocrLanguages.Validate(settings.OcrLanguageTag),
-            targetLanguageTag: () =>
-            {
-                if (!string.IsNullOrWhiteSpace(settings.TranslationTargetLanguageTag))
-                    return settings.TranslationTargetLanguageTag;
-                return string.IsNullOrWhiteSpace(CultureInfo.CurrentUICulture.Name)
-                    ? "en"
-                    : CultureInfo.CurrentUICulture.Name;
-            },
-            translationConsentAccepted: () => settings.ImageTranslationPrivacyConsentAccepted,
-            acceptTranslationConsent: () => SaveTranslationConsent(
-                settings, true, saveSettings),
-            resetTranslationConsent: () => SaveTranslationConsent(
-                settings, false, saveSettings),
+            translationConsentAccepted: () => settings.Snapshot.ImageTranslationPrivacyConsentAccepted,
+            acceptTranslationConsent: () => settings.SetTranslationConsent(true).ThrowIfFailed(strings.StorageSaveFailed),
+            resetTranslationConsent: () => settings.SetTranslationConsent(false).ThrowIfFailed(strings.StorageSaveFailed),
             log: log,
             memoryProfiler: translationMemory);
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory,
@@ -216,7 +221,6 @@ public static class CompositionRoot
             musicRecognition,
             musicResultPresenter,
             providerSelection,
-            settings,
             strings,
             log,
             textSearch,
@@ -225,13 +229,10 @@ public static class CompositionRoot
         var coordinator = new SearchCoordinator(
             workflow,
             hideOwnWindows,
-            settings,
+            () => SearchSessionOptions.From(settings.Snapshot, ocrLanguages, CultureInfo.CurrentUICulture),
             notifier,
             strings,
             log);
-        var hotkeyDispatcher = rollback.Own(new StaDispatcher(HotkeyThreadName));
-        var hotkeyWindow = rollback.Replace(hotkeyDispatcher, new HotkeyWindow(hotkeyDispatcher, log));
-        var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
         var lifetime = new PluginRuntimeLifetime(
             coordinator.StopAsync,
             hotkeyWindow.StopAsync,
@@ -249,14 +250,15 @@ public static class CompositionRoot
             lifetime.StopAsync,
             log,
             TimeSpan.FromSeconds(2));
-        var runtime = new AppRuntime(coordinator, stopAdapter);
+        var runtime = new AppRuntime(coordinator, stopAdapter, settings);
         rollback.TransferAllTo(stopAdapter);
 
         hotkeyWindow.HotkeyPressed += () =>
         {
             try
             {
-                _ = coordinator.StartFromHotkeyAsync();
+                // Registration waits on this dispatcher; reading settings here could deadlock its lock.
+                _ = Task.Run(coordinator.StartFromHotkeyAsync);
             }
             catch (Exception exception)
             {
@@ -264,24 +266,10 @@ public static class CompositionRoot
             }
         };
 
-        if (!registrar.TryApply(settings.HotkeyGesture))
-            log.Warn(nameof(CompositionRoot), $"hotkey '{settings.HotkeyGesture}' is not active");
+        if (!settings.InitializeHotkey().Success)
+            notifier.ShowError(strings.PluginTitle, strings.HotkeyConflict(settings.Snapshot.HotkeyGesture));
         rollback.Commit();
         return runtime;
-    }
-
-    internal static void SaveTranslationConsent(PluginSettings settings, bool accepted, Action save)
-    {
-        ArgumentNullException.ThrowIfNull(settings);
-        ArgumentNullException.ThrowIfNull(save);
-        var previous = settings.ImageTranslationPrivacyConsentAccepted;
-        settings.ImageTranslationPrivacyConsentAccepted = accepted;
-        try { save(); }
-        catch
-        {
-            settings.ImageTranslationPrivacyConsentAccepted = previous;
-            throw;
-        }
     }
 
     private static bool OpenResultsUrl(string url)

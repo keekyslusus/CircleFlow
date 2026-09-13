@@ -92,7 +92,8 @@ public sealed record OverlayLaunchOptions
         OverlayOptions captureOptions,
         Ui.UiStrings strings,
         IReadOnlyList<SearchProviderDescriptor> providers,
-        string initialProviderId)
+        string initialProviderId,
+        SearchSessionOptions? sessionOptions = null)
     {
         CaptureOptions = captureOptions ?? throw new ArgumentNullException(nameof(captureOptions));
         Strings = strings ?? throw new ArgumentNullException(nameof(strings));
@@ -101,10 +102,13 @@ public sealed record OverlayLaunchOptions
         if (!providers.Any(provider => string.Equals(provider.Id, initialProviderId, StringComparison.OrdinalIgnoreCase)))
             throw new ArgumentException("The initial provider must be present in the provider list.", nameof(initialProviderId));
         InitialProviderId = initialProviderId;
+        SessionOptions = sessionOptions ?? new SearchSessionOptions(PaddingPx: captureOptions.PaddingPx,
+            LassoMinDiagonalPx: captureOptions.MinDiagonalPx);
     }
 
     public OverlayOptions CaptureOptions { get; }
     public Ui.UiStrings Strings { get; }
     public IReadOnlyList<SearchProviderDescriptor> Providers { get; }
     public string InitialProviderId { get; }
+    public SearchSessionOptions SessionOptions { get; }
 }

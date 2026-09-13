@@ -90,7 +90,9 @@ public sealed class OverlayWindow : Window
         IReadOnlyList<SearchProviderDescriptor>? providers = null,
         string? initialProviderId = null,
         Action<IOverlayCommand>? publishCommand = null,
-        Func<Uri, ITraceVideoPreview>? createTraceVideo = null)
+        Func<Uri, ITraceVideoPreview>? createTraceVideo = null,
+        string? ocrLanguageTag = null,
+        string translationTargetLanguageTag = "en")
     {
         _frame = frame;
         _exitFade = exitFade;
@@ -149,7 +151,9 @@ public sealed class OverlayWindow : Window
             scenario => _publishCommand?.Invoke(new MusicDebugScenarioSelected(scenario)),
             HandleMusicResultCommand,
             command => _publishCommand?.Invoke(command),
-            ApplyModeTransition));
+            ApplyModeTransition,
+            ocrLanguageTag,
+            translationTargetLanguageTag));
         _selection = _controllers.Selection;
         _textSelection = _controllers.TextSelection;
         _pointer = _controllers.Pointer;
@@ -200,7 +204,9 @@ public sealed class OverlayWindow : Window
             options.Providers,
             options.InitialProviderId,
             publishCommand,
-            createTraceVideo)
+            createTraceVideo,
+            options.SessionOptions.OcrLanguageTag,
+            options.SessionOptions.TranslationTargetLanguageTag)
     {
     }
 

@@ -30,6 +30,7 @@ public sealed class UiStrings
     public string StartupLanguageFailed => Get("app_startup_language_failed");
     public string StartupDataFailed(string path) => Get("app_startup_data_failed", path);
     public string StorageSaveFailed => Get("app_storage_save_failed");
+    public string StorageLoadFailed => Get("app_storage_load_failed");
     public string StorageRecovered => Get("app_storage_recovered");
     public string StorageRecoveryFailed => Get("app_storage_recovery_failed");
     public string HotkeyConflict(string gesture) => Get("app_hotkey_conflict", gesture);

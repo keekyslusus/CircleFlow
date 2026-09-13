@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Text.Json;
+using CircleToSearch.Settings;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -33,6 +35,42 @@ public sealed class AppStartupTests
         Assert.Equal(TestUiStrings.English.ActivationAlreadyRunning, result.Message);
         Assert.Equal(MessageBoxImage.Information, result.Icon);
         Assert.False(Directory.Exists(paths.DataDirectory));
+    }
+
+    [Fact]
+    public async Task Recovered_settings_produce_one_startup_notice_and_keep_the_valid_backup()
+    {
+        if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
+        var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "startup-recovery-" + Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(paths.LanguagesDirectory);
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        AppDataDirectory.Initialize(paths);
+        File.WriteAllText(paths.SettingsFilePath, "corrupt file");
+        var expected = new AppSettings { PaddingPx = 21, ImageTranslationPrivacyConsentAccepted = true };
+        File.WriteAllText(paths.SettingsBackupFilePath, JsonSerializer.Serialize(expected));
+        Exception? failure = null;
+        var messages = new List<string>();
+        var exitCode = -1;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                exitCode = CompositionRoot.Run(paths, (text, _, _) =>
+                {
+                    messages.Add(text);
+                    Application.Current.Dispatcher.BeginInvoke(() => Application.Current.Shutdown());
+                }, "Local\\CircleFlow.StartupTests." + Guid.NewGuid().ToString("N"));
+            }
+            catch (Exception exception) { failure = exception; }
+        }) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+        Assert.Null(failure);
+        Assert.Equal(0, exitCode);
+        Assert.Equal(TestUiStrings.English.StorageRecovered, Assert.Single(messages));
+        Assert.Equal(expected, new SettingsStore(paths).Load().Settings);
+        Assert.Equal(expected, JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(paths.SettingsBackupFilePath)));
     }
 
     [Fact]

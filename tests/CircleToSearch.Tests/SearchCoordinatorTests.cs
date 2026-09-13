@@ -224,13 +224,13 @@ public sealed class SearchCoordinatorTests
                 "CircleToSearch.Tests",
                 Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(logDirectory);
-            var settings = new PluginSettings { HideDelayMilliseconds = hideDelayMilliseconds };
+            var settings = new AppSettings { HideDelayMilliseconds = hideDelayMilliseconds };
             Workflow = new FakeWorkflow();
             Notifier = new FakeNotifier();
             Coordinator = new SearchCoordinator(
                 Workflow,
                 hideMainWindow ?? (() => Hidden++),
-                settings,
+                () => new SearchSessionOptions(HideDelayMilliseconds: settings.HideDelayMilliseconds),
                 Notifier,
                 TestUiStrings.English,
                 new PluginLog(logDirectory));
@@ -253,7 +253,7 @@ public sealed class SearchCoordinatorTests
         public Exception? CancellationCallbackException { get; set; }
         public Exception? Exception { get; set; }
 
-        public async Task RunAsync(Action onUploadStarted, CancellationToken cancellationToken)
+        public async Task RunAsync(SearchSessionOptions options, Action onUploadStarted, CancellationToken cancellationToken)
         {
             Calls++;
             if (Exception is not null) throw Exception;

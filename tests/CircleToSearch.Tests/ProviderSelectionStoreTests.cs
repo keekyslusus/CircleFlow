@@ -26,7 +26,7 @@ public sealed class ProviderSelectionStoreTests
         harness.Store.Save("missing");
 
         Assert.Equal(SearchProviderIds.GoogleLens, harness.Settings.SearchProviderId);
-        Assert.Equal(1, harness.SaveCalls);
+        Assert.Equal(0, harness.SaveCalls);
     }
 
     [Fact]
@@ -37,21 +37,21 @@ public sealed class ProviderSelectionStoreTests
         var effective = harness.Store.GetEffectiveSelection();
 
         Assert.Equal(SearchProviderIds.GoogleLens, effective.Id);
-        Assert.Equal("missing", harness.Settings.SearchProviderId);
+        Assert.Equal(SearchProviderIds.GoogleLens, harness.Settings.SearchProviderId);
         Assert.Equal(0, harness.SaveCalls);
         Assert.Equal(0, harness.ProviderFactoryCalls);
     }
 
     [Fact]
-    public void Save_exception_keeps_new_value_notifies_once_and_does_not_throw()
+    public void Save_exception_keeps_previous_value_notifies_once_and_does_not_throw()
     {
         using var harness = new Harness(saveThrows: true);
 
         harness.Store.Save(SearchProviderIds.YandexImages);
 
-        Assert.Equal(SearchProviderIds.YandexImages, harness.Settings.SearchProviderId);
+        Assert.Equal(SearchProviderIds.GoogleLens, harness.Settings.SearchProviderId);
         Assert.Equal(1, harness.SaveCalls);
-        Assert.Contains("disk unavailable", Assert.Single(harness.Notifier.Errors).Message);
+        Assert.Equal(TestUiStrings.English.StorageSaveFailed, Assert.Single(harness.Notifier.Errors).Message);
     }
 
     private sealed class Harness : IDisposable
@@ -63,7 +63,11 @@ public sealed class ProviderSelectionStoreTests
             var path = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(path);
             var log = new PluginLog(path);
-            Settings = new PluginSettings { SearchProviderId = providerId };
+            Service = TestSettings.Create(SettingsValidator.Normalize(new AppSettings { SearchProviderId = providerId }, out _), _ =>
+            {
+                SaveCalls++;
+                if (saveThrows) throw new IOException("disk unavailable");
+            });
             _router = new VisualSearchProviderRouter(
                 [
                     new VisualSearchProviderRegistration(
@@ -77,19 +81,15 @@ public sealed class ProviderSelectionStoreTests
                 log);
             Store = new ProviderSelectionStore(
                 _router,
-                Settings,
-                () =>
-                {
-                    SaveCalls++;
-                    if (saveThrows) throw new IOException("disk unavailable");
-                },
+                Service,
                 Notifier,
                 TestUiStrings.English,
                 log);
         }
 
         public ProviderSelectionStore Store { get; }
-        public PluginSettings Settings { get; }
+        public SettingsService Service { get; }
+        public AppSettings Settings => Service.Snapshot;
         public TestPluginNotifier Notifier { get; } = new();
         public int SaveCalls { get; private set; }
         public int ProviderFactoryCalls { get; private set; }

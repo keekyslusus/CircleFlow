@@ -19,7 +19,7 @@ public sealed class VisualSearchWorkflowTests
             new SelectionOutcome(new Rectangle(0, 0, 2, 2), bitmap),
             SearchProviderIds.GoogleLens,
             () => transitions++,
-            CancellationToken.None);
+            1600, CancellationToken.None);
 
         Assert.Equal(1, transitions);
         Assert.Equal(1, harness.Host.Calls);
@@ -36,7 +36,7 @@ public sealed class VisualSearchWorkflowTests
             new SelectionOutcome(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2)),
             SearchProviderIds.YandexImages,
             () => { },
-            CancellationToken.None);
+            1600, CancellationToken.None);
 
         Assert.Equal(0, harness.Google.Calls);
         Assert.Equal(1, harness.Yandex.Calls);
@@ -57,7 +57,7 @@ public sealed class VisualSearchWorkflowTests
             new SelectionOutcome(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2)),
             SearchProviderIds.YandexImages,
             () => { },
-            CancellationToken.None);
+            1600, CancellationToken.None);
 
         Assert.Equal(1, harness.Yandex.Calls);
         Assert.Equal(1, harness.Host.Calls);
@@ -73,7 +73,7 @@ public sealed class VisualSearchWorkflowTests
             new SelectionOutcome(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2)),
             "missing",
             () => { },
-            CancellationToken.None);
+            1600, CancellationToken.None);
 
         Assert.Equal(1, harness.Google.Calls);
         Assert.Equal(0, harness.Yandex.Calls);
@@ -90,7 +90,7 @@ public sealed class VisualSearchWorkflowTests
             new SelectionOutcome(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2)),
             SearchProviderIds.GoogleLens,
             () => events.Add("upload"),
-            CancellationToken.None);
+            1600, CancellationToken.None);
 
         Assert.Equal(["upload", "provider"], events);
     }
@@ -98,7 +98,7 @@ public sealed class VisualSearchWorkflowTests
     [Fact]
     public async Task Crop_exception_disposes_bitmap_without_transitioning_or_notifying()
     {
-        using var harness = new Harness(crop: (_, _) => throw new InvalidOperationException("crop failed"));
+        using var harness = new Harness(crop: (_, _, _) => throw new InvalidOperationException("crop failed"));
         var bitmap = new Bitmap(2, 2);
         var transitions = 0;
 
@@ -106,7 +106,7 @@ public sealed class VisualSearchWorkflowTests
             new SelectionOutcome(new Rectangle(0, 0, 2, 2), bitmap),
             SearchProviderIds.GoogleLens,
             () => transitions++,
-            CancellationToken.None));
+            1600, CancellationToken.None));
 
         Assert.Equal("crop failed", exception.Message);
         Assert.Equal(0, transitions);
@@ -125,7 +125,7 @@ public sealed class VisualSearchWorkflowTests
             new SelectionOutcome(new Rectangle(0, 0, 2, 2), bitmap),
             SearchProviderIds.GoogleLens,
             () => { },
-            CancellationToken.None));
+            1600, CancellationToken.None));
 
         Assert.Throws<ArgumentException>(() => bitmap.GetPixel(0, 0));
         Assert.Empty(harness.Notifier.Errors);
@@ -164,7 +164,7 @@ public sealed class VisualSearchWorkflowTests
     {
         private readonly VisualSearchProviderRouter _router;
 
-        public Harness(Func<Bitmap, Rectangle, byte[]>? crop = null)
+        public Harness(Func<Bitmap, Rectangle, int, byte[]>? crop = null)
         {
             var log = NewLog();
             _router = new VisualSearchProviderRouter(
@@ -190,7 +190,7 @@ public sealed class VisualSearchWorkflowTests
                 log);
             Workflow = new VisualSearchWorkflow(
                 _router,
-                crop ?? ((_, _) => [1, 2, 3]),
+                crop ?? ((_, _, _) => [1, 2, 3]),
                 presenter,
                 Notifier,
                 TestUiStrings.English,
@@ -208,7 +208,7 @@ public sealed class VisualSearchWorkflowTests
             new SelectionOutcome(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2)),
             SearchProviderIds.GoogleLens,
             () => { },
-            CancellationToken.None);
+            1600, CancellationToken.None);
 
         public void Dispose() => _router.Dispose();
     }

@@ -24,7 +24,7 @@ public static class HotkeyGestureParser
         virtualKey = 0;
         if (string.IsNullOrWhiteSpace(text)) return false;
 
-        var tokens = text.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var tokens = text.Split('+', StringSplitOptions.TrimEntries);
         if (tokens.Length < 2) return false;
 
         var parsedModifiers = 0u;
