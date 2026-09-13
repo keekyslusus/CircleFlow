@@ -7,11 +7,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>CircleToSearch</RootNamespace>
-    <AssemblyName>CircleToSearch</AssemblyName>
+    <AssemblyName>CircleFlow</AssemblyName>
+    <Version>0.5.1</Version>
+    <Product>CircleFlow</Product>
+    <Title>CircleFlow</Title>
+    <Description>Search a screen area visually or recognize music from Windows output</Description>
+    <Authors>keekys</Authors>
+    <Company>keekys</Company>
+    <PackageProjectUrl>https://github.com/keekyslusus/circletosearchplugin</PackageProjectUrl>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <OutputType>Library</OutputType>
+    <OutputType>WinExe</OutputType>
+    <StartupObject>CircleToSearch.Program</StartupObject>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
@@ -24,16 +33,12 @@
       <SubType>Designer</SubType>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="plugin.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Content Include="Images\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Flow.Launcher.Plugin" Version="5.3.1" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
     <PackageReference Include="NAudio" Version="3.0.1" />
@@ -74,17 +79,5 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-
-  <!-- Flow must resolve WinRT through its default load context. A private copy lets
-       WebView2's older assembly reference create a second global ComWrappers. -->
-  <Target Name="UseHostWinRtRuntime" AfterTargets="ResolveReferences">
-    <ItemGroup>
-      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
-                               Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'WinRT.Runtime'" />
-    </ItemGroup>
-  </Target>
-  <Target Name="RemoveStalePrivateWinRtRuntime" AfterTargets="Build">
-    <Delete Files="$(TargetDir)WinRT.Runtime.dll" />
-  </Target>
 
 </Project>

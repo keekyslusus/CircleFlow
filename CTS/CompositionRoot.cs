@@ -2,9 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Windows.Controls;
 using System.Windows;
-using Flow.Launcher.Plugin;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.Interop;
@@ -14,6 +12,7 @@ using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
 using CircleToSearch.Settings;
+using CircleToSearch.Shell;
 using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
 using CircleToSearch.TextRecognition;
@@ -28,33 +27,33 @@ public static class CompositionRoot
     internal const string SearchBrowserThreadName = "CircleToSearch WebView2";
     internal const bool TranslationMemoryProfilingEnabled = false;
 
-    public static UiStrings CreateUiStrings(PluginInitContext context) =>
-        new(context.API.GetTranslation);
-
-    public static PluginRuntime Create(PluginInitContext context, UiStrings strings)
+    public static int Run()
     {
-        var api = context.API;
-        var pluginDirectory = context.CurrentPluginMetadata.PluginDirectory;
-        var log = new PluginLog(pluginDirectory);
-        using var rollback = new ResourceRollbackScope(log);
-        var settings = api.LoadSettingJsonStorage<PluginSettings>();
-        var dataDirectory = api.GetDataDirectory();
-        if (string.IsNullOrWhiteSpace(dataDirectory)) dataDirectory = pluginDirectory;
-        var iconPath = Path.Combine(pluginDirectory, "Images", "app.png");
-        var webView2Version = SearchBrowserHost.GetRuntimeVersion(pluginDirectory);
-        log.Info(nameof(CompositionRoot), webView2Version is null
-            ? "WebView2 Runtime was not detected"
-            : $"WebView2 Runtime detected: {webView2Version}");
+        var application = CreateApplication();
+        // Runtime startup awaits the local paths, settings and shell from migration stages 2-4.
+        var lifetime = new AppLifetime(application, () => Task.CompletedTask);
+        return lifetime.Run();
+    }
 
-        var notifier = new PluginNotifier(
-            (title, message) => api.ShowMsg(title, message, iconPath),
-            (title, message, button, action) =>
-                api.ShowMsgWithButton(title, button, action, message, iconPath),
-            (title, message) => api.ShowMsgError(title, message),
-            log);
+    internal static Application CreateApplication() => new()
+    {
+        ShutdownMode = ShutdownMode.OnExplicitShutdown,
+    };
+
+    internal static AppRuntime Create(
+        string assetDirectory,
+        string dataDirectory,
+        PluginSettings settings,
+        Action saveSettings,
+        UiStrings strings,
+        IPluginNotifier notifier,
+        Action hideOwnWindows,
+        PluginLog log)
+    {
+        using var rollback = new ResourceRollbackScope(log);
         var searchBrowserDispatcher = rollback.Own(new StaDispatcher(SearchBrowserThreadName));
         var searchBrowserHost = rollback.Replace(searchBrowserDispatcher, new SearchBrowserHost(
-            pluginDirectory,
+            assetDirectory,
             Path.Combine(dataDirectory, "WebView2Profile"),
             strings,
             log,
@@ -117,7 +116,7 @@ public static class CompositionRoot
         var providerSelection = new ProviderSelectionStore(
             providerRouter,
             settings,
-            () => api.SaveSettingJsonStorage<PluginSettings>(),
+            saveSettings,
             notifier,
             strings,
             log);
@@ -129,7 +128,7 @@ public static class CompositionRoot
             DefaultRequestVersion = HttpVersion.Version20,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
         });
-        var translationMemory = TranslationMemoryProfilingEnabled ? new TranslationMemoryProfiler(pluginDirectory) : null;
+        var translationMemory = TranslationMemoryProfilingEnabled ? new TranslationMemoryProfiler(assetDirectory) : null;
         if (translationMemory is not null) rollback.Own(translationMemory);
         translationMemory?.Mark("runtime_ready");
         var translationDispatcher = rollback.Own(new StaDispatcher("CircleToSearch image translation"));
@@ -163,9 +162,9 @@ public static class CompositionRoot
             },
             translationConsentAccepted: () => settings.ImageTranslationPrivacyConsentAccepted,
             acceptTranslationConsent: () => SaveTranslationConsent(
-                settings, true, () => api.SaveSettingJsonStorage<PluginSettings>()),
+                settings, true, saveSettings),
             resetTranslationConsent: () => SaveTranslationConsent(
-                settings, false, () => api.SaveSettingJsonStorage<PluginSettings>()),
+                settings, false, saveSettings),
             log: log,
             memoryProfiler: translationMemory);
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory,
@@ -186,7 +185,7 @@ public static class CompositionRoot
             OpenResultsUrl);
         var coordinator = new SearchCoordinator(
             workflow,
-            () => api.HideMainWindow(),
+            hideOwnWindows,
             settings,
             notifier,
             strings,
@@ -194,7 +193,6 @@ public static class CompositionRoot
         var hotkeyDispatcher = rollback.Own(new StaDispatcher(HotkeyThreadName));
         var hotkeyWindow = rollback.Replace(hotkeyDispatcher, new HotkeyWindow(hotkeyDispatcher, log));
         var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
-        var queryTrigger = new QueryTrigger(coordinator, iconPath, registrar.DescribeStatus, strings);
         var lifetime = new PluginRuntimeLifetime(
             coordinator.StopAsync,
             hotkeyWindow.StopAsync,
@@ -212,19 +210,7 @@ public static class CompositionRoot
             lifetime.StopAsync,
             log,
             TimeSpan.FromSeconds(2));
-        var runtime = new PluginRuntime(
-            coordinator,
-            queryTrigger,
-            () => new SettingsPanel(
-                settings,
-                registrar.TryApply,
-                api.SaveSettingJsonStorage<PluginSettings>,
-                webView2Version,
-                providerRouter.GetEffectiveDescriptor(settings.SearchProviderId).DisplayName,
-                strings,
-                ocrLanguages.AvailableLanguages),
-            stopAdapter,
-            log);
+        var runtime = new AppRuntime(coordinator, stopAdapter);
         rollback.TransferAllTo(stopAdapter);
 
         hotkeyWindow.HotkeyPressed += () =>
@@ -275,38 +261,4 @@ public static class CompositionRoot
             return false;
         }
     }
-}
-
-public sealed class PluginRuntime : IDisposable
-{
-    private readonly PluginRuntimeStopAdapter _stopAdapter;
-    private readonly PluginLog _log;
-
-    internal PluginRuntime(
-        SearchCoordinator coordinator,
-        QueryTrigger queryTrigger,
-        Func<Control> createSettingPanel,
-        PluginRuntimeStopAdapter stopAdapter,
-        PluginLog log)
-    {
-        Coordinator = coordinator;
-        QueryTrigger = queryTrigger;
-        CreateSettingPanel = createSettingPanel;
-        _stopAdapter = stopAdapter;
-        _log = log;
-    }
-
-    public SearchCoordinator Coordinator { get; }
-
-    public QueryTrigger QueryTrigger { get; }
-
-    public Func<Control> CreateSettingPanel { get; }
-
-    public void ReportQueryFailure(Exception exception) =>
-        _log.SafeError(nameof(PluginRuntime), "build-query-results", exception);
-
-    public void Dispose()
-        => _stopAdapter.Dispose();
-
-    public Task StopAsync() => _stopAdapter.StopAsync();
 }

@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-- Keep `Main.cs` as a thin Flow Launcher adapter.
+- Keep `Program.cs` as a thin standalone application entry point.
 - Assemble the runtime dependency graph only in `CTS/CompositionRoot.cs`.
 - Prefer composition and constructor injection. Do not introduce implementation inheritance, abstract base classes, class hierarchies or service locators.
 - Give each class one cohesive responsibility; keep feature-specific behavior and resource ownership inside that feature.

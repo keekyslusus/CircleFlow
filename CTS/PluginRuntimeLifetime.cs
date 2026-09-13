@@ -169,7 +169,7 @@ internal sealed class PluginRuntimeStopAdapter : IDisposable
     {
         if (Interlocked.Exchange(ref _disposeWaitStarted, 1) != 0) return;
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
-        _log.Info(nameof(PluginRuntime), "disposing: canceling the active session and unregistering the hotkey");
+        _log.Info(nameof(AppRuntime), "disposing: canceling the active session and unregistering the hotkey");
         var stop = StopAsync();
         var remaining = _hostBudget - elapsed.Elapsed;
         try
@@ -186,7 +186,7 @@ internal sealed class PluginRuntimeStopAdapter : IDisposable
         }
         catch (TimeoutException)
         {
-            _log.Warn(nameof(PluginRuntime), "runtime cleanup exceeded the host shutdown budget and continues in the background");
+            _log.Warn(nameof(AppRuntime), "runtime cleanup exceeded the host shutdown budget and continues in the background");
             _ = stop.ContinueWith(
                 task =>
                 {
@@ -196,10 +196,10 @@ internal sealed class PluginRuntimeStopAdapter : IDisposable
                         var exception = aggregate.InnerExceptions.Count == 1
                             ? aggregate.InnerExceptions[0]
                             : aggregate;
-                        _log.SafeError(nameof(PluginRuntime), "deferred-runtime-cleanup", exception);
+                        _log.SafeError(nameof(AppRuntime), "deferred-runtime-cleanup", exception);
                     }
                     else
-                        _log.Info(nameof(PluginRuntime), "deferred runtime cleanup completed");
+                        _log.Info(nameof(AppRuntime), "deferred runtime cleanup completed");
                 },
                 CancellationToken.None,
                 TaskContinuationOptions.ExecuteSynchronously,
@@ -207,7 +207,7 @@ internal sealed class PluginRuntimeStopAdapter : IDisposable
         }
         catch (Exception exception)
         {
-            _log.SafeError(nameof(PluginRuntime), "runtime-cleanup", exception);
+            _log.SafeError(nameof(AppRuntime), "runtime-cleanup", exception);
         }
     }
 }
