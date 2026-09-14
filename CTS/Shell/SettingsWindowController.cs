@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Threading;
 using CircleToSearch.Ui;
 
@@ -17,12 +16,7 @@ internal sealed class SettingsWindowController(Dispatcher dispatcher, UiStrings 
         if (_disposed) return;
         if (_window is null)
         {
-            var window = new Window
-            {
-                Title = strings.SettingsWindowTitle, Width = 720, Height = 480,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                Background = new SolidColorBrush(PluginPalette.For(SystemTheme.IsLight()).WindowSurface),
-            };
+            var window = new SettingsPreview.SettingsWindowView(strings, SystemTheme.IsLight()).Window;
             window.Closed += (_, _) => { if (ReferenceEquals(_window, window)) _window = null; };
             _window = window;
         }

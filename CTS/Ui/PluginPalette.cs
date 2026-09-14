@@ -33,6 +33,32 @@ internal static class PluginPalette
 
     public static PluginThemePalette For(bool lightTheme) => lightTheme ? Light : Dark;
 
+    internal static SettingsPalette Settings(bool lightTheme)
+    {
+        var theme = For(lightTheme);
+        var state = theme.StateCard;
+        var paper = theme.WindowSurface;
+        var surface = lightTheme ? LightDockSurface with { A = 255 } : state.Surface;
+        var wash = Composite(paper, WithAlpha(state.PrimaryContainer, 0.25));
+        return new SettingsPalette(
+            Paper: paper,
+            Surface: surface,
+            Card: lightTheme ? surface : Composite(surface, WithAlpha(state.Text, 0.03)),
+            Sidebar: Composite(paper, WithAlpha(wash, 0.8)),
+            Titlebar: Composite(surface, WithAlpha(wash, 0.8)),
+            Text: state.Text,
+            Muted: state.MutedText,
+            Accent: theme.MusicOverlay.Primary,
+            Line: WithAlpha(state.Text, 0.10),
+            Hover: WithAlpha(state.Text, 0.05),
+            Selected: WithAlpha(state.Text, 0.06),
+            Wash: wash,
+            HeroStart: Composite(paper, WithAlpha(state.PrimaryContainer, 0.45)),
+            HeroEnd: Composite(paper, WithAlpha(state.PrimaryContainer, 0.12)),
+            AccentLine: WithAlpha(theme.MusicOverlay.Primary, 0.18),
+            Scrim: WithAlpha(OpaqueBlack, 0.35));
+    }
+
     internal static Color TraceCardHover(bool lightTheme) => Composite(For(lightTheme).MusicOverlay.Surface,
         lightTheme ? LightDockHoverOverlay : DarkDockHoverOverlay);
 
@@ -223,6 +249,11 @@ internal static class PluginPalette
             Blend(background.B, foreground.B));
     }
 }
+
+internal sealed record SettingsPalette(
+    Color Paper, Color Surface, Color Card, Color Sidebar, Color Titlebar,
+    Color Text, Color Muted, Color Accent, Color Line, Color Hover, Color Selected,
+    Color Wash, Color HeroStart, Color HeroEnd, Color AccentLine, Color Scrim);
 
 internal sealed record PluginThemePalette(
     Color WindowSurface,

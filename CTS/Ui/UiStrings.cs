@@ -26,6 +26,7 @@ public sealed class UiStrings
     public string TraySupport => Get("app_tray_support");
     public string TrayExit => Get("app_tray_exit");
     public string SettingsWindowTitle => Get("app_settings_window_title");
+    internal string SettingsPreviewText(string key) => Get("app_settings_" + key);
     public string StartupFailed => Get("app_startup_failed");
     public string StartupLanguageFailed => Get("app_startup_language_failed");
     public string StartupDataFailed(string path) => Get("app_startup_data_failed", path);
