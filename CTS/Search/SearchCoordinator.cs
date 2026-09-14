@@ -61,7 +61,7 @@ public sealed class SearchCoordinator
         }
     }
 
-    public Task StartFromQueryAsync()
+    public Task OpenAsync()
     {
         try
         {
@@ -69,7 +69,7 @@ public sealed class SearchCoordinator
             {
                 if (_stopping) return IgnoreTrigger("runtime is stopping");
             }
-            return State == SearchState.Idle ? StartSession("query") : IgnoreTrigger("another session is active");
+            return State == SearchState.Idle ? StartSession("open") : IgnoreTrigger("another session is active");
         }
         catch (Exception exception)
         {

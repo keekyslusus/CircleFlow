@@ -35,7 +35,6 @@ public sealed class UiStrings
     public string StorageRecoveryFailed => Get("app_storage_recovery_failed");
     public string HotkeyConflict(string gesture) => Get("app_hotkey_conflict", gesture);
     public string HotkeyRollbackFailed => Get("app_hotkey_rollback_failed");
-    public string ActivationAlreadyRunning => Get("app_activation_already_running");
     public string ActivationFailed => Get("app_activation_failed");
     public string ShutdownFailed => Get("app_shutdown_failed");
     public string ShutdownTimedOut => Get("app_shutdown_timed_out");

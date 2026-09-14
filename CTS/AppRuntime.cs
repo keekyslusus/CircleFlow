@@ -15,7 +15,7 @@ public sealed class AppRuntime : IDisposable
         Settings = settings;
     }
 
-    public Task OpenAsync() => _coordinator.StartFromQueryAsync();
+    public Task OpenAsync() => _coordinator.OpenAsync();
     public SettingsService Settings { get; }
 
     public Task StopAsync() => _stopAdapter.StopAsync();

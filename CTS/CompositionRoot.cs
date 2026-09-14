@@ -49,10 +49,12 @@ public static class CompositionRoot
 
         try
         {
-            using var instance = SingleInstanceCoordinator.TryAcquire(instanceName ?? SingleInstanceCoordinator.CurrentSessionName);
+            var launch = SingleInstanceCoordinator.AcquireOrActivate(instanceName ?? SingleInstanceCoordinator.CurrentSessionName);
+            using var instance = launch.Instance;
             if (instance is null)
             {
-                reportStartupMessage(strings.ActivationAlreadyRunning, strings.PluginTitle, MessageBoxImage.Information);
+                if (launch.Activated) return 0;
+                reportStartupMessage(strings.ActivationFailed, strings.PluginTitle, MessageBoxImage.Error);
                 return 1;
             }
             try { AppDataDirectory.Initialize(paths); }
@@ -63,6 +65,9 @@ public static class CompositionRoot
             }
             var log = new PluginLog(paths.LogsDirectory);
             log.Info(nameof(CompositionRoot), "standalone host initialized");
+            using var activation = new OpenCommandDispatcher(application.Dispatcher, log);
+            instance.StartListening(activation.TryRequestOpen,
+                exception => log.SafeError(nameof(SingleInstanceCoordinator), "activation-listener", exception));
             var store = new SettingsStore(paths);
             SettingsLoadResult loaded;
             try { loaded = store.Load(); }
@@ -89,18 +94,25 @@ public static class CompositionRoot
                     notifications.CloseAll();
                 }).Task, log);
             var support = new ProjectSupport(OpenResultsUrl, notifier, strings);
-            var lifetime = new AppLifetime(application, runtime.StopAsync, () =>
+            var lifetime = new AppLifetime(application, async () =>
+            {
+                activation.Dispose();
+                var stopping = runtime.StopAsync();
+                await instance.StopListeningAsync();
+                await stopping;
+            }, () =>
             {
                 tray?.Dispose();
                 settingsWindow.Dispose();
                 notifications.Dispose();
             });
             using var trayIcon = new TrayIcon(paths.TrayIconPath, strings, application.Dispatcher, log,
-                runtime.OpenAsync,
+                () => { activation.TryRequestOpen(); return Task.CompletedTask; },
                 () => { settingsWindow.Show(); return Task.CompletedTask; },
                 () => { support.Open(); return Task.CompletedTask; },
                 lifetime.RequestExitAsync);
             tray = trayIcon;
+            activation.SetReady(runtime.OpenAsync);
             return lifetime.Run();
         }
         catch

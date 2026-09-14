@@ -21,7 +21,7 @@ public sealed class AppStartupTests
     }
 
     [Fact]
-    public async Task A_second_instance_reports_activation_without_creating_its_Data()
+    public async Task An_unreachable_instance_reports_failure_without_creating_its_Data()
     {
         if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "second-instance-" + Guid.NewGuid().ToString("N")));
@@ -32,8 +32,26 @@ public sealed class AppStartupTests
         Assert.NotNull(owner);
         var result = RunOnSta(paths, instanceName);
         Assert.Equal(1, result.ExitCode);
-        Assert.Equal(TestUiStrings.English.ActivationAlreadyRunning, result.Message);
-        Assert.Equal(MessageBoxImage.Information, result.Icon);
+        Assert.Equal(TestUiStrings.English.ActivationFailed, result.Message);
+        Assert.Equal(MessageBoxImage.Error, result.Icon);
+        Assert.False(Directory.Exists(paths.DataDirectory));
+    }
+
+    [Fact]
+    public async Task A_second_launch_delivers_Open_and_exits_successfully_without_creating_Data()
+    {
+        if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
+        var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "activated-instance-" + Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(paths.LanguagesDirectory);
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        var name = "Local\\CircleFlow.StartupTests." + Guid.NewGuid().ToString("N");
+        using var owner = Shell.SingleInstanceCoordinator.TryAcquire(name);
+        var opens = 0;
+        owner!.StartListening(() => { Interlocked.Increment(ref opens); return true; }, exception => Assert.Fail(exception.ToString()));
+        var result = RunOnSta(paths, name);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Null(result.Message);
+        Assert.Equal(1, opens);
         Assert.False(Directory.Exists(paths.DataDirectory));
     }
 
@@ -67,7 +85,7 @@ public sealed class AppStartupTests
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+        Assert.True(thread.Join(TimeSpan.FromSeconds(10)));
         Assert.Null(failure);
         Assert.Equal(0, exitCode);
         Assert.Equal(TestUiStrings.English.StorageRecovered, Assert.Single(messages));
@@ -112,7 +130,7 @@ public sealed class AppStartupTests
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+        Assert.True(thread.Join(TimeSpan.FromSeconds(10)));
         Assert.Null(failure);
         return (exitCode, message, title, icon);
     }

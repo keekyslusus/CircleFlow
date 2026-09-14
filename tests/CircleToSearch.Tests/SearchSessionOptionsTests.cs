@@ -30,10 +30,10 @@ public sealed class SearchSessionOptionsTests
             }).ThrowIfFailed("test update failed"); return Task.CompletedTask; },
             () => { reads++; return SearchSessionOptions.From(service.Snapshot, languages, CultureInfo.GetCultureInfo("fr-FR")); },
             new TestPluginNotifier(), TestUiStrings.English, new PluginLog(directory));
-        await coordinator.StartFromQueryAsync();
+        await coordinator.OpenAsync();
         Assert.Equal(initial, Assert.Single(workflow.Options));
         Assert.Equal(1, reads);
-        await coordinator.StartFromQueryAsync();
+        await coordinator.OpenAsync();
         Assert.Equal(SearchSessionOptions.From(service.Snapshot, languages, CultureInfo.GetCultureInfo("fr-FR")), workflow.Options[1]);
         Assert.Equal(2, reads);
         Assert.NotEqual(workflow.Options[0], workflow.Options[1]);

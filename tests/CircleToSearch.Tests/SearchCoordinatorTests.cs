@@ -12,7 +12,7 @@ public sealed class SearchCoordinatorTests
     {
         var hidden = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var harness = new Harness(hideOwnWindows: () => hidden.Task);
-        var session = harness.Coordinator.StartFromQueryAsync();
+        var session = harness.Coordinator.OpenAsync();
         Assert.Equal(0, harness.Workflow.Calls);
         Assert.False(session.IsCompleted);
         hidden.SetResult();
@@ -28,7 +28,7 @@ public sealed class SearchCoordinatorTests
         var harness = new Harness();
 
         if (hotkey) await harness.Coordinator.StartFromHotkeyAsync();
-        else await harness.Coordinator.StartFromQueryAsync();
+        else await harness.Coordinator.OpenAsync();
 
         Assert.Equal(1, harness.Workflow.Calls);
         Assert.Equal(1, harness.Hidden);
@@ -74,7 +74,7 @@ public sealed class SearchCoordinatorTests
     [Theory]
     [InlineData(false, SearchState.Cancelable)]
     [InlineData(true, SearchState.Uploading)]
-    public async Task Query_during_an_active_session_is_ignored(
+    public async Task Open_during_an_active_session_is_ignored(
         bool uploadStarted,
         SearchState expectedState)
     {
@@ -85,7 +85,7 @@ public sealed class SearchCoordinatorTests
         var session = harness.Coordinator.StartFromHotkeyAsync();
         Assert.True(WaitForState(harness.Coordinator, expectedState));
 
-        await harness.Coordinator.StartFromQueryAsync();
+        await harness.Coordinator.OpenAsync();
         harness.Workflow.Completion.SetResult();
         await session;
 
@@ -177,7 +177,7 @@ public sealed class SearchCoordinatorTests
         var second = harness.Coordinator.StopAsync();
         await first;
         await harness.Coordinator.StartFromHotkeyAsync();
-        await harness.Coordinator.StartFromQueryAsync();
+        await harness.Coordinator.OpenAsync();
 
         Assert.Same(first, second);
         Assert.Equal(0, harness.Workflow.Calls);
@@ -189,7 +189,7 @@ public sealed class SearchCoordinatorTests
     {
         var harness = new Harness();
         harness.Workflow.BlockUntilCanceled = true;
-        var session = harness.Coordinator.StartFromQueryAsync();
+        var session = harness.Coordinator.OpenAsync();
         Assert.True(WaitForState(harness.Coordinator, SearchState.Cancelable));
 
         var stop = harness.Coordinator.StopAsync();
@@ -197,7 +197,7 @@ public sealed class SearchCoordinatorTests
         await stop.WaitAsync(TimeSpan.FromSeconds(2));
         await session;
         Assert.True(harness.Workflow.CancellationObserved);
-        await harness.Coordinator.StartFromQueryAsync();
+        await harness.Coordinator.OpenAsync();
         Assert.Equal(1, harness.Workflow.Calls);
     }
 
@@ -208,7 +208,7 @@ public sealed class SearchCoordinatorTests
         harness.Workflow.Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         harness.Workflow.CompleteOnCancellation = false;
         harness.Workflow.CancellationCallbackException = new InvalidOperationException("cancel failed");
-        var session = harness.Coordinator.StartFromQueryAsync();
+        var session = harness.Coordinator.OpenAsync();
         Assert.True(WaitForState(harness.Coordinator, SearchState.Cancelable));
 
         var stop = harness.Coordinator.StopAsync();

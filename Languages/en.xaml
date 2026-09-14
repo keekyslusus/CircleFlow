@@ -17,7 +17,6 @@
     <system:String x:Key="app_storage_recovery_failed">The damaged settings file could not be preserved. It has not been overwritten.</system:String>
     <system:String x:Key="app_hotkey_conflict">The shortcut {0} could not be registered. You can still use Open from the tray menu.</system:String>
     <system:String x:Key="app_hotkey_rollback_failed">The previous shortcut could not be restored. Use Open from the tray menu and try applying a shortcut again.</system:String>
-    <system:String x:Key="app_activation_already_running">CircleFlow is already running in this Windows session. Opening the existing instance from a second launch is not available yet.</system:String>
     <system:String x:Key="app_activation_failed">Could not contact the running CircleFlow instance. Wait a moment and try again.</system:String>
     <system:String x:Key="app_shutdown_failed">CircleFlow could not finish shutting down. See Data/Logs for details.</system:String>
     <system:String x:Key="app_shutdown_timed_out">CircleFlow took too long to shut down and must exit. See Data/Logs for details.</system:String>
