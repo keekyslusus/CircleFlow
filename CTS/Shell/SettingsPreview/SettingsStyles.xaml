@@ -103,14 +103,6 @@
         <Setter Property="Background" Value="{DynamicResource SettingsAccent}"/>
         <Setter Property="Foreground" Value="{DynamicResource SettingsPaper}"/>
     </Style>
-    <Style x:Key="CaptionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Width" Value="46"/>
-        <Setter Property="Height" Value="42"/>
-        <Setter Property="Background" Value="{DynamicResource SettingsTransparent}"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-    </Style>
     <Style x:Key="Feature" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="{DynamicResource SettingsCard}"/>
         <Setter Property="BorderThickness" Value="1"/>
@@ -272,23 +264,30 @@
         </Setter>
     </Style>
     <Style x:Key="SettingsScrollBar" TargetType="ScrollBar">
-        <Setter Property="Width" Value="10"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Width" Value="{DynamicResource SettingsScrollTrackWidth}"/>
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollBar">
+                    <Grid Background="{DynamicResource SettingsTransparent}">
                     <Track x:Name="PART_Track" Orientation="Vertical" IsDirectionReversed="True">
                         <Track.DecreaseRepeatButton><RepeatButton Command="ScrollBar.PageUpCommand" Style="{StaticResource ScrollPageButton}"/></Track.DecreaseRepeatButton>
                         <Track.Thumb>
-                            <Thumb MinHeight="24">
+                            <Thumb OverridesDefaultStyle="True" MinHeight="{DynamicResource SettingsScrollMinThumbHeight}">
                                 <Thumb.Template>
                                     <ControlTemplate TargetType="Thumb">
-                                        <Border Background="{DynamicResource SettingsMuted}" Opacity="0.35" CornerRadius="3" Margin="3,2"/>
+                                        <Border Background="{DynamicResource SettingsScrollbarThumb}" Width="{DynamicResource SettingsScrollThumbWidth}" HorizontalAlignment="Right" CornerRadius="2" Margin="{DynamicResource SettingsScrollThumbMargin}"/>
                                     </ControlTemplate>
                                 </Thumb.Template>
                             </Thumb>
                         </Track.Thumb>
                         <Track.IncreaseRepeatButton><RepeatButton Command="ScrollBar.PageDownCommand" Style="{StaticResource ScrollPageButton}"/></Track.IncreaseRepeatButton>
                     </Track>
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -297,10 +296,9 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollViewer">
-                    <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}" Content="{TemplateBinding Content}" CanContentScroll="{TemplateBinding CanContentScroll}"/>
-                        <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Style="{StaticResource SettingsScrollBar}" Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}" Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
+                    <Grid ClipToBounds="True">
+                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Content="{TemplateBinding Content}" CanContentScroll="{TemplateBinding CanContentScroll}"/>
+                        <ScrollBar x:Name="PART_VerticalScrollBar" HorizontalAlignment="Right" Margin="{DynamicResource SettingsScrollTrackMargin}" Style="{StaticResource SettingsScrollBar}" Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}" Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>

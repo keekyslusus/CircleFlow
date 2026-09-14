@@ -1,15 +1,11 @@
 using System.Windows.Media;
 using CircleToSearch.Ui;
+using static CircleToSearch.Ui.OverlayScrollbarPolicy;
 
 namespace CircleToSearch.Search.Browser;
 
 internal static class OverlayScrollbarScript
 {
-    internal const int HideDelayMilliseconds = 300;
-    internal const int ThumbWidthPixels = 4;
-    internal const int FadeInMilliseconds = 120;
-    internal const int FadeOutMilliseconds = 180;
-
     internal static string Create()
     {
         var lightThumb = ToCssColor(PluginPalette.For(lightTheme: true).SearchBrowserScrollbarThumb);
@@ -42,10 +38,10 @@ internal static class OverlayScrollbarScript
                     const setHostStyle = (name, value) => host.style.setProperty(name, value, 'important');
                     setHostStyle('all', 'initial');
                     setHostStyle('position', 'fixed');
-                    setHostStyle('top', '2px');
+                    setHostStyle('top', '{{EdgeInsetPixels}}px');
                     setHostStyle('right', '0');
-                    setHostStyle('bottom', '2px');
-                    setHostStyle('width', '10px');
+                    setHostStyle('bottom', '{{EdgeInsetPixels}}px');
+                    setHostStyle('width', '{{TrackWidthPixels}}px');
                     setHostStyle('z-index', '2147483647');
                     setHostStyle('opacity', '0');
                     setHostStyle('pointer-events', 'none');
@@ -60,9 +56,9 @@ internal static class OverlayScrollbarScript
                     const setThumbStyle = (name, value) => thumb.style.setProperty(name, value, 'important');
                     setThumbStyle('position', 'absolute');
                     setThumbStyle('top', '0');
-                    setThumbStyle('right', '2px');
+                    setThumbStyle('right', '{{EdgeInsetPixels}}px');
                     setThumbStyle('width', '{{ThumbWidthPixels}}px');
-                    setThumbStyle('min-height', '24px');
+                    setThumbStyle('min-height', '{{MinimumThumbHeightPixels}}px');
                     setThumbStyle('border-radius', '999px');
                     setThumbStyle('cursor', 'default');
                     setThumbStyle('touch-action', 'none');
@@ -86,10 +82,10 @@ internal static class OverlayScrollbarScript
                         const target = scroller();
                         const viewportHeight = window.innerHeight;
                         const scrollRange = Math.max(0, target.scrollHeight - viewportHeight);
-                        const trackHeight = Math.max(0, viewportHeight - 4);
+                        const trackHeight = Math.max(0, viewportHeight - {{EdgeInsetPixels * 2}});
                         const thumbHeight = Math.min(
                             trackHeight,
-                            Math.max(24, trackHeight * viewportHeight / Math.max(target.scrollHeight, 1)));
+                            Math.max({{MinimumThumbHeightPixels}}, trackHeight * viewportHeight / Math.max(target.scrollHeight, 1)));
                         const thumbRange = Math.max(0, trackHeight - thumbHeight);
                         return { target, scrollRange, trackHeight, thumbHeight, thumbRange };
                     };

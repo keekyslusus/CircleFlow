@@ -7,12 +7,76 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Shell.SettingsPreview;
+using CircleToSearch.Ui;
 using Xunit;
 
 namespace CircleToSearch.Tests;
 
 public sealed class SettingsPreviewTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Scrolling_uses_the_full_viewport_and_overlay_fades_without_reserving_space(bool light) => OnSta(() =>
+    {
+        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        try
+        {
+            window.Width = 960;
+            window.Height = 590;
+            window.Show();
+            Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            Pump();
+            var scroll = Find<ScrollViewer>(window, "PageScroll");
+            var viewport = (ScrollContentPresenter)scroll.Template.FindName("PART_ScrollContentPresenter", scroll);
+            var bar = (ScrollBar)scroll.Template.FindName("PART_VerticalScrollBar", scroll);
+            var pageWidth = Find<StackPanel>(window, "PageContent").ActualWidth;
+            Assert.Equal(0, viewport.TranslatePoint(new Point(), scroll).Y, 1);
+            Assert.Equal(scroll.ActualHeight, viewport.ActualHeight, 1);
+            Assert.Equal(scroll.ActualWidth, viewport.ActualWidth, 1);
+            Assert.False(bar.IsHitTestVisible);
+
+            scroll.ScrollToVerticalOffset(100);
+            Pump();
+            Assert.True(bar.IsHitTestVisible);
+            PumpFor(OverlayScrollbarPolicy.FadeInMilliseconds + 40);
+            Assert.True(bar.Opacity > 0.9);
+            Assert.Equal(OverlayScrollbarPolicy.TrackWidthPixels, bar.ActualWidth);
+            Assert.Equal(pageWidth, Find<StackPanel>(window, "PageContent").ActualWidth);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                Capture(window, $"settings-{(light ? "light" : "dark")}-general-middle.png");
+
+            PumpFor(OverlayScrollbarPolicy.HideDelayMilliseconds + OverlayScrollbarPolicy.FadeOutMilliseconds + 80);
+            Assert.False(bar.IsHitTestVisible);
+            Assert.Equal(0, bar.Opacity, 2);
+            Assert.Equal(pageWidth, Find<StackPanel>(window, "PageContent").ActualWidth);
+            scroll.ScrollToBottom();
+            Pump();
+            var cleanup = Find<ComboBox>(window, "Cleanup");
+            var cleanupTop = cleanup.TranslatePoint(new Point(), scroll).Y;
+            Assert.True(cleanupTop >= 0);
+            Assert.True(cleanupTop + cleanup.ActualHeight < viewport.ActualHeight);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                Capture(window, $"settings-{(light ? "light" : "dark")}-general-bottom.png");
+
+            var root = (FrameworkElement)window.Content;
+            var corner = Find<Border>(window, "ContentSurface").TranslatePoint(new Point(1, 1), root);
+            var bitmap = Render(root);
+            var pixel = new byte[4];
+            bitmap.CopyPixels(new Int32Rect((int)corner.X, (int)corner.Y, 1, 1), pixel, 4, 0);
+            var background = PluginPalette.Settings(light).Sidebar;
+            Assert.Equal(new[] { background.B, background.G, background.R, background.A }, pixel);
+
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            Pump();
+            Assert.Equal(0, scroll.ScrollableHeight);
+            Assert.False(bar.IsHitTestVisible);
+            Assert.Equal(0, bar.Opacity);
+            Assert.Equal(pageWidth, Find<StackPanel>(window, "PageContent").ActualWidth);
+        }
+        finally { window.Close(); }
+    });
+
     [Fact]
     public void Preview_edits_survive_navigation_and_reset_or_close_discards_them() => OnSta(() =>
     {
@@ -153,13 +217,28 @@ public sealed class SettingsPreviewTests
     private static void Capture(Window window, string filename)
     {
         var root = (FrameworkElement)window.Content;
-        var bitmap = new RenderTargetBitmap((int)root.ActualWidth, (int)root.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(root);
+        var bitmap = Render(root);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         Directory.CreateDirectory(TestOutputPaths.TempDirectory);
         using var stream = File.Create(Path.Combine(TestOutputPaths.TempDirectory, filename));
         encoder.Save(stream);
+    }
+
+    private static RenderTargetBitmap Render(FrameworkElement root)
+    {
+        var bitmap = new RenderTargetBitmap((int)root.ActualWidth, (int)root.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(root);
+        return bitmap;
+    }
+
+    private static void PumpFor(int milliseconds)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(milliseconds) };
+        timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
     }
 
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);

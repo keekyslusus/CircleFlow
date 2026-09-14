@@ -43,6 +43,9 @@ public sealed class ShellTests
         settings.Show();
         var first = settings.CurrentWindow!;
         Assert.Equal(TestUiStrings.English.SettingsWindowTitle, first.Title);
+        Assert.Equal(WindowStyle.SingleBorderWindow, first.WindowStyle);
+        Assert.Null(System.Windows.Shell.WindowChrome.GetWindowChrome(first));
+        Assert.NotNull(first.Icon);
         Assert.IsType<Grid>(first.Content);
         Assert.NotNull(first.DataContext);
         first.WindowState = WindowState.Minimized;

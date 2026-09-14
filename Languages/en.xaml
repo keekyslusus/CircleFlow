@@ -235,9 +235,6 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_reset_description">The controls in this window will return to the mockup defaults. Application settings remain unchanged.</system:String>
     <system:String x:Key="app_settings_cancel">Cancel</system:String>
     <system:String x:Key="app_settings_save">Save</system:String>
-    <system:String x:Key="app_settings_minimize">Minimize</system:String>
-    <system:String x:Key="app_settings_maximize">Maximize or restore</system:String>
-    <system:String x:Key="app_settings_close">Close</system:String>
     <system:String x:Key="app_settings_preview_notice">Interface preview
 Changes are not saved.</system:String>
     <system:String x:Key="app_settings_ctrl">Ctrl</system:String>

@@ -45,7 +45,7 @@ internal static class PluginPalette
             Surface: surface,
             Card: lightTheme ? surface : Composite(surface, WithAlpha(state.Text, 0.03)),
             Sidebar: Composite(paper, WithAlpha(wash, 0.8)),
-            Titlebar: Composite(surface, WithAlpha(wash, 0.8)),
+            ScrollbarThumb: theme.SearchBrowserScrollbarThumb,
             Text: state.Text,
             Muted: state.MutedText,
             Accent: theme.MusicOverlay.Primary,
@@ -251,7 +251,7 @@ internal static class PluginPalette
 }
 
 internal sealed record SettingsPalette(
-    Color Paper, Color Surface, Color Card, Color Sidebar, Color Titlebar,
+    Color Paper, Color Surface, Color Card, Color Sidebar, Color ScrollbarThumb,
     Color Text, Color Muted, Color Accent, Color Line, Color Hover, Color Selected,
     Color Wash, Color HeroStart, Color HeroEnd, Color AccentLine, Color Scrim);
 

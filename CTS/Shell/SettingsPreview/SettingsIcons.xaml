@@ -84,7 +84,4 @@
     <GeometryGroup x:Key="Icon_coffee">
         <PathGeometry Figures="M4 8h13v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM17 9h2a3 3 0 0 1 0 6h-2M3 22h16M7 3v2m4-3v3m4-2v2"/>
     </GeometryGroup>
-    <Geometry x:Key="Icon_minimize">M2 12 H22</Geometry>
-    <Geometry x:Key="Icon_maximize">M3 3 H21 V21 H3 Z</Geometry>
-    <Geometry x:Key="Icon_close">M4 4 L20 20 M20 4 L4 20</Geometry>
 </ResourceDictionary>

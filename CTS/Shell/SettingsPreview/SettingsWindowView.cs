@@ -1,9 +1,13 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using CircleToSearch.Interop;
 using CircleToSearch.Ui;
 
 namespace CircleToSearch.Shell.SettingsPreview;
@@ -24,13 +28,26 @@ internal sealed class SettingsWindowView
             "/CircleFlow;component/CTS/Shell/SettingsPreview/SettingsWindow.xaml", UriKind.Relative));
         ApplyPalette(PluginPalette.Settings(lightTheme));
         Window.Title = strings.SettingsWindowTitle;
+        Window.Icon = BitmapFrame.Create(new Uri(Path.Combine(AppContext.BaseDirectory, "Images", "app.ico")),
+            BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+        Window.SourceInitialized += (_, _) =>
+        {
+            var darkMode = lightTheme ? 0 : 1;
+            NativeMethods.DwmSetWindowAttribute(new WindowInteropHelper(Window).Handle,
+                NativeMethods.DwmwaUseImmersiveDarkMode, ref darkMode, sizeof(int));
+        };
         Window.DataContext = new PreviewText(strings);
         _statusTimer = new DispatcherTimer(DispatcherPriority.Background, Window.Dispatcher)
         {
             Interval = TimeSpan.FromSeconds(3),
         };
         _statusTimer.Tick += (_, _) => HideStatus();
-        Window.Closed += (_, _) => _statusTimer.Stop();
+        var scrolling = new SettingsScrollController(Element<ScrollViewer>("PageScroll"));
+        Window.Closed += (_, _) =>
+        {
+            _statusTimer.Stop();
+            scrolling.Dispose();
+        };
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
         Window.AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavigationChecked));
         Window.PreviewKeyDown += OnPreviewKeyDown;
@@ -67,7 +84,8 @@ internal sealed class SettingsWindowView
         (string Key, Color Color)[] colors =
         [
             ("Paper", palette.Paper), ("Surface", palette.Surface), ("Card", palette.Card),
-            ("Sidebar", palette.Sidebar), ("Titlebar", palette.Titlebar), ("Text", palette.Text),
+            ("Sidebar", palette.Sidebar), ("Text", palette.Text),
+            ("ScrollbarThumb", palette.ScrollbarThumb),
             ("Muted", palette.Muted), ("Accent", palette.Accent), ("Line", palette.Line),
             ("Hover", palette.Hover), ("Selected", palette.Selected), ("Wash", palette.Wash),
             ("HeroStart", palette.HeroStart), ("HeroEnd", palette.HeroEnd),
@@ -82,6 +100,11 @@ internal sealed class SettingsWindowView
         }
         Window.Resources["SettingsHeroStartColor"] = palette.HeroStart;
         Window.Resources["SettingsHeroEndColor"] = palette.HeroEnd;
+        Window.Resources["SettingsScrollTrackWidth"] = (double)OverlayScrollbarPolicy.TrackWidthPixels;
+        Window.Resources["SettingsScrollThumbWidth"] = (double)OverlayScrollbarPolicy.ThumbWidthPixels;
+        Window.Resources["SettingsScrollMinThumbHeight"] = (double)OverlayScrollbarPolicy.MinimumThumbHeightPixels;
+        Window.Resources["SettingsScrollTrackMargin"] = new Thickness(0, OverlayScrollbarPolicy.EdgeInsetPixels, 0, OverlayScrollbarPolicy.EdgeInsetPixels);
+        Window.Resources["SettingsScrollThumbMargin"] = new Thickness(0, 0, OverlayScrollbarPolicy.EdgeInsetPixels, 0);
     }
 
     private void OnNavigationChecked(object sender, RoutedEventArgs e)
@@ -110,12 +133,6 @@ internal sealed class SettingsWindowView
         }
         switch (action)
         {
-            case "minimize": SystemCommands.MinimizeWindow(Window); break;
-            case "maximize":
-                if (Window.WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(Window);
-                else SystemCommands.MaximizeWindow(Window);
-                break;
-            case "close": Window.Close(); break;
             case "edit": OpenDialog(shortcut: true); break;
             case "reset": OpenDialog(shortcut: false); break;
             case "cancel": CloseDialog(); break;

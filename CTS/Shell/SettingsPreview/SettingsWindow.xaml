@@ -1,7 +1,4 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework" Width="1176" Height="760" MinWidth="960" MinHeight="590" WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize" Background="{DynamicResource SettingsPaper}" Foreground="{DynamicResource SettingsText}" FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True">
-    <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="42" ResizeBorderThickness="6" CornerRadius="9" GlassFrameThickness="0"/>
-    </shell:WindowChrome.WindowChrome>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Width="1176" Height="760" MinWidth="960" MinHeight="590" WindowStartupLocation="CenterScreen" WindowStyle="SingleBorderWindow" ResizeMode="CanResize" Background="{DynamicResource SettingsPaper}" Foreground="{DynamicResource SettingsText}" FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -10,46 +7,7 @@
         </ResourceDictionary>
     </Window.Resources>
     <Grid Background="{DynamicResource SettingsPaper}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="42"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-        <Grid Background="{DynamicResource SettingsTitlebar}">
-            <StackPanel Orientation="Horizontal" Margin="17,0,0,0" VerticalAlignment="Center">
-                <ContentControl Foreground="{DynamicResource SettingsAccent}">
-                    <Viewbox Width="17" Height="17" VerticalAlignment="Center">
-                        <Canvas Width="24" Height="24">
-                            <Path Style="{StaticResource OutlineIcon}" Data="{StaticResource Icon_circle}"/>
-                        </Canvas>
-                    </Viewbox>
-                </ContentControl>
-                <TextBlock Text="{Binding [brand]}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                <Button Tag="minimize" Style="{StaticResource CaptionButton}" AutomationProperties.Name="{Binding [minimize]}">
-                    <Viewbox Width="12" Height="12" VerticalAlignment="Center">
-                        <Canvas Width="24" Height="24">
-                            <Path Style="{StaticResource OutlineIcon}" Data="{StaticResource Icon_minimize}"/>
-                        </Canvas>
-                    </Viewbox>
-                </Button>
-                <Button Tag="maximize" Style="{StaticResource CaptionButton}" AutomationProperties.Name="{Binding [maximize]}">
-                    <Viewbox Width="12" Height="12" VerticalAlignment="Center">
-                        <Canvas Width="24" Height="24">
-                            <Path Style="{StaticResource OutlineIcon}" Data="{StaticResource Icon_maximize}"/>
-                        </Canvas>
-                    </Viewbox>
-                </Button>
-                <Button Tag="close" Style="{StaticResource CaptionButton}" AutomationProperties.Name="{Binding [close]}">
-                    <Viewbox Width="12" Height="12" VerticalAlignment="Center">
-                        <Canvas Width="24" Height="24">
-                            <Path Style="{StaticResource OutlineIcon}" Data="{StaticResource Icon_close}"/>
-                        </Canvas>
-                    </Viewbox>
-                </Button>
-            </StackPanel>
-        </Grid>
-        <Grid Grid.Row="1" x:Name="Workspace">
+        <Grid x:Name="Workspace" Background="{DynamicResource SettingsSidebar}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="225"/>
                 <ColumnDefinition Width="*"/>
@@ -122,9 +80,9 @@
                     </StackPanel>
                 </DockPanel>
             </Border>
-            <Border Grid.Column="1" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1,1,0,0" CornerRadius="9,0,0,0">
-                <ScrollViewer x:Name="PageScroll" Style="{StaticResource PageScrollViewer}" BorderThickness="0" Background="{DynamicResource SettingsTransparent}" FocusVisualStyle="{x:Null}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="38,34,38,26">
-                    <StackPanel>
+            <Border x:Name="ContentSurface" Grid.Column="1" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1,1,0,0" CornerRadius="9,0,0,0">
+                <ScrollViewer x:Name="PageScroll" Style="{StaticResource PageScrollViewer}" BorderThickness="0" Background="{DynamicResource SettingsTransparent}" FocusVisualStyle="{x:Null}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
+                    <StackPanel x:Name="PageContent" Margin="38,34,38,26">
                         <StackPanel x:Name="Page_general" Visibility="Collapsed">
                             <TextBlock Text="{Binding [general_title]}" Style="{StaticResource PageTitle}"/>
                             <Border Style="{StaticResource Hero}">
@@ -892,10 +850,10 @@
                 </ScrollViewer>
             </Border>
         </Grid>
-        <Border x:Name="StatusBanner" Grid.Row="1" Visibility="Collapsed" VerticalAlignment="Bottom" HorizontalAlignment="Center" MaxWidth="540" Background="{DynamicResource SettingsCard}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="7" Padding="16,12" Margin="240,0,16,24">
+        <Border x:Name="StatusBanner" Visibility="Collapsed" VerticalAlignment="Bottom" HorizontalAlignment="Center" MaxWidth="540" Background="{DynamicResource SettingsCard}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="7" Padding="16,12" Margin="240,0,16,24">
             <TextBlock x:Name="StatusText" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
         </Border>
-        <Border x:Name="DialogLayer" Grid.RowSpan="2" Background="{DynamicResource SettingsScrim}" Visibility="Collapsed">
+        <Border x:Name="DialogLayer" Background="{DynamicResource SettingsScrim}" Visibility="Collapsed">
             <Border x:Name="DialogCard" Width="440" MaxHeight="480" VerticalAlignment="Center" HorizontalAlignment="Center" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="9" KeyboardNavigation.TabNavigation="Cycle">
                 <StackPanel Margin="24">
                     <StackPanel x:Name="ShortcutDialog">
