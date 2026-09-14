@@ -1,11 +1,29 @@
 [CmdletBinding()]
-param([switch]$NoPause)
+param(
+    [switch]$NoPause
+)
 
 $ErrorActionPreference = 'Stop'
 
+$e = [char]27
+$lavenderish = "$e[38;2;208;188;255m"
+$reset = "$e[0m"
+
 function Wait-BeforeClosing {
-    if ($NoPause -or -not [Environment]::UserInteractive -or [Console]::IsInputRedirected) { return }
-    try { $null = Read-Host 'Press Enter to close' } catch { }
+    if ($NoPause) { return }
+    if (-not [Environment]::UserInteractive) { return }
+    if ([Console]::IsInputRedirected) { return }
+
+    Write-Host ''
+    Write-Host "${lavenderish}Done. " -NoNewline
+    Write-Host 'Press any key to close this window...'
+
+    try {
+        $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+    }
+    catch {
+        $null = Read-Host 'Press Enter to close'
+    }
 }
 
 $exitCode = 0
@@ -42,7 +60,7 @@ try {
     foreach ($asset in $required) {
         if (-not (Test-Path -LiteralPath (Join-Path $appDirectory $asset) -PathType Leaf)) { throw "Missing published asset: $asset" }
     }
-    $loaders = @('WebView2Loader.dll', 'runtimes/win-x64/native/WebView2Loader.dll') |
+    $loaders = @('WebView2Loader.dll', 'runtimes\win-x64\native\WebView2Loader.dll') |
         Where-Object { Test-Path -LiteralPath (Join-Path $appDirectory $_) -PathType Leaf }
     if (-not $loaders) { throw 'The published x64 WebView2 loader is missing.' }
     $files = @(Get-ChildItem -LiteralPath $appDirectory -File -Recurse -Force | Sort-Object FullName)
@@ -75,17 +93,27 @@ try {
     }
     finally { $archive.Dispose() }
     Move-Item -LiteralPath $temporaryZip -Destination $archivePath -Force
-    Write-Host "Published application: $appDirectory"
-    Write-Host "WebView2 loader: $($loaders -join ', ')"
-    Write-Host "Release ZIP: $archivePath"
-    Write-Host "SHA256: $((Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash)"
+    $publishedPath = Resolve-Path -Relative -LiteralPath $appDirectory
+    $releaseZipPath = Resolve-Path -Relative -LiteralPath $archivePath
+    Write-Host ''
+    Write-Host 'Published application: ' -NoNewline
+    Write-Host "${lavenderish}$publishedPath"
+    Write-Host 'WebView2 loader: ' -NoNewline
+    Write-Host "${lavenderish}$($loaders -join ', ')"
+    Write-Host 'Release ZIP: ' -NoNewline
+    Write-Host "${lavenderish}$releaseZipPath"
+    Write-Host 'SHA256: ' -NoNewline
+    Write-Host "${lavenderish}$((Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash)"
 }
 catch {
     $exitCode = 1
-    Write-Host "RELEASE FAILED: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host ''
+    Write-Host 'RELEASE FAILED' -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
 }
 finally {
     Pop-Location
     Wait-BeforeClosing
 }
+
 exit $exitCode
