@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Diagnostics;
 using System.Windows;
 using CircleToSearch.Shell;
 using Xunit;
@@ -84,24 +85,122 @@ public sealed class AppShutdownTests
     }
 
     [Fact]
-    public async Task Session_ending_uses_the_same_idempotent_exit_path()
+    public async Task Logoff_finishes_dispatcher_cleanup_before_returning_without_vetoing_the_session()
+    {
+        if (await IsolatedTestHost.RunAsync<AppShutdownTests>()) return;
+        var events = new List<string>();
+        var result = Run((app, lifetime) =>
+        {
+            lifetime.AddStop("stop", () => events.Add("stop"));
+            lifetime.AddCleanup("runtime", async () =>
+            {
+                await Task.Run(async () => await app.Dispatcher.InvokeAsync(() =>
+                {
+                    Assert.False(app.Dispatcher.HasShutdownStarted);
+                    events.Add("cleaned");
+                }));
+            });
+            lifetime.AddRelease("release", () => events.Add("released"));
+            RaiseSessionEnding(app, ReasonSessionEnding.Logoff);
+            Assert.Equal(new[] { "stop", "cleaned", "released" }, events);
+            Assert.Same(lifetime.RequestExitAsync(), lifetime.RequestExitAsync());
+            Assert.True(lifetime.RequestExitAsync().IsCompleted);
+        }, afterStartup: true);
+        Assert.Equal(0, result.Code);
+    }
+
+    [Fact]
+    public async Task Shutdown_during_explicit_exit_and_reentrant_session_events_share_one_cleanup()
     {
         if (await IsolatedTestHost.RunAsync<AppShutdownTests>()) return;
         var calls = 0;
+        var releases = 0;
         var result = Run((app, lifetime) =>
         {
-            lifetime.AddCleanup("runtime", () => { calls++; return Task.CompletedTask; });
-            var args = (SessionEndingCancelEventArgs)Activator.CreateInstance(typeof(SessionEndingCancelEventArgs),
-                BindingFlags.Instance | BindingFlags.NonPublic, null, [ReasonSessionEnding.Logoff], null)!;
-            typeof(Application).GetMethod("OnSessionEnding", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(app, [args]);
-            Assert.True(args.Cancel);
-            Assert.Same(lifetime.RequestExitAsync(), lifetime.RequestExitAsync());
-        });
+            lifetime.AddCleanup("runtime", async () =>
+            {
+                calls++;
+                await Task.Yield();
+                RaiseSessionEnding(app, ReasonSessionEnding.Shutdown);
+            });
+            lifetime.AddRelease("release", () => releases++);
+            var exit = lifetime.RequestExitAsync();
+            Assert.False(exit.IsCompleted);
+            RaiseSessionEnding(app, ReasonSessionEnding.Shutdown);
+            Assert.True(exit.IsCompleted);
+            Assert.Same(exit, lifetime.RequestExitAsync());
+        }, afterStartup: true);
         Assert.Equal(0, result.Code);
+        Assert.Equal(1, calls);
+        Assert.Equal(1, releases);
+    }
+
+    [Fact]
+    public async Task Session_ending_stops_waiting_for_unfinished_cleanup_without_vetoing_shutdown()
+    {
+        if (await IsolatedTestHost.RunAsync<AppShutdownTests>()) return;
+        var calls = 0;
+        var released = false;
+        var result = Run((app, lifetime) =>
+        {
+            var neverFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            lifetime.AddCleanup("runtime", () => { calls++; return neverFinished.Task; });
+            lifetime.AddRelease("release", () => released = true);
+            var elapsed = Stopwatch.StartNew();
+            RaiseSessionEnding(app, ReasonSessionEnding.Shutdown);
+            Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(4));
+            Assert.False(lifetime.RequestExitAsync().IsCompleted);
+            Assert.False(released);
+        }, afterStartup: true);
+        Assert.Equal(1, result.Code);
         Assert.Equal(1, calls);
     }
 
-    private static (int Code, Exception? StartupFailure) Run(Action<Application, AppLifetime> startup)
+    [Fact]
+    public async Task Session_cleanup_failure_does_not_veto_logoff_or_skip_other_cleanup()
+    {
+        if (await IsolatedTestHost.RunAsync<AppShutdownTests>()) return;
+        var cleaned = false;
+        var released = false;
+        var result = Run((app, lifetime) =>
+        {
+            lifetime.AddCleanup("broken", async () => { await Task.Yield(); throw new IOException("cleanup-secret"); });
+            lifetime.AddCleanup("other", async () => { await Task.Yield(); cleaned = true; });
+            lifetime.AddRelease("release", () => released = true);
+            RaiseSessionEnding(app, ReasonSessionEnding.Logoff);
+            Assert.True(cleaned);
+            Assert.True(released);
+        }, afterStartup: true);
+        Assert.Equal(1, result.Code);
+    }
+
+    [Fact]
+    public async Task Wpf_session_message_handler_returns_permission_to_end_the_session()
+    {
+        if (await IsolatedTestHost.RunAsync<AppShutdownTests>()) return;
+        var cleaned = false;
+        var result = Run((app, lifetime) =>
+        {
+            lifetime.AddCleanup("runtime", async () => { await Task.Yield(); cleaned = true; });
+            // Invoke only WPF's managed message handler, without sending an OS shutdown request.
+            object[] arguments = [IntPtr.Zero, IntPtr.Zero];
+            typeof(Application).GetMethod("WmQueryEndSession", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(app, arguments);
+            Assert.Equal(new IntPtr(1), arguments[1]);
+            Assert.True(cleaned);
+        }, afterStartup: true);
+        Assert.Equal(0, result.Code);
+    }
+
+    private static void RaiseSessionEnding(Application app, ReasonSessionEnding reason)
+    {
+        var args = (SessionEndingCancelEventArgs)Activator.CreateInstance(typeof(SessionEndingCancelEventArgs),
+            BindingFlags.Instance | BindingFlags.NonPublic, null, [reason], null)!;
+        typeof(Application).GetMethod("OnSessionEnding", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(app, [args]);
+        Assert.False(args.Cancel);
+    }
+
+    private static (int Code, Exception? StartupFailure) Run(Action<Application, AppLifetime> startup, bool afterStartup = false)
     {
         Exception? failure = null;
         Exception? startupFailure = null;
@@ -119,7 +218,15 @@ public sealed class AppShutdownTests
                     app.Dispatcher.BeginInvoke(() => app.Shutdown(1));
                 }, TimeSpan.FromSeconds(5));
                 var lifetime = new AppLifetime(app, log, watchdog);
-                code = lifetime.Run(_ => startup(app, lifetime));
+                code = lifetime.Run(_ =>
+                {
+                    if (!afterStartup) startup(app, lifetime);
+                    else app.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try { startup(app, lifetime); }
+                        catch (Exception exception) { failure = exception; app.Shutdown(1); }
+                    }));
+                });
                 startupFailure = lifetime.StartupFailure;
             }
             catch (Exception exception) { failure = exception; }

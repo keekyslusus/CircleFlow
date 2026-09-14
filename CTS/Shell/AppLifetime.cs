@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 
 namespace CircleToSearch.Shell;
 
@@ -11,6 +12,7 @@ internal sealed class AppLifetime(Application application, PluginLog log, Shutdo
     private readonly TaskCompletionSource _startupFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Task? _exitTask;
     private int _exitCode;
+    private bool _sessionEnding;
     internal Exception? StartupFailure { get; private set; }
 
     public void AddStop(string name, Action stop)
@@ -88,7 +90,10 @@ internal sealed class AppLifetime(Application application, PluginLog log, Shutdo
         await _startupFinished.Task;
         await Task.WhenAll(_cleanup.Select(entry => CleanupAsync(entry.Name, entry.Cleanup)));
         foreach (var entry in _release) Try(entry.Name, entry.Release);
-        try { application.Shutdown(_exitCode); }
+        try
+        {
+            if (!_sessionEnding) application.Shutdown(_exitCode);
+        }
         finally
         {
             completion.TrySetResult();
@@ -115,7 +120,37 @@ internal sealed class AppLifetime(Application application, PluginLog log, Shutdo
 
     private void OnSessionEnding(object sender, SessionEndingCancelEventArgs args)
     {
-        args.Cancel = true;
-        _ = RequestExitAsync();
+        if (_sessionEnding) return;
+        _sessionEnding = true;
+        var frame = new DispatcherFrame();
+        var deadline = new DispatcherTimer(DispatcherPriority.Send, application.Dispatcher)
+        {
+            Interval = TimeSpan.FromSeconds(2),
+        };
+        deadline.Tick += (_, _) => frame.Continue = false;
+        deadline.Start();
+        try
+        {
+            var exit = RequestExitAsync();
+            if (!exit.IsCompleted)
+            {
+                _ = EndFrameAsync(exit, frame);
+                // WPF shuts down after this handler returns. Pump cleanup continuations here,
+                // without vetoing the Windows session or waiting indefinitely for async work.
+                Dispatcher.PushFrame(frame);
+            }
+            if (!exit.IsCompleted)
+            {
+                _exitCode = 1;
+            }
+            application.Shutdown(_exitCode);
+        }
+        finally { deadline.Stop(); }
+    }
+
+    private static async Task EndFrameAsync(Task exit, DispatcherFrame frame)
+    {
+        await exit;
+        frame.Continue = false;
     }
 }

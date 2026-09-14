@@ -40,10 +40,10 @@ internal static class StartupHook
             {
                 var args = (SessionEndingCancelEventArgs)Activator.CreateInstance(typeof(SessionEndingCancelEventArgs),
                     BindingFlags.Instance | BindingFlags.NonPublic, null, [ReasonSessionEnding.Logoff], null)!;
-                // Exercise the application's normal lifetime without exposing a production test command.
+                // Raise only the managed event; never request an actual Windows logoff.
                 typeof(Application).GetMethod("OnSessionEnding", BindingFlags.Instance | BindingFlags.NonPublic)!
                     .Invoke(application, [args]);
-                Require(args.Cancel, "The application did not route session ending through its lifetime.");
+                Require(!args.Cancel, "The application vetoed Windows session ending.");
             });
         }
         catch (Exception exception)

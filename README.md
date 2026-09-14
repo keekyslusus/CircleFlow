@@ -15,6 +15,8 @@ Exit CircleFlow before moving or replacing its files. Keep `Data` when updating;
 
 Normal shutdown waits for cleanup. If shutdown remains stuck for 10 seconds, CircleFlow attempts to remove its tray icon and close its activation channel, then terminates its own process with an error code. Diagnostic logs are in `Data\Logs`.
 
+Windows logoff and shutdown are never cancelled by CircleFlow. The session-ending handler keeps the dispatcher available for up to two seconds of asynchronous cleanup, then proceeds with application shutdown even if that work is unfinished. The watchdog remains the fallback for blocked synchronous cleanup.
+
 ## Build/test
 
 Development requires Windows and the .NET 9 SDK.
@@ -33,7 +35,7 @@ Verify a release with the installed WebView2 Runtime and at least one Windows OC
 powershell -ExecutionPolicy Bypass -File .\tests\Test-PublishedApp.ps1 -ArchivePath .\bin\releases\CircleFlow-0.5.1-win-x64.zip
 ```
 
-This check extracts a separate copy under `tests\temp`, checks its packaged assets, and launches that copy of `CircleFlow.exe` from a different working directory. A test-only .NET startup hook initializes OCR, WebView2 and WebView2CompositionControl in the application's default load context, then requests normal shutdown. It checks the bundled .NET and WinRT assemblies and actual browser profile paths. The hook is not included in the release ZIP. The report remains in the extracted copy's `Data\Temp\publish-probe.json`.
+This check extracts a separate copy under `tests\temp`, checks its packaged assets, and launches that copy of `CircleFlow.exe` from a different working directory. A test-only .NET startup hook initializes OCR, WebView2 and WebView2CompositionControl in the application's default load context, then raises the managed session-ending event and verifies that CircleFlow does not cancel it. It never requests a real Windows logoff or shutdown. It checks the bundled .NET and WinRT assemblies and actual browser profile paths. The hook is not included in the release ZIP. The report remains in the extracted copy's `Data\Temp\publish-probe.json`.
 
 Tests marked `Category=Live` and tests guarded by environment variables need their respective services or interactive setup. The package check uses local browser content; it does not certify external search, translation or music providers, or multi-monitor/DPI behavior.
 
