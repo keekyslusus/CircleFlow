@@ -563,7 +563,7 @@ public sealed class OverlaySessionWorkflowTests
 
         public SearchCoordinator CreateCoordinator() => new(
             Workflow,
-            () => { },
+            () => Task.CompletedTask,
             GetSessionOptions,
             Notifier,
             TestUiStrings.English,

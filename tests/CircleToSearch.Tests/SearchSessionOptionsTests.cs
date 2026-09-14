@@ -23,11 +23,11 @@ public sealed class SearchSessionOptionsTests
         var directory = Path.Combine(TestOutputPaths.TempDirectory, "session-options-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         var coordinator = new SearchCoordinator(workflow,
-            () => service.Apply(new SettingsEdits
+            () => { service.Apply(new SettingsEdits
             {
                 HideDelayMilliseconds = 1, PaddingPx = 22, LassoMinDiagonalPx = 24, MaxLongSidePx = 2700,
                 OcrLanguageTag = "ja-JP", TranslationTargetLanguageTag = "de-DE",
-            }).ThrowIfFailed("test update failed"),
+            }).ThrowIfFailed("test update failed"); return Task.CompletedTask; },
             () => { reads++; return SearchSessionOptions.From(service.Snapshot, languages, CultureInfo.GetCultureInfo("fr-FR")); },
             new TestPluginNotifier(), TestUiStrings.English, new PluginLog(directory));
         await coordinator.StartFromQueryAsync();

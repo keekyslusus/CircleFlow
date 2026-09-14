@@ -42,6 +42,8 @@ public sealed class AppStartupTests
     {
         if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "startup-recovery-" + Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(Path.GetDirectoryName(paths.TrayIconPath)!);
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Images", "app.ico"), paths.TrayIconPath);
         Directory.CreateDirectory(paths.LanguagesDirectory);
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
         AppDataDirectory.Initialize(paths);

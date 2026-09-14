@@ -7,6 +7,19 @@ namespace CircleToSearch.Tests;
 
 public sealed class SearchCoordinatorTests
 {
+    [Fact]
+    public async Task Capture_waits_for_asynchronous_shell_hiding()
+    {
+        var hidden = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var harness = new Harness(hideOwnWindows: () => hidden.Task);
+        var session = harness.Coordinator.StartFromQueryAsync();
+        Assert.Equal(0, harness.Workflow.Calls);
+        Assert.False(session.IsCompleted);
+        hidden.SetResult();
+        await session.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(1, harness.Workflow.Calls);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -217,7 +230,8 @@ public sealed class SearchCoordinatorTests
     {
         public Harness(
             Action? hideMainWindow = null,
-            int hideDelayMilliseconds = 0)
+            int hideDelayMilliseconds = 0,
+            Func<Task>? hideOwnWindows = null)
         {
             var logDirectory = Path.Combine(
                 Path.GetTempPath(),
@@ -229,7 +243,7 @@ public sealed class SearchCoordinatorTests
             Notifier = new FakeNotifier();
             Coordinator = new SearchCoordinator(
                 Workflow,
-                hideMainWindow ?? (() => Hidden++),
+                hideOwnWindows ?? (() => { if (hideMainWindow is null) Hidden++; else hideMainWindow(); return Task.CompletedTask; }),
                 () => new SearchSessionOptions(HideDelayMilliseconds: settings.HideDelayMilliseconds),
                 Notifier,
                 TestUiStrings.English,

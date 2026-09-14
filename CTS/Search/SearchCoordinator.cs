@@ -7,7 +7,7 @@ public enum SearchState { Idle, Cancelable, Uploading }
 public sealed class SearchCoordinator
 {
     private readonly ISearchSessionWorkflow _workflow;
-    private readonly Action _hideMainWindow;
+    private readonly Func<Task> _hideOwnWindows;
     private readonly Func<SearchSessionOptions> _sessionOptions;
     private readonly IPluginNotifier _notifier;
     private readonly UiStrings _strings;
@@ -23,14 +23,14 @@ public sealed class SearchCoordinator
 
     internal SearchCoordinator(
         ISearchSessionWorkflow workflow,
-        Action hideMainWindow,
+        Func<Task> hideOwnWindows,
         Func<SearchSessionOptions> sessionOptions,
         IPluginNotifier notifier,
         UiStrings strings,
         PluginLog log)
     {
         _workflow = workflow ?? throw new ArgumentNullException(nameof(workflow));
-        _hideMainWindow = hideMainWindow ?? throw new ArgumentNullException(nameof(hideMainWindow));
+        _hideOwnWindows = hideOwnWindows ?? throw new ArgumentNullException(nameof(hideOwnWindows));
         _sessionOptions = sessionOptions ?? throw new ArgumentNullException(nameof(sessionOptions));
         _notifier = notifier ?? throw new ArgumentNullException(nameof(notifier));
         _strings = strings ?? throw new ArgumentNullException(nameof(strings));
@@ -164,7 +164,7 @@ public sealed class SearchCoordinator
         try
         {
             _log.Info(nameof(SearchCoordinator), $"selection started via {trigger}");
-            SafeHideMainWindow();
+            await SafeHideOwnWindowsAsync().ConfigureAwait(false);
             try
             {
                 await Task.Delay(options.HideDelayMilliseconds, cancellation.Token).ConfigureAwait(false);
@@ -246,12 +246,12 @@ public sealed class SearchCoordinator
         return Task.CompletedTask;
     }
 
-    private void SafeHideMainWindow()
+    private async Task SafeHideOwnWindowsAsync()
     {
-        try { _hideMainWindow(); }
+        try { await _hideOwnWindows().ConfigureAwait(false); }
         catch (Exception exception)
         {
-            _log.Warn(nameof(SearchCoordinator), $"hiding the Flow window failed: {exception.Message}");
+            _log.Warn(nameof(SearchCoordinator), $"hiding application windows failed: {exception.Message}");
         }
     }
 

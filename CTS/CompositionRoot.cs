@@ -76,8 +76,31 @@ public static class CompositionRoot
                 log.Warn(nameof(CompositionRoot), $"settings reset to defaults: {string.Join(", ", loaded.ResetFields)}");
             if (loaded.Recovered)
                 reportStartupMessage(strings.StorageRecovered, strings.PluginTitle, MessageBoxImage.Warning);
-            // Runtime startup awaits the shell from migration stage 4.
-            var lifetime = new AppLifetime(application, () => Task.CompletedTask);
+            using var settingsWindow = new SettingsWindowController(application.Dispatcher, strings);
+            using var notifications = new NotificationPresenter(application.Dispatcher, strings, log);
+            var notifier = new PluginNotifier(notifications.ShowMessage, notifications.ShowMessageWithButton,
+                notifications.ShowError, log);
+            TrayIcon? tray = null;
+            using var runtime = Create(paths, loaded.Settings, store, strings, notifier,
+                () => application.Dispatcher.InvokeAsync(() =>
+                {
+                    tray?.CloseMenu();
+                    settingsWindow.Hide();
+                    notifications.CloseAll();
+                }).Task, log);
+            var support = new ProjectSupport(OpenResultsUrl, notifier, strings);
+            var lifetime = new AppLifetime(application, runtime.StopAsync, () =>
+            {
+                tray?.Dispose();
+                settingsWindow.Dispose();
+                notifications.Dispose();
+            });
+            using var trayIcon = new TrayIcon(paths.TrayIconPath, strings, application.Dispatcher, log,
+                runtime.OpenAsync,
+                () => { settingsWindow.Show(); return Task.CompletedTask; },
+                () => { support.Open(); return Task.CompletedTask; },
+                lifetime.RequestExitAsync);
+            tray = trayIcon;
             return lifetime.Run();
         }
         catch
@@ -98,7 +121,7 @@ public static class CompositionRoot
         SettingsStore settingsStore,
         UiStrings strings,
         IPluginNotifier notifier,
-        Action hideOwnWindows,
+        Func<Task> hideOwnWindows,
         PluginLog log)
     {
         using var rollback = new ResourceRollbackScope(log);

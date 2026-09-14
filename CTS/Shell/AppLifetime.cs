@@ -2,7 +2,7 @@ using System.Windows;
 
 namespace CircleToSearch.Shell;
 
-internal sealed class AppLifetime(Application application, Func<Task> stopRuntime)
+internal sealed class AppLifetime(Application application, Func<Task> stopRuntime, Action? closeShell = null)
 {
     private Task? _exitTask;
 
@@ -26,7 +26,13 @@ internal sealed class AppLifetime(Application application, Func<Task> stopRuntim
     private async Task ExitAsync(TaskCompletionSource completion)
     {
         var exitCode = 0;
-        try { await stopRuntime(); }
+        try
+        {
+            var stopping = stopRuntime();
+            try { closeShell?.Invoke(); }
+            catch { exitCode = 1; }
+            await stopping;
+        }
         catch { exitCode = 1; }
         finally
         {
