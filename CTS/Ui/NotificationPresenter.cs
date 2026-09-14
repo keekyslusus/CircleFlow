@@ -74,7 +74,13 @@ internal sealed class NotificationPresenter(Dispatcher dispatcher, UiStrings str
     public void CloseAll()
     {
         dispatcher.VerifyAccess();
-        foreach (var window in _windows.ToArray()) window.Close();
+        var failures = new List<Exception>();
+        foreach (var window in _windows.ToArray())
+        {
+            try { window.Close(); }
+            catch (Exception exception) { failures.Add(exception); }
+        }
+        if (failures.Count != 0) throw new AggregateException(failures);
     }
 
     public void Dispose()

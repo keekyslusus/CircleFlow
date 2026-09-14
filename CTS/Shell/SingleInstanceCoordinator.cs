@@ -14,6 +14,7 @@ internal sealed class SingleInstanceCoordinator : IDisposable
     private readonly int _ownerThread = Environment.CurrentManagedThreadId;
     private readonly CancellationTokenSource _shutdown = new();
     private Task? _listener;
+    private NamedPipeServerStream? _server;
     private bool _disposed;
 
     private SingleInstanceCoordinator(Mutex mutex, string name) => (_mutex, _pipeName) = (mutex, PipeNameFor(name));
@@ -75,6 +76,7 @@ internal sealed class SingleInstanceCoordinator : IDisposable
         if (_listener is not null) throw new InvalidOperationException("The activation listener is already started.");
         var server = new NamedPipeServerStream(_pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message,
             PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | PipeOptions.FirstPipeInstance, 16, 16);
+        _server = server;
         _listener = Task.Run(() => ListenAsync(server, requestOpen, reportFailure));
     }
 
@@ -120,6 +122,8 @@ internal sealed class SingleInstanceCoordinator : IDisposable
         if (!_disposed) _shutdown.Cancel();
         return _listener ?? Task.CompletedTask;
     }
+
+    public void AbortListening() => Volatile.Read(ref _server)?.Dispose();
 
     public static string CurrentSessionName
     {

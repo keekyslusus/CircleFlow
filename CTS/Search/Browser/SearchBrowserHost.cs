@@ -17,7 +17,7 @@ using Ellipse = System.Windows.Shapes.Ellipse;
 
 namespace CircleToSearch.Search.Browser;
 
-public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable
+public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncDisposable
 {
     private static readonly bool LoadingOverlayEnabled = false;
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
@@ -610,6 +610,8 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable
     {
         if (_window is not null) _window.Close();
     }
+
+    public ValueTask DisposeAsync() => new(StopAsync());
 
     public void Dispose()
     {

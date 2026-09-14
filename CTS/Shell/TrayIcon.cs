@@ -19,12 +19,14 @@ internal sealed class TrayIcon : IDisposable
     private readonly PluginLog _log;
     private readonly HwndSource _source;
     private readonly IntPtr _icon;
+    private readonly IntPtr _iconWindow;
     private readonly uint _taskbarCreated;
     private readonly DispatcherTimer _retry;
     private readonly Func<Task> _open;
     private NotifyIconData _data;
     private bool _added;
     private bool _disposed;
+    private int _removedForShutdown;
 
     public TrayIcon(string iconPath, UiStrings strings, Dispatcher dispatcher, PluginLog log,
         Func<Task> open, Func<Task> settings, Func<Task> support, Func<Task> exit)
@@ -46,6 +48,7 @@ internal sealed class TrayIcon : IDisposable
                 Width = 0, Height = 0, ParentWindow = IntPtr.Zero,
             });
             _source.AddHook(WindowProc);
+            _iconWindow = _source.Handle;
             Menu = new ContextMenu { Placement = PlacementMode.MousePoint, StaysOpen = false };
             AddItem(strings.TrayOpen, open);
             AddItem(strings.TraySettings, settings);
@@ -86,11 +89,11 @@ internal sealed class TrayIcon : IDisposable
 
     private void QueueCommand(Func<Task> command)
     {
-        if (_disposed) return;
+        if (_disposed || Volatile.Read(ref _removedForShutdown) != 0) return;
         CloseMenu();
         _dispatcher.BeginInvoke(new Action(async () =>
         {
-            if (_disposed) return;
+            if (_disposed || Volatile.Read(ref _removedForShutdown) != 0) return;
             try { await command(); }
             catch (Exception exception) { _log.SafeError(nameof(TrayIcon), "tray-command", exception); }
         }));
@@ -98,7 +101,7 @@ internal sealed class TrayIcon : IDisposable
 
     private void TryAdd()
     {
-        if (_disposed) return;
+        if (_disposed || Volatile.Read(ref _removedForShutdown) != 0) return;
         if (!_added) _added = TrayNativeMethods.Shell_NotifyIconW(0, ref _data);
         if (!_added) { _retry.Start(); return; }
         _data.Version = 4;
@@ -120,7 +123,7 @@ internal sealed class TrayIcon : IDisposable
 
     private IntPtr WindowProc(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (_disposed) return IntPtr.Zero;
+        if (_disposed || Volatile.Read(ref _removedForShutdown) != 0) return IntPtr.Zero;
         try
         {
             if ((uint)message == _taskbarCreated)
@@ -169,11 +172,27 @@ internal sealed class TrayIcon : IDisposable
         _retry.Stop();
         _retry.Tick -= OnRetry;
         Menu.Closed -= OnMenuClosed;
-        Menu.IsOpen = false;
-        TrayNativeMethods.Shell_NotifyIconW(2, ref _data);
-        _added = false;
-        _source.RemoveHook(WindowProc);
-        _source.Dispose();
-        TrayNativeMethods.DestroyIcon(_icon);
+        try { Menu.IsOpen = false; }
+        finally
+        {
+            try { RemoveForShutdown(); }
+            finally
+            {
+                _added = false;
+                try { _source.Dispose(); }
+                finally { TrayNativeMethods.DestroyIcon(_icon); }
+            }
+        }
+    }
+
+    public void RemoveForShutdown()
+    {
+        Interlocked.Exchange(ref _removedForShutdown, 1);
+        var data = new NotifyIconData
+        {
+            Size = (uint)Marshal.SizeOf<NotifyIconData>(), Window = _iconWindow, Id = IconId,
+            Tip = string.Empty, Info = string.Empty, InfoTitle = string.Empty,
+        };
+        TrayNativeMethods.Shell_NotifyIconW(2, ref data);
     }
 }

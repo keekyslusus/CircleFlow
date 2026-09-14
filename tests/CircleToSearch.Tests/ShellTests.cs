@@ -12,6 +12,30 @@ namespace CircleToSearch.Tests;
 public sealed class ShellTests
 {
     [Fact]
+    public void Emergency_tray_removal_does_not_need_the_owner_dispatcher() => OnSta(() =>
+    {
+        var opens = 0;
+        using var tray = new TrayIcon(new AppPaths(AppContext.BaseDirectory).TrayIconPath, TestUiStrings.English,
+            Dispatcher.CurrentDispatcher, CreateLog(), () => { opens++; return Task.CompletedTask; },
+            () => Task.CompletedTask, () => Task.CompletedTask, () => Task.CompletedTask);
+        Assert.True(tray.IsAdded);
+        var removal = new Thread(tray.RemoveForShutdown) { IsBackground = true };
+        removal.Start();
+        Assert.True(removal.Join(TimeSpan.FromSeconds(2)));
+        var data = new NotifyIconData
+        {
+            Size = (uint)Marshal.SizeOf<NotifyIconData>(), Window = tray.WindowHandle, Id = 1,
+            Tip = string.Empty, Info = string.Empty, InfoTitle = string.Empty,
+        };
+        Assert.False(TrayNativeMethods.Shell_NotifyIconW(2, ref data));
+        SendTrayEvent(tray, 0x203);
+        TrayNativeMethods.PostMessageW(tray.WindowHandle, tray.TaskbarCreatedMessage, IntPtr.Zero, IntPtr.Zero);
+        Pump();
+        Assert.Equal(0, opens);
+        Assert.False(TrayNativeMethods.Shell_NotifyIconW(2, ref data));
+    });
+
+    [Fact]
     public void Settings_is_lazy_blank_and_reused_until_closed() => OnSta(() =>
     {
         using var settings = new SettingsWindowController(Dispatcher.CurrentDispatcher, TestUiStrings.English);

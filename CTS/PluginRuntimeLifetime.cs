@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace CircleToSearch;
 
 internal sealed class PluginRuntimeLifetime
@@ -15,6 +17,7 @@ internal sealed class PluginRuntimeLifetime
     private readonly PluginLog _log;
     private readonly object _gate = new();
     private Task? _stopTask;
+    private readonly ConcurrentQueue<Exception> _failures = new();
 
     public PluginRuntimeLifetime(
         Func<Task> stopSession,
@@ -92,13 +95,15 @@ internal sealed class PluginRuntimeLifetime
             translationCleanup,
             traceCleanup,
             profilerCleanup).ConfigureAwait(false);
+        if (!_failures.IsEmpty) throw new AggregateException(_failures);
     }
 
     private Task Start(Func<Task> operation, string name)
     {
-        try { return operation(); }
+        try { return Task.Run(operation); }
         catch (Exception exception)
         {
+            _failures.Enqueue(exception);
             _log.SafeError(nameof(PluginRuntimeLifetime), name, exception);
             return Task.CompletedTask;
         }
@@ -116,6 +121,7 @@ internal sealed class PluginRuntimeLifetime
         try { await task.ConfigureAwait(false); }
         catch (Exception exception)
         {
+            _failures.Enqueue(exception);
             _log.SafeError(nameof(PluginRuntimeLifetime), operation, exception);
         }
     }
@@ -126,88 +132,12 @@ internal sealed class PluginRuntimeLifetime
         foreach (var resource in resources)
         {
             if (resource.Resource is null) continue;
-            try { resource.Resource.Dispose(); }
+            try { await Task.Run(resource.Resource.Dispose).ConfigureAwait(false); }
             catch (Exception exception)
             {
+                _failures.Enqueue(exception);
                 _log.SafeError(nameof(PluginRuntimeLifetime), $"dispose-{resource.Name}", exception);
             }
-        }
-    }
-}
-
-internal sealed class PluginRuntimeStopAdapter : IDisposable
-{
-    private readonly Action _requestStop;
-    private readonly Func<Task> _stop;
-    private readonly PluginLog _log;
-    private readonly TimeSpan _hostBudget;
-    private readonly object _gate = new();
-    private Task? _stopTask;
-    private int _disposeWaitStarted;
-
-    public PluginRuntimeStopAdapter(Action requestStop, Func<Task> stop, PluginLog log, TimeSpan hostBudget)
-    {
-        _requestStop = requestStop ?? throw new ArgumentNullException(nameof(requestStop));
-        _stop = stop ?? throw new ArgumentNullException(nameof(stop));
-        _log = log ?? throw new ArgumentNullException(nameof(log));
-        if (hostBudget < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(hostBudget));
-        _hostBudget = hostBudget;
-    }
-
-    public Task StopAsync()
-    {
-        lock (_gate)
-        {
-            if (_stopTask is not null) return _stopTask;
-            _requestStop();
-            _stopTask = Task.Run(_stop);
-            return _stopTask;
-        }
-    }
-
-    public void Dispose()
-    {
-        if (Interlocked.Exchange(ref _disposeWaitStarted, 1) != 0) return;
-        var elapsed = System.Diagnostics.Stopwatch.StartNew();
-        _log.Info(nameof(AppRuntime), "disposing: canceling the active session and unregistering the hotkey");
-        var stop = StopAsync();
-        var remaining = _hostBudget - elapsed.Elapsed;
-        try
-        {
-            if (remaining <= TimeSpan.Zero)
-            {
-                if (!stop.IsCompleted) throw new TimeoutException();
-                stop.GetAwaiter().GetResult();
-            }
-            else
-            {
-                stop.WaitAsync(remaining).GetAwaiter().GetResult();
-            }
-        }
-        catch (TimeoutException)
-        {
-            _log.Warn(nameof(AppRuntime), "runtime cleanup exceeded the host shutdown budget and continues in the background");
-            _ = stop.ContinueWith(
-                task =>
-                {
-                    if (task.IsFaulted)
-                    {
-                        var aggregate = task.Exception!.Flatten();
-                        var exception = aggregate.InnerExceptions.Count == 1
-                            ? aggregate.InnerExceptions[0]
-                            : aggregate;
-                        _log.SafeError(nameof(AppRuntime), "deferred-runtime-cleanup", exception);
-                    }
-                    else
-                        _log.Info(nameof(AppRuntime), "deferred runtime cleanup completed");
-                },
-                CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
-        }
-        catch (Exception exception)
-        {
-            _log.SafeError(nameof(AppRuntime), "runtime-cleanup", exception);
         }
     }
 }

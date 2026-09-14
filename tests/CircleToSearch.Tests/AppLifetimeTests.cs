@@ -36,7 +36,10 @@ public sealed class AppLifetimeTests
         {
             var application = CompositionRoot.CreateApplication();
             var cleanup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            var lifetime = new AppLifetime(application, async () =>
+            var log = new PluginLog(TestOutputPaths.TempDirectory);
+            using var watchdog = new ShutdownWatchdog(log, () => application.Dispatcher.BeginInvoke(() => application.Shutdown(1)));
+            var lifetime = new AppLifetime(application, log, watchdog);
+            lifetime.AddCleanup("test-runtime", async () =>
             {
                 calls++;
                 await cleanup.Task;

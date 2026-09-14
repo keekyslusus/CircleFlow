@@ -20,9 +20,10 @@ public sealed class RuntimeActivationTests
         var notifier = new TestPluginNotifier();
         var hiding = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var hides = 0;
-        using var runtime = CompositionRoot.Create(paths,
+        await using var rollback = new ResourceRollbackScope(log);
+        var runtime = CompositionRoot.Create(paths,
             new AppSettings { HotkeyGesture = gesture, HideDelayMilliseconds = 2000 }, new SettingsStore(paths),
-            TestUiStrings.English, notifier, () => { hides++; return hiding.Task; }, log);
+            TestUiStrings.English, notifier, () => { hides++; return hiding.Task; }, log, rollback);
         Assert.False(runtime.Settings.HotkeyStatus.IsActive);
         Assert.Equal(TestUiStrings.English.HotkeyConflict(gesture), Assert.Single(notifier.Errors).Message);
         var open = runtime.OpenAsync();
