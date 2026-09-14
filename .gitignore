@@ -3,6 +3,7 @@ obj/
 *.user
 *.lnk
 tests/temp/
+/Data/
 /design
 
 # REMOVE THESE BEFORE PUBLIC RELEASE!!!:

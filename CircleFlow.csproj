@@ -28,6 +28,7 @@
   <ItemGroup>
     <Content Include="Extensions\uBlockOriginLite.zip">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="Languages\*.xaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -37,6 +38,7 @@
     <EmbeddedResource Include="Languages\en.xaml" LogicalName="CircleToSearch.Languages.en.xaml" />
     <Content Include="Images\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="Images\app.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -60,29 +62,36 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="CircleToSearch.Tests" />
+    <InternalsVisibleTo Include="CircleFlow.PublishProbe" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="LICENSE">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="THIRD_PARTY_NOTICES.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="THIRD_PARTY_LICENSES\*.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="$(NuGetPackageRoot)microsoft.web.webview2\1.0.4129.50\LICENSE.txt"
              Link="THIRD_PARTY_LICENSES\Microsoft.Web.WebView2.LICENSE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="$(NuGetPackageRoot)microsoft.web.webview2\1.0.4129.50\NOTICE.txt"
              Link="THIRD_PARTY_LICENSES\Microsoft.Web.WebView2.NOTICE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="$(NuGetPackageRoot)system.numerics.tensors\9.0.0\THIRD-PARTY-NOTICES.TXT"
              Link="THIRD_PARTY_LICENSES\System.Numerics.Tensors.NOTICE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
 

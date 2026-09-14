@@ -1,5 +1,4 @@
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -68,11 +67,10 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
             throw new ArgumentOutOfRangeException(nameof(shutdownTimeout));
     }
 
-    public static string? GetRuntimeVersion(string assetDirectory)
+    public static string? GetRuntimeVersion()
     {
         try
         {
-            NativeLibrary.TryLoad(Path.Combine(assetDirectory, "WebView2Loader.dll"), out _);
             return CoreWebView2Environment.GetAvailableBrowserVersionString();
         }
         catch
@@ -284,7 +282,6 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
             return;
         }
 
-        NativeLibrary.TryLoad(Path.Combine(_assetDirectory, "WebView2Loader.dll"), out _);
         _environment ??= await _createEnvironment().ConfigureAwait(true);
         cancel.ThrowIfCancellationRequested();
 
