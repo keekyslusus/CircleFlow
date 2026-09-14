@@ -15,14 +15,17 @@ public sealed class GoogleLensLiveSearchTests
     {
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
 
-        var dataDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.WebView2Live");
-        var log = new PluginLog(dataDirectory);
+        var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "CircleFlow.WebView2Live"));
+        AppDataDirectory.Initialize(paths);
+        var environments = new WebViewEnvironmentFactory(paths, TestUiStrings.English, new TestPluginNotifier());
+        var log = new PluginLog(paths.LogsDirectory);
         using var host = new SearchBrowserHost(
             AppContext.BaseDirectory,
-            Path.Combine(dataDirectory, "Profile"),
+            paths.SearchProfileDirectory,
             TestUiStrings.English,
             log,
-            new StaDispatcher(CompositionRoot.SearchBrowserThreadName));
+            new StaDispatcher(CompositionRoot.SearchBrowserThreadName),
+            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true));
         var provider = new GoogleLensProvider(
             jpeg => new GoogleLensBrowserOperation(jpeg, log));
 

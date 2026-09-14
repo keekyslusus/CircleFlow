@@ -5,8 +5,7 @@ namespace CircleToSearch.Search;
 
 internal sealed class ProviderSelectionStore(
     VisualSearchProviderRouter providerRouter,
-    PluginSettings settings,
-    Action saveSettings,
+    SettingsService settings,
     IPluginNotifier notifier,
     UiStrings strings,
     PluginLog log)
@@ -14,21 +13,18 @@ internal sealed class ProviderSelectionStore(
     public IReadOnlyList<SearchProviderDescriptor> Providers => providerRouter.Providers;
 
     public SearchProviderDescriptor GetEffectiveSelection() =>
-        providerRouter.GetEffectiveDescriptor(settings.SearchProviderId);
+        providerRouter.GetEffectiveDescriptor(settings.Snapshot.SearchProviderId);
 
     public void Save(string requestedProviderId)
     {
         var selected = providerRouter.GetEffectiveDescriptor(requestedProviderId);
-        settings.SearchProviderId = selected.Id;
-        try
+        if (settings.SetProvider(selected.Id).Success)
         {
-            saveSettings();
             log.Info(nameof(ProviderSelectionStore), $"visual search provider changed to '{selected.Id}'");
         }
-        catch (Exception exception)
+        else
         {
-            log.Error(nameof(ProviderSelectionStore), "saving the visual search provider failed", exception);
-            notifier.ShowError(strings.PluginTitle, strings.SavingFailed(exception.Message));
+            notifier.ShowError(strings.PluginTitle, strings.StorageSaveFailed);
         }
     }
 }

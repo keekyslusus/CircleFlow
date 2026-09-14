@@ -7,33 +7,46 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>CircleToSearch</RootNamespace>
-    <AssemblyName>CircleToSearch</AssemblyName>
+    <AssemblyName>CircleFlow</AssemblyName>
+    <Version>0.5.1</Version>
+    <Product>CircleFlow</Product>
+    <Title>CircleFlow</Title>
+    <Description>Search a screen area visually or recognize music from Windows output</Description>
+    <Authors>keekys</Authors>
+    <Company>keekys</Company>
+    <PackageProjectUrl>https://github.com/keekyslusus/circletosearchplugin</PackageProjectUrl>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <OutputType>Library</OutputType>
+    <OutputType>WinExe</OutputType>
+    <StartupObject>CircleToSearch.Program</StartupObject>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Images\app.ico</ApplicationIcon>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
     <Content Include="Extensions\uBlockOriginLite.zip">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="Languages\*.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="plugin.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <Page Remove="Languages\*.xaml" />
+    <EmbeddedResource Include="Languages\en.xaml" LogicalName="CircleToSearch.Languages.en.xaml" />
     <Content Include="Images\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Images\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Flow.Launcher.Plugin" Version="5.3.1" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
     <PackageReference Include="NAudio" Version="3.0.1" />
@@ -49,42 +62,37 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="CircleToSearch.Tests" />
+    <InternalsVisibleTo Include="CircleFlow.PublishProbe" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="LICENSE">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="THIRD_PARTY_NOTICES.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="THIRD_PARTY_LICENSES\*.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="$(NuGetPackageRoot)microsoft.web.webview2\1.0.4129.50\LICENSE.txt"
              Link="THIRD_PARTY_LICENSES\Microsoft.Web.WebView2.LICENSE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="$(NuGetPackageRoot)microsoft.web.webview2\1.0.4129.50\NOTICE.txt"
              Link="THIRD_PARTY_LICENSES\Microsoft.Web.WebView2.NOTICE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="$(NuGetPackageRoot)system.numerics.tensors\9.0.0\THIRD-PARTY-NOTICES.TXT"
              Link="THIRD_PARTY_LICENSES\System.Numerics.Tensors.NOTICE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
-
-  <!-- Flow must resolve WinRT through its default load context. A private copy lets
-       WebView2's older assembly reference create a second global ComWrappers. -->
-  <Target Name="UseHostWinRtRuntime" AfterTargets="ResolveReferences">
-    <ItemGroup>
-      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
-                               Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'WinRT.Runtime'" />
-    </ItemGroup>
-  </Target>
-  <Target Name="RemoveStalePrivateWinRtRuntime" AfterTargets="Build">
-    <Delete Files="$(TargetDir)WinRT.Runtime.dll" />
-  </Target>
 
 </Project>

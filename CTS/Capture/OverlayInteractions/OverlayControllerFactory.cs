@@ -80,7 +80,9 @@ internal sealed record OverlayControllerContext(
     Action<MusicDebugScenario> DebugScenarioSelected,
     Action<IOverlayCommand> MusicResultCommandRequested,
     Action<IOverlayCommand> PublishCommand,
-    Action<OverlayInteractionMode> TransitionMode);
+    Action<OverlayInteractionMode> TransitionMode,
+    string? OcrLanguageTag = null,
+    string TranslationTargetLanguageTag = "en");
 
 internal sealed class OverlayControllerFactory : IOverlayControllerFactory
 {
@@ -89,8 +91,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
     private readonly Func<MouseEventArgs, Point>? _pointerPosition;
     private readonly IOcrRecognizer _ocrRecognizer;
     private readonly double _textHitToleranceDips;
-    private readonly Func<string?> _ocrLanguageTag;
-    private readonly Func<string> _targetLanguageTag;
     private readonly Func<bool> _translationConsentAccepted;
     private readonly Action _acceptTranslationConsent;
     private readonly Action? _resetTranslationConsent;
@@ -108,8 +108,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         Func<MouseEventArgs, Point>? pointerPosition = null,
         IOcrRecognizer? ocrRecognizer = null,
         double textHitToleranceDips = 3,
-        Func<string?>? ocrLanguageTag = null,
-        Func<string>? targetLanguageTag = null,
         Func<bool>? translationConsentAccepted = null,
         Action? acceptTranslationConsent = null,
         Action? resetTranslationConsent = null,
@@ -123,8 +121,6 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         if (!double.IsFinite(textHitToleranceDips) || textHitToleranceDips < 0)
             throw new ArgumentOutOfRangeException(nameof(textHitToleranceDips));
         _textHitToleranceDips = textHitToleranceDips;
-        _ocrLanguageTag = ocrLanguageTag ?? (() => null);
-        _targetLanguageTag = targetLanguageTag ?? (() => "en");
         _translationConsentAccepted = translationConsentAccepted ?? (() => true);
         _acceptTranslationConsent = acceptTranslationConsent ?? (() => { });
         _resetTranslationConsent = resetTranslationConsent;
@@ -205,7 +201,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.Strings,
                 _translationConsentAccepted,
                 _acceptTranslationConsent,
-                _targetLanguageTag,
+                () => context.TranslationTargetLanguageTag,
                 context.PublishCommand,
                 context.TransitionMode,
                 toast.Show,
@@ -218,11 +214,11 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                     textSelection.SetDocument(null);
                     if (context.Visual.Actions.Prompt is { } prompt)
                         prompt.Text = language is null ? context.Strings.SelectionPrompt : context.Strings.TranslatedTextPrompt;
-                    ocr?.Restart(image, language ?? _ocrLanguageTag());
+                    ocr?.Restart(image, language ?? context.OcrLanguageTag);
                 }, _memoryProfiler);
             var frameSource = (System.Windows.Media.Imaging.BitmapSource?)context.Visual.Selection.Screenshot.Source
                 ?? throw new InvalidOperationException("The overlay frame source is missing.");
-            ocr = new OcrOverlayController(frameSource, context.CoordinateRoot.Dispatcher, _ocrRecognizer, _ocrLanguageTag(), outcome =>
+            ocr = new OcrOverlayController(frameSource, context.CoordinateRoot.Dispatcher, _ocrRecognizer, context.OcrLanguageTag, outcome =>
             {
                 textSelection.SetDocument(outcome.Document);
             }, _log, _memoryProfiler);

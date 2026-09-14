@@ -18,7 +18,7 @@ public sealed class GoogleImageTranslationTests
     [Fact]
     public void Old_text_only_consent_does_not_authorize_screenshot_upload()
     {
-        var settings = JsonSerializer.Deserialize<CircleToSearch.Settings.PluginSettings>(
+        var settings = JsonSerializer.Deserialize<CircleToSearch.Settings.AppSettings>(
             "{\"TranslationPrivacyConsentAccepted\":true}")!;
         Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
     }
@@ -129,16 +129,27 @@ public sealed class GoogleImageTranslationTests
             var commands = new List<IOverlayCommand>();
             var recognizer = new DeferredRecognizer();
             var factory = new OverlayControllerFactory(_ => { }, () => false,
-                ocrRecognizer: recognizer, ocrLanguageTag: () => "en-US", targetLanguageTag: () => "ru-RU");
+                ocrRecognizer: recognizer);
+            var service = TestSettings.Create(new CircleToSearch.Settings.AppSettings
+            {
+                PaddingPx = 0, LassoMinDiagonalPx = 10, OcrLanguageTag = "en-US", TranslationTargetLanguageTag = "ru-RU",
+            });
+            var session = CircleToSearch.Search.SearchSessionOptions.From(service.Snapshot,
+                new OcrLanguageCatalog([new("en-US", "English")]), System.Globalization.CultureInfo.InvariantCulture);
+            var launch = new OverlayLaunchOptions(new OverlayOptions(0, 10), TestUiStrings.English,
+                [new(CircleToSearch.Search.SearchProviderIds.GoogleLens, "Google Lens")], CircleToSearch.Search.SearchProviderIds.GoogleLens, session);
             var bounds = new System.Drawing.Rectangle(0, 0, 320, 200);
-            var window = new OverlayWindow(bitmap, bounds, bounds, 1, new OverlayOptions(0, 10), TestUiStrings.English,
-                factory, allowsTransparency: false, overscan: false, clickThroughOnCancel: false, publishCommand: commands.Add);
+            var window = new OverlayWindow(bitmap, bounds, bounds, 1, launch, commands.Add,
+                factory, allowsTransparency: false, overscan: false, clickThroughOnCancel: false);
+            Assert.True(service.Apply(new CircleToSearch.Settings.SettingsEdits
+                { OcrLanguageTag = "ja-JP", TranslationTargetLanguageTag = "ja-JP" }).Success);
             try
             {
                 var visual = window.VisualState;
                 var original = visual.Selection.Screenshot.Source;
                 visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
+                Assert.Equal("ru-RU", request.TargetLanguageTag);
                 window.ShowTranslation(new(request.RequestId, Source()));
                 Assert.Equal(Visibility.Visible, visual.Selection.Dim.Visibility);
                 Assert.True(visual.Root.Children.IndexOf(visual.Selection.Screenshot) < visual.Root.Children.IndexOf(visual.Selection.Dim));

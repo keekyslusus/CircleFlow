@@ -1,4 +1,3 @@
-using CircleToSearch.Settings;
 using CircleToSearch.Ui;
 
 namespace CircleToSearch.Search;
@@ -8,8 +7,8 @@ public enum SearchState { Idle, Cancelable, Uploading }
 public sealed class SearchCoordinator
 {
     private readonly ISearchSessionWorkflow _workflow;
-    private readonly Action _hideMainWindow;
-    private readonly PluginSettings _settings;
+    private readonly Func<Task> _hideOwnWindows;
+    private readonly Func<SearchSessionOptions> _sessionOptions;
     private readonly IPluginNotifier _notifier;
     private readonly UiStrings _strings;
     private readonly PluginLog _log;
@@ -24,15 +23,15 @@ public sealed class SearchCoordinator
 
     internal SearchCoordinator(
         ISearchSessionWorkflow workflow,
-        Action hideMainWindow,
-        PluginSettings settings,
+        Func<Task> hideOwnWindows,
+        Func<SearchSessionOptions> sessionOptions,
         IPluginNotifier notifier,
         UiStrings strings,
         PluginLog log)
     {
         _workflow = workflow ?? throw new ArgumentNullException(nameof(workflow));
-        _hideMainWindow = hideMainWindow ?? throw new ArgumentNullException(nameof(hideMainWindow));
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _hideOwnWindows = hideOwnWindows ?? throw new ArgumentNullException(nameof(hideOwnWindows));
+        _sessionOptions = sessionOptions ?? throw new ArgumentNullException(nameof(sessionOptions));
         _notifier = notifier ?? throw new ArgumentNullException(nameof(notifier));
         _strings = strings ?? throw new ArgumentNullException(nameof(strings));
         _log = log ?? throw new ArgumentNullException(nameof(log));
@@ -62,7 +61,7 @@ public sealed class SearchCoordinator
         }
     }
 
-    public Task StartFromQueryAsync()
+    public Task OpenAsync()
     {
         try
         {
@@ -70,7 +69,7 @@ public sealed class SearchCoordinator
             {
                 if (_stopping) return IgnoreTrigger("runtime is stopping");
             }
-            return State == SearchState.Idle ? StartSession("query") : IgnoreTrigger("another session is active");
+            return State == SearchState.Idle ? StartSession("open") : IgnoreTrigger("another session is active");
         }
         catch (Exception exception)
         {
@@ -138,11 +137,13 @@ public sealed class SearchCoordinator
     private Task StartSession(string trigger)
     {
         SessionCancellation cancellation;
+        SearchSessionOptions options;
         TaskCompletionSource completion;
         lock (_lifecycleGate)
         {
             if (_stopping) return IgnoreTrigger("runtime is stopping");
             if (!_activeSession.IsCompleted) return IgnoreTrigger("session already active");
+            options = _sessionOptions();
             cancellation = new SessionCancellation();
             completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             _cancellation = cancellation;
@@ -150,22 +151,23 @@ public sealed class SearchCoordinator
             SetState(SearchState.Cancelable);
         }
 
-        _ = RunSessionAsync(trigger, cancellation, completion);
+        _ = RunSessionAsync(trigger, options, cancellation, completion);
         return completion.Task;
     }
 
     private async Task RunSessionAsync(
         string trigger,
+        SearchSessionOptions options,
         SessionCancellation cancellation,
         TaskCompletionSource completion)
     {
         try
         {
             _log.Info(nameof(SearchCoordinator), $"selection started via {trigger}");
-            SafeHideMainWindow();
+            await SafeHideOwnWindowsAsync().ConfigureAwait(false);
             try
             {
-                await Task.Delay(_settings.HideDelayMilliseconds, cancellation.Token).ConfigureAwait(false);
+                await Task.Delay(options.HideDelayMilliseconds, cancellation.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -173,6 +175,7 @@ public sealed class SearchCoordinator
             }
 
             await _workflow.RunAsync(
+                options,
                 () => SetState(SearchState.Uploading),
                 cancellation.Token).ConfigureAwait(false);
         }
@@ -243,12 +246,12 @@ public sealed class SearchCoordinator
         return Task.CompletedTask;
     }
 
-    private void SafeHideMainWindow()
+    private async Task SafeHideOwnWindowsAsync()
     {
-        try { _hideMainWindow(); }
+        try { await _hideOwnWindows().ConfigureAwait(false); }
         catch (Exception exception)
         {
-            _log.Warn(nameof(SearchCoordinator), $"hiding the Flow window failed: {exception.Message}");
+            _log.Warn(nameof(SearchCoordinator), $"hiding application windows failed: {exception.Message}");
         }
     }
 

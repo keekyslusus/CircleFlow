@@ -34,7 +34,9 @@ public sealed class YandexLiveSearchTests
         if (Environment.GetEnvironmentVariable("CTS_LIVE") != "1" ||
             Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
 
-        var dataDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.WebView2Live");
+        var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "CircleFlow.WebView2Live"));
+        AppDataDirectory.Initialize(paths);
+        var environments = new WebViewEnvironmentFactory(paths, TestUiStrings.English, new TestPluginNotifier());
         using var provider = new YandexImagesProvider();
         using var bitmap = NewGradientBitmap(64, 64);
         var preparation = await provider.PrepareAsync(
@@ -44,10 +46,11 @@ public sealed class YandexLiveSearchTests
 
         using var host = new SearchBrowserHost(
             AppContext.BaseDirectory,
-            Path.Combine(dataDirectory, "Profile"),
+            paths.SearchProfileDirectory,
             TestUiStrings.English,
-            new PluginLog(dataDirectory),
-            new StaDispatcher(CompositionRoot.SearchBrowserThreadName));
+            new PluginLog(paths.LogsDirectory),
+            new StaDispatcher(CompositionRoot.SearchBrowserThreadName),
+            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true));
         var shown = await host.ShowAsync(
             new SearchProviderDescriptor(SearchProviderIds.YandexImages, "Yandex Images"),
             preparation.PreparedSearch!,

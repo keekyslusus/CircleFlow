@@ -1,0 +1,83 @@
+[CmdletBinding()]
+param([Parameter(Mandatory = $true)][string]$ArchivePath)
+
+$ErrorActionPreference = 'Stop'
+$workspace = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$archivePath = (Resolve-Path -LiteralPath $ArchivePath).Path
+$sessionId = (Get-Process -Id $PID).SessionId
+if (Get-Process -Name CircleFlow -ErrorAction SilentlyContinue | Where-Object SessionId -eq $sessionId) {
+    throw 'Exit the running CircleFlow before checking the published copy.'
+}
+$testDirectory = Join-Path $PSScriptRoot ('temp\publish-' + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $testDirectory -Force | Out-Null
+$unpacked = Join-Path $testDirectory ('unpacked ' + [char]0x442 + [char]0x435 + [char]0x441 + [char]0x442)
+$appDirectory = Join-Path $unpacked 'CircleFlow'
+$probeOutput = Join-Path $testDirectory 'hook'
+
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archive = [IO.Compression.ZipFile]::OpenRead($archivePath)
+try {
+    $entries = @($archive.Entries | ForEach-Object FullName)
+    foreach ($name in $entries) {
+        if (-not $name.StartsWith('CircleFlow/', [StringComparison]::Ordinal) -or $name.Contains('\') -or
+            $name -match '(^|/)(\.\.?|Data|tests|design|poc|Profiles|Logs|Temp)(/|$)|(^|/)(plugin\.json|settings[^/]*\.json|Flow\.Launcher[^/]*|CircleFlow\.PublishProbe[^/]*)$') {
+            throw "Unexpected ZIP entry: $name"
+        }
+        $destination = [IO.Path]::GetFullPath((Join-Path $unpacked $name))
+        if (-not $destination.StartsWith($appDirectory + '\', [StringComparison]::OrdinalIgnoreCase)) {
+            throw "ZIP entry escaped the application folder: $name"
+        }
+    }
+    $required = @('CircleFlow.exe', 'CircleFlow.dll', 'CircleFlow.runtimeconfig.json', 'CircleFlow.deps.json',
+        'WinRT.Runtime.dll', 'coreclr.dll', 'System.Private.CoreLib.dll', 'hostfxr.dll', 'hostpolicy.dll',
+        'Languages/en.xaml', 'Images/app.png', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip',
+        'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.LICENSE.txt',
+        'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.NOTICE.txt', 'THIRD_PARTY_LICENSES/System.Numerics.Tensors.NOTICE.txt')
+    foreach ($asset in $required) {
+        if ($entries -cnotcontains ('CircleFlow/' + $asset)) { throw "Missing ZIP asset: $asset" }
+    }
+    $licenseNames = Get-ChildItem -LiteralPath (Join-Path $workspace 'THIRD_PARTY_LICENSES') -Filter '*.txt' -File
+    foreach ($license in $licenseNames) {
+        if ($entries -cnotcontains ('CircleFlow/THIRD_PARTY_LICENSES/' + $license.Name)) { throw "Missing license: $($license.Name)" }
+    }
+}
+finally { $archive.Dispose() }
+[IO.Compression.ZipFile]::ExtractToDirectory($archivePath, $unpacked)
+foreach ($asset in @('Languages/en.xaml', 'Images/app.png', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip', 'LICENSE', 'THIRD_PARTY_NOTICES.txt')) {
+    if ((Get-FileHash -LiteralPath (Join-Path $workspace $asset)).Hash -ne
+        (Get-FileHash -LiteralPath (Join-Path $appDirectory $asset)).Hash) { throw "Published asset differs from source: $asset" }
+}
+$runtimeConfig = Get-Content -LiteralPath (Join-Path $appDirectory 'CircleFlow.runtimeconfig.json') -Raw | ConvertFrom-Json
+if (-not $runtimeConfig.runtimeOptions.includedFrameworks -or $runtimeConfig.runtimeOptions.framework -or $runtimeConfig.runtimeOptions.frameworks) {
+    throw 'The archive is not self-contained.'
+}
+
+dotnet build (Join-Path $PSScriptRoot 'PublishedHostProbe\PublishedHostProbe.csproj') -c Release -o $probeOutput
+if ($LASTEXITCODE -ne 0) { throw 'Published-process probe did not build.' }
+$reportPath = Join-Path $appDirectory 'Data\Temp\publish-probe.json'
+$start = New-Object Diagnostics.ProcessStartInfo
+$start.FileName = Join-Path $appDirectory 'CircleFlow.exe'
+$start.WorkingDirectory = $testDirectory
+$start.UseShellExecute = $false
+$start.CreateNoWindow = $true
+$start.EnvironmentVariables['DOTNET_STARTUP_HOOKS'] = Join-Path $probeOutput 'CircleFlow.PublishProbe.dll'
+$start.EnvironmentVariables['DOTNET_ROOT'] = Join-Path $testDirectory 'no-installed-dotnet'
+$start.EnvironmentVariables['DOTNET_ROOT_X64'] = $start.EnvironmentVariables['DOTNET_ROOT']
+$start.EnvironmentVariables['DOTNET_MULTILEVEL_LOOKUP'] = '0'
+$start.EnvironmentVariables.Remove('WEBVIEW2_USER_DATA_FOLDER')
+$start.EnvironmentVariables.Remove('WEBVIEW2_BROWSER_EXECUTABLE_FOLDER')
+$process = [Diagnostics.Process]::Start($start)
+try {
+    if (-not $process.WaitForExit(60000)) {
+        $process.Kill()
+        throw 'Published process did not finish its smoke check and normal shutdown within 60 seconds.'
+    }
+    if (-not (Test-Path -LiteralPath $reportPath)) { throw "Published process exited $($process.ExitCode) without a report." }
+    $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+    if ($process.ExitCode -ne 0 -or -not $report.Success) { throw "Published-process check failed: $($report.Error) (exit $($process.ExitCode))" }
+    Write-Host "ZIP verified: $archivePath ($($entries.Count) files)"
+    Write-Host "Published-process report: $reportPath"
+    $report | ConvertTo-Json -Depth 5
+}
+finally { $process.Dispose() }

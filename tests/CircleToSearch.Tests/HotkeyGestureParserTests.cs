@@ -56,6 +56,9 @@ public sealed class HotkeyGestureParserTests
     [InlineData("Ctrl+")]
     [InlineData("Ctrl+Nope")]
     [InlineData("Ctrl+Alt+Ctrl")]
+    [InlineData("Ctrl++Space")]
+    [InlineData("+Ctrl+Space")]
+    [InlineData("Ctrl+Space+")]
     public void Invalid_gestures_are_rejected(string? gesture)
     {
         Assert.False(HotkeyGestureParser.TryParse(gesture, out _, out _));

@@ -43,7 +43,7 @@ public sealed class UiStringsTests
     }
 
     [Fact]
-    public void English_xaml_is_copied_to_plugin_output()
+    public void English_xaml_is_copied_to_application_output()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml");
 

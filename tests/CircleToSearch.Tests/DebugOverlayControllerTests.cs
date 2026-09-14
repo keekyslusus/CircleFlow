@@ -122,30 +122,31 @@ public sealed class DebugOverlayControllerTests
         var failure = RunOnSta(() =>
         {
             var visual = CreateVisual();
-            var settings = new CircleToSearch.Settings.PluginSettings
+            var settings = new CircleToSearch.Settings.AppSettings
             {
                 ImageTranslationPrivacyConsentAccepted = true,
             };
             var saves = 0;
             var notifications = new List<ToastNotification>();
             var failSave = true;
+            var service = TestSettings.Create(settings, _ =>
+            {
+                saves++;
+                if (failSave) throw new InvalidOperationException("disk");
+            });
             using var controller = CreateController(visual, showToast: notifications.Add,
                 resetTranslationConsent: () =>
-                    CircleToSearch.CompositionRoot.SaveTranslationConsent(settings, false, () =>
-                    {
-                        saves++;
-                        if (failSave) throw new InvalidOperationException("disk");
-                    }));
+                    service.SetTranslationConsent(false).ThrowIfFailed(TestUiStrings.English.StorageSaveFailed));
             controller.SetOpen(true);
             visual.ResetTranslationConsentButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Assert.True(settings.ImageTranslationPrivacyConsentAccepted);
+            Assert.True(service.Snapshot.ImageTranslationPrivacyConsentAccepted);
             Assert.True(controller.IsOpen);
-            Assert.Equal(TestUiStrings.English.SavingFailed("disk"), Assert.Single(notifications).Message);
+            Assert.Equal(TestUiStrings.English.SavingFailed(TestUiStrings.English.StorageSaveFailed), Assert.Single(notifications).Message);
             Assert.Equal(ToastTone.Error, notifications[0].Tone);
 
             failSave = false;
             visual.ResetTranslationConsentButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
+            Assert.False(service.Snapshot.ImageTranslationPrivacyConsentAccepted);
             Assert.Equal(2, saves);
             Assert.False(controller.IsOpen);
             Assert.Equal(TestUiStrings.English.DebugTranslationConsentReset, notifications[1].Message);

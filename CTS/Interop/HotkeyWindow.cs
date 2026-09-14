@@ -86,10 +86,12 @@ public sealed class HotkeyWindow : IDisposable, IAsyncDisposable
     internal static uint RegistrationModifiers(uint modifiers) =>
         modifiers | NativeMethods.MOD_NOREPEAT;
 
-    public void TryUnregister()
+    public bool TryUnregister()
     {
-        if (_hwnd == IntPtr.Zero) return;
-        _dispatcher.Send(() => NativeMethods.UnregisterHotKey(_hwnd, HotkeyId));
+        if (_hwnd == IntPtr.Zero) return false;
+        var unregistered = false;
+        _dispatcher.Send(() => unregistered = NativeMethods.UnregisterHotKey(_hwnd, HotkeyId));
+        return unregistered;
     }
 
     public void Dispose()

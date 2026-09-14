@@ -10,14 +10,14 @@ public sealed class OcrTranslationSettingsTests
     [Fact]
     public void Settings_round_trip_language_tags_and_privacy_consent()
     {
-        var settings = new PluginSettings
+        var settings = new AppSettings
         {
             OcrLanguageTag = "ru-RU",
             TranslationTargetLanguageTag = "en-US",
             ImageTranslationPrivacyConsentAccepted = true,
         };
 
-        var restored = JsonSerializer.Deserialize<PluginSettings>(JsonSerializer.Serialize(settings))!;
+        var restored = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
 
         Assert.Equal("ru-RU", restored.OcrLanguageTag);
         Assert.Equal("en-US", restored.TranslationTargetLanguageTag);
@@ -27,34 +27,29 @@ public sealed class OcrTranslationSettingsTests
     [Fact]
     public void Consent_flag_is_committed_only_if_storage_succeeds()
     {
-        var settings = new PluginSettings();
         var saves = 0;
-
-        Assert.Throws<InvalidOperationException>(() =>
-            CircleToSearch.CompositionRoot.SaveTranslationConsent(settings, true, () =>
-            {
-                saves++;
-                Assert.True(settings.ImageTranslationPrivacyConsentAccepted);
-                throw new InvalidOperationException("storage failed");
-            }));
-        Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
-        CircleToSearch.CompositionRoot.SaveTranslationConsent(settings, true, () => saves++);
-        Assert.True(settings.ImageTranslationPrivacyConsentAccepted);
-        Assert.Equal(2, saves);
-
-        Assert.Throws<InvalidOperationException>(() =>
-            CircleToSearch.CompositionRoot.SaveTranslationConsent(settings, false, () =>
-            {
-                saves++;
-                Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
-                throw new InvalidOperationException("storage failed");
-            }));
-        Assert.True(settings.ImageTranslationPrivacyConsentAccepted);
-        CircleToSearch.CompositionRoot.SaveTranslationConsent(settings, false, () => saves++);
-        Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
+        var fail = true;
+        SettingsService? service = null;
+        service = TestSettings.Create(save: candidate =>
+        {
+            saves++;
+            Assert.NotEqual(candidate.ImageTranslationPrivacyConsentAccepted,
+                service!.Snapshot.ImageTranslationPrivacyConsentAccepted);
+            if (fail) throw new IOException("storage failed");
+        });
+        Assert.False(service.SetTranslationConsent(true).Success);
+        Assert.False(service.Snapshot.ImageTranslationPrivacyConsentAccepted);
+        fail = false;
+        Assert.True(service.SetTranslationConsent(true).Success);
+        Assert.True(service.Snapshot.ImageTranslationPrivacyConsentAccepted);
+        fail = true;
+        Assert.False(service.SetTranslationConsent(false).Success);
+        Assert.True(service.Snapshot.ImageTranslationPrivacyConsentAccepted);
+        fail = false;
+        Assert.True(service.SetTranslationConsent(false).Success);
+        Assert.False(service.Snapshot.ImageTranslationPrivacyConsentAccepted);
         Assert.Equal(4, saves);
     }
-
     [Fact]
     public void Catalog_validates_case_insensitively_and_falls_back_for_missing_pack()
     {

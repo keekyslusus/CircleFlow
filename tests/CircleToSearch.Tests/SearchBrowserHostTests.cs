@@ -141,7 +141,7 @@ public sealed class SearchBrowserHostTests
             TestUiStrings.English,
             new PluginLog(directory),
             dispatcher,
-            createEnvironment,
+            createEnvironment ?? (() => throw new InvalidOperationException("This test must not initialize a browser.")),
             shutdownTimeout);
     }
 }

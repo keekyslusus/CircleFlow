@@ -2,7 +2,6 @@ using System.Threading.Channels;
 using CircleToSearch.Capture;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
-using CircleToSearch.Settings;
 using CircleToSearch.Ui;
 using CircleToSearch.Translation;
 
@@ -10,7 +9,7 @@ namespace CircleToSearch.Search;
 
 internal interface ISearchSessionWorkflow
 {
-    Task RunAsync(Action onUploadStarted, CancellationToken cancellationToken);
+    Task RunAsync(SearchSessionOptions options, Action onUploadStarted, CancellationToken cancellationToken);
 }
 
 internal sealed class OverlaySessionWorkflow(
@@ -19,21 +18,21 @@ internal sealed class OverlaySessionWorkflow(
     MusicRecognitionWorkflow musicRecognition,
     MusicResultPresenter musicResultPresenter,
     ProviderSelectionStore providerSelection,
-    PluginSettings settings,
     UiStrings strings,
     PluginLog log,
     TextSearchWorkflow? textSearch = null,
     ScreenTranslationWorkflow? screenTranslation = null,
     Func<string, bool>? openTraceUrl = null) : ISearchSessionWorkflow
 {
-    public async Task RunAsync(Action onUploadStarted, CancellationToken cancellationToken)
+    public async Task RunAsync(SearchSessionOptions options, Action onUploadStarted, CancellationToken cancellationToken)
     {
         var effective = providerSelection.GetEffectiveSelection();
         var launch = new OverlayLaunchOptions(
-            new OverlayOptions(settings.PaddingPx, settings.LassoMinDiagonalPx),
+            new OverlayOptions(options.PaddingPx, options.LassoMinDiagonalPx),
             strings,
             providerSelection.Providers,
-            effective.Id);
+            effective.Id,
+            options);
         var overlay = await overlaySessionFactory.OpenAsync(launch, cancellationToken).ConfigureAwait(false);
         if (overlay is null) return;
 
@@ -130,7 +129,7 @@ internal sealed class OverlaySessionWorkflow(
                             break;
 
                         case VisualSelection visual when visual.ProviderId == SearchProviderIds.TraceMoe && traceTask is null:
-                            traceTask = visualSearch.PrepareTraceAsync(visual.Selection, traceCancellation.Token);
+                            traceTask = visualSearch.PrepareTraceAsync(visual.Selection, options.MaxLongSidePx, traceCancellation.Token);
                             commandOwnershipTransferred = true;
                             break;
 
@@ -150,6 +149,7 @@ internal sealed class OverlaySessionWorkflow(
                                 visual.Selection,
                                 visual.ProviderId,
                                 onUploadStarted,
+                                options.MaxLongSidePx,
                                 cancellationToken);
                             commandOwnershipTransferred = true;
                             await execution.ConfigureAwait(false);

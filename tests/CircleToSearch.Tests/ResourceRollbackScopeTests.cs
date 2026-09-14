@@ -5,24 +5,25 @@ namespace CircleToSearch.Tests;
 public sealed class ResourceRollbackScopeTests
 {
     [Fact]
-    public void Rollback_is_reverse_ordered_and_one_failure_does_not_skip_other_resources()
+    public async Task Rollback_is_reverse_ordered_and_one_failure_does_not_skip_other_resources()
     {
         var events = new List<string>();
-        using (var scope = new ResourceRollbackScope(NewLog()))
+        var scope = new ResourceRollbackScope(NewLog());
         {
             scope.Own(new Resource("first", events));
             scope.Own(new Resource("second", events, throws: true));
             scope.Own(new Resource("third", events));
         }
 
+        await Assert.ThrowsAsync<AggregateException>(() => scope.DisposeAsync().AsTask());
         Assert.Equal(["third", "second", "first"], events);
     }
 
     [Fact]
-    public void Replacing_a_child_transfers_cleanup_to_its_owner()
+    public async Task Replacing_a_child_transfers_cleanup_to_its_owner()
     {
         var events = new List<string>();
-        using (var scope = new ResourceRollbackScope(NewLog()))
+        await using (var scope = new ResourceRollbackScope(NewLog()))
         {
             var child = scope.Own(new Resource("child", events));
             scope.Replace(child, new Resource("owner", events));
@@ -32,10 +33,10 @@ public sealed class ResourceRollbackScopeTests
     }
 
     [Fact]
-    public void Commit_disarms_rollback()
+    public async Task Commit_disarms_rollback()
     {
         var events = new List<string>();
-        using (var scope = new ResourceRollbackScope(NewLog()))
+        await using (var scope = new ResourceRollbackScope(NewLog()))
         {
             scope.Own(new Resource("resource", events));
             scope.Commit();

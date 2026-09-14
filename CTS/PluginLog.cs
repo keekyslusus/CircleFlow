@@ -14,10 +14,10 @@ public sealed class PluginLog
     private readonly string _previousPath;
     private readonly Lock _gate = new();
 
-    public PluginLog(string pluginDirectory)
+    public PluginLog(string logDirectory)
     {
-        _path = Path.Combine(pluginDirectory, FileName);
-        _previousPath = Path.Combine(pluginDirectory, PreviousFileName);
+        _path = Path.Combine(logDirectory, FileName);
+        _previousPath = Path.Combine(logDirectory, PreviousFileName);
     }
 
     public void Info(string source, string message) => Write("INFO", source, message);

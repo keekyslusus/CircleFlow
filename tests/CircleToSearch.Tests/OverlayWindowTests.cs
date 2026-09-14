@@ -23,25 +23,25 @@ public sealed class OverlayWindowTests
         {
             using var frame = new GdiBitmap(640, 400);
             var bounds = new GdiRectangle(0, 0, 640, 400);
-            var settings = new CircleToSearch.Settings.PluginSettings
+            var settings = new CircleToSearch.Settings.AppSettings
             {
                 ImageTranslationPrivacyConsentAccepted = true,
             };
             var saves = 0;
+            var service = TestSettings.Create(settings, _ => saves++);
             var commands = new List<IOverlayCommand>();
             var overlay = new OverlayWindow(frame, bounds, bounds, 1, new OverlayOptions(8, 12),
                 TestUiStrings.English,
                 new OverlayControllerFactory(Clipboard.SetText, () => false,
-                    translationConsentAccepted: () => settings.ImageTranslationPrivacyConsentAccepted,
-                    resetTranslationConsent: () => CircleToSearch.CompositionRoot.SaveTranslationConsent(
-                        settings, false, () => saves++)),
+                    translationConsentAccepted: () => service.Snapshot.ImageTranslationPrivacyConsentAccepted,
+                    resetTranslationConsent: () => service.SetTranslationConsent(false).ThrowIfFailed(TestUiStrings.English.StorageSaveFailed)),
                 overscan: false, publishCommand: commands.Add);
             overlay.Show();
             overlay.SetDebugPanelOpen(true);
             var visual = overlay.VisualState;
             visual.Debug.ResetTranslationConsentButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-            Assert.False(settings.ImageTranslationPrivacyConsentAccepted);
+            Assert.False(service.Snapshot.ImageTranslationPrivacyConsentAccepted);
             Assert.Equal(1, saves);
             Assert.Equal(Visibility.Collapsed, visual.Debug.Panel.Visibility);
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
