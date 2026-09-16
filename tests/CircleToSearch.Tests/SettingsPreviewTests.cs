@@ -281,10 +281,11 @@ public sealed class SettingsPreviewTests
         try
         {
             window.Show();
-            foreach (var width in new[] { 1176, 960 })
+            foreach (var size in new[] { new Size(window.Width, window.Height), new Size(window.MinWidth, window.MinHeight) })
             {
+                var width = size.Width;
                 window.Width = width;
-                window.Height = width == 960 ? 590 : 760;
+                window.Height = size.Height;
                 foreach (var page in new[] { "general", "hotkeys", "search", "text", "music", "about" })
                 {
                     Find<RadioButton>(window, "Nav_" + page).IsChecked = true;
