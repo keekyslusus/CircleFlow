@@ -13,11 +13,44 @@ namespace CircleToSearch.Ui.Effects;
 // An adorner keeps the effect clipped to the control without changing its template or hit testing.
 public sealed class ControlRippleHost : IDisposable
 {
+    public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
+        "IsEnabled", typeof(bool), typeof(ControlRippleHost), new PropertyMetadata(false, OnIsEnabledChanged));
+    private static readonly DependencyProperty HostProperty = DependencyProperty.RegisterAttached(
+        "Host", typeof(ControlRippleHost), typeof(ControlRippleHost));
     private static readonly TimeSpan DefaultExpandDuration = TimeSpan.FromMilliseconds(400);
     private static readonly TimeSpan CompactExpandDuration = TimeSpan.FromMilliseconds(225);
     private readonly Control _control;
     private readonly bool _animationsEnabled;
     private RippleAdorner? _adorner;
+    private AdornerLayer? _adornerLayer;
+
+    public static bool GetIsEnabled(DependencyObject target) => (bool)target.GetValue(IsEnabledProperty);
+    public static void SetIsEnabled(DependencyObject target, bool value) => target.SetValue(IsEnabledProperty, value);
+
+    private static void OnIsEnabledChanged(DependencyObject target, DependencyPropertyChangedEventArgs e)
+    {
+        if (target is not Control control) return;
+        control.Loaded -= OnControlLoaded;
+        control.Unloaded -= OnControlUnloaded;
+        OnControlUnloaded(control, new RoutedEventArgs());
+        if (!(bool)e.NewValue) return;
+        control.Loaded += OnControlLoaded;
+        control.Unloaded += OnControlUnloaded;
+        if (control.IsLoaded) OnControlLoaded(control, new RoutedEventArgs());
+    }
+
+    private static void OnControlLoaded(object sender, RoutedEventArgs e)
+    {
+        var control = (Control)sender;
+        if (control.GetValue(HostProperty) is null) control.SetValue(HostProperty, Attach(control));
+    }
+
+    private static void OnControlUnloaded(object sender, RoutedEventArgs e)
+    {
+        var control = (Control)sender;
+        (control.GetValue(HostProperty) as ControlRippleHost)?.Dispose();
+        control.ClearValue(HostProperty);
+    }
 
     private ControlRippleHost(Control control, bool animationsEnabled)
     {
@@ -26,16 +59,18 @@ public sealed class ControlRippleHost : IDisposable
         control.PreviewMouseLeftButtonDown += OnPointerDown;
         control.PreviewMouseLeftButtonUp += OnPointerUp;
         control.Unloaded += OnUnloaded;
+        control.IsVisibleChanged += OnAvailabilityChanged;
+        control.IsEnabledChanged += OnAvailabilityChanged;
     }
 
     public static ControlRippleHost Attach(Control control) =>
-        new(control, Capture.OverlayVisualResources.AnimationsEnabled());
+        new(control, UiAnimationPolicy.Enabled);
 
     internal static ControlRippleHost AttachForTest(Control control) => new(control, true);
 
     private void OnPointerDown(object sender, MouseButtonEventArgs e)
     {
-        if (!_animationsEnabled) return;
+        if (!_animationsEnabled || !_control.IsEnabled || !_control.IsVisible) return;
         var layer = AdornerLayer.GetAdornerLayer(_control);
         if (layer is null) return;
         RemoveActiveRipple();
@@ -48,12 +83,14 @@ public sealed class ControlRippleHost : IDisposable
             duration,
             ControlCornerRadius(_control));
         _adorner = adorner;
+        _adornerLayer = layer;
         layer.Add(adorner);
         adorner.Begin(() =>
         {
             if (!ReferenceEquals(_adorner, adorner)) return;
             layer.Remove(adorner);
             _adorner = null;
+            _adornerLayer = null;
         });
     }
 
@@ -61,11 +98,18 @@ public sealed class ControlRippleHost : IDisposable
 
     private void OnUnloaded(object sender, RoutedEventArgs e) => Dispose();
 
+    private void OnAvailabilityChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (!_control.IsEnabled || !_control.IsVisible) RemoveActiveRipple();
+    }
+
     public void Dispose()
     {
         _control.PreviewMouseLeftButtonDown -= OnPointerDown;
         _control.PreviewMouseLeftButtonUp -= OnPointerUp;
         _control.Unloaded -= OnUnloaded;
+        _control.IsVisibleChanged -= OnAvailabilityChanged;
+        _control.IsEnabledChanged -= OnAvailabilityChanged;
         RemoveActiveRipple();
     }
 
@@ -75,7 +119,8 @@ public sealed class ControlRippleHost : IDisposable
         var adorner = _adorner;
         _adorner = null;
         adorner.Cancel();
-        AdornerLayer.GetAdornerLayer(_control)?.Remove(adorner);
+        _adornerLayer?.Remove(adorner);
+        _adornerLayer = null;
     }
 
     private static Color ResolveForegroundColor(Control control) =>

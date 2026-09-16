@@ -10,6 +10,52 @@ namespace CircleToSearch.Tests;
 public sealed class ControlRippleHostTests
 {
     [Fact]
+    public void Attached_ripple_reloads_without_duplicates_and_cleans_up_its_previous_layer()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var button = new Button { Width = 100, Height = 44 };
+            ControlRippleHost.SetIsEnabled(button, true);
+            var decorator = new AdornerDecorator { Child = button };
+            var window = new Window { Width = 300, Height = 200, Content = decorator };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                void Press()
+                {
+                    button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+                    {
+                        RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent,
+                        Source = button,
+                    });
+                }
+                var layer = AdornerLayer.GetAdornerLayer(button)!;
+                Press();
+                if (CircleToSearch.Ui.UiAnimationPolicy.Enabled) Assert.Single(layer.GetAdorners(button)!);
+                decorator.Child = null;
+                PumpUntil(() => !button.IsLoaded);
+                Assert.Null(layer.GetAdorners(button));
+                decorator.Child = button;
+                window.UpdateLayout();
+                PumpUntil(() => button.IsLoaded);
+                Press();
+                Press();
+                if (CircleToSearch.Ui.UiAnimationPolicy.Enabled) Assert.Single(layer.GetAdorners(button)!);
+                ControlRippleHost.SetIsEnabled(button, false);
+                Assert.Null(layer.GetAdorners(button));
+                Press();
+                Assert.Null(layer.GetAdorners(button));
+                ControlRippleHost.SetIsEnabled(button, true);
+                Press();
+                if (CircleToSearch.Ui.UiAnimationPolicy.Enabled) Assert.Single(layer.GetAdorners(button)!);
+            }
+            finally { window.Close(); }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Real_pointer_down_creates_an_adorner_without_crashing_the_dispatcher()
     {
         var failure = RunOnSta(() =>

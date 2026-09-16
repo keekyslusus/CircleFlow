@@ -3,18 +3,96 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.Ui;
+using CircleToSearch.Ui.Effects;
 using Xunit;
 
 namespace CircleToSearch.Tests;
 
 public sealed class SettingsPreviewTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Shared_ripples_follow_settings_controls_pages_and_dialogs(bool light) => OnSta(() =>
+    {
+        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        try
+        {
+            window.Show();
+            Pump();
+            AdornerLayer Press(Control control)
+            {
+                Assert.True(ControlRippleHost.GetIsEnabled(control));
+                control.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent,
+                    Source = control,
+                });
+                window.UpdateLayout();
+                var layer = AdornerLayer.GetAdornerLayer(control)!;
+                if (UiAnimationPolicy.Enabled)
+                {
+                    var adorner = Assert.Single(layer.GetAdorners(control)!);
+                    Assert.False(adorner.IsHitTestVisible);
+                    var clip = Assert.IsType<RectangleGeometry>(adorner.Clip);
+                    Assert.Equal(control.RenderSize, clip.Rect.Size);
+                    var chrome = control.Template.FindName("Chrome", control) as Border;
+                    if (chrome is not null) Assert.Equal(chrome.CornerRadius.TopLeft, clip.RadiusX);
+                    var canvas = Assert.IsType<Canvas>(VisualTreeHelper.GetChild(adorner, 0));
+                    var ellipse = Assert.Single(canvas.Children.OfType<System.Windows.Shapes.Ellipse>());
+                    var brush = Assert.IsType<RadialGradientBrush>(ellipse.Fill);
+                    var foreground = Assert.IsType<SolidColorBrush>(control.Foreground);
+                    Assert.Equal(PluginPalette.WithAlpha(foreground.Color, 0.21), brush.GradientStops[0].Color);
+                }
+                return layer;
+            }
+
+            var navigation = Find<RadioButton>(window, "Nav_general");
+            var navigationLayer = Press(navigation);
+            navigation.IsChecked = true;
+            Pump();
+            var toggle = Find<CheckBox>(window, "Launch");
+            var pageLayer = Press(toggle);
+            Assert.NotSame(navigationLayer, pageLayer);
+            Assert.Contains(VisualChildren(Find<ScrollViewer>(window, "PageScroll")), child => ReferenceEquals(child, pageLayer));
+            toggle.IsEnabled = false;
+            Assert.Null(pageLayer.GetAdorners(toggle));
+            toggle.IsEnabled = true;
+            Press(toggle);
+            var combo = Find<ComboBox>(window, "AppLanguage");
+            Press(VisualChildren(combo).OfType<ToggleButton>().Single());
+            Find<RadioButton>(window, "Nav_hotkeys").IsChecked = true;
+            Pump();
+            Assert.Null(pageLayer.GetAdorners(toggle));
+
+            var edit = LogicalChildren(window).OfType<Button>().Single(button => Equals(button.Tag, "edit"));
+            Press(edit);
+            Click(window, "edit");
+            Pump();
+            Assert.Null(pageLayer.GetAdorners(edit));
+            Assert.Null(navigationLayer.GetAdorners(navigation));
+            var cancel = LogicalChildren(window).OfType<Button>().Single(button => Equals(button.Tag, "cancel"));
+            var dialogLayer = Press(cancel);
+            Click(window, "cancel");
+            Pump();
+            Assert.Null(dialogLayer.GetAdorners(cancel));
+            Click(window, "edit");
+            Pump();
+            Press(cancel);
+            Click(window, "cancel");
+            window.Close();
+            Assert.Null(dialogLayer.GetAdorners(cancel));
+        }
+        finally { window.Close(); }
+    });
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

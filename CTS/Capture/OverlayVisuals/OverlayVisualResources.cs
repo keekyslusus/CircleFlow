@@ -42,8 +42,7 @@ internal static class OverlayVisualResources
     internal static DoubleAnimation Animate(double from, double to, TimeSpan duration) =>
         new(from, to, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
 
-    internal static bool AnimationsEnabled() =>
-        SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
+    internal static bool AnimationsEnabled() => UiAnimationPolicy.Enabled;
 
     internal static bool HardwareEffectsEnabled() => RenderCapability.Tier >> 16 >= 2;
 
