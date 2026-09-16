@@ -24,64 +24,64 @@
                             <Border Width="3" Margin="0,13" HorizontalAlignment="Left" CornerRadius="2" Background="{DynamicResource SettingsAccent}"/>
                         </Border>
                         <StackPanel x:Name="NavigationItems">
-                            <RadioButton x:Name="Nav_general" Tag="general" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False">
+                            <RadioButton x:Name="Nav_general" AutomationProperties.Name="{Binding [general]}" Tag="general" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False">
                                 <StackPanel Orientation="Horizontal">
                                     <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                         <Canvas Width="24" Height="24">
                                             <Path Style="{StaticResource OutlineIcon}" Data="{StaticResource Icon_home}"/>
                                         </Canvas>
                                     </Viewbox>
-                                    <TextBlock Text="{Binding [general]}" Margin="13,0,0,0" VerticalAlignment="Center"/>
+                                    <ContentControl Content="{Binding [general]}" Style="{StaticResource NavigationLabel}"/>
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton x:Name="Nav_hotkeys" Tag="hotkeys" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="True">
+                            <RadioButton x:Name="Nav_hotkeys" AutomationProperties.Name="{Binding [hotkeys]}" Tag="hotkeys" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="True">
                                 <StackPanel Orientation="Horizontal">
                                     <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                         <Canvas Width="24" Height="24">
                                             <Path Style="{StaticResource OutlineIcon}" Data="{StaticResource Icon_keyboard}"/>
                                         </Canvas>
                                     </Viewbox>
-                                    <TextBlock Text="{Binding [hotkeys]}" Margin="13,0,0,0" VerticalAlignment="Center"/>
+                                    <ContentControl Content="{Binding [hotkeys]}" Style="{StaticResource NavigationLabel}"/>
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton x:Name="Nav_search" Tag="search" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False">
+                            <RadioButton x:Name="Nav_search" AutomationProperties.Name="{Binding [search]}" Tag="search" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False">
                                 <StackPanel Orientation="Horizontal">
                                     <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                         <Canvas Width="24" Height="24">
                                             <Path Style="{StaticResource OutlineIcon}" Data="{StaticResource Icon_search}"/>
                                         </Canvas>
                                     </Viewbox>
-                                    <TextBlock Text="{Binding [search]}" Margin="13,0,0,0" VerticalAlignment="Center"/>
+                                    <ContentControl Content="{Binding [search]}" Style="{StaticResource NavigationLabel}"/>
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton x:Name="Nav_text" Tag="text" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False">
+                            <RadioButton x:Name="Nav_text" AutomationProperties.Name="{Binding [text]}" Tag="text" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False">
                                 <StackPanel Orientation="Horizontal">
                                     <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                         <Canvas Width="24" Height="24">
                                             <Path Style="{StaticResource OutlineIcon}" Data="{StaticResource Icon_text}"/>
                                         </Canvas>
                                     </Viewbox>
-                                    <TextBlock Text="{Binding [text]}" Margin="13,0,0,0" VerticalAlignment="Center"/>
+                                    <ContentControl Content="{Binding [text]}" Style="{StaticResource NavigationLabel}"/>
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton x:Name="Nav_music" Tag="music" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False">
+                            <RadioButton x:Name="Nav_music" AutomationProperties.Name="{Binding [music]}" Tag="music" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False">
                                 <StackPanel Orientation="Horizontal">
                                     <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                         <Canvas Width="24" Height="24">
                                             <Path Style="{StaticResource OutlineIcon}" Data="{StaticResource Icon_music}"/>
                                         </Canvas>
                                     </Viewbox>
-                                    <TextBlock Text="{Binding [music]}" Margin="13,0,0,0" VerticalAlignment="Center"/>
+                                    <ContentControl Content="{Binding [music]}" Style="{StaticResource NavigationLabel}"/>
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton x:Name="Nav_about" Tag="about" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False">
+                            <RadioButton x:Name="Nav_about" AutomationProperties.Name="{Binding [about]}" Tag="about" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False">
                                 <StackPanel Orientation="Horizontal">
                                     <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                         <Canvas Width="24" Height="24">
                                             <Path Style="{StaticResource OutlineIcon}" Data="{StaticResource Icon_info}"/>
                                         </Canvas>
                                     </Viewbox>
-                                    <TextBlock Text="{Binding [about]}" Margin="13,0,0,0" VerticalAlignment="Center"/>
+                                    <ContentControl Content="{Binding [about]}" Style="{StaticResource NavigationLabel}"/>
                                 </StackPanel>
                             </RadioButton>
                         </StackPanel>

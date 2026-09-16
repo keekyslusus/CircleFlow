@@ -28,7 +28,20 @@ public sealed class SettingsPreviewTests
             var host = Find<Grid>(window, "NavigationHost");
             var pill = Find<Border>(window, "NavigationSelection");
             var position = (TranslateTransform)pill.RenderTransform;
+            TextBlock Label(string page, string name)
+            {
+                var item = Find<RadioButton>(window, "Nav_" + page);
+                var label = ((Panel)item.Content).Children.OfType<ContentControl>().Single();
+                return (TextBlock)label.Template.FindName(name, label);
+            }
+            void AssertLabel(string page, bool selected)
+            {
+                Assert.Equal(selected ? 0 : 1, Label(page, "RegularLabel").Opacity);
+                Assert.Equal(selected ? 1 : 0, Label(page, "EmphasizedLabel").Opacity);
+            }
             double Top(string page) => Find<RadioButton>(window, "Nav_" + page).TranslatePoint(new Point(), host).Y;
+            AssertLabel("hotkeys", true);
+            AssertLabel("general", false);
             Assert.Equal(Top("hotkeys"), position.Y, 1);
             Assert.False(pill.IsHitTestVisible);
             Assert.Equal(Find<RadioButton>(window, "Nav_hotkeys").ActualHeight, pill.Height);
@@ -36,6 +49,9 @@ public sealed class SettingsPreviewTests
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
             PumpFor(320);
             Assert.Equal(Top("general"), position.Y, 1);
+            AssertLabel("general", true);
+            var labelWidth = Label("general", "RegularLabel").ActualWidth;
+            var labelOrigin = Label("general", "RegularLabel").TranslatePoint(new Point(), host);
             Find<RadioButton>(window, "Nav_music").IsChecked = true;
             Assert.True(Find<StackPanel>(window, "Page_music").IsVisible);
             if (SystemParameters.ClientAreaAnimation)
@@ -43,11 +59,18 @@ public sealed class SettingsPreviewTests
                 Assert.Equal(Top("general"), position.Y, 1);
                 PumpFor(80);
                 Assert.InRange(position.Y, Top("general") + 1, Top("music") - 1);
+                Assert.InRange(Label("general", "RegularLabel").Opacity, 0.001, 0.999);
+                Assert.InRange(Label("music", "EmphasizedLabel").Opacity, 0.001, 0.999);
+                Assert.Equal(1, Label("music", "RegularLabel").Opacity + Label("music", "EmphasizedLabel").Opacity, 3);
+                Assert.Equal(labelWidth, Label("general", "RegularLabel").ActualWidth);
+                Assert.Equal(labelOrigin, Label("general", "RegularLabel").TranslatePoint(new Point(), host));
                 if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
                     Capture(window, $"settings-{(light ? "light" : "dark")}-navigation-moving.png");
                 var before = position.Y;
+                var weightBefore = Label("general", "RegularLabel").Opacity;
                 Find<RadioButton>(window, "Nav_general").IsChecked = true;
                 Assert.Equal(before, position.Y, 1);
+                Assert.Equal(weightBefore, Label("general", "RegularLabel").Opacity, 3);
             }
             else
             {
@@ -56,10 +79,14 @@ public sealed class SettingsPreviewTests
             }
             PumpFor(320);
             Assert.Equal(Top("general"), position.Y, 1);
+            AssertLabel("general", true);
+            AssertLabel("music", false);
             Click(window, "page:music");
             PumpFor(320);
             Assert.Equal(Top("music"), position.Y, 1);
             Assert.True(Find<RadioButton>(window, "Nav_music").IsChecked);
+            AssertLabel("general", false);
+            AssertLabel("music", true);
             if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
                 Capture(window, $"settings-{(light ? "light" : "dark")}-navigation-selected.png");
             window.Width = window.MinWidth;
@@ -72,6 +99,8 @@ public sealed class SettingsPreviewTests
             window.Show();
             PumpFor(320);
             Assert.Equal(Top("about"), position.Y, 1);
+            AssertLabel("about", true);
+            AssertLabel("music", false);
         }
         finally { window.Close(); }
     });

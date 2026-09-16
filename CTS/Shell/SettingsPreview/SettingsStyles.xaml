@@ -110,6 +110,22 @@
         <Setter Property="Margin" Value="6"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
     </Style>
+    <Style x:Key="NavigationLabel" TargetType="ContentControl">
+        <Setter Property="Margin" Value="13,0,0,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContentControl">
+                    <Grid>
+                        <TextBlock x:Name="RegularLabel" Text="{TemplateBinding Content}" FontWeight="Normal" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="EmphasizedLabel" Text="{TemplateBinding Content}" FontWeight="SemiBold" VerticalAlignment="Center" Opacity="0"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
     <Style x:Key="NavigationItem" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{DynamicResource SettingsText}"/>
         <Setter Property="Padding" Value="13,11"/>
@@ -128,7 +144,6 @@
                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Frame" Property="Background" Value="{DynamicResource SettingsHover}"/></Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Frame" Property="Background" Value="{DynamicResource SettingsTransparent}"/>
-                            <Setter Property="FontWeight" Value="SemiBold"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
