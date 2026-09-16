@@ -20,6 +20,201 @@ public sealed class SettingsPreviewTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    public void Dialog_and_scrim_animate_in_and_out_retarget_and_restore_focus_after_closing(bool light) => OnSta(() =>
+    {
+        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        try
+        {
+            window.Show();
+            window.Activate();
+            Pump();
+            var edit = LogicalChildren(window).OfType<Button>().Single(button => Equals(button.Tag, "edit"));
+            var workspace = Find<Grid>(window, "Workspace");
+            var layer = Find<Border>(window, "DialogLayer");
+            var surface = Find<FrameworkElement>(window, "DialogMotionSurface");
+            var scrim = Find<Border>(window, "DialogScrim");
+            var transforms = (TransformGroup)surface.RenderTransform;
+            var scale = transforms.Children.OfType<ScaleTransform>().Single();
+            var translation = transforms.Children.OfType<TranslateTransform>().Single();
+            edit.Focus();
+            Click(window, "edit");
+            Assert.False(workspace.IsEnabled);
+            Assert.Equal(Visibility.Visible, layer.Visibility);
+            if (UiAnimationPolicy.Enabled)
+            {
+                PumpFor(60);
+                Assert.InRange(surface.Opacity, 0.001, 0.999);
+                Assert.InRange(scrim.Opacity, 0.001, 0.999);
+                Assert.InRange(scale.ScaleX, 0.96, 0.9999);
+                Assert.InRange(translation.Y, 0.001, 12);
+                Assert.True(scrim.RenderTransform.Value.IsIdentity);
+                var opacity = surface.Opacity;
+                var backdrop = scrim.Opacity;
+                var y = translation.Y;
+                Click(window, "cancel");
+                Assert.Equal(opacity, surface.Opacity);
+                Assert.Equal(backdrop, scrim.Opacity);
+                Assert.Equal(y, translation.Y);
+                Assert.False(surface.IsHitTestVisible);
+                Assert.False(workspace.IsEnabled);
+                PumpFor(40);
+                opacity = surface.Opacity;
+                backdrop = scrim.Opacity;
+                y = translation.Y;
+                Click(window, "edit");
+                Assert.Equal(opacity, surface.Opacity);
+                Assert.Equal(backdrop, scrim.Opacity);
+                Assert.Equal(y, translation.Y);
+            }
+            CompleteDialogTransition(window, open: true);
+            Assert.True(surface.IsHitTestVisible);
+            Assert.Equal(1, scale.ScaleX);
+            Assert.Equal(1, scale.ScaleY);
+            Assert.Equal(0, translation.Y);
+            Assert.Equal(1, scrim.Opacity);
+            Assert.False(workspace.IsEnabled);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                Capture(window, $"settings-{(light ? "light" : "dark")}-hotkey-dialog-open.png");
+
+            window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(window), 0, Key.Escape)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent,
+            });
+            if (UiAnimationPolicy.Enabled)
+            {
+                PumpFor(65);
+                Assert.Equal(Visibility.Visible, layer.Visibility);
+                Assert.InRange(surface.Opacity, 0.001, 0.999);
+                Assert.InRange(scrim.Opacity, 0.001, 0.999);
+                Assert.False(workspace.IsEnabled);
+                Assert.False(surface.IsHitTestVisible);
+                if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                    Capture(window, $"settings-{(light ? "light" : "dark")}-hotkey-dialog-exit.png");
+            }
+            CompleteDialogTransition(window, open: false);
+            Assert.True(workspace.IsEnabled);
+            Assert.Equal(0, scrim.Opacity);
+            Assert.Same(edit, Keyboard.FocusedElement);
+            Click(window, "edit");
+            window.Hide();
+            PumpFor(240);
+            window.Show();
+            Pump();
+            Assert.Equal(Visibility.Collapsed, layer.Visibility);
+            Assert.True(workspace.IsEnabled);
+            Click(window, "edit");
+            window.Close();
+            PumpFor(240);
+            Assert.Equal(Visibility.Collapsed, layer.Visibility);
+        }
+        finally { window.Close(); }
+    });
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Dropdowns_reveal_from_the_anchor_rotate_the_arrow_and_reset_on_close(bool light) => OnSta(() =>
+    {
+        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        try
+        {
+            Find<RadioButton>(window, "Nav_search").IsChecked = true;
+            window.Show();
+            window.Top = 20;
+            Pump();
+            var combo = Find<ComboBox>(window, "Provider");
+            var popup = (Popup)combo.Template.FindName("PART_Popup", combo);
+            var surface = (FrameworkElement)combo.Template.FindName("DropdownSurface", combo);
+            var arrow = (FrameworkElement)combo.Template.FindName("DropdownArrow", combo);
+            var rotation = (RotateTransform)arrow.RenderTransform;
+            var reveal = (RectangleGeometry)surface.Clip;
+            combo.Focus();
+            combo.IsDropDownOpen = true;
+            Pump();
+            Assert.True(popup.IsOpen);
+            Assert.Equal(PopupAnimation.None, popup.PopupAnimation);
+            Assert.Equal(1, surface.Opacity);
+            Assert.Equal(0, reveal.Rect.Y);
+            if (UiAnimationPolicy.Enabled)
+            {
+                PumpFor(45);
+                Assert.InRange(reveal.Rect.Height, 0.001, surface.ActualHeight - 0.001);
+                Assert.InRange(rotation.Angle, 0.001, 179.999);
+            }
+            PumpFor(240);
+            Assert.Equal(new Rect(surface.RenderSize), reveal.Rect);
+            Assert.Equal(180, rotation.Angle);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+            {
+                Capture(window, $"settings-{(light ? "light" : "dark")}-dropdown-arrow.png");
+                CaptureVisual(surface, $"settings-{(light ? "light" : "dark")}-dropdown-menu.png");
+            }
+            combo.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(combo), 0, Key.Escape)
+            {
+                RoutedEvent = Keyboard.KeyDownEvent,
+            });
+            Pump();
+            Assert.False(combo.IsDropDownOpen);
+            Assert.True(reveal.Rect.IsEmpty);
+            if (UiAnimationPolicy.Enabled)
+            {
+                PumpFor(45);
+                Assert.InRange(rotation.Angle, 0.001, 179.999);
+            }
+            var angle = rotation.Angle;
+            combo.IsDropDownOpen = true;
+            Assert.Equal(angle, rotation.Angle);
+            PumpFor(240);
+            Assert.Equal(180, rotation.Angle);
+            combo.IsDropDownOpen = false;
+            PumpFor(200);
+            Assert.Equal(0, rotation.Angle);
+
+            popup.Placement = PlacementMode.Top;
+            window.Top = 350;
+            combo.IsDropDownOpen = true;
+            Pump();
+            if (UiAnimationPolicy.Enabled)
+            {
+                PumpFor(45);
+                Assert.True(reveal.Rect.Y > 0);
+                Assert.Equal(surface.ActualHeight, reveal.Rect.Bottom, 3);
+            }
+            window.Hide();
+            Pump();
+            Assert.False(combo.IsDropDownOpen);
+            Assert.Equal(0, rotation.Angle);
+            Assert.True(reveal.Rect.IsEmpty);
+            window.Show();
+            window.Top = 20;
+            Pump();
+            foreach (var (name, page) in new[] { ("AppLanguage", "general"), ("Cleanup", "general"), ("OcrLanguage", "text"), ("TargetLanguage", "text") })
+            {
+                Find<RadioButton>(window, "Nav_" + page).IsChecked = true;
+                CompletePageTransition(window);
+                var other = Find<ComboBox>(window, name);
+                other.BringIntoView();
+                Pump();
+                other.IsDropDownOpen = true;
+                PumpFor(250);
+                var otherSurface = (FrameworkElement)other.Template.FindName("DropdownSurface", other);
+                Assert.Equal(new Rect(otherSurface.RenderSize), ((RectangleGeometry)otherSurface.Clip).Rect);
+                other.IsDropDownOpen = false;
+            }
+            Find<RadioButton>(window, "Nav_search").IsChecked = true;
+            CompletePageTransition(window);
+            combo.IsDropDownOpen = true;
+            window.Close();
+            PumpFor(250);
+            Assert.False(popup.IsOpen);
+            Assert.Equal(0, rotation.Angle);
+        }
+        finally { window.Close(); }
+    });
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     public void Toggles_have_solid_capsules_and_animate_without_jumping_on_reversal(bool light) => OnSta(() =>
     {
         var window = new SettingsWindowView(TestUiStrings.English, light).Window;
@@ -254,12 +449,14 @@ public sealed class SettingsPreviewTests
             var cancel = LogicalChildren(window).OfType<Button>().Single(button => Equals(button.Tag, "cancel"));
             var dialogLayer = Press(cancel);
             Click(window, "cancel");
+            CompleteDialogTransition(window, open: false);
             Pump();
             Assert.Null(dialogLayer.GetAdorners(cancel));
             Click(window, "edit");
             Pump();
             Press(cancel);
             Click(window, "cancel");
+            CompleteDialogTransition(window, open: false);
             window.Close();
             Assert.Null(dialogLayer.GetAdorners(cancel));
         }
@@ -588,9 +785,11 @@ public sealed class SettingsPreviewTests
             Assert.Equal(Visibility.Visible, Find<Border>(window, "DialogLayer").Visibility);
             Assert.False(Find<Grid>(window, "Workspace").IsEnabled);
             Click(window, "cancel");
+            CompleteDialogTransition(window, open: false);
             Assert.Equal(2, provider.SelectedIndex);
             Click(window, "reset");
             Click(window, "confirm-reset");
+            CompleteDialogTransition(window, open: false);
             Assert.True(launch.IsChecked);
             Assert.Equal(0, provider.SelectedIndex);
             Assert.Equal("1600", Find<TextBox>(window, "Maximum").Text);
@@ -600,6 +799,7 @@ public sealed class SettingsPreviewTests
             Click(window, "edit");
             Assert.False(Find<Button>(window, "SaveShortcut").IsEnabled);
             Click(window, "cancel");
+            CompleteDialogTransition(window, open: false);
             provider.SelectedIndex = 1;
         }
         finally { window.Close(); }
@@ -656,16 +856,18 @@ public sealed class SettingsPreviewTests
             if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
                 Capture(window, $"settings-{(light ? "light" : "dark")}-about-bottom.png");
             Click(window, "reset");
-            Pump();
+            CompleteDialogTransition(window, open: true);
             if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
                 Capture(window, $"settings-{(light ? "light" : "dark")}-reset-dialog.png");
             Click(window, "cancel");
+            CompleteDialogTransition(window, open: false);
             Find<RadioButton>(window, "Nav_hotkeys").IsChecked = true;
             Click(window, "edit");
-            Pump();
+            CompleteDialogTransition(window, open: true);
             if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
                 Capture(window, $"settings-{(light ? "light" : "dark")}-shortcut-dialog.png");
             Click(window, "cancel");
+            CompleteDialogTransition(window, open: false);
             listener.Flush();
             Assert.Equal(string.Empty, bindingErrors.ToString());
         }
@@ -706,6 +908,11 @@ public sealed class SettingsPreviewTests
     private static void Capture(Window window, string filename)
     {
         var root = (FrameworkElement)window.Content;
+        CaptureVisual(root, filename);
+    }
+
+    private static void CaptureVisual(FrameworkElement root, string filename)
+    {
         var bitmap = Render(root);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
@@ -740,6 +947,17 @@ public sealed class SettingsPreviewTests
         while (!scroll.IsHitTestVisible && elapsed.ElapsedMilliseconds < 2000) PumpFor(16);
         Assert.True(scroll.IsHitTestVisible, "The content transition did not finish.");
         Pump();
+    }
+
+    private static void CompleteDialogTransition(Window window, bool open)
+    {
+        Pump();
+        var elapsed = Stopwatch.StartNew();
+        var surface = Find<FrameworkElement>(window, "DialogMotionSurface");
+        var layer = Find<Border>(window, "DialogLayer");
+        bool Finished() => open ? surface.Opacity == 1 : layer.Visibility == Visibility.Collapsed;
+        while (!Finished() && elapsed.ElapsedMilliseconds < 2000) PumpFor(16);
+        Assert.True(Finished(), "The dialog transition did not finish.");
     }
 
     private static void OnSta(Action action)

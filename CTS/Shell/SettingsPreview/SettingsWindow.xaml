@@ -852,7 +852,7 @@
                                 </Border>
                             </Border>
                             <TextBlock Text="{Binding [powered_by]}" Style="{StaticResource SectionTitle}"/>
-                            <Border Style="{StaticResource Information}">
+                            <Border Style="{StaticResource Information}" Margin="0">
                                 <StackPanel>
                                     <TextBlock Text="{Binding [services_text]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                 </StackPanel>
@@ -866,7 +866,10 @@
         <Border x:Name="StatusBanner" Visibility="Collapsed" VerticalAlignment="Bottom" HorizontalAlignment="Center" MaxWidth="540" Background="{DynamicResource SettingsCard}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="7" Padding="16,12" Margin="240,0,16,24">
             <TextBlock x:Name="StatusText" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
         </Border>
-        <Border x:Name="DialogLayer" Background="{DynamicResource SettingsScrim}" Visibility="Collapsed">
+        <Border x:Name="DialogLayer" Background="{DynamicResource SettingsTransparent}" Visibility="Collapsed" Focusable="True">
+            <Grid>
+            <Border x:Name="DialogScrim" Background="{DynamicResource SettingsScrim}" IsHitTestVisible="False"/>
+            <AdornerDecorator x:Name="DialogMotionSurface" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
             <Border x:Name="DialogCard" Width="440" MaxHeight="480" VerticalAlignment="Center" HorizontalAlignment="Center" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="9" KeyboardNavigation.TabNavigation="Cycle">
                 <StackPanel Margin="24">
                     <StackPanel x:Name="ShortcutDialog">
@@ -892,6 +895,8 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+            </AdornerDecorator>
+            </Grid>
         </Border>
     </Grid>
 </Window>

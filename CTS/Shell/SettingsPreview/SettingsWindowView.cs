@@ -17,9 +17,11 @@ internal sealed class SettingsWindowView
     private static readonly string[] Pages = ["general", "hotkeys", "search", "text", "music", "about"];
     private readonly UiStrings _strings;
     private readonly List<Action> _restoreDefaults = [];
+    private readonly List<SettingsDropdownMotion> _dropdowns = [];
     private readonly DispatcherTimer _statusTimer;
     private readonly SettingsScrollMotionController _scrollMotion;
     private readonly SettingsPageTransition _pageTransition;
+    private readonly SettingsDialogMotion _dialogMotion;
     private IInputElement? _dialogOwner;
     private string[]? _pendingShortcut;
 
@@ -52,6 +54,8 @@ internal sealed class SettingsWindowView
         _pageTransition = new SettingsPageTransition(Element<ScrollViewer>("PageScroll"),
             Element<FrameworkElement>("PageTransitionSurface"),
             Pages.Select(page => Element<FrameworkElement>("Page_" + page)).ToArray());
+        _dialogMotion = new SettingsDialogMotion(Element<Border>("DialogLayer"),
+            Element<FrameworkElement>("DialogMotionSurface"), Element<Border>("DialogScrim"), FinishCloseDialog);
         Window.Closed += (_, _) =>
         {
             _statusTimer.Stop();
@@ -59,6 +63,8 @@ internal sealed class SettingsWindowView
             navigationIndicator.Dispose();
             _scrollMotion.Dispose();
             _pageTransition.Dispose();
+            _dialogMotion.Dispose();
+            foreach (var dropdown in _dropdowns) dropdown.Dispose();
         };
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
         Window.AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavigationChecked));
@@ -75,6 +81,7 @@ internal sealed class SettingsWindowView
         foreach (var name in new[] { "AppLanguage", "Cleanup", "Provider", "OcrLanguage", "TargetLanguage" })
         {
             var control = Element<ComboBox>(name);
+            _dropdowns.Add(new SettingsDropdownMotion(control));
             var initial = control.SelectedIndex;
             _restoreDefaults.Add(() => control.SelectedIndex = initial);
         }
@@ -169,7 +176,8 @@ internal sealed class SettingsWindowView
     {
         _scrollMotion.Reset();
         HideStatus();
-        _dialogOwner = Keyboard.FocusedElement;
+        if (Element<Border>("DialogLayer").Visibility != Visibility.Visible)
+            _dialogOwner = Keyboard.FocusedElement;
         _pendingShortcut = null;
         Element<Grid>("Workspace").IsEnabled = false;
         Element<StackPanel>("ShortcutDialog").Visibility = shortcut ? Visibility.Visible : Visibility.Collapsed;
@@ -177,7 +185,7 @@ internal sealed class SettingsWindowView
         Element<Button>("SaveShortcut").Visibility = shortcut ? Visibility.Visible : Visibility.Collapsed;
         Element<Button>("SaveShortcut").IsEnabled = false;
         Element<Button>("ConfirmReset").Visibility = shortcut ? Visibility.Collapsed : Visibility.Visible;
-        Element<Border>("DialogLayer").Visibility = Visibility.Visible;
+        _dialogMotion.Open();
         var input = Element<TextBox>("ShortcutInput");
         input.Text = _strings.SettingsPreviewText("press_shortcut");
         if (shortcut) input.Focus();
@@ -186,9 +194,15 @@ internal sealed class SettingsWindowView
 
     private void CloseDialog()
     {
-        Element<Border>("DialogLayer").Visibility = Visibility.Collapsed;
+        _pendingShortcut = null;
+        _dialogMotion.Close();
+    }
+
+    private void FinishCloseDialog()
+    {
         Element<Grid>("Workspace").IsEnabled = true;
-        if (_dialogOwner is not null) Keyboard.Focus(_dialogOwner);
+        if (Window.IsVisible && _dialogOwner is not null) Keyboard.Focus(_dialogOwner);
+        _dialogOwner = null;
         _pendingShortcut = null;
     }
 
@@ -201,6 +215,7 @@ internal sealed class SettingsWindowView
 
     private void RecordShortcut(object sender, KeyEventArgs e)
     {
+        if (!_dialogMotion.IsOpen) return;
         if (e.Key is Key.Tab or Key.Escape) return;
         e.Handled = true;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
