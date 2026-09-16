@@ -15,6 +15,67 @@ namespace CircleToSearch.Tests;
 
 public sealed class SettingsPreviewTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Sidebar_selection_slides_and_retargets_from_its_current_position(bool light) => OnSta(() =>
+    {
+        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        try
+        {
+            window.Show();
+            Pump();
+            var host = Find<Grid>(window, "NavigationHost");
+            var pill = Find<Border>(window, "NavigationSelection");
+            var position = (TranslateTransform)pill.RenderTransform;
+            double Top(string page) => Find<RadioButton>(window, "Nav_" + page).TranslatePoint(new Point(), host).Y;
+            Assert.Equal(Top("hotkeys"), position.Y, 1);
+            Assert.False(pill.IsHitTestVisible);
+            Assert.Equal(Find<RadioButton>(window, "Nav_hotkeys").ActualHeight, pill.Height);
+
+            Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            PumpFor(320);
+            Assert.Equal(Top("general"), position.Y, 1);
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            Assert.True(Find<StackPanel>(window, "Page_music").IsVisible);
+            if (SystemParameters.ClientAreaAnimation)
+            {
+                Assert.Equal(Top("general"), position.Y, 1);
+                PumpFor(80);
+                Assert.InRange(position.Y, Top("general") + 1, Top("music") - 1);
+                if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                    Capture(window, $"settings-{(light ? "light" : "dark")}-navigation-moving.png");
+                var before = position.Y;
+                Find<RadioButton>(window, "Nav_general").IsChecked = true;
+                Assert.Equal(before, position.Y, 1);
+            }
+            else
+            {
+                Assert.Equal(Top("music"), position.Y, 1);
+                Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            }
+            PumpFor(320);
+            Assert.Equal(Top("general"), position.Y, 1);
+            Click(window, "page:music");
+            PumpFor(320);
+            Assert.Equal(Top("music"), position.Y, 1);
+            Assert.True(Find<RadioButton>(window, "Nav_music").IsChecked);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                Capture(window, $"settings-{(light ? "light" : "dark")}-navigation-selected.png");
+            window.Width = window.MinWidth;
+            Pump();
+            Assert.Equal(host.ActualWidth, pill.ActualWidth, 1);
+            Assert.Equal(Top("music"), position.Y, 1);
+            Find<RadioButton>(window, "Nav_about").IsChecked = true;
+            window.Hide();
+            PumpFor(320);
+            window.Show();
+            PumpFor(320);
+            Assert.Equal(Top("about"), position.Y, 1);
+        }
+        finally { window.Close(); }
+    });
+
     [Fact]
     public void Wheel_scroll_moves_through_intermediate_positions_accumulates_and_reverses() => OnSta(() =>
     {

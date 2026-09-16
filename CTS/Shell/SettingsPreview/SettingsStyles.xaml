@@ -123,13 +123,11 @@
                         <Border x:Name="Frame" CornerRadius="5" Padding="{TemplateBinding Padding}">
                             <ContentPresenter VerticalAlignment="Center"/>
                         </Border>
-                        <Border x:Name="Indicator" Visibility="Collapsed" Width="3" Margin="0,13" HorizontalAlignment="Left" CornerRadius="2" Background="{DynamicResource SettingsAccent}"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Frame" Property="Background" Value="{DynamicResource SettingsHover}"/></Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Frame" Property="Background" Value="{DynamicResource SettingsSelected}"/>
-                            <Setter TargetName="Indicator" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="Frame" Property="Background" Value="{DynamicResource SettingsTransparent}"/>
                             <Setter Property="FontWeight" Value="SemiBold"/>
                         </Trigger>
                     </ControlTemplate.Triggers>

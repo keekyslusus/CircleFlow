@@ -44,12 +44,15 @@ internal sealed class SettingsWindowView
         };
         _statusTimer.Tick += (_, _) => HideStatus();
         var scrolling = new SettingsScrollController(Element<ScrollViewer>("PageScroll"));
+        var navigationIndicator = new SettingsNavigationIndicator(Element<Grid>("NavigationHost"),
+            Element<StackPanel>("NavigationItems"), Element<Border>("NavigationSelection"));
         _scrollMotion = new SettingsScrollMotionController(Element<ScrollViewer>("PageScroll"),
             (TranslateTransform)Element<StackPanel>("PageContent").RenderTransform);
         Window.Closed += (_, _) =>
         {
             _statusTimer.Stop();
             scrolling.Dispose();
+            navigationIndicator.Dispose();
             _scrollMotion.Dispose();
         };
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
