@@ -11,6 +11,76 @@ namespace CircleToSearch.Tests;
 
 public sealed class ShellTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Tray_menu_uses_rounded_surfaces_without_an_icon_gutter_and_keeps_keyboard_navigation(bool light) => OnSta(() =>
+    {
+        var menu = TrayMenuView.Create();
+        var owner = new Window { Width = 300, Height = 200 };
+        owner.Show();
+        owner.Activate();
+        menu.PlacementTarget = owner;
+        TrayMenuView.ApplyTheme(menu, light);
+        foreach (var text in new[] { TestUiStrings.English.TrayOpen, TestUiStrings.English.TraySettings,
+                     TestUiStrings.English.TraySupport, TestUiStrings.English.TrayExit })
+            menu.Items.Add(new MenuItem { Header = text });
+        try
+        {
+            menu.IsOpen = true;
+            Pump();
+            menu.UpdateLayout();
+            var surface = (Border)menu.Template.FindName("MenuSurface", menu);
+            Assert.Equal(new CornerRadius(9), surface.CornerRadius);
+            Assert.True(surface.ActualWidth >= 200);
+            var first = (MenuItem)menu.Items[0];
+            var second = (MenuItem)menu.Items[1];
+            foreach (MenuItem item in menu.Items)
+            {
+                Assert.Null(item.Icon);
+                Assert.Equal(34, item.ActualHeight);
+                var highlight = (Border)item.Template.FindName("Highlight", item);
+                var presenter = Assert.IsType<ContentPresenter>(highlight.Child);
+                Assert.InRange(presenter.TranslatePoint(new Point(), item).X, 11, 13);
+                Assert.True(presenter.ActualWidth > 150);
+            }
+            first.Focus();
+            Assert.True(first.IsHighlighted);
+            Assert.True(first.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.Down)));
+            Assert.True(second.IsKeyboardFocused);
+            Assert.True(second.IsHighlighted);
+            Pump();
+            menu.UpdateLayout();
+            var selected = (Border)second.Template.FindName("Highlight", second);
+            Assert.Equal(PluginPalette.Settings(light).Selected, ((System.Windows.Media.SolidColorBrush)selected.Background).Color);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+            {
+                var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(menu.ActualWidth),
+                    (int)Math.Ceiling(menu.ActualHeight), 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                bitmap.Render(menu);
+                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+                System.IO.Directory.CreateDirectory(TestOutputPaths.TempDirectory);
+                using var output = System.IO.File.Create(System.IO.Path.Combine(TestOutputPaths.TempDirectory,
+                    $"tray-menu-{(light ? "light" : "dark")}.png"));
+                encoder.Save(output);
+            }
+            TrayMenuView.ApplyTheme(menu, !light);
+            Assert.Equal(PluginPalette.Settings(!light).Paper, ((System.Windows.Media.SolidColorBrush)menu.Background).Color);
+            menu.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,
+                PresentationSource.FromVisual(menu), 0, System.Windows.Input.Key.Escape)
+            {
+                RoutedEvent = System.Windows.Input.Keyboard.KeyDownEvent,
+            });
+            Pump();
+            Assert.False(menu.IsOpen);
+            menu.IsOpen = true;
+            Pump();
+            Assert.True(menu.IsOpen);
+        }
+        finally { menu.IsOpen = false; owner.Close(); }
+    });
+
     [Fact]
     public void Emergency_tray_removal_does_not_need_the_owner_dispatcher() => OnSta(() =>
     {

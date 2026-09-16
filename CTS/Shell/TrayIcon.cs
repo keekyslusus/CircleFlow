@@ -2,9 +2,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
-using System.Windows.Media;
 using System.Windows.Threading;
 using CircleToSearch.Interop;
 using CircleToSearch.Ui;
@@ -49,7 +47,7 @@ internal sealed class TrayIcon : IDisposable
             });
             _source.AddHook(WindowProc);
             _iconWindow = _source.Handle;
-            Menu = new ContextMenu { Placement = PlacementMode.MousePoint, StaysOpen = false };
+            Menu = TrayMenuView.Create();
             AddItem(strings.TrayOpen, open);
             AddItem(strings.TraySettings, settings);
             AddItem(strings.TraySupport, support);
@@ -147,9 +145,7 @@ internal sealed class TrayIcon : IDisposable
 
     private void ShowMenu()
     {
-        var palette = PluginPalette.For(SystemTheme.IsLight());
-        Menu.Background = new SolidColorBrush(palette.WindowSurface);
-        Menu.Foreground = new SolidColorBrush(palette.PrimaryText);
+        TrayMenuView.ApplyTheme(Menu, SystemTheme.IsLight());
         TrayNativeMethods.SetForegroundWindow(_source.Handle);
         Menu.IsOpen = true;
         Menu.Focus();
