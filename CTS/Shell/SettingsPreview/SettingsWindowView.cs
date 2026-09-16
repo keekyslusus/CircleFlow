@@ -18,6 +18,7 @@ internal sealed class SettingsWindowView
     private readonly UiStrings _strings;
     private readonly List<Action> _restoreDefaults = [];
     private readonly DispatcherTimer _statusTimer;
+    private readonly SettingsScrollMotionController _scrollMotion;
     private IInputElement? _dialogOwner;
     private string[]? _pendingShortcut;
 
@@ -43,10 +44,13 @@ internal sealed class SettingsWindowView
         };
         _statusTimer.Tick += (_, _) => HideStatus();
         var scrolling = new SettingsScrollController(Element<ScrollViewer>("PageScroll"));
+        _scrollMotion = new SettingsScrollMotionController(Element<ScrollViewer>("PageScroll"),
+            (TranslateTransform)Element<StackPanel>("PageContent").RenderTransform);
         Window.Closed += (_, _) =>
         {
             _statusTimer.Stop();
             scrolling.Dispose();
+            _scrollMotion.Dispose();
         };
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
         Window.AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavigationChecked));
@@ -115,6 +119,7 @@ internal sealed class SettingsWindowView
 
     private void ShowPage(string page)
     {
+        _scrollMotion.Reset();
         foreach (var name in Pages)
             Element<StackPanel>("Page_" + name).Visibility = name == page ? Visibility.Visible : Visibility.Collapsed;
         Element<ScrollViewer>("PageScroll").ScrollToTop();
@@ -154,6 +159,7 @@ internal sealed class SettingsWindowView
 
     private void OpenDialog(bool shortcut)
     {
+        _scrollMotion.Reset();
         HideStatus();
         _dialogOwner = Keyboard.FocusedElement;
         _pendingShortcut = null;

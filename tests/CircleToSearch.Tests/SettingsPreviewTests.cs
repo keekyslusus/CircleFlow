@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -14,6 +15,152 @@ namespace CircleToSearch.Tests;
 
 public sealed class SettingsPreviewTests
 {
+    [Fact]
+    public void Wheel_scroll_moves_through_intermediate_positions_accumulates_and_reverses() => OnSta(() =>
+    {
+        var window = new SettingsWindowView(TestUiStrings.English, true).Window;
+        try
+        {
+            window.Width = 960;
+            window.Height = 590;
+            window.Show();
+            Find<RadioButton>(window, "Nav_about").IsChecked = true;
+            Pump();
+            var scroll = Find<ScrollViewer>(window, "PageScroll");
+            var translation = (TranslateTransform)Find<StackPanel>(window, "PageContent").RenderTransform;
+            var step = SystemParameters.WheelScrollLines < 0 ? scroll.ViewportHeight * 2 : SystemParameters.WheelScrollLines * 32.0;
+            var firstTarget = Math.Min(step, scroll.ScrollableHeight);
+            var wheel = Wheel(scroll, -120);
+            Assert.Equal(0, scroll.VerticalOffset);
+            if (!SystemParameters.ClientAreaAnimation || step == 0)
+            {
+                Assert.False(wheel.Handled);
+                return;
+            }
+            Assert.True(wheel.Handled);
+            PumpFor(70);
+            Assert.InRange(scroll.VerticalOffset, 0.1, firstTarget - 0.1);
+            var intermediate = scroll.VerticalOffset;
+            Assert.True(Wheel(scroll, -120).Handled);
+            Assert.Equal(intermediate, scroll.VerticalOffset);
+            PumpFor(70);
+            Assert.True(scroll.VerticalOffset > intermediate);
+            var beforeReverse = scroll.VerticalOffset;
+            Assert.True(Wheel(scroll, 120).Handled);
+            PumpFor(650);
+            Assert.InRange(scroll.VerticalOffset, Math.Max(0, beforeReverse - step) - 1,
+                Math.Max(0, beforeReverse - step) + 1);
+            Assert.Equal(0, translation.Y);
+
+            scroll.ScrollToTop();
+            Pump();
+            Wheel(scroll, -120);
+            Wheel(scroll, -120);
+            PumpFor(650);
+            Assert.InRange(scroll.VerticalOffset, Math.Min(step * 2, scroll.ScrollableHeight) - 1,
+                Math.Min(step * 2, scroll.ScrollableHeight) + 1);
+
+            scroll.ScrollToTop();
+            Pump();
+            Wheel(scroll, -120);
+            PumpFor(70);
+            scroll.ScrollToVerticalOffset(110);
+            Pump();
+            PumpFor(250);
+            Assert.Equal(110, scroll.VerticalOffset, 1);
+
+            Wheel(scroll, -120);
+            PumpFor(50);
+            Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            PumpFor(250);
+            Assert.Equal(0, scroll.VerticalOffset);
+            Assert.Equal(0, translation.Y);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Overscroll_springs_at_both_edges_and_resets_on_navigation_and_hide() => OnSta(() =>
+    {
+        var window = new SettingsWindowView(TestUiStrings.English, true).Window;
+        try
+        {
+            window.Width = 960;
+            window.Height = 590;
+            window.Show();
+            Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            Pump();
+            var scroll = Find<ScrollViewer>(window, "PageScroll");
+            var translation = (TranslateTransform)Find<StackPanel>(window, "PageContent").RenderTransform;
+            var extent = scroll.ExtentHeight;
+            var topWheel = Wheel(scroll, 120);
+            PumpFor(90);
+            if (!SystemParameters.ClientAreaAnimation)
+            {
+                Assert.False(topWheel.Handled);
+                Assert.Equal(0, translation.Y);
+                return;
+            }
+            Assert.True(topWheel.Handled);
+            Assert.InRange(translation.Y, 1, 64);
+            Assert.Equal(0, scroll.VerticalOffset);
+            Assert.Equal(extent, scroll.ExtentHeight);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                Capture(window, "settings-bounce-top.png");
+            PumpFor(1100);
+            Assert.Equal(0, translation.Y);
+
+            scroll.ScrollToBottom();
+            Pump();
+            var bottom = scroll.VerticalOffset;
+            Assert.True(Wheel(scroll, -120).Handled);
+            PumpFor(90);
+            Assert.InRange(translation.Y, -64, -1);
+            Assert.Equal(bottom, scroll.VerticalOffset);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                Capture(window, "settings-bounce-bottom.png");
+            PumpFor(1100);
+            Assert.Equal(0, translation.Y);
+
+            Assert.True(Wheel(scroll, -120).Handled);
+            PumpFor(50);
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            Pump();
+            Assert.Equal(0, translation.Y);
+            Assert.False(Wheel(scroll, 120).Handled);
+
+            Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            Pump();
+            Assert.False(Wheel(Find<ComboBox>(window, "AppLanguage"), 120).Handled);
+            scroll.ScrollToVerticalOffset(100);
+            Pump();
+            Assert.True(Wheel(scroll, 120).Handled);
+            Assert.Equal(0, translation.Y);
+            scroll.ScrollToTop();
+            Pump();
+            for (var i = 0; i < 10; i++) Wheel(scroll, 120);
+            PumpFor(70);
+            Assert.InRange(translation.Y, 1, 64);
+            window.Hide();
+            PumpFor(80);
+            Assert.Equal(0, translation.Y);
+            window.Show();
+            Pump();
+            Assert.Equal(0, translation.Y);
+        }
+        finally { window.Close(); }
+    });
+
+    private static MouseWheelEventArgs Wheel(UIElement target, int delta)
+    {
+        var args = new MouseWheelEventArgs(Mouse.PrimaryDevice, Environment.TickCount, delta)
+        {
+            RoutedEvent = Mouse.PreviewMouseWheelEvent,
+        };
+        target.RaiseEvent(args);
+        return args;
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

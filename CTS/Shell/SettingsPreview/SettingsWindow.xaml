@@ -83,6 +83,9 @@
             <Border x:Name="ContentSurface" Grid.Column="1" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1,1,0,0" CornerRadius="9,0,0,0">
                 <ScrollViewer x:Name="PageScroll" Style="{StaticResource PageScrollViewer}" BorderThickness="0" Background="{DynamicResource SettingsTransparent}" FocusVisualStyle="{x:Null}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
                     <StackPanel x:Name="PageContent" Margin="38,34,38,26">
+                        <StackPanel.RenderTransform>
+                            <TranslateTransform/>
+                        </StackPanel.RenderTransform>
                         <StackPanel x:Name="Page_general" Visibility="Collapsed">
                             <TextBlock Text="{Binding [general_title]}" Style="{StaticResource PageTitle}"/>
                             <Border Style="{StaticResource Hero}">
