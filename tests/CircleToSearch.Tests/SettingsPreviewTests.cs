@@ -20,6 +20,91 @@ public sealed class SettingsPreviewTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    public void Content_exits_down_then_enters_up_and_rapid_navigation_keeps_only_the_latest_page(bool light) => OnSta(() =>
+    {
+        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        try
+        {
+            var surface = Find<FrameworkElement>(window, "PageTransitionSurface");
+            var translation = (TranslateTransform)surface.RenderTransform;
+            var scroll = Find<ScrollViewer>(window, "PageScroll");
+            var general = Find<StackPanel>(window, "Page_general");
+            var search = Find<StackPanel>(window, "Page_search");
+            Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            window.Show();
+            Pump();
+            Assert.Equal(1, surface.Opacity);
+            Assert.Equal(0, translation.Y);
+            scroll.ScrollToVerticalOffset(80);
+            Pump();
+            var previousOffset = scroll.VerticalOffset;
+            Assert.True(previousOffset > 0);
+
+            Find<RadioButton>(window, "Nav_search").IsChecked = true;
+            if (UiAnimationPolicy.Enabled)
+            {
+                Assert.True(general.IsVisible);
+                Assert.False(search.IsVisible);
+                Assert.False(scroll.IsHitTestVisible);
+                Assert.Equal(previousOffset, scroll.VerticalOffset);
+                PumpFor(35);
+                Assert.InRange(translation.Y, 0.001, 13.999);
+                Assert.InRange(surface.Opacity, 0.001, 0.999);
+                if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                    Capture(window, $"settings-{(light ? "light" : "dark")}-content-exit.png");
+                PumpFor(90);
+                Assert.False(general.IsVisible);
+                Assert.True(search.IsVisible);
+                Assert.Equal(0, scroll.VerticalOffset);
+                Assert.InRange(translation.Y, 0.001, 21.999);
+                Assert.InRange(surface.Opacity, 0.001, 0.999);
+                if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                    Capture(window, $"settings-{(light ? "light" : "dark")}-content-enter.png");
+                var currentY = translation.Y;
+                var currentOpacity = surface.Opacity;
+                Find<RadioButton>(window, "Nav_music").IsChecked = true;
+                Assert.Equal(currentY, translation.Y);
+                Assert.Equal(currentOpacity, surface.Opacity);
+                Find<RadioButton>(window, "Nav_about").IsChecked = true;
+                Find<RadioButton>(window, "Nav_general").IsChecked = true;
+                CompletePageTransition(window);
+                Assert.True(general.IsVisible);
+                Assert.False(search.IsVisible);
+                Assert.False(Find<StackPanel>(window, "Page_music").IsVisible);
+                Assert.False(Find<StackPanel>(window, "Page_about").IsVisible);
+            }
+            else
+            {
+                Assert.True(search.IsVisible);
+                Assert.False(general.IsVisible);
+            }
+            Assert.Equal(1, surface.Opacity);
+            Assert.Equal(0, translation.Y);
+            Assert.Equal(0, ((TranslateTransform)Find<StackPanel>(window, "PageContent").RenderTransform).Y);
+            Assert.True(scroll.IsHitTestVisible);
+            Assert.Equal(KeyboardNavigationMode.Continue, KeyboardNavigation.GetTabNavigation(surface));
+
+            Find<RadioButton>(window, "Nav_text").IsChecked = true;
+            window.Hide();
+            PumpFor(320);
+            window.Show();
+            Pump();
+            Assert.True(Find<StackPanel>(window, "Page_text").IsVisible);
+            Assert.Equal(1, surface.Opacity);
+            Assert.Equal(0, translation.Y);
+            Assert.True(scroll.IsHitTestVisible);
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            window.Close();
+            PumpFor(320);
+            Assert.Equal(1, surface.Opacity);
+            Assert.Equal(0, translation.Y);
+        }
+        finally { window.Close(); }
+    });
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     public void Shared_ripples_follow_settings_controls_pages_and_dialogs(bool light) => OnSta(() =>
     {
         var window = new SettingsWindowView(TestUiStrings.English, light).Window;
@@ -57,7 +142,7 @@ public sealed class SettingsPreviewTests
             var navigation = Find<RadioButton>(window, "Nav_general");
             var navigationLayer = Press(navigation);
             navigation.IsChecked = true;
-            Pump();
+            CompletePageTransition(window);
             var toggle = Find<CheckBox>(window, "Launch");
             var pageLayer = Press(toggle);
             Assert.NotSame(navigationLayer, pageLayer);
@@ -69,7 +154,7 @@ public sealed class SettingsPreviewTests
             var combo = Find<ComboBox>(window, "AppLanguage");
             Press(VisualChildren(combo).OfType<ToggleButton>().Single());
             Find<RadioButton>(window, "Nav_hotkeys").IsChecked = true;
-            Pump();
+            CompletePageTransition(window);
             Assert.Null(pageLayer.GetAdorners(toggle));
 
             var edit = LogicalChildren(window).OfType<Button>().Single(button => Equals(button.Tag, "edit"));
@@ -131,7 +216,7 @@ public sealed class SettingsPreviewTests
             var labelWidth = Label("general", "RegularLabel").ActualWidth;
             var labelOrigin = Label("general", "RegularLabel").TranslatePoint(new Point(), host);
             Find<RadioButton>(window, "Nav_music").IsChecked = true;
-            Assert.True(Find<StackPanel>(window, "Page_music").IsVisible);
+            Assert.True(Find<StackPanel>(window, UiAnimationPolicy.Enabled ? "Page_general" : "Page_music").IsVisible);
             if (SystemParameters.ClientAreaAnimation)
             {
                 Assert.Equal(Top("general"), position.Y, 1);
@@ -193,7 +278,7 @@ public sealed class SettingsPreviewTests
             window.Height = 590;
             window.Show();
             Find<RadioButton>(window, "Nav_about").IsChecked = true;
-            Pump();
+            CompletePageTransition(window);
             var scroll = Find<ScrollViewer>(window, "PageScroll");
             var translation = (TranslateTransform)Find<StackPanel>(window, "PageContent").RenderTransform;
             var step = SystemParameters.WheelScrollLines < 0 ? scroll.ViewportHeight * 2 : SystemParameters.WheelScrollLines * 32.0;
@@ -257,7 +342,7 @@ public sealed class SettingsPreviewTests
             window.Height = 590;
             window.Show();
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
-            Pump();
+            CompletePageTransition(window);
             var scroll = Find<ScrollViewer>(window, "PageScroll");
             var translation = (TranslateTransform)Find<StackPanel>(window, "PageContent").RenderTransform;
             var extent = scroll.ExtentHeight;
@@ -293,12 +378,12 @@ public sealed class SettingsPreviewTests
             Assert.True(Wheel(scroll, -120).Handled);
             PumpFor(50);
             Find<RadioButton>(window, "Nav_music").IsChecked = true;
-            Pump();
+            CompletePageTransition(window);
             Assert.Equal(0, translation.Y);
             Assert.False(Wheel(scroll, 120).Handled);
 
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
-            Pump();
+            CompletePageTransition(window);
             Assert.False(Wheel(Find<ComboBox>(window, "AppLanguage"), 120).Handled);
             scroll.ScrollToVerticalOffset(100);
             Pump();
@@ -341,7 +426,7 @@ public sealed class SettingsPreviewTests
             window.Height = 590;
             window.Show();
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
-            Pump();
+            CompletePageTransition(window);
             var scroll = Find<ScrollViewer>(window, "PageScroll");
             var viewport = (ScrollContentPresenter)scroll.Template.FindName("PART_ScrollContentPresenter", scroll);
             var bar = (ScrollBar)scroll.Template.FindName("PART_VerticalScrollBar", scroll);
@@ -383,7 +468,7 @@ public sealed class SettingsPreviewTests
             Assert.Equal(new[] { background.B, background.G, background.R, background.A }, pixel);
 
             Find<RadioButton>(window, "Nav_music").IsChecked = true;
-            Pump();
+            CompletePageTransition(window);
             Assert.Equal(0, scroll.ScrollableHeight);
             Assert.False(bar.IsHitTestVisible);
             Assert.Equal(0, bar.Opacity);
@@ -457,7 +542,7 @@ public sealed class SettingsPreviewTests
                 foreach (var page in new[] { "general", "hotkeys", "search", "text", "music", "about" })
                 {
                     Find<RadioButton>(window, "Nav_" + page).IsChecked = true;
-                    Pump();
+                    CompletePageTransition(window);
                     window.UpdateLayout();
                     var content = Find<StackPanel>(window, "Page_" + page);
                     Assert.True(content.IsVisible);
@@ -558,6 +643,16 @@ public sealed class SettingsPreviewTests
     }
 
     private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+
+    private static void CompletePageTransition(Window window)
+    {
+        Pump();
+        var elapsed = Stopwatch.StartNew();
+        var scroll = Find<ScrollViewer>(window, "PageScroll");
+        while (!scroll.IsHitTestVisible && elapsed.ElapsedMilliseconds < 2000) PumpFor(16);
+        Assert.True(scroll.IsHitTestVisible, "The content transition did not finish.");
+        Pump();
+    }
 
     private static void OnSta(Action action)
     {

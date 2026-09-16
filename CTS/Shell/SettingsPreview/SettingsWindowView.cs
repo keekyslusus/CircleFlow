@@ -19,6 +19,7 @@ internal sealed class SettingsWindowView
     private readonly List<Action> _restoreDefaults = [];
     private readonly DispatcherTimer _statusTimer;
     private readonly SettingsScrollMotionController _scrollMotion;
+    private readonly SettingsPageTransition _pageTransition;
     private IInputElement? _dialogOwner;
     private string[]? _pendingShortcut;
 
@@ -48,12 +49,16 @@ internal sealed class SettingsWindowView
             Element<StackPanel>("NavigationItems"), Element<Border>("NavigationSelection"));
         _scrollMotion = new SettingsScrollMotionController(Element<ScrollViewer>("PageScroll"),
             (TranslateTransform)Element<StackPanel>("PageContent").RenderTransform);
+        _pageTransition = new SettingsPageTransition(Element<ScrollViewer>("PageScroll"),
+            Element<FrameworkElement>("PageTransitionSurface"),
+            Pages.Select(page => Element<FrameworkElement>("Page_" + page)).ToArray());
         Window.Closed += (_, _) =>
         {
             _statusTimer.Stop();
             scrolling.Dispose();
             navigationIndicator.Dispose();
             _scrollMotion.Dispose();
+            _pageTransition.Dispose();
         };
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
         Window.AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavigationChecked));
@@ -123,9 +128,9 @@ internal sealed class SettingsWindowView
     private void ShowPage(string page)
     {
         _scrollMotion.Reset();
-        foreach (var name in Pages)
-            Element<StackPanel>("Page_" + name).Visibility = name == page ? Visibility.Visible : Visibility.Collapsed;
-        Element<ScrollViewer>("PageScroll").ScrollToTop();
+        if (Element<FrameworkElement>("PageContent").IsKeyboardFocusWithin)
+            Element<RadioButton>("Nav_" + page).Focus();
+        _pageTransition.Show(Element<FrameworkElement>("Page_" + page));
         HideStatus();
     }
 
