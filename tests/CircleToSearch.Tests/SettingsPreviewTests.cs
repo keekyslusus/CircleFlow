@@ -20,6 +20,94 @@ public sealed class SettingsPreviewTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    public void Toggles_have_solid_capsules_and_animate_without_jumping_on_reversal(bool light) => OnSta(() =>
+    {
+        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        try
+        {
+            Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            window.Show();
+            Pump();
+            var toggle = Find<CheckBox>(window, "Launch");
+            T Part<T>(string name) => (T)toggle.Template.FindName(name, toggle);
+            var translation = (TranslateTransform)Part<Grid>("Thumb").RenderTransform;
+            var onTrack = Part<System.Windows.Shapes.Rectangle>("OnTrack");
+            var offTrack = Part<System.Windows.Shapes.Rectangle>("OffTrack");
+            Assert.Equal(40, toggle.ActualWidth);
+            Assert.Equal(20, toggle.ActualHeight);
+            Assert.Equal(20, translation.X);
+            Assert.Equal(1, onTrack.Opacity);
+            Assert.Equal(0, offTrack.Opacity);
+            var accent = ((SolidColorBrush)onTrack.Fill).Color;
+            foreach (var scale in new[] { 1.0, 1.25, 1.5, 2.0 })
+            {
+                var width = (int)(40 * scale);
+                var height = (int)(20 * scale);
+                var bitmap = new RenderTargetBitmap(width, height, 96 * scale, 96 * scale, PixelFormats.Pbgra32);
+                bitmap.Render(toggle);
+                var pixels = new byte[width * height * 4];
+                bitmap.CopyPixels(pixels, width * 4, 0);
+                // The middle of the capsule has no thumb: its fill must remain solid from top to bottom.
+                for (var y = 1; y < height - 1; y++)
+                {
+                    var index = (y * width + width / 2) * 4;
+                    Assert.Equal(new[] { accent.B, accent.G, accent.R, accent.A }, pixels[index..(index + 4)]);
+                }
+            }
+
+            toggle.IsChecked = false;
+            if (UiAnimationPolicy.Enabled)
+            {
+                PumpFor(60);
+                Assert.InRange(translation.X, 0.001, 19.999);
+                Assert.InRange(onTrack.Opacity, 0.001, 0.999);
+                Assert.Equal(1, onTrack.Opacity + offTrack.Opacity, 3);
+                var position = translation.X;
+                var opacity = onTrack.Opacity;
+                toggle.IsChecked = true;
+                Assert.Equal(position, translation.X);
+                Assert.Equal(opacity, onTrack.Opacity);
+                PumpFor(240);
+                Assert.Equal(20, translation.X);
+                Assert.Equal(1, onTrack.Opacity);
+                toggle.IsChecked = false;
+            }
+            PumpFor(240);
+            Assert.Equal(0, translation.X);
+            Assert.Equal(0, onTrack.Opacity);
+            Assert.Equal(1, offTrack.Opacity);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                Capture(window, $"settings-{(light ? "light" : "dark")}-toggle-off.png");
+
+            // A disabled animation policy keeps the same endpoints, without delaying a toggle.
+            var root = (FrameworkElement)VisualTreeHelper.GetChild(toggle, 0);
+            var states = VisualStateManager.GetVisualStateGroups(root).OfType<VisualStateGroup>().Single();
+            Assert.Equal(UiAnimationPolicy.ToggleTransitionDuration, states.Transitions.OfType<VisualTransition>().Single().GeneratedDuration);
+            states.Transitions.OfType<VisualTransition>().Single().GeneratedDuration = new Duration(TimeSpan.Zero);
+            toggle.IsChecked = true;
+            Pump();
+            Assert.Equal(20, translation.X);
+            Assert.Equal(1, onTrack.Opacity);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                Capture(window, $"settings-{(light ? "light" : "dark")}-toggle-on.png");
+
+            Find<RadioButton>(window, "Nav_hotkeys").IsChecked = true;
+            CompletePageTransition(window);
+            var ignore = Find<CheckBox>(window, "IgnoreFullscreen");
+            ignore.IsChecked = false;
+            PumpFor(240);
+            Assert.Equal(0, ((TranslateTransform)((Grid)ignore.Template.FindName("Thumb", ignore)).RenderTransform).X);
+            Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            CompletePageTransition(window);
+            Assert.Equal(20, translation.X);
+            Assert.Equal(1, onTrack.Opacity);
+        }
+        finally { window.Close(); }
+    });
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     public void Content_exits_down_then_enters_up_and_rapid_navigation_keeps_only_the_latest_page(bool light) => OnSta(() =>
     {
         var window = new SettingsWindowView(TestUiStrings.English, light).Window;

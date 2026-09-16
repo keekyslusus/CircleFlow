@@ -2,7 +2,9 @@ using System.Windows;
 
 namespace CircleToSearch.Ui;
 
-internal static class UiAnimationPolicy
+public static class UiAnimationPolicy
 {
     internal static bool Enabled => SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
+
+    public static Duration ToggleTransitionDuration => new(Enabled ? TimeSpan.FromMilliseconds(180) : TimeSpan.Zero);
 }
