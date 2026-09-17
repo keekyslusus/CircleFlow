@@ -45,6 +45,12 @@ internal sealed class ProviderMenuController : IDisposable
 
     internal bool IsOpen { get; private set; }
 
+    internal void SetEnabled(bool enabled)
+    {
+        if (_disposed || _visual is null) return;
+        _visual.Button.IsEnabled = enabled;
+    }
+
     internal void SetOpen(bool open)
     {
         if (_disposed || _visual is null) return;

@@ -96,6 +96,12 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     internal bool HasPendingCompletionRipple =>
         _completionRippleOperation?.Status == DispatcherOperationStatus.Pending;
 
+    internal void SetActionEnabled(bool enabled)
+    {
+        if (_disposed) return;
+        _action.Button.IsEnabled = enabled;
+    }
+
     internal void ShowResult(ScreenTranslationResult result)
     {
         if (_disposed || _closing || _requestId == Guid.Empty || result.RequestId != _requestId) return;

@@ -14,6 +14,13 @@ internal interface IOverlayControllerFactory
     OverlayControllers Create(OverlayControllerContext context);
 }
 
+internal delegate TraceOverlayController TraceOverlayControllerFactory(
+    OverlayControllerContext context,
+    ClipboardCopyService clipboardCopy);
+
+internal delegate ActionTrayOverlayController ActionTrayOverlayControllerFactory(
+    OverlayControllerContext context);
+
 internal sealed class OverlayControllers(
     SelectionOverlayController selection,
     TextSelectionOverlayController textSelection,
@@ -22,7 +29,8 @@ internal sealed class OverlayControllers(
     ScreenTranslationOverlayController translation,
     ProviderMenuController provider,
     MusicOverlayController music,
-    ClipboardCopyService clipboardCopy,
+    TraceOverlayController trace,
+    ActionTrayOverlayController actionTray,
     ToastOverlayController toast,
     DebugOverlayController debug) : IDisposable
 {
@@ -35,7 +43,8 @@ internal sealed class OverlayControllers(
     internal ScreenTranslationOverlayController Translation { get; } = translation;
     internal ProviderMenuController Provider { get; } = provider;
     internal MusicOverlayController Music { get; } = music;
-    internal ClipboardCopyService ClipboardCopy { get; } = clipboardCopy;
+    internal TraceOverlayController Trace { get; } = trace;
+    internal ActionTrayOverlayController ActionTray { get; } = actionTray;
     internal ToastOverlayController Toast { get; } = toast;
     internal DebugOverlayController Debug { get; } = debug;
 
@@ -43,6 +52,8 @@ internal sealed class OverlayControllers(
     {
         if (_disposed) return;
         _disposed = true;
+        Trace.Dispose();
+        ActionTray.Dispose();
         Music.Dispose();
         Debug.Dispose();
         Ocr.Dispose();
@@ -65,7 +76,8 @@ internal sealed record OverlayControllerContext(
     IReadOnlyList<SearchProviderDescriptor> Providers,
     string SelectedProviderId,
     UiStrings Strings,
-    bool DebugEnabled,
+    Action<IOverlayCommand>? PublishCommand,
+    Func<GdiRectangle, SelectionOutcome> CreateSelectionCopy,
     Func<bool> CanAcceptSelectionInput,
     Func<object?, Point, bool> CanStartSelection,
     Action SelectionStarted,
@@ -79,7 +91,6 @@ internal sealed record OverlayControllerContext(
     Action MusicCancelRequested,
     Action<MusicDebugScenario> DebugScenarioSelected,
     Action<IOverlayCommand> MusicResultCommandRequested,
-    Action<IOverlayCommand> PublishCommand,
     Action<OverlayInteractionMode> TransitionMode,
     string? OcrLanguageTag = null,
     string TranslationTargetLanguageTag = "en");
@@ -96,13 +107,12 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
     private readonly Action? _resetTranslationConsent;
     private readonly PluginLog? _log;
     private readonly TranslationMemoryProfiler? _memoryProfiler;
-
-    internal OverlayControllerFactory()
-        : this(Clipboard.SetText, OverlayVisualResources.AnimationsEnabled)
-    {
-    }
+    private readonly TraceOverlayControllerFactory _createTraceController;
+    private readonly ActionTrayOverlayControllerFactory _createActionTrayController;
 
     internal OverlayControllerFactory(
+        TraceOverlayControllerFactory createTraceController,
+        ActionTrayOverlayControllerFactory createActionTrayController,
         Action<string> setClipboard,
         Func<bool> animationsEnabled,
         Func<MouseEventArgs, Point>? pointerPosition = null,
@@ -114,6 +124,8 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         PluginLog? log = null,
         TranslationMemoryProfiler? memoryProfiler = null)
     {
+        _createTraceController = createTraceController ?? throw new ArgumentNullException(nameof(createTraceController));
+        _createActionTrayController = createActionTrayController ?? throw new ArgumentNullException(nameof(createActionTrayController));
         _setClipboard = setClipboard ?? throw new ArgumentNullException(nameof(setClipboard));
         _animationsEnabled = animationsEnabled ?? throw new ArgumentNullException(nameof(animationsEnabled));
         _pointerPosition = pointerPosition;
@@ -138,6 +150,8 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
         ScreenTranslationOverlayController? translation = null;
         ProviderMenuController? provider = null;
         MusicOverlayController? music = null;
+        TraceOverlayController? trace = null;
+        ActionTrayOverlayController? actionTray = null;
         ToastOverlayController? toast = null;
         DebugOverlayController? debug = null;
         try
@@ -147,6 +161,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.Visual.LightTheme,
                 _animationsEnabled);
             var clipboardCopy = new ClipboardCopyService(_setClipboard, toast.Show, context.Strings);
+            var publishCommand = context.PublishCommand ?? (_ => { });
             provider = new ProviderMenuController(
                 context.Visual.Provider,
                 context.Visual.Bottom.Root,
@@ -181,7 +196,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 new OcrTextHitTester(_textHitToleranceDips * context.Scale),
                 clipboardCopy,
                 () => provider.SelectedProviderId,
-                context.PublishCommand,
+                publishCommand,
                 context.Strings,
                 context.Visual.LightTheme);
             pointer = new PointerGestureRouter(
@@ -202,7 +217,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 _translationConsentAccepted,
                 _acceptTranslationConsent,
                 () => context.TranslationTargetLanguageTag,
-                context.PublishCommand,
+                publishCommand,
                 context.TransitionMode,
                 toast.Show,
                 _animationsEnabled,
@@ -225,7 +240,7 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
             debug = new DebugOverlayController(
                 context.Visual.Debug,
                 context.Visual.LightTheme,
-                context.DebugEnabled,
+                context.PublishCommand is not null,
                 context.GetMode,
                 context.DebugScenarioSelected,
                 toast.Show,
@@ -244,6 +259,8 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.MusicResultCommandRequested,
                 clipboardCopy,
                 _animationsEnabled);
+            trace = _createTraceController(context, clipboardCopy);
+            actionTray = _createActionTrayController(context);
             return new OverlayControllers(
                 selection,
                 textSelection,
@@ -252,12 +269,15 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 translation,
                 provider,
                 music,
-                clipboardCopy,
+                trace,
+                actionTray,
                 toast,
                 debug);
         }
         catch
         {
+            actionTray?.Dispose();
+            trace?.Dispose();
             music?.Dispose();
             debug?.Dispose();
             ocr?.Dispose();

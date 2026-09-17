@@ -273,7 +273,7 @@ public sealed class TraceOverlayTests
             var overlay = new OverlayWindow(frame, monitor, monitor, 1,
                 new OverlayLaunchOptions(new OverlayOptions(8, 12), TestUiStrings.English,
                     [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe),
-                commands.Add, new OverlayControllerFactory(), overscan: false);
+                commands.Add, TestOverlayControllers.CreateFactory(), overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
             var lasso = (SelectionOverlayController)typeof(OverlayWindow)
@@ -284,6 +284,7 @@ public sealed class TraceOverlayTests
             lasso.Complete(new Point(10, 110));
             Assert.NotEmpty(overlay.VisualState.Selection.Accent.Points);
             var selection = Assert.IsType<VisualSelection>(Assert.Single(commands));
+            Assert.NotSame(frame, selection.Selection.FrozenFrame);
             selection.Selection.Dispose();
             typeof(OverlayWindow).GetMethod("OnSelectionHoldCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(overlay, null);
             Pump(520);

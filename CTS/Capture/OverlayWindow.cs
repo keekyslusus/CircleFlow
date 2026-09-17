@@ -55,13 +55,10 @@ public sealed class OverlayWindow : Window
     private readonly ScreenTranslationOverlayController _translation;
     private readonly ProviderMenuController _provider;
     private readonly MusicOverlayController _music;
-    private readonly ClipboardCopyService _clipboardCopy;
+    private readonly TraceOverlayController _trace;
+    private readonly ActionTrayOverlayController _actionTray;
     private readonly ToastOverlayController _toast;
     private readonly DebugOverlayController _debug;
-    private readonly List<IDisposable> _controlRipples = [];
-    private TraceOverlayVisual? _trace;
-    private readonly Func<Uri, ITraceVideoPreview>? _createTraceVideo;
-    private bool _chipDismissed;
     private bool _cancelPublished;
     private bool _entranceRipplePending;
     private bool _resourcesDisposed;
@@ -90,7 +87,6 @@ public sealed class OverlayWindow : Window
         IReadOnlyList<SearchProviderDescriptor>? providers = null,
         string? initialProviderId = null,
         Action<IOverlayCommand>? publishCommand = null,
-        Func<Uri, ITraceVideoPreview>? createTraceVideo = null,
         string? ocrLanguageTag = null,
         string translationTargetLanguageTag = "en")
     {
@@ -98,7 +94,6 @@ public sealed class OverlayWindow : Window
         _exitFade = exitFade;
         _clickThroughOnCancel = clickThroughOnCancel;
         _publishCommand = publishCommand;
-        _createTraceVideo = createTraceVideo;
         _strings = strings;
         ArgumentNullException.ThrowIfNull(controllerFactory);
         _entranceOrigin = entranceOrigin is null
@@ -126,34 +121,43 @@ public sealed class OverlayWindow : Window
         if (overscan) _visual.Selection.Screenshot.Margin = new Thickness(1);
         Content = new AdornerDecorator { Child = _visual.Root };
 
-        _controllers = controllerFactory.Create(new OverlayControllerContext(
-            _visual,
-            this,
-            monitor,
-            scale,
-            options,
-            overscan,
-            availableProviders,
-            selectedProviderId,
-            strings,
-            publishCommand is not null,
-            () => _interaction.CanAcceptSelectionInput,
-            CanStartSelection,
-            OnSelectionStarted,
-            OnSelectionCompleted,
-            OnSelectionRejected,
-            OnSelectionHoldCompleted,
-            () => !_interaction.IsFinished,
-            providerId => _publishCommand?.Invoke(new ProviderSelected(providerId)),
-            () => Mode,
-            StartMusicRecognition,
-            CancelMusicRecognition,
-            scenario => _publishCommand?.Invoke(new MusicDebugScenarioSelected(scenario)),
-            HandleMusicResultCommand,
-            command => _publishCommand?.Invoke(command),
-            ApplyModeTransition,
-            ocrLanguageTag,
-            translationTargetLanguageTag));
+        try
+        {
+            _controllers = controllerFactory.Create(new OverlayControllerContext(
+                _visual,
+                this,
+                monitor,
+                scale,
+                options,
+                overscan,
+                availableProviders,
+                selectedProviderId,
+                strings,
+                _publishCommand,
+                CreateSelectionCopy,
+                () => _interaction.CanAcceptSelectionInput,
+                CanStartSelection,
+                OnSelectionStarted,
+                OnSelectionCompleted,
+                OnSelectionRejected,
+                OnSelectionHoldCompleted,
+                () => !_interaction.IsFinished,
+                providerId => _publishCommand?.Invoke(new ProviderSelected(providerId)),
+                () => Mode,
+                StartMusicRecognition,
+                CancelMusicRecognition,
+                scenario => _publishCommand?.Invoke(new MusicDebugScenarioSelected(scenario)),
+                HandleMusicResultCommand,
+                ApplyModeTransition,
+                ocrLanguageTag,
+                translationTargetLanguageTag));
+        }
+        catch
+        {
+            DisposeUnownedVisualResources();
+            Content = null;
+            throw;
+        }
         _selection = _controllers.Selection;
         _textSelection = _controllers.TextSelection;
         _pointer = _controllers.Pointer;
@@ -161,7 +165,8 @@ public sealed class OverlayWindow : Window
         _translation = _controllers.Translation;
         _provider = _controllers.Provider;
         _music = _controllers.Music;
-        _clipboardCopy = _controllers.ClipboardCopy;
+        _trace = _controllers.Trace;
+        _actionTray = _controllers.ActionTray;
         _toast = _controllers.Toast;
         _debug = _controllers.Debug;
 
@@ -186,8 +191,7 @@ public sealed class OverlayWindow : Window
         OverlayExitFade exitFade = OverlayExitFade.Root,
         bool clickThroughOnCancel = true,
         bool overscan = true,
-        GdiPoint? entranceOrigin = null,
-        Func<Uri, ITraceVideoPreview>? createTraceVideo = null)
+        GdiPoint? entranceOrigin = null)
         : this(
             frame,
             monitor,
@@ -204,7 +208,6 @@ public sealed class OverlayWindow : Window
             options.Providers,
             options.InitialProviderId,
             publishCommand,
-            createTraceVideo,
             options.SessionOptions.OcrLanguageTag,
             options.SessionOptions.TranslationTargetLanguageTag)
     {
@@ -242,11 +245,7 @@ public sealed class OverlayWindow : Window
     internal void ReportAudio(MusicVisualizationFrame frame) => _music.ReportAudio(frame);
 
     internal void ShowTraceResult(VisualSearchPreparationOutcome outcome)
-    {
-        if (_interaction.IsFinished || Mode != OverlayInteractionMode.TraceLoading) return;
-        ApplyModeTransition(OverlayInteractionMode.TraceResult);
-        _trace?.ShowResult(outcome);
-    }
+        => _trace.ShowResult(outcome);
 
     internal void ShowMusicResult(MusicRecognitionOutcome outcome)
     {
@@ -302,9 +301,8 @@ public sealed class OverlayWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (!_chipDismissed) ActionTrayTransitions.BeginEntrance(_visual.Actions);
+        _actionTray.ShowEntrance();
         QueueEntranceRipple();
-        _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.Bottom.Root));
         _ocr.Start();
     }
 
@@ -357,29 +355,13 @@ public sealed class OverlayWindow : Window
 
     private void OnSelectionStarted()
     {
-        _chipDismissed = true;
-        ActionTrayTransitions.BeginExit(_visual.Actions);
+        _actionTray.HideForSelection();
     }
 
     private void OnSelectionCompleted(GdiRectangle bounds)
     {
         if (_interaction.IsFinished) return;
-        if (_provider.SelectedProviderId == SearchProviderIds.TraceMoe && _publishCommand is not null)
-        {
-            ApplyModeTransition(OverlayInteractionMode.TraceLoading);
-            _trace?.Dispose();
-            _trace = TraceOverlayVisual.Create(_visual.Root, _visual.Bottom, _visual.Effects, _strings,
-                SystemTheme.IsLight(), () => _publishCommand(new OpenTraceResult()),
-                DismissTraceResult, _clipboardCopy, _createTraceVideo);
-            var traceSelection = new SelectionOutcome(bounds, (GdiBitmap)_frame.Clone());
-            try { _publishCommand(new VisualSelection(traceSelection, SearchProviderIds.TraceMoe)); }
-            catch
-            {
-                traceSelection.Dispose();
-                throw;
-            }
-            return;
-        }
+        if (_trace.TryStart(_provider.SelectedProviderId, bounds)) return;
         ApplyModeTransition(OverlayInteractionMode.Closing);
         var selection = new SelectionOutcome(bounds, _frame);
         FrameTransferred = true;
@@ -398,7 +380,7 @@ public sealed class OverlayWindow : Window
     private void OnSelectionHoldCompleted()
     {
         if (Mode is OverlayInteractionMode.TraceLoading or OverlayInteractionMode.TraceResult)
-            _selection.FadeForMusic();
+            _selection.FadeSelectionVisuals();
         else if (Mode == OverlayInteractionMode.Closing)
             FinishShutdown();
     }
@@ -406,8 +388,7 @@ public sealed class OverlayWindow : Window
     private void OnSelectionRejected()
     {
         if (_interaction.IsFinished || Mode != OverlayInteractionMode.Selecting) return;
-        _chipDismissed = false;
-        ActionTrayTransitions.BeginReturn(_visual.Actions);
+        _actionTray.Restore();
         _toast.Show(new ToastNotification(_strings.SelectionTooSmall, ToastTone.Error));
     }
 
@@ -429,7 +410,8 @@ public sealed class OverlayWindow : Window
 
     private void StartMusicRecognition()
     {
-        if (Mode == OverlayInteractionMode.TraceResult) DismissTraceResult();
+        if (Mode == OverlayInteractionMode.TraceResult)
+            ApplyModeTransition(OverlayInteractionMode.Selecting);
         SetDebugPanelOpen(false);
         if (_publishCommand is null)
         {
@@ -447,12 +429,6 @@ public sealed class OverlayWindow : Window
     {
         PublishCancel();
         CancelInternal(publish: false);
-    }
-
-    private void DismissTraceResult()
-    {
-        if (Mode == OverlayInteractionMode.TraceResult)
-            ApplyModeTransition(OverlayInteractionMode.Selecting);
     }
 
     private void HandleMusicResultCommand(IOverlayCommand command)
@@ -478,33 +454,30 @@ public sealed class OverlayWindow : Window
                 _debug.SetOpen(false);
                 _visual.Bottom.Root.Visibility = Visibility.Visible;
                 SetConflictingControlsEnabled(target == OverlayInteractionMode.TraceResult);
-                _visual.TranslationAction.Button.IsEnabled = false;
+                _translation.SetActionEnabled(false);
                 if (target == OverlayInteractionMode.TraceLoading)
-                {
-                    _chipDismissed = false;
-                    ActionTrayTransitions.BeginReturn(_visual.Actions);
-                }
-                _selection.FadeForMusic();
+                    _actionTray.Restore();
+                _selection.FadeSelectionVisuals();
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Listening:
                 _pointer.Cancel();
                 _textSelection.Dismiss();
-                _visual.TranslationAction.Button.IsEnabled = false;
+                _translation.SetActionEnabled(false);
                 _music.ShowListening();
                 Cursor = Cursors.Arrow;
-                _selection.FadeForMusic();
+                _selection.FadeSelectionVisuals();
                 break;
             case OverlayInteractionMode.MusicResult:
                 _pointer.Cancel();
-                _visual.TranslationAction.Button.IsEnabled = false;
+                _translation.SetActionEnabled(false);
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Selecting:
-                _trace?.DismissResult();
+                _trace.DismissResult();
                 _music.DismissResult();
                 _translation.DismissStateCard();
-                _selection.RestoreAfterMusic();
+                _selection.RestoreSelectionVisuals();
                 SetConflictingControlsEnabled(true);
                 Cursor = Cursors.Cross;
                 break;
@@ -517,7 +490,7 @@ public sealed class OverlayWindow : Window
                 _provider.SetOpen(false);
                 _debug.SetOpen(false);
                 SetConflictingControlsEnabled(false);
-                _visual.TranslationAction.Button.IsEnabled = target is OverlayInteractionMode.Translating or OverlayInteractionMode.TranslationShown;
+                _translation.SetActionEnabled(target is OverlayInteractionMode.Translating or OverlayInteractionMode.TranslationShown);
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Closing:
@@ -528,7 +501,7 @@ public sealed class OverlayWindow : Window
                 _debug.SetOpen(false);
                 _toast.SettleForClosing();
                 _visual.Bottom.LayoutTransitions.Settle();
-                _visual.TranslationAction.Button.IsEnabled = false;
+                _translation.SetActionEnabled(false);
                 break;
         }
     }
@@ -542,9 +515,9 @@ public sealed class OverlayWindow : Window
 
     private void SetConflictingControlsEnabled(bool enabled)
     {
-        if (_visual.Provider is not null) _visual.Provider.Button.IsEnabled = enabled;
-        _visual.Music.Button.IsEnabled = enabled;
-        _visual.TranslationAction.Button.IsEnabled = true;
+        _provider.SetEnabled(enabled);
+        _music.SetEnabled(enabled);
+        _translation.SetActionEnabled(true);
     }
 
     private void CancelInternal(bool publish = true)
@@ -572,7 +545,7 @@ public sealed class OverlayWindow : Window
                 _visual.Selection.Sheen.BeginAnimation(OpacityProperty, Fade(1, 0));
                 _visual.Selection.Halo.BeginAnimation(OpacityProperty, Fade(1, 0));
                 _visual.Selection.Accent.BeginAnimation(OpacityProperty, Fade(1, 0));
-                ActionTrayTransitions.BeginExit(_visual.Actions);
+                _actionTray.BeginExit();
                 break;
             default:
                 fade.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
@@ -648,11 +621,8 @@ public sealed class OverlayWindow : Window
         Dispatcher.ShutdownStarted -= OnDispatcherShutdownStarted;
         UnqueueEntranceRipple();
         _controllers.Dispose();
-        _trace?.Dispose();
         _visual.Bottom.LayoutTransitions.Dispose();
         _visual.Effects.SceneRipples.Dispose();
-        foreach (var ripple in _controlRipples) ripple.Dispose();
-        _controlRipples.Clear();
     }
 
     private void OnClosed(object? sender, EventArgs e) => DisposeVisualResources();
@@ -694,6 +664,18 @@ public sealed class OverlayWindow : Window
         {
             NativeMethods.DeleteObject(hbmp);
         }
+    }
+
+    private SelectionOutcome CreateSelectionCopy(GdiRectangle bounds) =>
+        new(bounds, (GdiBitmap)_frame.Clone());
+
+    private void DisposeUnownedVisualResources()
+    {
+        _visual.TranslationAction.LoadingIndicator.Dispose();
+        _visual.Music.LoadingIndicator.Dispose();
+        _visual.Music.Waveform.Dispose();
+        _visual.Bottom.LayoutTransitions.Dispose();
+        _visual.Effects.SceneRipples.Dispose();
     }
 
     private static SolidColorBrush CreateFrozenSolidBrush(Color color)

@@ -139,7 +139,7 @@ public sealed class OverlaySessionLifecycleTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 session.Publish,
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             session.Attach(window);
             window.Show();
@@ -212,7 +212,7 @@ public sealed class OverlaySessionLifecycleTests
                         () => throw new InvalidOperationException("failure during selection hold"),
                         DispatcherPriority.ContextIdle);
                 },
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false,
                 entranceOrigin: entranceOrigin);
             Window.TrySetResult(window);

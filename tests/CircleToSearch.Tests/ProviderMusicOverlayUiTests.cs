@@ -128,7 +128,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 _ => { },
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -224,7 +224,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 _ => { },
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -302,7 +302,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -362,7 +362,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -420,7 +420,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -479,7 +479,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -570,7 +570,7 @@ public sealed class ProviderMusicOverlayUiTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             overlay.Show();
             overlay.ShowListening();

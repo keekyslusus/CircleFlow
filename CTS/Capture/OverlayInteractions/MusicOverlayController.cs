@@ -38,6 +38,12 @@ internal sealed class MusicOverlayController : IDisposable
 
     internal bool HasPendingResultExit => _pendingResultExit is not null;
 
+    internal void SetEnabled(bool enabled)
+    {
+        if (_disposed) return;
+        _visual.Button.IsEnabled = enabled;
+    }
+
     internal MusicOverlayController(
         MusicOverlayVisual visual,
         BottomOverlayLayoutTransitions layoutTransitions,

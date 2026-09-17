@@ -247,8 +247,24 @@ public static class CompositionRoot
             strings,
             log);
         var overlayControllerFactory = new OverlayControllerFactory(
-            Clipboard.SetText,
-            OverlayVisualResources.AnimationsEnabled,
+            createTraceController: (context, clipboardCopy) => new TraceOverlayController(
+                context.Visual.Root,
+                context.Visual.Bottom,
+                context.Visual.Effects,
+                context.Strings,
+                SystemTheme.IsLight,
+                clipboardCopy,
+                context.GetMode,
+                context.TransitionMode,
+                context.PublishCommand,
+                context.CreateSelectionCopy,
+                video => new TraceVideoPreview(video,
+                    () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log)),
+            createActionTrayController: context => new ActionTrayOverlayController(
+                context.Visual.Actions,
+                context.Visual.Bottom.Root),
+            setClipboard: Clipboard.SetText,
+            animationsEnabled: OverlayVisualResources.AnimationsEnabled,
             ocrRecognizer: new WindowsOcrRecognizer(),
             textHitToleranceDips: 3,
             translationConsentAccepted: () => settings.Snapshot.ImageTranslationPrivacyConsentAccepted,
@@ -256,9 +272,7 @@ public static class CompositionRoot
             resetTranslationConsent: () => settings.SetTranslationConsent(false).ThrowIfFailed(strings.StorageSaveFailed),
             log: log,
             memoryProfiler: translationMemory);
-        var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory,
-            video => new TraceVideoPreview(video,
-                () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log));
+        var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
         var workflow = new OverlaySessionWorkflow(
             new OverlaySessionFactory(log, new PointerMonitorCapture(), overlayWindowFactory),
             visualSearch,

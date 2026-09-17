@@ -111,7 +111,7 @@ public sealed class PointerMonitorCaptureTests
         SearchProviderIds.GoogleLens);
 
     private static IOverlayWindowFactory WindowFactory() =>
-        new OverlayWindowFactory(new OverlayControllerFactory());
+        new OverlayWindowFactory(TestOverlayControllers.CreateFactory());
 
     private sealed class StubCapture(Func<PointerMonitorCaptureResult?> capture) : IPointerMonitorCapture
     {

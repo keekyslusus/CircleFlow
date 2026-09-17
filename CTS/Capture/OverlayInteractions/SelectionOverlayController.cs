@@ -110,7 +110,7 @@ internal sealed class SelectionOverlayController : IDisposable
         ReleaseMouseCapture();
     }
 
-    internal void FadeForMusic()
+    internal void FadeSelectionVisuals()
     {
         UIElement[] targets =
         [
@@ -133,7 +133,7 @@ internal sealed class SelectionOverlayController : IDisposable
             });
     }
 
-    internal void RestoreAfterMusic()
+    internal void RestoreSelectionVisuals()
     {
         ResetSelectionGesture();
         UIElement[] targets = [_visual.Screenshot, _visual.Sheen, _visual.Halo, _visual.Accent];

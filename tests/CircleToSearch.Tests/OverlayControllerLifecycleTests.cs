@@ -9,13 +9,61 @@ using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Shazam;
+using CircleToSearch.Search;
 using Xunit;
+using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Tests;
 
 public sealed class OverlayControllerLifecycleTests
 {
+    [Fact]
+    public void Partial_factory_failure_disposes_the_created_trace_controller()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var bounds = new GdiRectangle(0, 0, 640, 400);
+            TraceOverlayController? trace = null;
+            var factory = new OverlayControllerFactory(
+                createTraceController: (context, clipboardCopy) => trace = new TraceOverlayController(
+                    context.Visual.Root,
+                    context.Visual.Bottom,
+                    context.Visual.Effects,
+                    context.Strings,
+                    () => context.Visual.LightTheme,
+                    clipboardCopy,
+                    context.GetMode,
+                    context.TransitionMode,
+                    context.PublishCommand,
+                    context.CreateSelectionCopy),
+                createActionTrayController: _ => throw new InvalidOperationException("tray failed"),
+                setClipboard: _ => { },
+                animationsEnabled: () => false);
+
+            var exception = Assert.Throws<InvalidOperationException>(() => new OverlayWindow(
+                frame,
+                bounds,
+                bounds,
+                1,
+                new OverlayOptions(8, 12),
+                TestUiStrings.English,
+                factory,
+                overscan: false,
+                providers: [new(SearchProviderIds.TraceMoe, "trace.moe")],
+                initialProviderId: SearchProviderIds.TraceMoe,
+                publishCommand: _ => { }));
+
+            Assert.Equal("tray failed", exception.Message);
+            Assert.NotNull(trace);
+            Assert.False(trace.TryStart(SearchProviderIds.TraceMoe, new GdiRectangle(1, 1, 10, 10)));
+            Assert.Equal(640, frame.Width);
+        });
+
+        Assert.Null(failure);
+    }
+
     [Fact]
     public void Dispose_removes_pending_render_callback_and_releases_window()
     {

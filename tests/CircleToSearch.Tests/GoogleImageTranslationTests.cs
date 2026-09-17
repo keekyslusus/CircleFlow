@@ -128,7 +128,7 @@ public sealed class GoogleImageTranslationTests
             using var bitmap = new System.Drawing.Bitmap(320, 200);
             var commands = new List<IOverlayCommand>();
             var recognizer = new DeferredRecognizer();
-            var factory = new OverlayControllerFactory(_ => { }, () => false,
+            var factory = TestOverlayControllers.CreateFactory(_ => { }, () => false,
                 ocrRecognizer: recognizer);
             var service = TestSettings.Create(new CircleToSearch.Settings.AppSettings
             {

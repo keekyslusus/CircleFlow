@@ -17,7 +17,7 @@ public interface IOverlayWindowFactory
         GdiPoint entranceOrigin);
 }
 
-internal sealed class OverlayWindowFactory(IOverlayControllerFactory controllerFactory, Func<Uri, ITraceVideoPreview>? createTraceVideo = null) : IOverlayWindowFactory
+internal sealed class OverlayWindowFactory(IOverlayControllerFactory controllerFactory) : IOverlayWindowFactory
 {
     private readonly IOverlayControllerFactory _controllerFactory =
         controllerFactory ?? throw new ArgumentNullException(nameof(controllerFactory));
@@ -38,6 +38,5 @@ internal sealed class OverlayWindowFactory(IOverlayControllerFactory controllerF
             options,
             publishCommand,
             _controllerFactory,
-            entranceOrigin: entranceOrigin,
-            createTraceVideo: createTraceVideo);
+            entranceOrigin: entranceOrigin);
 }

@@ -32,7 +32,7 @@ public sealed class OverlayWindowTests
             var commands = new List<IOverlayCommand>();
             var overlay = new OverlayWindow(frame, bounds, bounds, 1, new OverlayOptions(8, 12),
                 TestUiStrings.English,
-                new OverlayControllerFactory(Clipboard.SetText, () => false,
+                TestOverlayControllers.CreateFactory(Clipboard.SetText, () => false,
                     translationConsentAccepted: () => service.Snapshot.ImageTranslationPrivacyConsentAccepted,
                     resetTranslationConsent: () => service.SetTranslationConsent(false).ThrowIfFailed(TestUiStrings.English.StorageSaveFailed)),
                 overscan: false, publishCommand: commands.Add);
@@ -65,7 +65,7 @@ public sealed class OverlayWindowTests
             var consent = false;
             var overlay = new OverlayWindow(frame, bounds, bounds, 1, new OverlayOptions(8, 12),
                 TestUiStrings.English,
-                new OverlayControllerFactory(Clipboard.SetText, () => false,
+                TestOverlayControllers.CreateFactory(Clipboard.SetText, () => false,
                     translationConsentAccepted: () => consent,
                     acceptTranslationConsent: () => consent = true),
                 overscan: false, publishCommand: commands.Add);
@@ -157,7 +157,7 @@ public sealed class OverlayWindowTests
                 1.0,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
-                new OverlayControllerFactory());
+                TestOverlayControllers.CreateFactory());
             overlay.Show();
             var musicButton = Assert.Single(
                 Descendants((DependencyObject)overlay.Content).OfType<Button>(),
@@ -186,7 +186,7 @@ public sealed class OverlayWindowTests
                 1.0,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -221,7 +221,7 @@ public sealed class OverlayWindowTests
                 1,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false,
                 entranceOrigin: new GdiPoint(320, 200));
             overlay.Show();
@@ -260,7 +260,7 @@ public sealed class OverlayWindowTests
                 1.0,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
-                new OverlayControllerFactory());
+                TestOverlayControllers.CreateFactory());
             overlay.Show();
             PumpUntilShutdown(overlay);
         });
@@ -283,7 +283,7 @@ public sealed class OverlayWindowTests
                 1.25,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
-                new OverlayControllerFactory());
+                TestOverlayControllers.CreateFactory());
             overlay.Show();
             PumpUntilShutdown(overlay);
         });
@@ -305,7 +305,7 @@ public sealed class OverlayWindowTests
                 1.0,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
-                new OverlayControllerFactory());
+                TestOverlayControllers.CreateFactory());
             overlay.Show();
             overlay.CancelFromCoordinator();
             Dispatcher.Run();
@@ -329,7 +329,7 @@ public sealed class OverlayWindowTests
                 1.0,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
-                new OverlayControllerFactory());
+                TestOverlayControllers.CreateFactory());
             overlay.Show();
             overlay.CancelFromCoordinator();
             overlay.Dispatcher.BeginInvoke(overlay.CloseFromSession, DispatcherPriority.Background);
@@ -360,7 +360,7 @@ public sealed class OverlayWindowTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -402,7 +402,7 @@ public sealed class OverlayWindowTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(),
+                TestOverlayControllers.CreateFactory(),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -440,7 +440,7 @@ public sealed class OverlayWindowTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(_ => { }, () => false, pointerPosition),
+                TestOverlayControllers.CreateFactory(_ => { }, () => false, pointerPosition),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -497,7 +497,7 @@ public sealed class OverlayWindowTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(clipboard.Add, () => false, PointerPositions(local, local)),
+                TestOverlayControllers.CreateFactory(clipboard.Add, () => false, PointerPositions(local, local)),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -543,7 +543,7 @@ public sealed class OverlayWindowTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(_ => { }, () => false, pointerPosition),
+                TestOverlayControllers.CreateFactory(_ => { }, () => false, pointerPosition),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -579,7 +579,7 @@ public sealed class OverlayWindowTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 commands.Add,
-                new OverlayControllerFactory(_ => { }, () => false, pointerPosition),
+                TestOverlayControllers.CreateFactory(_ => { }, () => false, pointerPosition),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
@@ -613,7 +613,7 @@ public sealed class OverlayWindowTests
                     Providers,
                     SearchProviderIds.GoogleLens),
                 _ => { },
-                new OverlayControllerFactory(_ => { }, () => false),
+                TestOverlayControllers.CreateFactory(_ => { }, () => false),
                 overscan: false);
             overlay.Show();
             overlay.UpdateLayout();
