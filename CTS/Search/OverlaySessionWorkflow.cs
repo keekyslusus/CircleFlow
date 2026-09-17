@@ -1,7 +1,5 @@
 using System.Threading.Channels;
 using CircleToSearch.Capture;
-using CircleToSearch.MusicRecognition;
-using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.Ui;
 using CircleToSearch.Translation;
 
@@ -15,14 +13,13 @@ internal interface ISearchSessionWorkflow
 internal sealed class OverlaySessionWorkflow(
     IOverlaySessionFactory overlaySessionFactory,
     VisualSearchWorkflow visualSearch,
-    MusicRecognitionWorkflow musicRecognition,
-    MusicResultPresenter musicResultPresenter,
+    Func<IOverlaySession, CancellationToken, OverlayMusicSession> createMusicSession,
+    Func<IOverlaySession, CancellationToken, OverlayTranslationSession>? createTranslationSession,
+    Func<IOverlaySession, int, CancellationToken, OverlayTraceSession> createTraceSession,
     ProviderSelectionStore providerSelection,
     UiStrings strings,
     PluginLog log,
-    TextSearchWorkflow? textSearch = null,
-    ScreenTranslationWorkflow? screenTranslation = null,
-    Func<string, bool>? openTraceUrl = null) : ISearchSessionWorkflow
+    TextSearchWorkflow? textSearch = null) : ISearchSessionWorkflow
 {
     public async Task RunAsync(SearchSessionOptions options, Action onUploadStarted, CancellationToken cancellationToken)
     {
@@ -36,79 +33,36 @@ internal sealed class OverlaySessionWorkflow(
         var overlay = await overlaySessionFactory.OpenAsync(launch, cancellationToken).ConfigureAwait(false);
         if (overlay is null) return;
 
-        CancellationTokenSource? recognitionCancellation = null;
-        Task<MusicRecognitionOutcome>? recognitionTask = null;
-        MusicRecognitionOutcome? displayedOutcome = null;
-        var debugScenario = MusicDebugScenario.Live;
-        Task<IOverlayCommand>? commandTask = null;
-        CancellationTokenSource? translationCancellation = null;
-        Task<ScreenTranslationOutcome>? translationTask = null;
-        Guid translationRequestId = Guid.Empty;
         using var commandReadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        using var traceCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        Task<VisualSearchPreparationOutcome>? traceTask = null;
-        TraceMoeMatch? traceMatch = null;
+        var operations = new List<IOverlaySessionOperation>(3);
+        OverlayMusicSession? music = null;
+        OverlayTranslationSession? translation = null;
+        OverlayTraceSession? trace = null;
+        Task<IOverlayCommand>? commandTask = null;
         try
         {
+            music = createMusicSession(overlay, cancellationToken);
+            operations.Add(music);
+            translation = createTranslationSession?.Invoke(overlay, cancellationToken);
+            if (translation is not null) operations.Add(translation);
+            trace = createTraceSession(overlay, options.MaxLongSidePx, cancellationToken);
+            operations.Add(trace);
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 commandTask ??= overlay.ReadCommandAsync(commandReadCancellation.Token);
-                var pending = new List<Task> { commandTask };
-                if (recognitionTask is not null) pending.Add(recognitionTask);
-                if (translationTask is not null) pending.Add(translationTask);
-                if (traceTask is not null) pending.Add(traceTask);
+                var pending = new List<Task>(operations.Count + 1) { commandTask };
+                foreach (var operation in operations)
+                    if (operation.PendingTask is { } task) pending.Add(task);
                 var completed = await Task.WhenAny(pending).ConfigureAwait(false);
-                if (traceTask is not null && ReferenceEquals(completed, traceTask))
+                var completedOperation = operations.FirstOrDefault(
+                    operation => ReferenceEquals(operation.PendingTask, completed));
+                if (completedOperation is not null)
                 {
-                    var outcome = await traceTask.ConfigureAwait(false);
-                    traceTask = null;
-                    traceMatch = outcome.PreparedSearch?.TraceMatch;
-                    if (!cancellationToken.IsCancellationRequested && outcome.Failure != UploadFailure.Canceled)
-                        await overlay.ShowTraceResultAsync(outcome, cancellationToken).ConfigureAwait(false);
+                    if (await completedOperation.CompletePendingAsync().ConfigureAwait(false) ==
+                        OverlaySessionContinuation.EndSession)
+                        return;
                     continue;
-                }
-                if (translationTask is not null && ReferenceEquals(completed, translationTask))
-                {
-                    var outcome = await translationTask.ConfigureAwait(false);
-                    var completedRequestId = translationRequestId;
-                    translationTask = null;
-                    translationRequestId = Guid.Empty;
-                    translationCancellation?.Dispose();
-                    translationCancellation = null;
-                    if (cancellationToken.IsCancellationRequested || outcome.Failure == TranslationFailure.Canceled)
-                        continue;
-                    if (outcome.Result is { } result)
-                        await overlay.ShowTranslationAsync(result, cancellationToken).ConfigureAwait(false);
-                    else
-                        await overlay.ShowTranslationFailureAsync(completedRequestId, outcome.Failure, cancellationToken)
-                            .ConfigureAwait(false);
-                    continue;
-                }
-                if (recognitionTask is not null)
-                {
-                    if (ReferenceEquals(completed, recognitionTask))
-                    {
-                        var outcome = await recognitionTask.ConfigureAwait(false);
-                        recognitionTask = null;
-                        recognitionCancellation?.Cancel();
-                        recognitionCancellation?.Dispose();
-                        recognitionCancellation = null;
-                        if (cancellationToken.IsCancellationRequested || outcome.Status == MusicRecognitionStatus.Canceled)
-                            continue;
-                        displayedOutcome = outcome;
-                        try
-                        {
-                            await overlay.ShowMusicResultAsync(outcome, cancellationToken).ConfigureAwait(false);
-                        }
-                        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-                        {
-                            log.Error(nameof(OverlaySessionWorkflow),
-                                "showing the music result in the overlay failed", exception);
-                            musicResultPresenter.PresentFallback(outcome);
-                            return;
-                        }
-                        continue;
-                    }
                 }
 
                 var command = await commandTask.ConfigureAwait(false);
@@ -123,26 +77,21 @@ internal sealed class OverlaySessionWorkflow(
                             break;
 
                         case MusicDebugScenarioSelected selected:
-                            debugScenario = selected.Scenario;
-                            log.Info(nameof(OverlaySessionWorkflow),
-                                $"music debug scenario changed to '{debugScenario}'");
+                            music.SelectDebugScenario(selected.Scenario);
                             break;
 
-                        case VisualSelection visual when visual.ProviderId == SearchProviderIds.TraceMoe && traceTask is null:
-                            traceTask = visualSearch.PrepareTraceAsync(visual.Selection, options.MaxLongSidePx, traceCancellation.Token);
+                        case VisualSelection visual when trace.CanStart(visual):
+                            trace.Start(visual);
                             commandOwnershipTransferred = true;
                             break;
 
                         case OpenTraceResult:
-                            if (traceMatch is not null)
-                            {
-                                await overlay.CloseAsync().ConfigureAwait(false);
-                                openTraceUrl?.Invoke(traceMatch.AnilistUrl);
+                            if (await trace.OpenResultAsync().ConfigureAwait(false) ==
+                                OverlaySessionContinuation.EndSession)
                                 return;
-                            }
                             break;
 
-                        case VisualSelection visual when recognitionTask is null:
+                        case VisualSelection visual when !music.IsRunning:
                             // Selection is published before its topmost confirmation overlay finishes closing.
                             await overlay.WaitForCloseAsync(cancellationToken).ConfigureAwait(false);
                             var execution = visualSearch.ExecuteAsync(
@@ -161,46 +110,27 @@ internal sealed class OverlaySessionWorkflow(
                             return;
 
                         case ScreenTranslationRequested requested when
-                            screenTranslation is not null && translationTask is null:
-                            translationRequestId = requested.RequestId;
-                            translationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                            translationTask = screenTranslation.TranslateAsync(
-                                requested.RequestId, requested.Image, requested.TargetLanguageTag, translationCancellation.Token);
+                            translation is not null && !translation.IsRunning:
+                            translation.Start(requested);
                             break;
 
-                        case CancelScreenTranslation canceled when
-                            translationTask is not null && canceled.RequestId == translationRequestId:
-                            translationCancellation?.Cancel();
-                            try { await translationTask.ConfigureAwait(false); }
-                            catch (OperationCanceledException) { }
-                            translationTask = null;
-                            translationRequestId = Guid.Empty;
-                            translationCancellation?.Dispose();
-                            translationCancellation = null;
+                        case CancelScreenTranslation canceled when translation is not null:
+                            await translation.CancelAsync(canceled).ConfigureAwait(false);
                             break;
 
-                        case StartMusicRecognition when recognitionTask is null:
-                        case RetryMusicRecognition when recognitionTask is null:
-                            displayedOutcome = null;
-                            await overlay.ShowListeningAsync(cancellationToken).ConfigureAwait(false);
-                            recognitionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                            recognitionTask = musicRecognition.RecognizeAsync(
-                                debugScenario,
-                                new OverlayVisualizationProgress(overlay, recognitionCancellation.Token, log),
-                                recognitionCancellation.Token);
+                        case StartMusicRecognition when !music.IsRunning:
+                        case RetryMusicRecognition when !music.IsRunning:
+                            await music.StartAsync().ConfigureAwait(false);
                             break;
 
                         case OpenMusicResult:
-                            if (displayedOutcome?.Recognition is { } match && musicResultPresenter.CanOpen(match))
-                            {
-                                await overlay.CloseAsync().ConfigureAwait(false);
-                                musicResultPresenter.Open(match);
+                            if (await music.OpenResultAsync().ConfigureAwait(false) ==
+                                OverlaySessionContinuation.EndSession)
                                 return;
-                            }
                             break;
 
                         case DismissMusicResult:
-                            displayedOutcome = null;
+                            music.DismissResult();
                             break;
 
                         case CancelSession:
@@ -221,34 +151,24 @@ internal sealed class OverlaySessionWorkflow(
         }
         finally
         {
-            TryCancel(commandReadCancellation, "cancel-command-read");
-            TryCancel(traceCancellation, "cancel-trace");
-            TryCancel(recognitionCancellation, "cancel-music-recognition");
-            TryCancel(translationCancellation, "cancel-translation");
-            var closeTask = CloseOverlayAsync(overlay);
-            var commandCleanup = commandTask is null
-                ? Task.CompletedTask
-                : ObservePendingCommandAsync(commandTask);
-            var traceCleanup = ObserveCleanupAsync(traceTask, "complete-trace");
-            var recognitionCleanup = ObserveCleanupAsync(recognitionTask, "complete-music-recognition");
-            var translationCleanup = ObserveCleanupAsync(translationTask, "complete-translation");
+            TryCleanup(() => commandReadCancellation.Cancel(), "cancel-command-read");
+            foreach (var operation in operations)
+                TryCleanup(operation.RequestStop, "stop-session-operation");
 
-            await Task.WhenAll(
-                commandCleanup,
-                traceCleanup,
-                recognitionCleanup,
-                translationCleanup,
-                closeTask).ConfigureAwait(false);
-            recognitionCancellation?.Dispose();
-            translationCancellation?.Dispose();
+            var cleanup = new List<Task>(operations.Count + 2)
+            {
+                CloseOverlayAsync(overlay),
+                commandTask is null ? Task.CompletedTask : ObservePendingCommandAsync(commandTask),
+            };
+            cleanup.AddRange(operations.Select(DrainOperationAsync));
+            await Task.WhenAll(cleanup).ConfigureAwait(false);
             await DisposeOverlayAsync(overlay).ConfigureAwait(false);
         }
     }
 
-    private void TryCancel(CancellationTokenSource? cancellation, string operation)
+    private void TryCleanup(Action action, string operation)
     {
-        if (cancellation is null) return;
-        try { cancellation.Cancel(); }
+        try { action(); }
         catch (Exception exception)
         {
             log.SafeError(nameof(OverlaySessionWorkflow), operation, exception);
@@ -270,14 +190,13 @@ internal sealed class OverlaySessionWorkflow(
         }
     }
 
-    private async Task ObserveCleanupAsync(Task? task, string operation)
+    private async Task DrainOperationAsync(IOverlaySessionOperation operation)
     {
-        if (task is null) return;
-        try { await task.ConfigureAwait(false); }
+        try { await operation.DrainAsync().ConfigureAwait(false); }
         catch (OperationCanceledException) { }
         catch (Exception exception)
         {
-            log.SafeError(nameof(OverlaySessionWorkflow), operation, exception);
+            log.SafeError(nameof(OverlaySessionWorkflow), "drain-session-operation", exception);
         }
     }
 
@@ -296,23 +215,6 @@ internal sealed class OverlaySessionWorkflow(
         catch (Exception exception)
         {
             log.SafeError(nameof(OverlaySessionWorkflow), "dispose-overlay", exception);
-        }
-    }
-
-    private sealed class OverlayVisualizationProgress(
-        IOverlaySession overlay,
-        CancellationToken cancellationToken,
-        PluginLog log) : IMusicVisualizationProgress
-    {
-        public void Report(MusicVisualizationFrame frame)
-        {
-            if (cancellationToken.IsCancellationRequested) return;
-            try { _ = overlay.ReportAudioAsync(frame, cancellationToken); }
-            catch (Exception exception)
-            {
-                log.Warn(nameof(OverlaySessionWorkflow),
-                    $"forwarding audio visualization failed: {exception.Message}");
-            }
         }
     }
 }

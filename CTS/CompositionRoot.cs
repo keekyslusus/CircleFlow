@@ -262,14 +262,16 @@ public static class CompositionRoot
         var workflow = new OverlaySessionWorkflow(
             new OverlaySessionFactory(log, new PointerMonitorCapture(), overlayWindowFactory),
             visualSearch,
-            musicRecognition,
-            musicResultPresenter,
+            (overlay, cancellation) => new OverlayMusicSession(
+                overlay, musicRecognition, musicResultPresenter, log, cancellation),
+            (overlay, cancellation) => new OverlayTranslationSession(
+                overlay, screenTranslation, cancellation),
+            (overlay, maxLongSidePx, cancellation) => new OverlayTraceSession(
+                overlay, visualSearch, maxLongSidePx, OpenResultsUrl, cancellation),
             providerSelection,
             strings,
             log,
-            textSearch,
-            screenTranslation,
-            OpenResultsUrl);
+            textSearch);
         var coordinator = new SearchCoordinator(
             workflow,
             hideOwnWindows,

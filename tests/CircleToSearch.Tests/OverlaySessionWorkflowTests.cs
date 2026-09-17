@@ -100,6 +100,29 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
+    public async Task Translation_cancellation_matches_request_and_allows_the_next_request()
+    {
+        var provider = new FirstCancellationThenSuccessTranslationProvider();
+        using var harness = new Harness(translationProvider: provider);
+        harness.Overlay.CloseAfterTranslation = true;
+        var first = Guid.NewGuid();
+        var ignored = Guid.NewGuid();
+        var next = Guid.NewGuid();
+        harness.Overlay.Enqueue(new ScreenTranslationRequested(first, TranslationImage(), "es"));
+        harness.Overlay.Enqueue(new CancelScreenTranslation(ignored));
+        harness.Overlay.Enqueue(new ScreenTranslationRequested(ignored, TranslationImage(), "fr"));
+        harness.Overlay.Enqueue(new CancelScreenTranslation(first));
+        harness.Overlay.Enqueue(new ScreenTranslationRequested(next, TranslationImage(), "de"));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(2, provider.Calls);
+        Assert.Equal(1, provider.CanceledCalls);
+        Assert.Equal(next, harness.Overlay.TranslationResult?.RequestId);
+        Assert.Equal(0, harness.Overlay.TranslationFailureCalls);
+    }
+
+    [Fact]
     public async Task Provider_change_applies_to_current_visual_command_and_persists_once()
     {
         using var harness = new Harness();
@@ -225,6 +248,52 @@ public sealed class OverlaySessionWorkflowTests
         Assert.Equal(1, harness.Overlay.ListeningCalls);
         Assert.Equal(1, harness.Overlay.ResultCalls);
         Assert.Equal(0, harness.UploadStartedCalls);
+    }
+
+    [Fact]
+    public async Task Music_start_and_retry_are_ignored_while_recognition_is_active()
+    {
+        using var harness = new Harness();
+        harness.Music.Gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+        harness.Overlay.Enqueue(new RetryMusicRecognition());
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+        harness.Overlay.Enqueue(new CancelSession());
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, harness.Music.Calls);
+        Assert.Equal(1, harness.Overlay.ListeningCalls);
+        Assert.Equal(1, harness.Music.CanceledCalls);
+    }
+
+    [Fact]
+    public async Task Ignored_visual_selection_during_music_disposes_its_image()
+    {
+        using var harness = new Harness();
+        harness.Music.Gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var selection = NewSelection();
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+        harness.Overlay.Enqueue(new VisualSelection(selection, SearchProviderIds.GoogleLens));
+        harness.Overlay.Enqueue(new CancelSession());
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Throws<ObjectDisposedException>(() => _ = selection.FrozenFrame);
+        Assert.Equal(0, harness.Google.Calls);
+    }
+
+    [Fact]
+    public async Task Ready_command_wins_over_ready_music_result()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+        harness.Overlay.Enqueue(new CancelSession());
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, harness.Music.Calls);
+        Assert.Equal(0, harness.Overlay.ResultCalls);
     }
 
     [Fact]
@@ -387,6 +456,138 @@ public sealed class OverlaySessionWorkflowTests
         Assert.Equal(1, harness.Overlay.AudioFrames);
     }
 
+    [Fact]
+    public async Task Synchronous_recognizer_failure_still_closes_and_disposes_overlay()
+    {
+        using var harness = new Harness();
+        harness.Music.ThrowSynchronously = true;
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => harness.RunAsync());
+
+        Assert.Equal(1, harness.Overlay.CloseCalls);
+        Assert.Equal(1, harness.Overlay.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task Faulted_recognition_is_observed_and_overlay_is_disposed()
+    {
+        using var harness = new Harness();
+        harness.Music.Gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+
+        var run = harness.RunAsync();
+        Assert.True(SpinWait.SpinUntil(() => harness.Music.Calls == 1, TimeSpan.FromSeconds(2)));
+        harness.Music.Gate.SetException(new InvalidOperationException("recognition failed"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => run);
+
+        Assert.Equal(1, harness.Overlay.CloseCalls);
+        Assert.Equal(1, harness.Overlay.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task Throwing_cancellation_callback_does_not_skip_cleanup()
+    {
+        var translation = new FirstCancellationThenSuccessTranslationProvider();
+        using var harness = new Harness(translationProvider: translation);
+        harness.Music.Gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Music.ThrowFromCancellationCallback = true;
+        harness.Trace.FirstGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+        harness.Overlay.Enqueue(new ScreenTranslationRequested(Guid.NewGuid(), TranslationImage(), "es"));
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.TraceMoe));
+        harness.Overlay.Enqueue(new CancelSession());
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, harness.Music.CanceledCalls);
+        Assert.Equal(1, translation.CanceledCalls);
+        Assert.Equal(1, harness.Trace.CanceledCalls);
+        Assert.Equal(1, harness.Overlay.CloseCalls);
+        Assert.Equal(1, harness.Overlay.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task Music_debug_scenario_does_not_leak_into_the_next_session()
+    {
+        var first = new FakeOverlay();
+        var second = new FakeOverlay { CloseAfterResult = true };
+        first.Enqueue(new MusicDebugScenarioSelected(MusicDebugScenario.Matched));
+        first.Enqueue(new CancelSession());
+        second.Enqueue(new StartMusicRecognition());
+        using var harness = new Harness(overlays: [first, second]);
+
+        await harness.RunAsync();
+        await harness.RunAsync();
+
+        Assert.Equal(1, harness.Music.Calls);
+        Assert.Equal(0, harness.Simulator.Calls);
+    }
+
+    [Fact]
+    public async Task Music_result_does_not_leak_into_the_next_session()
+    {
+        var first = new FakeOverlay { CloseAfterResult = true };
+        var second = new FakeOverlay();
+        first.Enqueue(new StartMusicRecognition());
+        second.Enqueue(new OpenMusicResult());
+        second.Enqueue(new CancelSession());
+        using var harness = new Harness(overlays: [first, second]);
+        harness.Music.Outcome = MusicRecognitionOutcome.Matched(Match("https://www.shazam.com/track/1"));
+
+        await harness.RunAsync();
+        await harness.RunAsync();
+
+        Assert.Empty(harness.Opened);
+    }
+
+    [Fact]
+    public async Task Cleanup_closes_overlay_before_waiting_for_music_to_drain()
+    {
+        using var harness = new Harness();
+        harness.Music.Gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Music.CompleteGateOnCancellation = false;
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+        harness.Overlay.Enqueue(new CancelSession());
+
+        var run = harness.RunAsync();
+        await harness.Music.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(1, harness.Overlay.CloseCalls);
+        Assert.Equal(0, harness.Overlay.DisposeCalls);
+        Assert.False(run.IsCompleted);
+
+        harness.Music.Gate.SetResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.Canceled));
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(1, harness.Overlay.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task Close_failure_does_not_skip_overlay_disposal()
+    {
+        using var harness = new Harness();
+        harness.Overlay.CloseException = new InvalidOperationException("close failed");
+        harness.Overlay.Enqueue(new CancelSession());
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, harness.Overlay.CloseCalls);
+        Assert.Equal(1, harness.Overlay.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task Session_factory_failure_cleans_up_the_open_overlay()
+    {
+        using var harness = new Harness(traceFactoryThrows: true);
+        var selection = NewSelection();
+        harness.Overlay.Enqueue(new VisualSelection(selection, SearchProviderIds.GoogleLens));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => harness.RunAsync());
+
+        Assert.Equal(1, harness.Overlay.CloseCalls);
+        Assert.Equal(1, harness.Overlay.DisposeCalls);
+        Assert.Throws<ObjectDisposedException>(() => _ = selection.FrozenFrame);
+    }
+
     private static SelectionOutcome NewSelection() =>
         new(new Rectangle(0, 0, 2, 2), new Bitmap(2, 2));
 
@@ -429,6 +630,68 @@ public sealed class OverlaySessionWorkflowTests
         Assert.Equal(harness.Trace.Match!.AnilistUrl, Assert.Single(harness.Opened));
     }
 
+    [Fact]
+    public async Task Repeated_trace_selection_while_trace_is_active_uses_the_normal_visual_path()
+    {
+        using var harness = new Harness(SearchProviderIds.TraceMoe);
+        harness.Trace.FirstGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var first = NewSelection();
+        var second = NewSelection();
+        harness.Overlay.Enqueue(new VisualSelection(first, SearchProviderIds.TraceMoe));
+        harness.Overlay.Enqueue(new VisualSelection(second, SearchProviderIds.TraceMoe));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(2, harness.Trace.Calls);
+        Assert.Equal(1, harness.UploadStartedCalls);
+        Assert.Null(harness.Overlay.TraceResult);
+        Assert.Throws<ObjectDisposedException>(() => _ = first.FrozenFrame);
+        Assert.Throws<ObjectDisposedException>(() => _ = second.FrozenFrame);
+    }
+
+    [Fact]
+    public async Task Canceled_trace_result_is_not_shown()
+    {
+        using var harness = new Harness(SearchProviderIds.TraceMoe);
+        harness.Trace.Outcome = VisualSearchPreparationOutcome.Fail(UploadFailure.Canceled);
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.TraceMoe));
+        using var cancellation = new CancellationTokenSource();
+
+        var run = harness.RunAsync(cancellation.Token);
+        Assert.Null(harness.Overlay.TraceResult);
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+
+        Assert.Null(harness.Overlay.TraceResult);
+    }
+
+    [Fact]
+    public async Task Opening_trace_without_a_match_keeps_the_overlay_open()
+    {
+        using var harness = new Harness(SearchProviderIds.TraceMoe);
+        harness.Overlay.CommandsAfterResult.Add(new OpenTraceResult());
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.TraceMoe));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Empty(harness.Opened);
+        Assert.Equal(new[] { "trace", "close" }, harness.Events);
+    }
+
+    [Fact]
+    public async Task Trace_encoding_failure_disposes_selection_and_overlay()
+    {
+        using var harness = new Harness(SearchProviderIds.TraceMoe, cropThrows: true);
+        var selection = NewSelection();
+        harness.Overlay.Enqueue(new VisualSelection(selection, SearchProviderIds.TraceMoe));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => harness.RunAsync());
+
+        Assert.Throws<ObjectDisposedException>(() => _ = selection.FrozenFrame);
+        Assert.Equal(1, harness.Overlay.CloseCalls);
+        Assert.Equal(1, harness.Overlay.DisposeCalls);
+    }
+
     [Theory]
     [InlineData(SearchProviderIds.GoogleLens)]
     [InlineData(SearchProviderIds.TraceMoe)]
@@ -463,7 +726,9 @@ public sealed class OverlaySessionWorkflowTests
             string providerId = SearchProviderIds.GoogleLens,
             bool saveThrows = false,
             IReadOnlyList<FakeOverlay>? overlays = null,
-            IImageTranslationProvider? translationProvider = null)
+            IImageTranslationProvider? translationProvider = null,
+            bool cropThrows = false,
+            bool traceFactoryThrows = false)
         {
             _logDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_logDirectory);
@@ -499,7 +764,12 @@ public sealed class OverlaySessionWorkflowTests
                 Log);
             var visualSearch = new VisualSearchWorkflow(
                 _router,
-                (_, _, max) => { CropLimits.Add(max); return [1]; },
+                (_, _, max) =>
+                {
+                    CropLimits.Add(max);
+                    if (cropThrows) throw new InvalidOperationException("encoding failed");
+                    return [1];
+                },
                 visualPresenter,
                 Notifier,
                 TestUiStrings.English,
@@ -525,14 +795,24 @@ public sealed class OverlaySessionWorkflowTests
             Workflow = new OverlaySessionWorkflow(
                 Factory,
                 visualSearch,
-                musicRecognition,
-                musicPresenter,
+                (overlay, cancellation) => new OverlayMusicSession(
+                    overlay, musicRecognition, musicPresenter, Log, cancellation),
+                (overlay, cancellation) => new OverlayTranslationSession(
+                    overlay, screenTranslation, cancellation),
+                (overlay, maxLongSidePx, cancellation) =>
+                {
+                    if (traceFactoryThrows) throw new InvalidOperationException("trace factory failed");
+                    return new OverlayTraceSession(
+                        overlay,
+                        visualSearch,
+                        maxLongSidePx,
+                        url => { Events.Add("trace-open"); Opened.Add(url); return true; },
+                        cancellation);
+                },
                 providerSelection,
                 TestUiStrings.English,
                 Log,
-                textSearch,
-                screenTranslation,
-                url => { Events.Add("trace-open"); Opened.Add(url); return true; });
+                textSearch);
         }
 
         public OverlaySessionWorkflow Workflow { get; }
@@ -619,7 +899,9 @@ public sealed class OverlaySessionWorkflowTests
         public int ResultCalls { get; private set; }
         public int ListeningCalls { get; private set; }
         public int CloseCalls { get; private set; }
+        public int DisposeCalls { get; private set; }
         public int AudioFrames { get; private set; }
+        public Exception? CloseException { get; set; }
         public List<string> Events { get; } = [];
         public List<IOverlayCommand> CommandsAfterResult { get; } = [];
         public Task<IOverlayCommand> ReadCommandAsync(CancellationToken cancellationToken) =>
@@ -659,6 +941,7 @@ public sealed class OverlaySessionWorkflowTests
         {
             CloseCalls++;
             Events.Add("close");
+            if (CloseException is not null) throw CloseException;
             return Task.CompletedTask;
         }
         public Task ShowTranslationAsync(ScreenTranslationResult result, CancellationToken cancellationToken)
@@ -679,14 +962,39 @@ public sealed class OverlaySessionWorkflowTests
             if (CloseAfterTranslation) Enqueue(new CancelSession());
             return Task.CompletedTask;
         }
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        public ValueTask DisposeAsync()
+        {
+            DisposeCalls++;
+            while (_commands.Reader.TryRead(out var command))
+                OverlayCommandOwnership.DisposePayload(command);
+            return ValueTask.CompletedTask;
+        }
     }
 
     private sealed class FakeTraceProvider : IVisualSearchProvider
     {
         public TraceMoeMatch? Match { get; set; }
-        public Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel) =>
-            Task.FromResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(Match)));
+        public VisualSearchPreparationOutcome? Outcome { get; set; }
+        public TaskCompletionSource<VisualSearchPreparationOutcome>? FirstGate { get; set; }
+        public int Calls { get; private set; }
+        public int CanceledCalls { get; private set; }
+        public Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel)
+        {
+            Calls++;
+            if (Calls == 1 && FirstGate is not null) return WaitForFirstAsync(cancel);
+            return Task.FromResult(Outcome ??
+                VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(Match)));
+        }
+
+        private async Task<VisualSearchPreparationOutcome> WaitForFirstAsync(CancellationToken cancellationToken)
+        {
+            try { return await FirstGate!.Task.WaitAsync(cancellationToken); }
+            catch (OperationCanceledException)
+            {
+                CanceledCalls++;
+                throw;
+            }
+        }
     }
 
     private sealed class FakeProvider : IVisualSearchProvider
@@ -726,6 +1034,31 @@ public sealed class OverlaySessionWorkflowTests
                 new HttpRequestException("rate limited", null, System.Net.HttpStatusCode.TooManyRequests));
     }
 
+    private sealed class FirstCancellationThenSuccessTranslationProvider : IImageTranslationProvider
+    {
+        public int Calls { get; private set; }
+        public int CanceledCalls { get; private set; }
+
+        public async Task<BitmapSource> TranslateAsync(
+            BitmapSource source,
+            string target,
+            CancellationToken cancellation)
+        {
+            Calls++;
+            if (Calls > 1) return source;
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellation);
+                throw new InvalidOperationException("The translation wait completed without cancellation.");
+            }
+            catch (OperationCanceledException)
+            {
+                CanceledCalls++;
+                throw;
+            }
+        }
+    }
+
     private sealed class FakeMusicRecognizer : IMusicRecognizer
     {
         public int Calls { get; private set; }
@@ -734,15 +1067,25 @@ public sealed class OverlaySessionWorkflowTests
         public MusicRecognitionOutcome Outcome { get; set; } =
             MusicRecognitionOutcome.From(MusicRecognitionStatus.NoMatch);
         public bool ReportFrame { get; set; }
+        public bool ThrowSynchronously { get; set; }
+        public bool CompleteGateOnCancellation { get; set; } = true;
+        public bool ThrowFromCancellationCallback { get; set; }
+        public TaskCompletionSource CancellationObserved { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task<MusicRecognitionOutcome> RecognizeAsync(CancellationToken cancellationToken)
         {
             Calls++;
+            if (ThrowSynchronously) throw new InvalidOperationException("recognizer failed");
             if (Gate is null) return Task.FromResult(Outcome);
+            if (ThrowFromCancellationCallback)
+                cancellationToken.Register(() => throw new InvalidOperationException("cancellation callback failed"));
             cancellationToken.Register(() =>
             {
                 CanceledCalls++;
-                Gate.TrySetResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.Canceled));
+                CancellationObserved.TrySetResult();
+                if (CompleteGateOnCancellation)
+                    Gate.TrySetResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.Canceled));
             });
             return Gate.Task;
         }
