@@ -1,13 +1,6 @@
 MIT-licensed bundled components
 ===============================
 
-Flow.Launcher.Plugin 5.3.1
-Copyright (c) 2019 Flow-Launcher
-Copyright (c) 2015 Wox
-
-JetBrains.Annotations 2025.2.2
-Copyright (c) 2016-2025 JetBrains s.r.o.
-
 MathNet.Numerics 5.0.0
 Copyright (c) 2002-2022 Math.NET
 
