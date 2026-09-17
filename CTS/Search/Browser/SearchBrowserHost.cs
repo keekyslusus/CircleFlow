@@ -332,7 +332,7 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         };
         var closeIcon = new System.Windows.Shapes.Path
         {
-            Data = Geometry.Parse("M 0,0 L 10,10 M 10,0 L 0,10"),
+            Data = PluginIcons.CloseOutlined,
             Width = 10,
             Height = 10,
             StrokeThickness = 1.5,

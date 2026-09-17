@@ -2,9 +2,6 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:effects="clr-namespace:CircleToSearch.Ui.Effects"
                     xmlns:ui="clr-namespace:CircleToSearch.Ui">
-    <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="SettingsIcons.xaml"/>
-    </ResourceDictionary.MergedDictionaries>
     <Style x:Key="OutlineIcon" TargetType="Path">
         <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Control}}"/>
         <Setter Property="StrokeThickness" Value="1.65"/>
@@ -270,7 +267,7 @@
                                 </ControlTemplate>
                             </ToggleButton.Template>
                         </ToggleButton>
-                        <Path x:Name="DropdownArrow" Data="M0 0 L4 4 L8 0" Stroke="{DynamicResource SettingsMuted}" StrokeThickness="1.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                        <Path x:Name="DropdownArrow" Data="{x:Static ui:PluginIcons.ChevronDownOutlined}" Stroke="{DynamicResource SettingsMuted}" StrokeThickness="1.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
                             <Path.RenderTransform><RotateTransform/></Path.RenderTransform>
                         </Path>
                         <ContentPresenter Margin="10,6,30,6" IsHitTestVisible="False" VerticalAlignment="Center" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>

@@ -10,7 +10,6 @@ using CircleToSearch.Ui;
 internal static class ActionTrayVisualFactory
 {
     private const double ChipBorderThicknessDips = 1;
-    private static readonly Geometry ChipIconGeometry = CreateChipIconGeometry();
 
     internal static ActionTrayVisual Create(
         SelectionChipPalette palette,
@@ -40,7 +39,7 @@ internal static class ActionTrayVisualFactory
     {
         var icon = new Path
         {
-            Data = ChipIconGeometry,
+            Data = PluginIcons.SelectAreaFilled,
             Fill = OverlayVisualResources.Frozen(palette.Icon),
             Width = 13,
             Height = 13,
@@ -141,26 +140,6 @@ internal static class ActionTrayVisualFactory
         surface.CornerRadius = new CornerRadius(22);
         chip.SizeChanged += (_, _) => UpdateRadius();
         return (chip, label);
-    }
-
-    private static Geometry CreateChipIconGeometry()
-    {
-        var geometry = Geometry.Parse(
-            "M439-120v-401h401v60H542l298 298-43 43-298-298v298h-60Z" +
-            "m-154 0v-60h60v60h-60Z" +
-            "M180-780h-60q0-24.75 17.63-42.38Q155.25-840 180-840v60Z" +
-            "m105 0v-60h60v60h-60Z" +
-            "m165 0v-60h60v60h-60Z" +
-            "m165 0v-60h60v60h-60Z" +
-            "m165 0v-60h60v60h-60Z" +
-            "m165 0v-60q24.75 0 42.38 17.62Q840-804.75 840-780h-60Z" +
-            "M180-180v60q-24.75 0-42.37-17.63Q120-155.25 120-180h60Z" +
-            "m-60-105v-60h60v60h-60Z" +
-            "m0-165v-60h60v60h-60Z" +
-            "m0-165v-60h60v60h-60Z" +
-            "m660 0v-60h60v60h-60Z");
-        geometry.Freeze();
-        return geometry;
     }
 
     private static Brush ChipOutlineBrush(SelectionChipPalette palette) =>

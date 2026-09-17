@@ -85,7 +85,7 @@ public sealed class ScreenTranslationOverlayControllerTests
             Assert.Equal(0, visual.Bottom.Stack.Children.IndexOf(visual.TranslationOverlay.StateHost));
             Assert.Equal(TestUiStrings.English.TranslationConsentTitle, Title(card).Text);
             Assert.Equal(TestUiStrings.English.TranslationConsentMessage, Message(card).Text);
-            Assert.Same(TextTranslationVisualFactory.TranslateIconGeometry, Icon(card).Data);
+            Assert.Same(PluginIcons.TranslateFilled, Icon(card).Data);
             Assert.Equal(TestUiStrings.English.ConsentCancel, Close(card).ToolTip);
             Assert.Equal(TestUiStrings.English.ConsentCancel, AutomationProperties.GetName(Close(card)));
             Assert.Equal(TestUiStrings.English.Continue, Primary(card).Content);
@@ -141,7 +141,7 @@ public sealed class ScreenTranslationOverlayControllerTests
             var card = Card(visual);
             Assert.Equal(message, Message(card).Text);
             Assert.Equal(TestUiStrings.English.TranslationResultTitle, AutomationProperties.GetName(card));
-            Assert.Same(TextTranslationVisualFactory.TranslateIconGeometry, Icon(card).Data);
+            Assert.Same(PluginIcons.TranslateFilled, Icon(card).Data);
             Assert.Equal(TestUiStrings.English.Close, Close(card).ToolTip);
             Assert.Equal(canRetry, ActionButton(card) is not null);
             Assert.Empty(toasts);
@@ -341,7 +341,7 @@ public sealed class ScreenTranslationOverlayControllerTests
                 TestUiStrings.English.ShowOriginal,
                 AutomationProperties.GetName(visual.TranslationAction.Button));
             Assert.Same(
-                TextTranslationVisualFactory.ShowOriginalIconGeometry,
+                PluginIcons.ShowOriginalFilled,
                 visual.TranslationAction.Icon.Data);
             Assert.Equal(Visibility.Collapsed, visual.TranslationAction.LoadingIndicator.Visibility);
             Assert.Equal(1, visual.TranslationAction.Icon.Opacity);
@@ -352,7 +352,7 @@ public sealed class ScreenTranslationOverlayControllerTests
             Assert.False(controller.IsTranslationShown);
             Assert.Equal(TestUiStrings.English.Translate, visual.TranslationAction.Button.ToolTip);
             Assert.Same(
-                TextTranslationVisualFactory.TranslateIconGeometry,
+                PluginIcons.TranslateFilled,
                 visual.TranslationAction.Icon.Data);
 
             visual.Music.Waveform.Dispose();

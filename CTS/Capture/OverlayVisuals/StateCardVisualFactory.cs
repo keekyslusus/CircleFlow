@@ -53,7 +53,7 @@ internal static class StateCardVisualFactory
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         var close = OverlayVisualResources.IconButton(
-            OverlayVisualResources.CloseIconGeometry,
+            PluginIcons.CloseFilled,
             options.CloseLabel,
             palette.MutedText,
             palette.SecondaryContainer,

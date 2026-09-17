@@ -54,7 +54,7 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Equal(HorizontalAlignment.Center, visual.TranslationAction.Button.HorizontalContentAlignment);
             Assert.Equal(VerticalAlignment.Center, visual.TranslationAction.Button.VerticalContentAlignment);
             Assert.Same(
-                TextTranslationVisualFactory.TranslateIconGeometry,
+                PluginIcons.TranslateFilled,
                 visual.TranslationAction.Icon.Data);
             Assert.Equal(18, visual.TranslationAction.Icon.Width);
             Assert.Equal(18, visual.TranslationAction.Icon.Height);

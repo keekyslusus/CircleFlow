@@ -11,8 +11,6 @@ using CircleToSearch.Ui;
 
 internal static class MusicOverlayVisualFactory
 {
-    internal static readonly Geometry MusicIconGeometry = CreateMusicIconGeometry();
-
     internal static MusicOverlayVisual Create(
         Size size,
         bool lightTheme,
@@ -21,7 +19,7 @@ internal static class MusicOverlayVisualFactory
         var palette = PluginPalette.For(lightTheme);
         var icon = new Path
         {
-            Data = MusicIconGeometry,
+            Data = PluginIcons.MusicFilled,
             Fill = OverlayVisualResources.Frozen(palette.MusicButton.Foreground),
             Width = 18,
             Height = 18,
@@ -108,12 +106,5 @@ internal static class MusicOverlayVisualFactory
             listeningLayer,
             waveform,
             resultHost);
-    }
-
-    private static Geometry CreateMusicIconGeometry()
-    {
-        var geometry = Geometry.Parse("M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z");
-        geometry.Freeze();
-        return geometry;
     }
 }

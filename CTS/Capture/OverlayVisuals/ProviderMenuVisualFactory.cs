@@ -12,9 +12,6 @@ using CircleToSearch.Ui;
 
 internal static class ProviderMenuVisualFactory
 {
-    private static readonly Geometry ChevronIconGeometry =
-        OverlayVisualResources.FrozenGeometry("M7 10l5 5 5-5Z");
-
     internal static ProviderMenuVisual? Create(
         IReadOnlyList<SearchProviderDescriptor> providers,
         string? selectedProviderId,
@@ -32,7 +29,7 @@ internal static class ProviderMenuVisualFactory
         };
         var chevron = new Path
         {
-            Data = ChevronIconGeometry,
+            Data = PluginIcons.ChevronDownFilled,
             Width = 6,
             Height = 6,
             Stretch = Stretch.Uniform,

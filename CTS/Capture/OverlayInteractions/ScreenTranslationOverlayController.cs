@@ -103,7 +103,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
             ?? throw new InvalidOperationException("The translation target is missing for the active request.");
         AbortPendingCompletionRipple();
         _requestId = Guid.Empty;
-        SetActionVisual(_strings.ShowOriginal, TextTranslationVisualFactory.ShowOriginalIconGeometry);
+        SetActionVisual(_strings.ShowOriginal, PluginIcons.ShowOriginalFilled);
         StopLoading();
         var scaled = new TransformedBitmap(result.Image, new ScaleTransform(
             (double)_originalImage.PixelWidth / result.Image.PixelWidth,
@@ -121,7 +121,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     {
         if (_disposed || _closing || _requestId == Guid.Empty || requestId != _requestId) return;
         _requestId = Guid.Empty;
-        SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);
+        SetActionVisual(_strings.Translate, PluginIcons.TranslateFilled);
         StopLoading();
         if (failure == TranslationFailure.Canceled)
         {
@@ -139,7 +139,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
             ? null
             : new StateCardAction(_strings.Retry, RetryTranslation);
         ShowCard(new StateCardOptions(
-            TextTranslationVisualFactory.TranslateIconGeometry,
+            PluginIcons.TranslateFilled,
             message,
             _strings.TranslationResultTitle,
             _strings.Close,
@@ -218,7 +218,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
                 _bottom.ActionSlot.ActualHeight - _bottom.ResultSlot.Margin.Bottom - 8)
             : (double?)null;
         ShowCard(new StateCardOptions(
-            TextTranslationVisualFactory.TranslateIconGeometry,
+            PluginIcons.TranslateFilled,
             _strings.TranslationConsentMessage,
             _strings.TranslationConsentTitle,
             _strings.ConsentCancel,
@@ -258,7 +258,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         var target = retryTarget ?? _targetLanguageTag();
         if (retryTarget is null && _cachedImage is not null && string.Equals(_cachedTarget, target, StringComparison.OrdinalIgnoreCase))
         {
-            SetActionVisual(_strings.ShowOriginal, TextTranslationVisualFactory.ShowOriginalIconGeometry);
+            SetActionVisual(_strings.ShowOriginal, PluginIcons.ShowOriginalFilled);
             DisplayImage(_cachedImage, _cachedTarget);
             _transition(OverlayInteractionMode.TranslationShown);
             _profiler?.Mark("cached_translation_shown", _profileScope);
@@ -266,7 +266,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         }
         _requestedTarget = target;
         _requestId = Guid.NewGuid();
-        SetActionVisual(_strings.Translating, TextTranslationVisualFactory.TranslateIconGeometry);
+        SetActionVisual(_strings.Translating, PluginIcons.TranslateFilled);
         TranslationActionVisualPresenter.SetTranslatingState(
             _action, translating: true, _lightTheme, _animationsEnabled());
         _transition(OverlayInteractionMode.Translating);
@@ -278,7 +278,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     {
         if (_requestId != Guid.Empty) _publish(new CancelScreenTranslation(_requestId));
         _requestId = Guid.Empty;
-        SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);
+        SetActionVisual(_strings.Translate, PluginIcons.TranslateFilled);
         StopLoading();
         _transition(OverlayInteractionMode.Selecting);
     }
@@ -292,7 +292,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
             _screenshot.Source = _originalImage;
             _imageChanged?.Invoke(_originalImage, null);
         }
-        SetActionVisual(_strings.Translate, TextTranslationVisualFactory.TranslateIconGeometry);
+        SetActionVisual(_strings.Translate, PluginIcons.TranslateFilled);
         _transition(OverlayInteractionMode.Selecting);
         _profiler?.Mark("original_shown", _profileScope);
     }

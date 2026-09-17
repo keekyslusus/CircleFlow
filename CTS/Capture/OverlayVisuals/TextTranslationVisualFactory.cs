@@ -10,11 +10,6 @@ using CircleToSearch.Ui;
 
 internal static class TextTranslationVisualFactory
 {
-    internal static readonly Geometry TranslateIconGeometry = OverlayVisualResources.FrozenGeometry(
-        "M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z");
-    internal static readonly Geometry ShowOriginalIconGeometry = OverlayVisualResources.FrozenGeometry(
-        "M259-200v-60h310q70 0 120.5-46.5T740-422q0-69-50.5-115.5T569-584H274l114 114-42 42-186-186 186-186 42 42-114 114h294q95 0 163.5 64T800-422q0 94-68.5 158T568-200H259Z");
-
     internal static TextSelectionVisual CreateTextSelection(bool lightTheme, UiStrings strings)
     {
         var palette = PluginPalette.For(lightTheme).TextInteraction;
@@ -48,7 +43,7 @@ internal static class TextTranslationVisualFactory
         var palette = PluginPalette.For(lightTheme).Translation;
         var icon = new Path
         {
-            Data = TranslateIconGeometry,
+            Data = PluginIcons.TranslateFilled,
             Fill = OverlayVisualResources.Frozen(palette.Text),
             Width = 18,
             Height = 18,

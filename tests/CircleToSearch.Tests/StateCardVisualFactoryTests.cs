@@ -19,7 +19,7 @@ public sealed class StateCardVisualFactoryTests
         var failure = RunOnSta(() =>
         {
             var palette = PluginPalette.For(lightTheme).StateCard;
-            var geometry = OverlayVisualResources.FrozenGeometry("M0 0 10 0 10 10Z");
+            var geometry = Geometry.Parse("M0 0 10 0 10 10Z");
             var visual = StateCardVisualFactory.Create(
                 new StateCardOptions(
                     geometry,
@@ -256,7 +256,7 @@ public sealed class StateCardVisualFactoryTests
     private static StateCardOptions Options(
         Action? close = null,
         StateCardAction? action = null) => new(
-        OverlayVisualResources.CloseIconGeometry,
+        PluginIcons.CloseFilled,
         "Message",
         "Accessible card",
         "Close card",

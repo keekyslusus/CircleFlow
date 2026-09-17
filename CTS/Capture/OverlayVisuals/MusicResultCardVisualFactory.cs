@@ -102,7 +102,7 @@ internal static class MusicResultCardVisualFactory
             Margin = new Thickness(0, 6, 6, 0),
         };
         var copyButton = OverlayVisualResources.IconButton(
-            MusicOverlayVisualPresenter.CopyIconGeometry, strings.CopyTrackInfo,
+            PluginIcons.CopyFilled, strings.CopyTrackInfo,
             palette.MutedText, palette.SecondaryContainer, palette.OnSecondaryContainer, 12);
         copyButton.Click += (_, e) =>
         {
@@ -111,7 +111,7 @@ internal static class MusicResultCardVisualFactory
         };
         actions.Children.Add(copyButton);
         var close = OverlayVisualResources.IconButton(
-            OverlayVisualResources.CloseIconGeometry, strings.Close,
+            PluginIcons.CloseFilled, strings.Close,
             palette.MutedText, palette.SecondaryContainer, palette.OnSecondaryContainer, 12);
         close.Click += (_, e) => { e.Handled = true; publish(new DismissMusicResult()); };
         actions.Children.Add(close);
@@ -139,7 +139,7 @@ internal static class MusicResultCardVisualFactory
             Background = OverlayVisualResources.Frozen(palette.SecondaryContainer),
             Clip = new RectangleGeometry(new Rect(0, 0, 98, 98), 14, 14),
         };
-        cover.Children.Add(OverlayVisualResources.Icon(MusicOverlayVisualFactory.MusicIconGeometry, 30, palette.Primary));
+        cover.Children.Add(OverlayVisualResources.Icon(PluginIcons.MusicFilled, 30, palette.Primary));
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
         {
             var image = new Image { Stretch = Stretch.UniformToFill, Opacity = 0 };

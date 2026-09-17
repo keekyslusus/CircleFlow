@@ -39,7 +39,7 @@ public sealed class OcrTranslationPreviewTests
             visual.TextSelection.ActionCard.Visibility = Visibility.Collapsed;
             visual.TextSelection.HighlightLayer.Children.Clear();
             var consent = StateCardVisualFactory.Create(new StateCardOptions(
-                TextTranslationVisualFactory.TranslateIconGeometry,
+                PluginIcons.TranslateFilled,
                 TestUiStrings.English.TranslationConsentMessage,
                 TestUiStrings.English.TranslationConsentTitle,
                 TestUiStrings.English.ConsentCancel,

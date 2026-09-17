@@ -174,7 +174,7 @@ internal sealed class TraceOverlayVisual : IDisposable
             content.Children.Add(openButton);
             var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 6, 0) };
             var copy = OverlayVisualResources.IconButton(
-                MusicOverlayVisualPresenter.CopyIconGeometry,
+                PluginIcons.CopyFilled,
                 _strings.TraceCopy,
                 palette.MutedText,
                 palette.SecondaryContainer,
@@ -189,7 +189,7 @@ internal sealed class TraceOverlayVisual : IDisposable
                 {
                     copy.ToolTip = _strings.Copied;
                     AutomationProperties.SetName(copy, _strings.Copied);
-                    copy.Content = OverlayVisualResources.Icon(MusicOverlayVisualPresenter.CheckIconGeometry, 12, palette.Primary);
+                    copy.Content = OverlayVisualResources.Icon(PluginIcons.CheckFilled, 12, palette.Primary);
                 }
                 else
                 {
@@ -200,7 +200,7 @@ internal sealed class TraceOverlayVisual : IDisposable
             };
             actions.Children.Add(copy);
             var close = OverlayVisualResources.IconButton(
-                OverlayVisualResources.CloseIconGeometry,
+                PluginIcons.CloseFilled,
                 _strings.Close,
                 palette.MutedText,
                 palette.SecondaryContainer,

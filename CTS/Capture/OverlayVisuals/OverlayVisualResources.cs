@@ -22,21 +22,12 @@ internal static class OverlayVisualResources
 
     internal static readonly FontFamily Font = new("Segoe UI Variable Text");
     internal static readonly TimeSpan EntranceDuration = TimeSpan.FromMilliseconds(200);
-    internal static readonly Geometry CloseIconGeometry = FrozenGeometry(
-        "M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12Z");
 
     internal static SolidColorBrush Frozen(Color color)
     {
         var brush = new SolidColorBrush(color);
         brush.Freeze();
         return brush;
-    }
-
-    internal static Geometry FrozenGeometry(string data)
-    {
-        var geometry = Geometry.Parse(data);
-        geometry.Freeze();
-        return geometry;
     }
 
     internal static DoubleAnimation Animate(double from, double to, TimeSpan duration) =>

@@ -11,15 +11,6 @@ using CircleToSearch.Ui;
 
 internal static class MusicOverlayVisualPresenter
 {
-    internal static readonly Geometry CopyIconGeometry = OverlayVisualResources.FrozenGeometry(
-        "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1Zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2Zm0 16H8V7h10v14Z");
-    internal static readonly Geometry CheckIconGeometry = OverlayVisualResources.FrozenGeometry(
-        "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41Z");
-    private static readonly Geometry NoSoundIconGeometry = OverlayVisualResources.FrozenGeometry(
-        "M611-323l-43-43 114-113-114-113 43-43 113 114 113-114 43 43-114 113 114 113-43 43-113-114-113 114ZM120-360v-240h160l200-200v640L280-360H120Zm300-288L307-540H180v120h127l113 109v-337ZM311-481Z");
-    private static readonly Geometry MusicOffIconGeometry = OverlayVisualResources.FrozenGeometry(
-        "M806-56 57-805l43-43L849-99l-43 43ZM546-487l-60-60v-293h234v135H546v218ZM396-120q-63 0-106.5-43.5T246-270q0-63 43.5-106.5T396-420q28 0 50.5 8t39.5 22v-72l60 60v132q0 63-43.5 106.5T396-120Z");
-
     internal static void SetListeningState(MusicOverlayVisual visual, bool listening, bool lightTheme)
         => SetListeningState(
             visual,
@@ -265,7 +256,7 @@ internal static class MusicOverlayVisualPresenter
     {
         var palette = PluginPalette.For(lightTheme).MusicOverlay;
         button.Content = OverlayVisualResources.Icon(
-            confirmed ? CheckIconGeometry : CopyIconGeometry,
+            confirmed ? PluginIcons.CheckFilled : PluginIcons.CopyFilled,
             12,
             confirmed ? palette.Primary : palette.MutedText);
         var name = confirmed ? strings.Copied : strings.CopyTrackInfo;
@@ -280,12 +271,12 @@ internal static class MusicOverlayVisualPresenter
     {
         var (message, icon, actionLabel) = status switch
         {
-            MusicRecognitionStatus.NoMatch => (strings.MusicNoMatch, MusicOffIconGeometry, strings.TryAgain),
-            MusicRecognitionStatus.NoAudio => (strings.MusicNoAudio, NoSoundIconGeometry, strings.Retry),
-            MusicRecognitionStatus.RateLimited => (strings.MusicRateLimited, NoSoundIconGeometry, null),
-            MusicRecognitionStatus.DeviceError => (strings.MusicDeviceError, NoSoundIconGeometry, strings.Retry),
-            MusicRecognitionStatus.ServiceError => (strings.MusicNetworkError, NoSoundIconGeometry, strings.Retry),
-            _ => (strings.MusicNetworkError, NoSoundIconGeometry, strings.Retry),
+            MusicRecognitionStatus.NoMatch => (strings.MusicNoMatch, PluginIcons.MusicOffFilled, strings.TryAgain),
+            MusicRecognitionStatus.NoAudio => (strings.MusicNoAudio, PluginIcons.NoSoundFilled, strings.Retry),
+            MusicRecognitionStatus.RateLimited => (strings.MusicRateLimited, PluginIcons.NoSoundFilled, null),
+            MusicRecognitionStatus.DeviceError => (strings.MusicDeviceError, PluginIcons.NoSoundFilled, strings.Retry),
+            MusicRecognitionStatus.ServiceError => (strings.MusicNetworkError, PluginIcons.NoSoundFilled, strings.Retry),
+            _ => (strings.MusicNetworkError, PluginIcons.NoSoundFilled, strings.Retry),
         };
         var action = actionLabel is null
             ? null
@@ -298,5 +289,4 @@ internal static class MusicOverlayVisualPresenter
             () => publish(new DismissMusicResult()),
             action);
     }
-
 }
