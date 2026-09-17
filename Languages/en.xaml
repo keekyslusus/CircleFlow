@@ -105,6 +105,7 @@
     <system:String x:Key="plugin_circletosearch_search_browser_loading">Searching with {0}…</system:String>
     <system:String x:Key="plugin_circletosearch_search_browser_show_failed">{0} results could not be shown in the embedded browser.</system:String>
     <system:String x:Key="plugin_circletosearch_text_copy">Copy</system:String>
+    <system:String x:Key="plugin_circletosearch_image_save">Save</system:String>
     <system:String x:Key="plugin_circletosearch_text_search">Search</system:String>
     <system:String x:Key="plugin_circletosearch_text_search_too_long">The selected text is too long to search in a browser.</system:String>
     <system:String x:Key="plugin_circletosearch_text_search_open_failed">The text search could not be opened in the default browser.</system:String>

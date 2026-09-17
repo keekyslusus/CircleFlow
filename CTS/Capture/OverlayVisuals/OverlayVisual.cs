@@ -10,6 +10,7 @@ public sealed record OverlayVisual(
     Grid Root,
     SelectionOverlayVisual Selection,
     TextSelectionVisual TextSelection,
+    ImageActionCardVisual ImageActions,
     ActionTrayVisual Actions,
     TranslationActionVisual TranslationAction,
     TranslationOverlayVisual TranslationOverlay,
@@ -42,6 +43,13 @@ public sealed record TextSelectionVisual(
     Canvas ActionLayer,
     Border ActionCard,
     Button CopyButton,
+    Button SearchButton);
+
+public sealed record ImageActionCardVisual(
+    Canvas ActionLayer,
+    Border ActionCard,
+    Button CopyButton,
+    Button SaveButton,
     Button SearchButton);
 
 public sealed record TranslationActionVisual(

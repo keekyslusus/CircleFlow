@@ -38,6 +38,36 @@ internal static class TextTranslationVisualFactory
             search);
     }
 
+    internal static ImageActionCardVisual CreateImageActionCard(bool lightTheme, UiStrings strings)
+    {
+        var palette = PluginPalette.For(lightTheme).TextInteraction;
+        var copy = CreateCardButton(strings.TextCopy, palette);
+        var save = CreateCardButton(strings.ImageSave, palette);
+        var search = CreateCardButton(strings.TextSearch, palette);
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(copy);
+        row.Children.Add(save);
+        row.Children.Add(search);
+        var card = new Border
+        {
+            Child = row,
+            Background = OverlayVisualResources.Frozen(palette.CardSurface),
+            BorderBrush = OverlayVisualResources.Frozen(palette.CardBorder),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(4),
+            Visibility = Visibility.Collapsed,
+        };
+        var actionLayer = new Canvas { Background = null, IsHitTestVisible = true };
+        actionLayer.Children.Add(card);
+        return new ImageActionCardVisual(
+            actionLayer,
+            card,
+            copy,
+            save,
+            search);
+    }
+
     internal static TranslationActionVisual CreateTranslationAction(bool lightTheme, UiStrings strings)
     {
         var palette = PluginPalette.For(lightTheme).Translation;

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -150,7 +150,8 @@ public sealed class OverlayWindow : Window
                 HandleMusicResultCommand,
                 ApplyModeTransition,
                 ocrLanguageTag,
-                translationTargetLanguageTag));
+                translationTargetLanguageTag,
+                () => CancelInternal(publish: true)));
         }
         catch
         {
@@ -227,12 +228,15 @@ public sealed class OverlayWindow : Window
         return IsWithin(originalSource as DependencyObject, _visual.Bottom.Root) ||
                IsWithin(originalSource as DependencyObject, _visual.Debug.Panel) ||
                IsWithin(originalSource as DependencyObject, _visual.TextSelection.ActionCard) ||
+               IsWithin(originalSource as DependencyObject, _visual.ImageActions.ActionCard) ||
                IsWithin(hit, _visual.Bottom.Root) ||
                IsWithin(hit, _visual.Debug.Panel) ||
                IsWithin(hit, _visual.TextSelection.ActionCard) ||
+               IsWithin(hit, _visual.ImageActions.ActionCard) ||
                _visual.Bottom.Root.IsMouseOver ||
                _visual.Debug.Panel.IsMouseOver ||
-               _visual.TextSelection.ActionCard.IsMouseOver;
+               _visual.TextSelection.ActionCard.IsMouseOver ||
+               _visual.ImageActions.ActionCard.IsMouseOver;
     }
 
     internal void ShowListening()
@@ -317,6 +321,34 @@ public sealed class OverlayWindow : Window
             e.Handled = true;
             return;
         }
+        if (_selection.IsActionMenuOpen)
+        {
+            if (e.Key == Key.C && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            {
+                _selection.TriggerCopy();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.S && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            {
+                _selection.TriggerSave();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Enter)
+            {
+                _selection.TriggerSearch();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Escape)
+            {
+                _selection.DismissActionMenu();
+                Cursor = Cursors.Cross;
+                e.Handled = true;
+                return;
+            }
+        }
         if (e.Key != Key.Escape) return;
         if (_debug.IsOpen)
         {
@@ -394,6 +426,12 @@ public sealed class OverlayWindow : Window
 
     private void OnMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_selection.IsActionMenuOpen)
+        {
+            _selection.DismissActionMenu();
+            e.Handled = true;
+            return;
+        }
         CancelInternal();
         e.Handled = true;
     }
@@ -474,6 +512,7 @@ public sealed class OverlayWindow : Window
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Selecting:
+                _selection.DismissActionMenu();
                 _trace.DismissResult();
                 _music.DismissResult();
                 _translation.DismissStateCard();
@@ -494,6 +533,7 @@ public sealed class OverlayWindow : Window
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Closing:
+                _selection.DismissActionMenu();
                 _pointer.Cancel();
                 _textSelection.Dismiss();
                 _translation.CancelForClosing();
@@ -508,6 +548,7 @@ public sealed class OverlayWindow : Window
 
     private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (IsWithin(e.OriginalSource as DependencyObject, _visual.ImageActions.ActionCard)) return;
         if (!_textSelection.HasSelection) return;
         if (IsWithin(e.OriginalSource as DependencyObject, _visual.TextSelection.ActionCard)) return;
         _textSelection.Dismiss();

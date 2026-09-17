@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
@@ -93,7 +93,8 @@ internal sealed record OverlayControllerContext(
     Action<IOverlayCommand> MusicResultCommandRequested,
     Action<OverlayInteractionMode> TransitionMode,
     string? OcrLanguageTag = null,
-    string TranslationTargetLanguageTag = "en");
+    string TranslationTargetLanguageTag = "en",
+    Action? RequestCancel = null);
 
 internal sealed class OverlayControllerFactory : IOverlayControllerFactory
 {
@@ -186,6 +187,10 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 context.SelectionCompleted,
                 context.SelectionRejected,
                 context.SelectionHoldCompleted,
+                context.Visual.ImageActions,
+                context.CreateSelectionCopy,
+                clipboardCopy,
+                context.RequestCancel,
                 _pointerPosition,
                 subscribeInput: false);
             textSelection = new TextSelectionOverlayController(
@@ -206,7 +211,8 @@ internal sealed class OverlayControllerFactory : IOverlayControllerFactory
                 textSelection,
                 () => context.CanAcceptSelectionInput() || (translation?.IsImageShown == true && context.GetMode() == OverlayInteractionMode.TranslationShown),
                 context.CanStartSelection,
-                _pointerPosition);
+                _pointerPosition,
+                onRightClickCancel: context.RequestCancel);
             translation = new ScreenTranslationOverlayController(
                 context.Visual.TranslationAction,
                 context.Visual.TranslationOverlay,

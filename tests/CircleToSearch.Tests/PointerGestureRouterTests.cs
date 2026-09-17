@@ -1,3 +1,4 @@
+using System.Windows.Media.Imaging;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -160,6 +161,139 @@ public sealed class PointerGestureRouterTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Right_click_without_drag_triggers_cancel()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var harness = new RouterHarness(new Point(15, 15));
+            using (harness)
+            {
+                Raise(harness.Input, UIElement.MouseRightButtonDownEvent, MouseButton.Right);
+                Raise(harness.Input, UIElement.MouseRightButtonUpEvent, MouseButton.Right);
+
+                Assert.Equal(1, harness.RightClickCancelCount);
+                Assert.Equal(0, harness.LassoStarts);
+            }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Right_click_drag_triggers_action_menu_lasso()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var harness = new RouterHarness(new Point(10, 10));
+            using (harness)
+            {
+                Raise(harness.Input, UIElement.MouseRightButtonDownEvent, MouseButton.Right);
+                harness.Pointer = new Point(50, 30);
+                Raise(harness.Input, UIElement.MouseMoveEvent);
+                Assert.Equal(ActivePointerGesture.Lasso, harness.Router.ActiveGesture);
+                Assert.Equal(1, harness.LassoStarts);
+
+                Raise(harness.Input, UIElement.MouseRightButtonUpEvent, MouseButton.Right);
+                Assert.Equal(0, harness.RightClickCancelCount);
+                Assert.True(harness.Lasso.IsActionMenuOpen);
+            }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Ctrl_drag_triggers_action_menu_lasso()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var harness = new RouterHarness(new Point(10, 10), modifiers: () => ModifierKeys.Control);
+            using (harness)
+            {
+                Raise(harness.Input, UIElement.MouseLeftButtonDownEvent, MouseButton.Left);
+                Assert.Equal(ActivePointerGesture.Lasso, harness.Router.ActiveGesture);
+                harness.Pointer = new Point(50, 30);
+                Raise(harness.Input, UIElement.MouseMoveEvent);
+                Raise(harness.Input, UIElement.MouseLeftButtonUpEvent, MouseButton.Left);
+
+                Assert.True(harness.Lasso.IsActionMenuOpen);
+            }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void DismissActionMenu_hides_action_card()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var harness = new RouterHarness(new Point(10, 10));
+            using (harness)
+            {
+                Raise(harness.Input, UIElement.MouseRightButtonDownEvent, MouseButton.Right);
+                harness.Pointer = new Point(50, 30);
+                Raise(harness.Input, UIElement.MouseMoveEvent);
+                Raise(harness.Input, UIElement.MouseRightButtonUpEvent, MouseButton.Right);
+
+                Assert.True(harness.Lasso.IsActionMenuOpen);
+                Assert.Equal(Visibility.Visible, harness.Visual.ImageActions.ActionCard.Visibility);
+
+                harness.Lasso.DismissActionMenu();
+                Assert.False(harness.Lasso.IsActionMenuOpen);
+                Assert.Equal(Visibility.Collapsed, harness.Visual.ImageActions.ActionCard.Visibility);
+            }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Image_action_menu_copy_button_copies_image_and_cancels_overlay()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var harness = new RouterHarness(new Point(10, 10));
+            using (harness)
+            {
+                Raise(harness.Input, UIElement.MouseRightButtonDownEvent, MouseButton.Right);
+                harness.Pointer = new Point(50, 30);
+                Raise(harness.Input, UIElement.MouseMoveEvent);
+                Raise(harness.Input, UIElement.MouseRightButtonUpEvent, MouseButton.Right);
+
+                Assert.True(harness.Lasso.IsActionMenuOpen);
+                harness.Visual.ImageActions.CopyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                Assert.False(harness.Lasso.IsActionMenuOpen);
+                Assert.NotNull(harness.CopiedImage);
+                Assert.Equal(1, harness.CancelCount);
+                var toast = Assert.Single(harness.Notifications);
+                Assert.Equal(TestUiStrings.English.Copied, toast.Message);
+            }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Image_action_menu_search_button_triggers_search_selection()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var harness = new RouterHarness(new Point(10, 10));
+            using (harness)
+            {
+                Raise(harness.Input, UIElement.MouseRightButtonDownEvent, MouseButton.Right);
+                harness.Pointer = new Point(50, 30);
+                Raise(harness.Input, UIElement.MouseMoveEvent);
+                Raise(harness.Input, UIElement.MouseRightButtonUpEvent, MouseButton.Right);
+
+                Assert.True(harness.Lasso.IsActionMenuOpen);
+                harness.Visual.ImageActions.SearchButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                Assert.False(harness.Lasso.IsActionMenuOpen);
+                Assert.NotNull(harness.LastCompletedSelection);
+            }
+        });
+        Assert.Null(failure);
+    }
+
     private static OcrDocument Document()
     {
         var one = new OcrWord(0, 0, 0, "one", new GdiRectangle(10, 10, 20, 10));
@@ -174,10 +308,10 @@ public sealed class PointerGestureRouterTests
         Raise(input, UIElement.MouseLeftButtonUpEvent);
     }
 
-    private static void Raise(FrameworkElement input, RoutedEvent routedEvent) => input.RaiseEvent(
+    private static void Raise(FrameworkElement input, RoutedEvent routedEvent, MouseButton button = MouseButton.Left) => input.RaiseEvent(
         routedEvent == UIElement.MouseMoveEvent
             ? new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount) { RoutedEvent = routedEvent, Source = input }
-            : new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+            : new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, button)
             {
                 RoutedEvent = routedEvent,
                 Source = input,
@@ -211,9 +345,13 @@ public sealed class PointerGestureRouterTests
                 () => true,
                 (_, _) => true,
                 () => LassoStarts++,
-                _ => { },
+                rect => LastCompletedSelection = rect,
                 () => LassoRejections++,
                 () => { },
+                imageActions: Visual.ImageActions,
+                createSelectionCopy: rect => new SelectionOutcome(rect, new System.Drawing.Bitmap(100, 40)),
+                clipboardCopy: new ClipboardCopyService(clipboard ?? (_ => { }), Notifications.Add, TestUiStrings.English, img => CopiedImage = img),
+                requestCancel: () => CancelCount++,
                 subscribeInput: false);
             Text = new TextSelectionOverlayController(
                 Visual.TextSelection,
@@ -234,14 +372,20 @@ public sealed class PointerGestureRouterTests
                 () => true,
                 canStart ?? ((_, _) => true),
                 _ => Pointer,
-                modifiers);
+                modifiers,
+                onRightClickCancel: () => RightClickCancelCount++);
         }
 
         internal OverlayVisual Visual { get; }
         internal FrameworkElement Input => Visual.Selection.InputSurface;
+        internal SelectionOverlayController Lasso => _lasso;
+        internal GdiRectangle? LastCompletedSelection { get; private set; }
+        internal BitmapSource? CopiedImage { get; private set; }
         internal TextSelectionOverlayController Text { get; }
         internal PointerGestureRouter Router { get; }
         internal int LassoStarts { get; private set; }
+        internal int RightClickCancelCount { get; private set; }
+        internal int CancelCount { get; private set; }
         internal int LassoRejections { get; private set; }
         internal Point Pointer { get; set; }
         internal List<IOverlayCommand> Commands { get; } = [];

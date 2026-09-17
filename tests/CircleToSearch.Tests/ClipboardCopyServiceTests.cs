@@ -1,3 +1,4 @@
+using System.Windows.Media.Imaging;
 using CircleToSearch.Capture;
 using Xunit;
 
@@ -106,4 +107,45 @@ public sealed class ClipboardCopyServiceTests
         Assert.Equal(TestUiStrings.English.CopyFailed, toast.Message);
         Assert.Equal(ToastTone.Error, toast.Tone);
     }
+
+    [Fact]
+    public void TryCopyImage_success_copies_image_and_shows_success_toast()
+    {
+        BitmapSource? copiedImage = null;
+        var notifications = new List<ToastNotification>();
+        var service = new ClipboardCopyService(
+            _ => { },
+            notifications.Add,
+            TestUiStrings.English,
+            img => copiedImage = img);
+
+        var dummyImage = BitmapSource.Create(1, 1, 96, 96, System.Windows.Media.PixelFormats.Bgr32, null, new byte[4], 4);
+        var result = service.TryCopyImage(dummyImage);
+
+        Assert.True(result);
+        Assert.Same(dummyImage, copiedImage);
+        var toast = Assert.Single(notifications);
+        Assert.Equal(TestUiStrings.English.Copied, toast.Message);
+        Assert.Equal(ToastTone.Success, toast.Tone);
+    }
+
+    [Fact]
+    public void TryCopyImage_exception_returns_false_and_shows_error_toast()
+    {
+        var notifications = new List<ToastNotification>();
+        var service = new ClipboardCopyService(
+            _ => { },
+            notifications.Add,
+            TestUiStrings.English,
+            _ => throw new InvalidOperationException());
+
+        var dummyImage = BitmapSource.Create(1, 1, 96, 96, System.Windows.Media.PixelFormats.Bgr32, null, new byte[4], 4);
+        var result = service.TryCopyImage(dummyImage);
+
+        Assert.False(result);
+        var toast = Assert.Single(notifications);
+        Assert.Equal(TestUiStrings.English.CopyFailed, toast.Message);
+        Assert.Equal(ToastTone.Error, toast.Tone);
+    }
 }
+

@@ -1,4 +1,4 @@
-namespace CircleToSearch.Capture;
+﻿namespace CircleToSearch.Capture;
 
 using System.Windows;
 using System.Windows.Controls;
@@ -36,6 +36,7 @@ public static class OverlayVisualFactory
         var palette = PluginPalette.For(lightTheme);
         var selection = SelectionOverlayVisualFactory.Create(frame, size);
         var textSelection = TextTranslationVisualFactory.CreateTextSelection(lightTheme, strings);
+        var imageActions = TextTranslationVisualFactory.CreateImageActionCard(lightTheme, strings);
         var translationAction = TextTranslationVisualFactory.CreateTranslationAction(lightTheme, strings);
         var translationOverlay = TextTranslationVisualFactory.CreateTranslationOverlay();
         var provider = ProviderMenuVisualFactory.Create(providers, selectedProviderId, lightTheme, strings);
@@ -66,6 +67,7 @@ public static class OverlayVisualFactory
         root.Children.Add(effects.SceneRippleLayer);
         root.Children.Add(music.ListeningLayer);
         root.Children.Add(textSelection.ActionLayer);
+        root.Children.Add(imageActions.ActionLayer);
         root.Children.Add(bottom.Root);
         root.Children.Add(debug.Panel);
 
@@ -74,6 +76,7 @@ public static class OverlayVisualFactory
             root,
             selection,
             textSelection,
+            imageActions,
             actions,
             translationAction,
             translationOverlay,

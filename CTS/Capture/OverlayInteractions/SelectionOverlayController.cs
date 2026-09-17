@@ -1,8 +1,11 @@
-using System.Windows;
+﻿using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using CircleToSearch.Interop;
 using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Capture.OverlayInteractions;
@@ -24,16 +27,24 @@ internal sealed class SelectionOverlayController : IDisposable
     private readonly Action<GdiRectangle> _selectionCompleted;
     private readonly Action _selectionRejected;
     private readonly Action _holdCompleted;
+    private readonly ImageActionCardVisual? _imageActions;
+    private readonly Func<GdiRectangle, SelectionOutcome>? _createSelectionCopy;
+    private readonly ClipboardCopyService? _clipboardCopy;
+    private readonly Action? _requestCancel;
     private readonly LassoPathSampler _sampler;
     private readonly List<Point> _stroke = [];
     private DispatcherTimer? _holdTimer;
     private bool _drawing;
+    private bool _isActionMenu;
+    private GdiRectangle? _actionBounds;
     private bool _revealUpdateQueued;
     private bool _disposed;
 
     internal bool HasPendingRevealUpdate => _revealUpdateQueued;
 
     internal bool HasPendingHold => _holdTimer is not null;
+
+    internal bool IsActionMenuOpen => _imageActions?.ActionCard.Visibility == Visibility.Visible;
 
     internal SelectionOverlayController(
         SelectionOverlayVisual visual,
@@ -49,6 +60,10 @@ internal sealed class SelectionOverlayController : IDisposable
         Action<GdiRectangle> selectionCompleted,
         Action selectionRejected,
         Action holdCompleted,
+        ImageActionCardVisual? imageActions = null,
+        Func<GdiRectangle, SelectionOutcome>? createSelectionCopy = null,
+        ClipboardCopyService? clipboardCopy = null,
+        Action? requestCancel = null,
         Func<MouseEventArgs, Point>? pointerPosition = null,
         bool subscribeInput = true)
     {
@@ -64,7 +79,18 @@ internal sealed class SelectionOverlayController : IDisposable
         _selectionCompleted = selectionCompleted;
         _selectionRejected = selectionRejected;
         _holdCompleted = holdCompleted;
+        _imageActions = imageActions;
+        _createSelectionCopy = createSelectionCopy;
+        _clipboardCopy = clipboardCopy;
+        _requestCancel = requestCancel;
         _sampler = new LassoPathSampler(SampleDistanceDips * scale);
+
+        if (_imageActions is not null)
+        {
+            _imageActions.CopyButton.Click += OnActionCopy;
+            _imageActions.SaveButton.Click += OnActionSave;
+            _imageActions.SearchButton.Click += OnActionSearch;
+        }
 
         if (subscribeInput)
         {
@@ -74,9 +100,11 @@ internal sealed class SelectionOverlayController : IDisposable
         }
     }
 
-    internal bool Begin(Point point, object? originalSource = null)
+    internal bool Begin(Point point, object? originalSource = null, bool isActionMenu = false)
     {
         if (_disposed || !_canAcceptInput() || !_canStartSelection(originalSource, point)) return false;
+        DismissActionMenu();
+        _isActionMenu = isActionMenu;
         _drawing = true;
         _selectionStarted();
         _sampler.Reset();
@@ -173,6 +201,91 @@ internal sealed class SelectionOverlayController : IDisposable
         _holdTimer.Start();
     }
 
+    internal void DismissActionMenu()
+    {
+        if (_imageActions is not null)
+            _imageActions.ActionCard.Visibility = Visibility.Collapsed;
+        _actionBounds = null;
+        ResetSelectionGesture();
+    }
+
+    internal void ShowActionMenu(GdiRectangle bounds)
+    {
+        _actionBounds = bounds;
+        UnqueueRevealUpdate();
+        var size = new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight);
+        var rect = _coordinateMapper.ToDips(bounds);
+        Point[] corners =
+        [
+            new(rect.Left, rect.Top),
+            new(rect.Right, rect.Top),
+            new(rect.Right, rect.Bottom),
+            new(rect.Left, rect.Bottom),
+        ];
+        SelectionOverlayTransitions.BeginSelectionReveal(
+            _visual,
+            SelectionOverlayTransitions.BuildRevealGeometry(size, corners),
+            SelectionOverlayTransitions.BuildSelectionFrameGeometry(rect));
+
+        if (_imageActions is null) return;
+        _imageActions.ActionCard.Visibility = Visibility.Visible;
+        _imageActions.ActionCard.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var desired = _imageActions.ActionCard.DesiredSize;
+        var placement = TextActionCardLayout.Place(rect, desired, size);
+        Canvas.SetLeft(_imageActions.ActionCard, placement.X);
+        Canvas.SetTop(_imageActions.ActionCard, placement.Y);
+    }
+
+    internal void TriggerCopy()
+    {
+        if (_actionBounds is null || _createSelectionCopy is null || _clipboardCopy is null) return;
+        using var outcome = _createSelectionCopy(_actionBounds.Value);
+        var source = CreateFrozenFrame(outcome.FrozenFrame, outcome.Bounds);
+        DismissActionMenu();
+        if (_clipboardCopy.TryCopyImage(source))
+        {
+            _requestCancel?.Invoke();
+        }
+    }
+
+    internal void TriggerSave()
+    {
+        if (_actionBounds is null || _createSelectionCopy is null) return;
+        using var outcome = _createSelectionCopy(_actionBounds.Value);
+        var frame = outcome.FrozenFrame;
+        var cropRect = GdiRectangle.Intersect(outcome.Bounds, new GdiRectangle(0, 0, frame.Width, frame.Height));
+        using var cropped = frame.Clone(cropRect, frame.PixelFormat);
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "PNG Image (*.png)|*.png|JPEG Image (*.jpg)|*.jpg|Bitmap Image (*.bmp)|*.bmp",
+            DefaultExt = ".png",
+            FileName = $"CircleFlow_{DateTime.Now:yyyyMMdd_HHmmss}.png",
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            var ext = System.IO.Path.GetExtension(dialog.FileName).ToLowerInvariant();
+            var format = ext switch
+            {
+                ".jpg" or ".jpeg" => System.Drawing.Imaging.ImageFormat.Jpeg,
+                ".bmp" => System.Drawing.Imaging.ImageFormat.Bmp,
+                _ => System.Drawing.Imaging.ImageFormat.Png,
+            };
+            cropped.Save(dialog.FileName, format);
+            DismissActionMenu();
+            _requestCancel?.Invoke();
+        }
+    }
+
+    internal void TriggerSearch()
+    {
+        if (_actionBounds is null) return;
+        var bounds = _actionBounds.Value;
+        if (_imageActions is not null)
+            _imageActions.ActionCard.Visibility = Visibility.Collapsed;
+        _selectionCompleted(bounds);
+        if (!_disposed) ShowSelectionFrame(bounds);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -180,8 +293,33 @@ internal sealed class SelectionOverlayController : IDisposable
         _visual.InputSurface.MouseLeftButtonDown -= OnMouseLeftButtonDown;
         _visual.InputSurface.MouseMove -= OnMouseMove;
         _visual.InputSurface.MouseLeftButtonUp -= OnMouseLeftButtonUp;
+        if (_imageActions is not null)
+        {
+            _imageActions.CopyButton.Click -= OnActionCopy;
+            _imageActions.SaveButton.Click -= OnActionSave;
+            _imageActions.SearchButton.Click -= OnActionSearch;
+            _imageActions.ActionCard.Visibility = Visibility.Collapsed;
+        }
         StopInput();
         StopHoldTimer();
+    }
+
+    private void OnActionCopy(object sender, RoutedEventArgs e)
+    {
+        TriggerCopy();
+        e.Handled = true;
+    }
+
+    private void OnActionSave(object sender, RoutedEventArgs e)
+    {
+        TriggerSave();
+        e.Handled = true;
+    }
+
+    private void OnActionSearch(object sender, RoutedEventArgs e)
+    {
+        TriggerSearch();
+        e.Handled = true;
     }
 
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -223,8 +361,15 @@ internal sealed class SelectionOverlayController : IDisposable
             _selectionRejected();
             return;
         }
-        _selectionCompleted(bounds.Value);
-        if (!_disposed) ShowSelectionFrame(bounds.Value);
+        if (_isActionMenu && _imageActions is not null)
+        {
+            ShowActionMenu(bounds.Value);
+        }
+        else
+        {
+            _selectionCompleted(bounds.Value);
+            if (!_disposed) ShowSelectionFrame(bounds.Value);
+        }
     }
 
     private void Track(Point dip, bool final = false)
@@ -305,6 +450,27 @@ internal sealed class SelectionOverlayController : IDisposable
         {
             layer.BeginAnimation(UIElement.OpacityProperty, null);
             layer.Opacity = 0;
+        }
+    }
+
+    private static BitmapSource CreateFrozenFrame(System.Drawing.Bitmap frame, GdiRectangle bounds)
+    {
+        var cropRect = GdiRectangle.Intersect(bounds, new GdiRectangle(0, 0, frame.Width, frame.Height));
+        using var cropped = frame.Clone(cropRect, frame.PixelFormat);
+        var hbmp = cropped.GetHbitmap();
+        try
+        {
+            var source = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
+                hbmp,
+                IntPtr.Zero,
+                Int32Rect.Empty,
+                BitmapSizeOptions.FromEmptyOptions());
+            source.Freeze();
+            return source;
+        }
+        finally
+        {
+            NativeMethods.DeleteObject(hbmp);
         }
     }
 
