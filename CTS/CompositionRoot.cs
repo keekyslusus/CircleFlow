@@ -174,8 +174,9 @@ public static class CompositionRoot
             log,
             searchBrowserDispatcher,
             () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true)));
-        var traceHttpClient = rollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
-        var providerRouter = rollback.Own(new VisualSearchProviderRouter(
+        var visualSearchRollback = rollback.Own(new ResourceRollbackScope(log));
+        var traceHttpClient = visualSearchRollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
+        var providerRouter = visualSearchRollback.Own(new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(
                     new SearchProviderDescriptor(SearchProviderIds.GoogleLens, strings.GoogleLensProviderName),
@@ -190,6 +191,8 @@ public static class CompositionRoot
             ],
             SearchProviderIds.GoogleLens,
             log));
+        var visualSearchLifetime = visualSearchRollback.TransferAllTo(
+            new VisualSearchLifetime(providerRouter.StopAsync, traceHttpClient, log));
         var visualSearchPresenter = new VisualSearchResultPresenter(
             searchBrowserHost,
             OpenResultsUrl,
@@ -204,13 +207,16 @@ public static class CompositionRoot
             strings,
             log);
         var musicClock = new SystemMusicRecognitionClock();
-        var musicThrottle = rollback.Own(new ShazamRequestThrottle(musicClock));
-        var musicHttpClient = rollback.Own(new HttpClient
+        var musicRollback = rollback.Own(new ResourceRollbackScope(log));
+        var musicThrottle = musicRollback.Own(new ShazamRequestThrottle(musicClock));
+        var musicHttpClient = musicRollback.Own(new HttpClient
         {
             Timeout = Timeout.InfiniteTimeSpan,
             DefaultRequestVersion = HttpVersion.Version11,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact,
         });
+        var musicLifetime = musicRollback.TransferAllTo(
+            new MusicRecognitionLifetime(musicThrottle, musicHttpClient, log));
         var shazamClient = new ShazamClient(
             musicHttpClient,
             new PixelUserAgentProvider(),
@@ -236,7 +242,8 @@ public static class CompositionRoot
             strings,
             log);
         var ocrLanguages = new OcrLanguageCatalog();
-        var translationHttpClient = rollback.Own(new HttpClient(new SocketsHttpHandler
+        var translationRollback = rollback.Own(new ResourceRollbackScope(log));
+        var translationHttpClient = translationRollback.Own(new HttpClient(new SocketsHttpHandler
         { UseCookies = false, AutomaticDecompression = DecompressionMethods.All })
         {
             Timeout = Timeout.InfiniteTimeSpan,
@@ -244,15 +251,18 @@ public static class CompositionRoot
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
         });
         var translationMemory = TranslationMemoryProfilingEnabled ? new TranslationMemoryProfiler(paths.LogsDirectory) : null;
-        if (translationMemory is not null) rollback.Own(translationMemory);
+        if (translationMemory is not null) translationRollback.Own(translationMemory);
         translationMemory?.Mark("runtime_ready");
         var translationDispatcher = new StaDispatcher("CircleToSearch image translation");
-        rollback.Own(translationDispatcher, translationDispatcher.StopAsync);
-        var imageTranslationSigner = rollback.Replace(translationDispatcher, new GoogleImageTranslationSigner(
+        translationRollback.Own(translationDispatcher, translationDispatcher.StopAsync);
+        var imageTranslationSigner = translationRollback.Replace(translationDispatcher, new GoogleImageTranslationSigner(
             translationHttpClient,
             translationDispatcher,
             () => environments.CreateAsync(paths.ImageTranslationProfileDirectory),
             translationMemory));
+        var translationLifetime = translationRollback.TransferAllTo(
+            new ScreenTranslationLifetime(imageTranslationSigner.StopAsync, translationHttpClient,
+                translationMemory, log));
         var screenTranslation = new ScreenTranslationWorkflow(
             new GoogleImageTranslationProvider(translationHttpClient, imageTranslationSigner, translationMemory),
             log);
@@ -303,13 +313,9 @@ public static class CompositionRoot
             coordinator.StopAsync,
             hotkeyWindow.StopAsync,
             searchBrowserHost.StopAsync,
-            imageTranslationSigner.StopAsync,
-            providerRouter.StopAsync,
-            musicHttpClient,
-            musicThrottle,
-            translationHttpClient,
-            traceHttpClient,
-            translationMemory,
+            musicLifetime.StopAsync,
+            translationLifetime.StopAsync,
+            visualSearchLifetime.StopAsync,
             log);
         var runtime = rollback.TransferAllTo(new AppRuntime(coordinator, lifetime, settings));
 
