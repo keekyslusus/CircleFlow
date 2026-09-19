@@ -4,12 +4,14 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
+using CircleToSearch.TextRecognition;
 using Xunit;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
@@ -19,46 +21,76 @@ namespace CircleToSearch.Tests;
 public sealed class OverlayControllerLifecycleTests
 {
     [Fact]
-    public void Partial_factory_failure_disposes_the_created_trace_controller()
+    public void Partial_composition_failure_removes_pointer_subscriptions()
     {
         var failure = RunOnSta(() =>
         {
             using var frame = new GdiBitmap(640, 400);
             var bounds = new GdiRectangle(0, 0, 640, 400);
-            TraceOverlayController? trace = null;
-            var factory = new OverlayControllerFactory(
-                createTraceController: (context, clipboardCopy) => trace = new TraceOverlayController(
-                    context.Visual.Root,
-                    context.Visual.Bottom,
-                    context.Visual.Effects,
-                    context.Strings,
-                    () => context.Visual.LightTheme,
-                    clipboardCopy,
-                    context.GetMode,
-                    context.TransitionMode,
-                    context.PublishCommand,
-                    context.CreateSelectionCopy),
-                createActionTrayController: _ => throw new InvalidOperationException("tray failed"),
-                setClipboard: _ => { },
-                animationsEnabled: () => false);
+            var source = BitmapSource.Create(
+                640, 400, 96, 96, PixelFormats.Bgra32, null, new byte[640 * 400 * 4], 640 * 4);
+            source.Freeze();
+            var visual = OverlayVisualFactory.CreateRoot(
+                source, new Size(640, 400), 0, false, TestUiStrings.English);
+            var invalidVisual = visual with { Actions = null! };
+            var context = new OverlayControllerContext(
+                Visual: invalidVisual,
+                CoordinateRoot: visual.Root,
+                Monitor: bounds,
+                Scale: 1,
+                Options: new OverlayOptions(8, 12),
+                Overscan: false,
+                Providers: [new(SearchProviderIds.TraceMoe, "trace.moe")],
+                SelectedProviderId: SearchProviderIds.TraceMoe,
+                Strings: TestUiStrings.English,
+                PublishCommand: _ => { },
+                CreateSelectionCopy: selection => new SelectionOutcome(selection, (GdiBitmap)frame.Clone()),
+                CanAcceptSelectionInput: () => true,
+                CanAcceptPointerInput: () => true,
+                CanStartSelection: (_, _) => true,
+                SelectionStarted: () => { },
+                SelectionCompleted: _ => { },
+                SelectionRejected: () => { },
+                SelectionHoldCompleted: () => { },
+                CanUseProvider: () => true,
+                ProviderSelected: _ => { },
+                GetMode: () => OverlayInteractionMode.Selecting,
+                MusicStartRequested: () => { },
+                MusicCancelRequested: () => { },
+                DebugScenarioSelected: _ => { },
+                MusicResultCommandRequested: _ => { },
+                TransitionMode: _ => { });
+            var dependencies = new CompositionRoot.OverlayControllerDependencies(
+                _ => { },
+                () => false,
+                _ => new Point(10, 10),
+                DisabledOcrRecognizer.Instance,
+                3,
+                () => true,
+                () => { },
+                null,
+                null,
+                null,
+                null,
+                () => false);
 
-            var exception = Assert.Throws<InvalidOperationException>(() => new OverlayWindow(
-                frame,
-                bounds,
-                bounds,
-                1,
-                new OverlayOptions(8, 12),
-                TestUiStrings.English,
-                factory,
-                overscan: false,
-                providers: [new(SearchProviderIds.TraceMoe, "trace.moe")],
-                initialProviderId: SearchProviderIds.TraceMoe,
-                publishCommand: _ => { }));
+            Assert.Throws<NullReferenceException>(() =>
+                CompositionRoot.CreateOverlayControllers(context, dependencies));
 
-            Assert.Equal("tray failed", exception.Message);
-            Assert.NotNull(trace);
-            Assert.False(trace.TryStart(SearchProviderIds.TraceMoe, new GdiRectangle(1, 1, 10, 10)));
+            var pointerEvent = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+                Source = visual.Selection.InputSurface,
+            };
+            visual.Selection.InputSurface.RaiseEvent(pointerEvent);
+            Assert.False(pointerEvent.Handled);
             Assert.Equal(640, frame.Width);
+
+            visual.TranslationAction.LoadingIndicator.Dispose();
+            visual.Music.LoadingIndicator.Dispose();
+            visual.Music.Waveform.Dispose();
+            visual.Bottom.LayoutTransitions.Dispose();
+            visual.Effects.SceneRipples.Dispose();
         });
 
         Assert.Null(failure);

@@ -136,6 +136,7 @@ public sealed class OverlayWindow : Window
                 _publishCommand,
                 CreateSelectionCopy,
                 () => _interaction.CanAcceptSelectionInput,
+                CanAcceptPointerInput,
                 CanStartSelection,
                 OnSelectionStarted,
                 OnSelectionCompleted,
@@ -350,8 +351,12 @@ public sealed class OverlayWindow : Window
             return false;
         }
         if (_textSelection.HasSelection && !actionInteraction) _textSelection.Dismiss();
-        return (_interaction.CanAcceptSelectionInput || (_translation.IsImageShown && Mode == OverlayInteractionMode.TranslationShown)) && !actionInteraction;
+        return CanAcceptPointerInput() && !actionInteraction;
     }
+
+    private bool CanAcceptPointerInput() =>
+        _interaction.CanAcceptSelectionInput ||
+        (_translation.IsImageShown && Mode == OverlayInteractionMode.TranslationShown);
 
     private void OnSelectionStarted()
     {

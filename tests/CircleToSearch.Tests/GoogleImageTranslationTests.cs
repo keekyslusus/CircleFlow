@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -128,8 +129,9 @@ public sealed class GoogleImageTranslationTests
             using var bitmap = new System.Drawing.Bitmap(320, 200);
             var commands = new List<IOverlayCommand>();
             var recognizer = new DeferredRecognizer();
+            var pointer = new Point(20, 20);
             var factory = TestOverlayControllers.CreateFactory(_ => { }, () => false,
-                ocrRecognizer: recognizer);
+                pointerPosition: _ => pointer, ocrRecognizer: recognizer);
             var service = TestSettings.Create(new CircleToSearch.Settings.AppSettings
             {
                 PaddingPx = 0, LassoMinDiagonalPx = 10, OcrLanguageTag = "en-US", TranslationTargetLanguageTag = "ru-RU",
@@ -141,6 +143,7 @@ public sealed class GoogleImageTranslationTests
             var bounds = new System.Drawing.Rectangle(0, 0, 320, 200);
             var window = new OverlayWindow(bitmap, bounds, bounds, 1, launch, commands.Add,
                 factory, allowsTransparency: false, overscan: false, clickThroughOnCancel: false);
+            Assert.Empty(recognizer.Languages);
             Assert.True(service.Apply(new CircleToSearch.Settings.SettingsEdits
                 { OcrLanguageTag = "ja-JP", TranslationTargetLanguageTag = "ja-JP" }).Success);
             try
@@ -161,6 +164,23 @@ public sealed class GoogleImageTranslationTests
                 Assert.Equal(Visibility.Visible, visual.Selection.Dim.Visibility);
                 Assert.Equal(TestUiStrings.English.SelectionPrompt, visual.Actions.Prompt.Text);
                 Assert.Equal("en-US", recognizer.Languages[1]);
+
+                visual.Selection.InputSurface.RaiseEvent(new MouseButtonEventArgs(
+                    Mouse.PrimaryDevice, 0, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+                    Source = visual.Selection.InputSurface,
+                });
+                pointer = new Point(200, 140);
+                visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                visual.Selection.InputSurface.RaiseEvent(new MouseButtonEventArgs(
+                    Mouse.PrimaryDevice, 0, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.MouseLeftButtonUpEvent,
+                    Source = visual.Selection.InputSurface,
+                });
+                Assert.Single(commands);
+                Assert.Equal("ru-RU", recognizer.Languages[2]);
             }
             finally { window.Close(); }
         });

@@ -22,30 +22,19 @@ internal static class TestOverlayControllers
         TranslationMemoryProfiler? memoryProfiler = null,
         Func<Uri, ITraceVideoPreview>? createTraceVideo = null,
         Func<bool>? traceTheme = null) =>
-        new(
-            (context, clipboardCopy) => new TraceOverlayController(
-                context.Visual.Root,
-                context.Visual.Bottom,
-                context.Visual.Effects,
-                context.Strings,
-                traceTheme ?? (() => context.Visual.LightTheme),
-                clipboardCopy,
-                context.GetMode,
-                context.TransitionMode,
-                context.PublishCommand,
-                context.CreateSelectionCopy,
-                createTraceVideo),
-            context => new ActionTrayOverlayController(
-                context.Visual.Actions,
-                context.Visual.Bottom.Root),
-            setClipboard ?? Clipboard.SetText,
-            animationsEnabled ?? OverlayVisualResources.AnimationsEnabled,
-            pointerPosition,
-            ocrRecognizer,
-            textHitToleranceDips,
-            translationConsentAccepted,
-            acceptTranslationConsent,
-            resetTranslationConsent,
-            log,
-            memoryProfiler);
+        new(context => CompositionRoot.CreateOverlayControllers(
+            context,
+            new CompositionRoot.OverlayControllerDependencies(
+                setClipboard ?? Clipboard.SetText,
+                animationsEnabled ?? OverlayVisualResources.AnimationsEnabled,
+                pointerPosition,
+                ocrRecognizer ?? DisabledOcrRecognizer.Instance,
+                textHitToleranceDips,
+                translationConsentAccepted ?? (() => true),
+                acceptTranslationConsent ?? (() => { }),
+                resetTranslationConsent,
+                log,
+                memoryProfiler,
+                createTraceVideo,
+                traceTheme ?? (() => context.Visual.LightTheme))));
 }

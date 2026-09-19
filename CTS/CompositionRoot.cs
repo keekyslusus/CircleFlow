@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.Interop;
@@ -25,6 +27,20 @@ public static class CompositionRoot
     internal const string HotkeyThreadName = "CircleToSearch hotkey";
     internal const string SearchBrowserThreadName = "CircleToSearch WebView2";
     internal const bool TranslationMemoryProfilingEnabled = false;
+
+    internal sealed record OverlayControllerDependencies(
+        Action<string> SetClipboard,
+        Func<bool> AnimationsEnabled,
+        Func<MouseEventArgs, Point>? PointerPosition,
+        IOcrRecognizer OcrRecognizer,
+        double TextHitToleranceDips,
+        Func<bool> TranslationConsentAccepted,
+        Action AcceptTranslationConsent,
+        Action? ResetTranslationConsent,
+        PluginLog? Log,
+        TranslationMemoryProfiler? MemoryProfiler,
+        Func<Uri, ITraceVideoPreview>? CreateTraceVideo,
+        Func<bool> TraceTheme);
 
     public static int Run() => Run(new AppPaths(),
         (message, title, icon) => MessageBox.Show(message, title, MessageBoxButton.OK, icon));
@@ -246,32 +262,22 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
+        var overlayControllerDependencies = new OverlayControllerDependencies(
+            Clipboard.SetText,
+            OverlayVisualResources.AnimationsEnabled,
+            PointerPosition: null,
+            new WindowsOcrRecognizer(),
+            TextHitToleranceDips: 3,
+            () => settings.Snapshot.ImageTranslationPrivacyConsentAccepted,
+            () => settings.SetTranslationConsent(true).ThrowIfFailed(strings.StorageSaveFailed),
+            () => settings.SetTranslationConsent(false).ThrowIfFailed(strings.StorageSaveFailed),
+            log,
+            translationMemory,
+            video => new TraceVideoPreview(video,
+                () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log),
+            SystemTheme.IsLight);
         var overlayControllerFactory = new OverlayControllerFactory(
-            createTraceController: (context, clipboardCopy) => new TraceOverlayController(
-                context.Visual.Root,
-                context.Visual.Bottom,
-                context.Visual.Effects,
-                context.Strings,
-                SystemTheme.IsLight,
-                clipboardCopy,
-                context.GetMode,
-                context.TransitionMode,
-                context.PublishCommand,
-                context.CreateSelectionCopy,
-                video => new TraceVideoPreview(video,
-                    () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log)),
-            createActionTrayController: context => new ActionTrayOverlayController(
-                context.Visual.Actions,
-                context.Visual.Bottom.Root),
-            setClipboard: Clipboard.SetText,
-            animationsEnabled: OverlayVisualResources.AnimationsEnabled,
-            ocrRecognizer: new WindowsOcrRecognizer(),
-            textHitToleranceDips: 3,
-            translationConsentAccepted: () => settings.Snapshot.ImageTranslationPrivacyConsentAccepted,
-            acceptTranslationConsent: () => settings.SetTranslationConsent(true).ThrowIfFailed(strings.StorageSaveFailed),
-            resetTranslationConsent: () => settings.SetTranslationConsent(false).ThrowIfFailed(strings.StorageSaveFailed),
-            log: log,
-            memoryProfiler: translationMemory);
+            context => CreateOverlayControllers(context, overlayControllerDependencies));
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
         var workflow = new OverlaySessionWorkflow(
             new OverlaySessionFactory(log, new PointerMonitorCapture(), overlayWindowFactory),
@@ -323,6 +329,191 @@ public static class CompositionRoot
         if (!settings.InitializeHotkey().Success)
             notifier.ShowError(strings.PluginTitle, strings.HotkeyConflict(settings.Snapshot.HotkeyGesture));
         return runtime;
+    }
+
+    internal static OverlayControllers CreateOverlayControllers(
+        OverlayControllerContext context,
+        OverlayControllerDependencies dependencies)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(dependencies);
+        ArgumentNullException.ThrowIfNull(dependencies.SetClipboard);
+        ArgumentNullException.ThrowIfNull(dependencies.AnimationsEnabled);
+        ArgumentNullException.ThrowIfNull(dependencies.OcrRecognizer);
+        ArgumentNullException.ThrowIfNull(dependencies.TranslationConsentAccepted);
+        ArgumentNullException.ThrowIfNull(dependencies.AcceptTranslationConsent);
+        ArgumentNullException.ThrowIfNull(dependencies.TraceTheme);
+        if (!double.IsFinite(dependencies.TextHitToleranceDips) || dependencies.TextHitToleranceDips < 0)
+            throw new ArgumentOutOfRangeException(nameof(dependencies.TextHitToleranceDips));
+
+        var rollback = new List<IDisposable>();
+        T Track<T>(T resource) where T : IDisposable
+        {
+            rollback.Add(resource);
+            return resource;
+        }
+
+        try
+        {
+            var toast = Track(new ToastOverlayController(
+                context.Visual.Bottom,
+                context.Visual.LightTheme,
+                dependencies.AnimationsEnabled));
+            var clipboardCopy = new ClipboardCopyService(
+                dependencies.SetClipboard,
+                toast.Show,
+                context.Strings);
+            var publishCommand = context.PublishCommand ?? (_ => { });
+            var provider = Track(new ProviderMenuController(
+                context.Visual.Provider,
+                context.Visual.Bottom.Root,
+                context.Providers,
+                context.SelectedProviderId,
+                context.Strings,
+                context.Visual.LightTheme,
+                context.CanUseProvider,
+                context.ProviderSelected));
+            var mapper = new OverlayCoordinateMapper(
+                context.Scale,
+                context.Overscan,
+                context.Monitor.Size);
+            var selection = Track(new SelectionOverlayController(
+                context.Visual.Selection,
+                context.CoordinateRoot,
+                context.Monitor,
+                context.Scale,
+                context.Options.PaddingPx,
+                context.Options.MinDiagonalPx,
+                context.Overscan,
+                context.CanAcceptSelectionInput,
+                context.CanStartSelection,
+                context.SelectionStarted,
+                context.SelectionCompleted,
+                context.SelectionRejected,
+                context.SelectionHoldCompleted,
+                dependencies.PointerPosition,
+                subscribeInput: false));
+            var textSelection = Track(new TextSelectionOverlayController(
+                context.Visual.TextSelection,
+                context.CoordinateRoot,
+                context.Visual.Selection.InputSurface,
+                mapper,
+                new OcrTextHitTester(dependencies.TextHitToleranceDips * context.Scale),
+                clipboardCopy,
+                () => provider.SelectedProviderId,
+                publishCommand,
+                context.Strings,
+                context.Visual.LightTheme));
+            var frameSource = context.Visual.Selection.Screenshot.Source as BitmapSource
+                ?? throw new InvalidOperationException("The overlay frame source is missing.");
+            var ocr = Track(new OcrOverlayController(
+                frameSource,
+                context.CoordinateRoot.Dispatcher,
+                dependencies.OcrRecognizer,
+                context.OcrLanguageTag,
+                outcome => textSelection.SetDocument(outcome.Document),
+                dependencies.Log,
+                dependencies.MemoryProfiler));
+            var pointer = Track(new PointerGestureRouter(
+                context.Visual.Selection,
+                context.CoordinateRoot,
+                selection,
+                textSelection,
+                context.CanAcceptPointerInput,
+                context.CanStartSelection,
+                dependencies.PointerPosition));
+            var imageText = new OverlayImageTextCoordinator(
+                pointer,
+                textSelection,
+                ocr,
+                context.Visual.Actions.Prompt,
+                context.Strings,
+                context.OcrLanguageTag);
+            var translation = Track(new ScreenTranslationOverlayController(
+                context.Visual.TranslationAction,
+                context.Visual.TranslationOverlay,
+                context.Visual.Bottom,
+                context.Visual.Effects,
+                context.CoordinateRoot,
+                context.Strings,
+                dependencies.TranslationConsentAccepted,
+                dependencies.AcceptTranslationConsent,
+                () => context.TranslationTargetLanguageTag,
+                publishCommand,
+                context.TransitionMode,
+                toast.Show,
+                dependencies.AnimationsEnabled,
+                context.Visual.LightTheme,
+                context.Visual.Selection.Screenshot,
+                imageText.OnImageChanged,
+                dependencies.MemoryProfiler));
+            var debug = Track(new DebugOverlayController(
+                context.Visual.Debug,
+                context.Visual.LightTheme,
+                context.PublishCommand is not null,
+                context.GetMode,
+                context.DebugScenarioSelected,
+                toast.Show,
+                dependencies.ResetTranslationConsent,
+                context.Strings));
+            var music = Track(new MusicOverlayController(
+                context.Visual.Music,
+                context.Visual.Bottom.LayoutTransitions,
+                context.Visual.Effects,
+                context.Visual.Root,
+                context.Strings,
+                context.Visual.LightTheme,
+                context.GetMode,
+                context.MusicStartRequested,
+                context.MusicCancelRequested,
+                context.MusicResultCommandRequested,
+                clipboardCopy,
+                dependencies.AnimationsEnabled));
+            var trace = Track(new TraceOverlayController(
+                context.Visual.Root,
+                context.Visual.Bottom,
+                context.Visual.Effects,
+                context.Strings,
+                dependencies.TraceTheme,
+                clipboardCopy,
+                context.GetMode,
+                context.TransitionMode,
+                context.PublishCommand,
+                context.CreateSelectionCopy,
+                dependencies.CreateTraceVideo));
+            var actionTray = Track(new ActionTrayOverlayController(
+                context.Visual.Actions,
+                context.Visual.Bottom.Root));
+            var controllers = new OverlayControllers(
+                selection,
+                textSelection,
+                pointer,
+                ocr,
+                translation,
+                provider,
+                music,
+                trace,
+                actionTray,
+                toast,
+                debug);
+            rollback.Clear();
+            return controllers;
+        }
+        catch
+        {
+            for (var index = rollback.Count - 1; index >= 0; index--)
+            {
+                try { rollback[index].Dispose(); }
+                catch (Exception exception)
+                {
+                    dependencies.Log?.SafeError(
+                        nameof(CompositionRoot),
+                        "rollback-overlay-controller",
+                        exception);
+                }
+            }
+            throw;
+        }
     }
 
     private static bool OpenResultsUrl(string url)
