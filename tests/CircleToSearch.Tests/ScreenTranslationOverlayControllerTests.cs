@@ -25,8 +25,9 @@ public sealed class ScreenTranslationOverlayControllerTests
             window.Show();
             window.UpdateLayout();
             var state = new OverlayInteractionState();
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => false);
             using var controller = new ScreenTranslationOverlayController(
-                visual.TranslationAction, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
+                visual.TranslationAction, activity, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
                 TestUiStrings.English, () => false, () => { }, () => "es", _ => { },
                 mode => state.TransitionTo(mode), _ => { }, () => false, false, visual.Selection.Screenshot);
             Click(visual.TranslationAction.Button);
@@ -73,8 +74,9 @@ public sealed class ScreenTranslationOverlayControllerTests
             var toasts = new List<ToastNotification>();
             var accepted = false;
             var saves = 0;
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => false);
             using var controller = new ScreenTranslationOverlayController(
-                visual.TranslationAction, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
+                visual.TranslationAction, activity, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
                 TestUiStrings.English, () => accepted, () => { saves++; throw new InvalidOperationException("disk"); },
                 () => "es", commands.Add, mode => state.TransitionTo(mode), toasts.Add, () => false,
                 false, visual.Selection.Screenshot);
@@ -129,8 +131,9 @@ public sealed class ScreenTranslationOverlayControllerTests
             var state = new OverlayInteractionState();
             var commands = new List<IOverlayCommand>();
             var toasts = new List<ToastNotification>();
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => false);
             using var controller = new ScreenTranslationOverlayController(
-                visual.TranslationAction, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
+                visual.TranslationAction, activity, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
                 TestUiStrings.English, () => true, () => { }, () => "es", commands.Add,
                 mode => state.TransitionTo(mode), toasts.Add, () => false, false, visual.Selection.Screenshot);
             Click(visual.TranslationAction.Button);
@@ -146,6 +149,7 @@ public sealed class ScreenTranslationOverlayControllerTests
             Assert.Equal(canRetry, ActionButton(card) is not null);
             Assert.Empty(toasts);
             Assert.Equal(Visibility.Collapsed, visual.TranslationAction.LoadingIndicator.Visibility);
+            Assert.Equal(Visibility.Collapsed, visual.ActivityHost.Visibility);
             Assert.True(controller.HandleEscape());
             Assert.Equal(OverlayInteractionMode.Selecting, state.Mode);
             Assert.False(visual.Bottom.Stack.Children.Contains(visual.TranslationOverlay.StateHost));
@@ -166,8 +170,9 @@ public sealed class ScreenTranslationOverlayControllerTests
             var state = new OverlayInteractionState();
             var commands = new List<IOverlayCommand>();
             var target = "de";
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => false);
             using var controller = new ScreenTranslationOverlayController(
-                visual.TranslationAction, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
+                visual.TranslationAction, activity, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
                 TestUiStrings.English, () => true, () => { }, () => target, commands.Add,
                 mode => state.TransitionTo(mode), _ => { }, () => false, false, visual.Selection.Screenshot);
             Click(visual.TranslationAction.Button);
@@ -185,11 +190,14 @@ public sealed class ScreenTranslationOverlayControllerTests
             Assert.Equal("de", second.TargetLanguageTag);
             Assert.Equal(OverlayInteractionMode.Translating, state.Mode);
             Assert.Equal(Visibility.Visible, visual.TranslationAction.LoadingIndicator.Visibility);
+            Assert.Equal(Visibility.Visible, visual.ActivityHost.Visibility);
             controller.ShowFailure(first.RequestId, TranslationFailure.RateLimited);
             controller.ShowResult(new ScreenTranslationResult(first.RequestId, image));
             Assert.Equal(OverlayInteractionMode.Translating, state.Mode);
             Assert.True(controller.IsTranslating);
+            Assert.Equal(Visibility.Visible, visual.ActivityHost.Visibility);
             controller.CancelForClosing();
+            Assert.Equal(Visibility.Collapsed, visual.ActivityHost.Visibility);
             Assert.False(visual.Bottom.Stack.Children.Contains(visual.TranslationOverlay.StateHost));
             visual.Music.Waveform.Dispose();
             visual.Effects.SceneRipples.Dispose();
@@ -206,8 +214,9 @@ public sealed class ScreenTranslationOverlayControllerTests
             var state = new OverlayInteractionState();
             var commands = new List<IOverlayCommand>();
             var toasts = new List<ToastNotification>();
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => false);
             using var controller = new ScreenTranslationOverlayController(
-                visual.TranslationAction, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
+                visual.TranslationAction, activity, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
                 TestUiStrings.English, () => true, () => { }, () => "es", commands.Add,
                 mode => state.TransitionTo(mode), toasts.Add, () => false, false, visual.Selection.Screenshot);
             Click(visual.TranslationAction.Button);
@@ -231,8 +240,9 @@ public sealed class ScreenTranslationOverlayControllerTests
             window.Show();
             var state = new OverlayInteractionState();
             var commands = new List<IOverlayCommand>();
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => true);
             using (var controller = new ScreenTranslationOverlayController(
-                visual.TranslationAction, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
+                visual.TranslationAction, activity, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
                 TestUiStrings.English, () => true, () => { }, () => "es", commands.Add,
                 mode => state.TransitionTo(mode), _ => { }, () => true, false, visual.Selection.Screenshot))
             {
@@ -244,6 +254,7 @@ public sealed class ScreenTranslationOverlayControllerTests
                 controller.CancelForClosing();
                 Click(Primary(oldCard));
                 Assert.Single(commands);
+                Assert.Equal(Visibility.Collapsed, visual.ActivityHost.Visibility);
                 Assert.False(visual.Bottom.Stack.Children.Contains(visual.TranslationOverlay.StateHost));
                 Assert.Empty(visual.TranslationOverlay.StateHost.Children);
             }
@@ -263,8 +274,9 @@ public sealed class ScreenTranslationOverlayControllerTests
             var window = new Window { Width = 640, Height = 400, Content = visual.Root };
             window.Show();
             var state = new OverlayInteractionState();
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => true);
             using var controller = new ScreenTranslationOverlayController(
-                visual.TranslationAction, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
+                visual.TranslationAction, activity, visual.TranslationOverlay, visual.Bottom, visual.Effects, visual.Root,
                 TestUiStrings.English, () => false, () => { }, () => "es", _ => { },
                 mode => state.TransitionTo(mode), _ => { }, () => true, false, visual.Selection.Screenshot);
             Click(visual.TranslationAction.Button);
@@ -299,8 +311,10 @@ public sealed class ScreenTranslationOverlayControllerTests
             var state = new OverlayInteractionState();
             var commands = new List<IOverlayCommand>();
             var consent = false;
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => false);
             using var controller = new ScreenTranslationOverlayController(
                 visual.TranslationAction,
+                activity,
                 visual.TranslationOverlay,
                 visual.Bottom,
                 visual.Effects,
@@ -320,6 +334,7 @@ public sealed class ScreenTranslationOverlayControllerTests
             Assert.Equal(OverlayInteractionMode.TranslationConsent, state.Mode);
             Assert.True(controller.IsConsentOpen);
             Assert.Empty(commands);
+            Assert.Equal(Visibility.Collapsed, visual.ActivityHost.Visibility);
 
             var consentCard = Assert.IsType<Border>(Assert.Single(visual.TranslationOverlay.StateHost.Children));
             var consentRoot = Assert.IsType<Grid>(consentCard.Child);
@@ -332,6 +347,10 @@ public sealed class ScreenTranslationOverlayControllerTests
             Assert.Equal(Visibility.Visible, visual.TranslationAction.LoadingIndicator.Visibility);
             Assert.Equal(1, visual.TranslationAction.LoadingIndicator.Opacity);
             Assert.Equal(0, visual.TranslationAction.Icon.Opacity);
+            Assert.Equal(Visibility.Visible, visual.ActivityHost.Visibility);
+            Assert.Equal(
+                TestUiStrings.English.Translating,
+                Assert.Single(Descendants(visual.ActivityHost).OfType<TextBlock>()).Text);
             var request = Assert.IsType<ScreenTranslationRequested>(Assert.Single(commands));
             controller.ShowResult(new ScreenTranslationResult(request.RequestId, Source(640, 400)));
             Assert.Equal(OverlayInteractionMode.TranslationShown, state.Mode);
@@ -344,6 +363,7 @@ public sealed class ScreenTranslationOverlayControllerTests
                 PluginIcons.ShowOriginalFilled,
                 visual.TranslationAction.Icon.Data);
             Assert.Equal(Visibility.Collapsed, visual.TranslationAction.LoadingIndicator.Visibility);
+            Assert.Equal(Visibility.Collapsed, visual.ActivityHost.Visibility);
             Assert.Equal(1, visual.TranslationAction.Icon.Opacity);
             Assert.Equal(0, visual.Effects.SceneRipples.ActiveCount);
 
@@ -354,6 +374,12 @@ public sealed class ScreenTranslationOverlayControllerTests
             Assert.Same(
                 PluginIcons.TranslateFilled,
                 visual.TranslationAction.Icon.Data);
+
+            visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(OverlayInteractionMode.TranslationShown, state.Mode);
+            Assert.True(controller.IsTranslationShown);
+            Assert.Single(commands);
+            Assert.Equal(Visibility.Collapsed, visual.ActivityHost.Visibility);
 
             visual.Music.Waveform.Dispose();
             visual.Effects.SceneRipples.Dispose();
@@ -385,8 +411,10 @@ public sealed class ScreenTranslationOverlayControllerTests
             window.UpdateLayout();
             var state = new OverlayInteractionState();
             var commands = new List<IOverlayCommand>();
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => true);
             using var controller = new ScreenTranslationOverlayController(
                 visual.TranslationAction,
+                activity,
                 visual.TranslationOverlay,
                 visual.Bottom,
                 effects,
@@ -431,8 +459,10 @@ public sealed class ScreenTranslationOverlayControllerTests
             var visual = OverlayVisualFactory.CreateRoot(Source(320, 200), new System.Windows.Size(320, 200), 10, false, TestUiStrings.English);
             var state = new OverlayInteractionState();
             var commands = new List<IOverlayCommand>();
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => false);
             using var controller = new ScreenTranslationOverlayController(
                 visual.TranslationAction,
+                activity,
                 visual.TranslationOverlay,
                 visual.Bottom,
                 visual.Effects,
@@ -456,6 +486,7 @@ public sealed class ScreenTranslationOverlayControllerTests
             Assert.Equal(request.RequestId, cancel.RequestId);
             Assert.Equal(OverlayInteractionMode.Selecting, state.Mode);
             Assert.False(controller.IsTranslating);
+            Assert.Equal(Visibility.Collapsed, visual.ActivityHost.Visibility);
             visual.Music.Waveform.Dispose();
             visual.Effects.SceneRipples.Dispose();
         });
@@ -483,6 +514,16 @@ public sealed class ScreenTranslationOverlayControllerTests
     private static Button Close(Border card) => Assert.IsType<Button>(Root(card).Children[0]);
     private static Button? ActionButton(Border card) => Root(card).Children.OfType<Button>().Skip(1).SingleOrDefault();
     private static Button Primary(Border card) => Assert.IsType<Button>(ActionButton(card));
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            yield return child;
+            foreach (var descendant in Descendants(child)) yield return descendant;
+        }
+    }
 
     private static Exception? RunOnSta(Action action)
     {

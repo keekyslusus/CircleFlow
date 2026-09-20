@@ -197,7 +197,8 @@ public sealed class GoogleImageTranslationTests
             var changed = new List<(BitmapSource Image, string? Language)>();
             var target = "ru";
             var state = new OverlayInteractionState();
-            using var controller = new ScreenTranslationOverlayController(visual.TranslationAction, visual.TranslationOverlay,
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => false);
+            using var controller = new ScreenTranslationOverlayController(visual.TranslationAction, activity, visual.TranslationOverlay,
                 visual.Bottom, visual.Effects, visual.Root, TestUiStrings.English, () => true, () => { }, () => target, commands.Add, mode => state.TransitionTo(mode), _ => { }, () => false,
                 false, visual.Selection.Screenshot, (image, language) => changed.Add((image, language)));
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -251,7 +252,8 @@ public sealed class GoogleImageTranslationTests
             var source = Source();
             var visual = OverlayVisualFactory.CreateRoot(source, new Size(80, 40), 0, false, TestUiStrings.English);
             var commands = new List<IOverlayCommand>();
-            using var controller = new ScreenTranslationOverlayController(visual.TranslationAction, visual.TranslationOverlay,
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, () => false);
+            using var controller = new ScreenTranslationOverlayController(visual.TranslationAction, activity, visual.TranslationOverlay,
                 visual.Bottom, visual.Effects, visual.Root, TestUiStrings.English, () => true, () => { }, () => "ru", commands.Add, _ => { }, _ => { }, () => false,
                 false, visual.Selection.Screenshot);
             visual.TranslationAction.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

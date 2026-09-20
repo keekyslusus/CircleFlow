@@ -43,7 +43,8 @@ public sealed class TraceOverlayTests
             string? copied = null;
             var notifications = new List<ToastNotification>();
             var clipboardCopy = new ClipboardCopyService(text => copied = text, notifications.Add, TestUiStrings.English);
-            using var trace = TraceOverlayVisual.Create(visual.Root, visual.Bottom, visual.Effects, TestUiStrings.English, light,
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
+            using var trace = TraceOverlayVisual.Create(visual.Root, activity, visual.Bottom, visual.Effects, TestUiStrings.English, light,
                 () => opened++, () => closed++, clipboardCopy, video => new TraceVideoPreview(video,
                     () => Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
                         userDataFolder: Path.Combine(TestOutputPaths.TempDirectory, "trace-video-profile")),
@@ -158,8 +159,10 @@ public sealed class TraceOverlayTests
                 _ => throw new InvalidOperationException(),
                 notifications.Add,
                 TestUiStrings.English);
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
             using var trace = TraceOverlayVisual.Create(
                 visual.Root,
+                activity,
                 visual.Bottom,
                 visual.Effects,
                 TestUiStrings.English,
@@ -210,8 +213,10 @@ public sealed class TraceOverlayTests
             window.UpdateLayout();
             var toast = new ToastOverlayController(visual.Bottom, false, () => false);
             var clipboardCopy = new ClipboardCopyService(_ => { }, toast.Show, TestUiStrings.English);
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
             var trace = TraceOverlayVisual.Create(
                 visual.Root,
+                activity,
                 visual.Bottom,
                 visual.Effects,
                 TestUiStrings.English,
@@ -373,13 +378,14 @@ public sealed class TraceOverlayTests
             window.UpdateLayout();
             var preview = new DeferredPreview();
             var clipboardCopy = new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English);
-            using var trace = TraceOverlayVisual.Create(visual.Root, visual.Bottom, visual.Effects, TestUiStrings.English,
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
+            using var trace = TraceOverlayVisual.Create(visual.Root, activity, visual.Bottom, visual.Effects, TestUiStrings.English,
                 false, () => { }, () => { }, clipboardCopy, _ => preview);
             try
             {
                 Pump(240);
                 var loading = Descendants(visual.Root).OfType<TextBlock>().Single(x => x.Text == TestUiStrings.English.TraceSearching);
-                var loadingPanel = (StackPanel)loading.Parent;
+                var loadingPanel = Assert.IsType<Grid>(loading.Parent);
                 var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
                     "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null };
                 trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
@@ -431,7 +437,8 @@ public sealed class TraceOverlayTests
             window.UpdateLayout();
             var preview = new DeferredPreview();
             var clipboardCopy = new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English);
-            var trace = TraceOverlayVisual.Create(visual.Root, visual.Bottom, visual.Effects, TestUiStrings.English,
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
+            var trace = TraceOverlayVisual.Create(visual.Root, activity, visual.Bottom, visual.Effects, TestUiStrings.English,
                 false, () => { }, () => { }, clipboardCopy, _ => preview);
             var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
                 "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null };

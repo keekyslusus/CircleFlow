@@ -12,6 +12,7 @@ namespace CircleToSearch.Capture.OverlayInteractions;
 internal sealed class MusicOverlayController : IDisposable
 {
     private readonly MusicOverlayVisual _visual;
+    private readonly OverlayActivityPresenter _activityPresenter;
     private readonly BottomOverlayLayoutTransitions _layoutTransitions;
     private readonly OverlayEffectsVisual _effects;
     private readonly FrameworkElement _root;
@@ -28,6 +29,7 @@ internal sealed class MusicOverlayController : IDisposable
     private DispatcherOperation? _matchRippleOperation;
     private FrameworkElement? _currentResultCard;
     private CardTransitions.ExitHandle? _pendingResultExit;
+    private OverlayActivityPresenter.ActivityPresentation? _activity;
     private long _resultGeneration;
     private bool _disposed;
 
@@ -46,6 +48,7 @@ internal sealed class MusicOverlayController : IDisposable
 
     internal MusicOverlayController(
         MusicOverlayVisual visual,
+        OverlayActivityPresenter activityPresenter,
         BottomOverlayLayoutTransitions layoutTransitions,
         OverlayEffectsVisual effects,
         FrameworkElement root,
@@ -59,6 +62,7 @@ internal sealed class MusicOverlayController : IDisposable
         Func<bool> animationsEnabled)
     {
         _visual = visual;
+        _activityPresenter = activityPresenter ?? throw new ArgumentNullException(nameof(activityPresenter));
         _layoutTransitions = layoutTransitions;
         _effects = effects;
         _root = root;
@@ -78,6 +82,8 @@ internal sealed class MusicOverlayController : IDisposable
     {
         if (_disposed) return;
         BeginResultExit();
+        _activity?.Dispose();
+        _activity = _activityPresenter.ShowContent(_visual.Waveform, _strings.Listening);
         MusicOverlayVisualPresenter.SetListeningState(_visual, listening: true, _lightTheme);
         _visual.Waveform.Start();
         _visual.Button.ToolTip = _strings.CancelMusicRecognition;
@@ -93,6 +99,7 @@ internal sealed class MusicOverlayController : IDisposable
         _resultGeneration++;
         var animationsEnabled = _animationsEnabled();
         _visual.Waveform.Stop();
+        if (_activity is not null) _ = _activity.HideAsync();
         MusicOverlayVisualPresenter.SetListeningState(_visual, listening: false, _lightTheme);
         var card = _layoutTransitions.Apply(() =>
         {
@@ -165,6 +172,8 @@ internal sealed class MusicOverlayController : IDisposable
         DisposeResultRipples();
         _layoutTransitions.Settle();
         ClearResultVisual();
+        _activity?.Dispose();
+        _activity = null;
         _visual.LoadingIndicator.Dispose();
         _visual.Waveform.Dispose();
     }

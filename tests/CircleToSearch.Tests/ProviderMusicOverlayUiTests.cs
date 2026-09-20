@@ -485,7 +485,7 @@ public sealed class ProviderMusicOverlayUiTests
             overlay.UpdateLayout();
 
             overlay.ShowListening();
-            Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ListeningLayer.Visibility);
+            Assert.Equal(Visibility.Visible, overlay.VisualState.ActivityHost.Visibility);
             Assert.Equal(1, overlay.VisualState.Selection.Dim.Opacity);
             if (OverlayVisualResources.AnimationsEnabled())
                 Assert.True(overlay.VisualState.Selection.Screenshot.HasAnimatedProperties);
@@ -496,7 +496,8 @@ public sealed class ProviderMusicOverlayUiTests
 
             Assert.Equal(OverlayInteractionMode.MusicResult, overlay.Mode);
             Assert.False(overlay.VisualState.Music.Waveform.IsRendering);
-            Assert.Equal(Visibility.Collapsed, overlay.VisualState.Music.ListeningLayer.Visibility);
+            PumpFor(TimeSpan.FromMilliseconds(220));
+            Assert.Equal(Visibility.Collapsed, overlay.VisualState.ActivityHost.Visibility);
             Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ResultHost.Visibility);
             Assert.Same(overlay.VisualState.Bottom.ResultSlot, overlay.VisualState.Music.ResultHost.Parent);
             var card = Assert.Single(overlay.VisualState.Music.ResultHost.Children.OfType<Border>());
@@ -582,7 +583,7 @@ public sealed class ProviderMusicOverlayUiTests
             retry.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
             Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
-            Assert.Equal(Visibility.Visible, overlay.VisualState.Music.ListeningLayer.Visibility);
+            Assert.Equal(Visibility.Visible, overlay.VisualState.ActivityHost.Visibility);
             Assert.IsType<RetryMusicRecognition>(Assert.Single(commands));
             if (OverlayVisualResources.AnimationsEnabled())
             {

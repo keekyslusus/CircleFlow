@@ -285,7 +285,9 @@ public sealed class OverlayControllerLifecycleTests
 
             controller.ShowListening();
 
-            Assert.Equal(Visibility.Visible, visual.Music.ListeningLayer.Visibility);
+            Assert.Equal(Visibility.Visible, visual.ActivityHost.Visibility);
+            Assert.Same(visual.Music.Waveform,
+                Assert.Single(Descendants(visual.ActivityHost).OfType<AudioWaveformVisual>()));
             Assert.True(visual.Music.Waveform.IsRendering);
             Assert.Equal(Visibility.Visible, visual.Music.ResultHost.Visibility);
             Assert.False(visual.Music.ResultHost.IsHitTestVisible);
@@ -515,6 +517,7 @@ public sealed class OverlayControllerLifecycleTests
         List<ToastNotification>? notifications = null) =>
         new(
             visual.Music,
+            new OverlayActivityPresenter(visual.ActivityHost, () => animationsEnabled),
             visual.Bottom.LayoutTransitions,
             visual.Effects,
             visual.Root,

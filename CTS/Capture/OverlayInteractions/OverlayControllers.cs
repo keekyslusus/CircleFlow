@@ -11,7 +11,8 @@ internal sealed class OverlayControllers(
     TraceOverlayController trace,
     ActionTrayOverlayController actionTray,
     ToastOverlayController toast,
-    DebugOverlayController debug) : IDisposable
+    DebugOverlayController debug,
+    OverlayActivityPresenter activityPresenter) : IDisposable
 {
     private bool _disposed;
 
@@ -26,6 +27,7 @@ internal sealed class OverlayControllers(
     internal ActionTrayOverlayController ActionTray { get; } = actionTray;
     internal ToastOverlayController Toast { get; } = toast;
     internal DebugOverlayController Debug { get; } = debug;
+    private OverlayActivityPresenter ActivityPresenter { get; } = activityPresenter;
 
     public void Dispose()
     {
@@ -42,5 +44,6 @@ internal sealed class OverlayControllers(
         Selection.Dispose();
         Provider.Dispose();
         Toast.Dispose();
+        ActivityPresenter.Dispose();
     }
 }

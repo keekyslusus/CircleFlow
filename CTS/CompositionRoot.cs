@@ -375,6 +375,9 @@ public static class CompositionRoot
 
         try
         {
+            var activityPresenter = Track(new OverlayActivityPresenter(
+                context.Visual.ActivityHost,
+                dependencies.AnimationsEnabled));
             var toast = Track(new ToastOverlayController(
                 context.Visual.Bottom,
                 context.Visual.LightTheme,
@@ -451,6 +454,7 @@ public static class CompositionRoot
                 context.OcrLanguageTag);
             var translation = Track(new ScreenTranslationOverlayController(
                 context.Visual.TranslationAction,
+                activityPresenter,
                 context.Visual.TranslationOverlay,
                 context.Visual.Bottom,
                 context.Visual.Effects,
@@ -478,6 +482,7 @@ public static class CompositionRoot
                 context.Strings));
             var music = Track(new MusicOverlayController(
                 context.Visual.Music,
+                activityPresenter,
                 context.Visual.Bottom.LayoutTransitions,
                 context.Visual.Effects,
                 context.Visual.Root,
@@ -491,6 +496,7 @@ public static class CompositionRoot
                 dependencies.AnimationsEnabled));
             var trace = Track(new TraceOverlayController(
                 context.Visual.Root,
+                activityPresenter,
                 context.Visual.Bottom,
                 context.Visual.Effects,
                 context.Strings,
@@ -515,7 +521,8 @@ public static class CompositionRoot
                 trace,
                 actionTray,
                 toast,
-                debug);
+                debug,
+                activityPresenter);
             rollback.Clear();
             return controllers;
         }

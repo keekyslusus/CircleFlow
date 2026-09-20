@@ -13,6 +13,7 @@ public sealed record OverlayVisual(
     ActionTrayVisual Actions,
     TranslationActionVisual TranslationAction,
     TranslationOverlayVisual TranslationOverlay,
+    Grid ActivityHost,
     ProviderMenuVisual? Provider,
     MusicOverlayVisual Music,
     DebugOverlayVisual Debug,
@@ -82,7 +83,6 @@ public sealed record MusicOverlayVisual(
     Button Button,
     Path Icon,
     LoadingIndicatorVisual LoadingIndicator,
-    StackPanel ListeningLayer,
     AudioWaveformVisual Waveform,
     Grid ResultHost);
 

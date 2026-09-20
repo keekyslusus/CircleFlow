@@ -13,6 +13,7 @@ namespace CircleToSearch.Capture.OverlayInteractions;
 internal sealed class ScreenTranslationOverlayController : IDisposable
 {
     private readonly TranslationActionVisual _action;
+    private readonly OverlayActivityPresenter _activityPresenter;
     private readonly TranslationOverlayVisual _overlay;
     private readonly BottomOverlayVisual _bottom;
     private readonly OverlayEffectsVisual _effects;
@@ -42,6 +43,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private StateCardVisual? _stateCard;
     private TranslationCardKind _cardKind;
     private CardTransitions.ExitHandle? _pendingCardExit;
+    private OverlayActivityPresenter.ActivityPresentation? _activity;
     private long _cardGeneration;
     private readonly List<IDisposable> _cardRipples = [];
 
@@ -49,6 +51,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 
     internal ScreenTranslationOverlayController(
         TranslationActionVisual action,
+        OverlayActivityPresenter activityPresenter,
         TranslationOverlayVisual overlay,
         BottomOverlayVisual bottom,
         OverlayEffectsVisual effects,
@@ -67,6 +70,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         TranslationMemoryProfiler? profiler = null)
     {
         _action = action;
+        _activityPresenter = activityPresenter ?? throw new ArgumentNullException(nameof(activityPresenter));
         _overlay = overlay;
         _bottom = bottom;
         _effects = effects;
@@ -189,7 +193,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         if (_requestId != Guid.Empty) _publish(new CancelScreenTranslation(_requestId));
         _requestId = Guid.Empty;
         AbortPendingCompletionRipple();
-        StopLoading();
+        StopLoading(immediate: true);
         ClearCardImmediately();
     }
 
@@ -275,6 +279,10 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         SetActionVisual(_strings.Translating, PluginIcons.TranslateFilled);
         TranslationActionVisualPresenter.SetTranslatingState(
             _action, translating: true, _lightTheme, _animationsEnabled());
+        _activity?.Dispose();
+        _activity = _activityPresenter.ShowLoading(
+            _strings.Translating,
+            OverlayVisualResources.Frozen(PluginPalette.For(_lightTheme).MusicOverlay.Primary));
         _transition(OverlayInteractionMode.Translating);
         if (string.IsNullOrWhiteSpace(target)) ShowFailure(_requestId, TranslationFailure.Service);
         else _publish(new ScreenTranslationRequested(_requestId, _originalImage, target));
@@ -394,10 +402,26 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _cardRipples.Clear();
     }
 
-    private void StopLoading()
+    private void StopLoading(bool immediate = false)
     {
         TranslationActionVisualPresenter.SetTranslatingState(
             _action, translating: false, _lightTheme, _animationsEnabled());
+        if (_activity is null) return;
+        if (immediate)
+        {
+            _activity.Dispose();
+            _activity = null;
+        }
+        else
+        {
+            _ = HideActivityAsync(_activity);
+        }
+    }
+
+    private async Task HideActivityAsync(OverlayActivityPresenter.ActivityPresentation activity)
+    {
+        await activity.HideAsync();
+        if (ReferenceEquals(_activity, activity)) _activity = null;
     }
 
     private void DisplayImage(BitmapSource image, string? target)

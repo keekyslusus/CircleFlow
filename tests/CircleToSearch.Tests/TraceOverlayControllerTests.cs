@@ -143,12 +143,14 @@ public sealed class TraceOverlayControllerTests
                 bounds => new SelectionOutcome(bounds, (GdiBitmap)source.Clone()));
             var initialChildren = visual.Root.Children.Count;
             Assert.True(controller.TryStart(SearchProviderIds.TraceMoe, new GdiRectangle(1, 1, 10, 10)));
-            Assert.Equal(initialChildren + 1, visual.Root.Children.Count);
+            Assert.Equal(initialChildren, visual.Root.Children.Count);
+            Assert.Equal(Visibility.Visible, visual.ActivityHost.Visibility);
 
             controller.Dispose();
             controller.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(null)));
 
             Assert.Equal(initialChildren, visual.Root.Children.Count);
+            Assert.Equal(Visibility.Collapsed, visual.ActivityHost.Visibility);
             Assert.Equal(OverlayInteractionMode.TraceLoading, state.Mode);
             DisposeVisual(visual);
         });
@@ -250,6 +252,7 @@ public sealed class TraceOverlayControllerTests
         Func<Uri, ITraceVideoPreview>? createVideo = null) =>
         new(
             visual.Root,
+            new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled),
             visual.Bottom,
             visual.Effects,
             TestUiStrings.English,

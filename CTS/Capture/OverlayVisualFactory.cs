@@ -38,6 +38,13 @@ public static class OverlayVisualFactory
         var textSelection = TextTranslationVisualFactory.CreateTextSelection(lightTheme, strings);
         var translationAction = TextTranslationVisualFactory.CreateTranslationAction(lightTheme, strings);
         var translationOverlay = TextTranslationVisualFactory.CreateTranslationOverlay();
+        var activityHost = new Grid
+        {
+            Margin = new Thickness(16),
+            Visibility = Visibility.Collapsed,
+            IsHitTestVisible = false,
+            Focusable = false,
+        };
         var provider = ProviderMenuVisualFactory.Create(providers, selectedProviderId, lightTheme, strings);
         var music = MusicOverlayVisualFactory.Create(size, lightTheme, strings);
         var debug = DebugOverlayVisualFactory.Create(lightTheme, strings);
@@ -64,7 +71,7 @@ public static class OverlayVisualFactory
         root.Children.Add(textSelection.HighlightLayer);
         root.Children.Add(selection.InputSurface);
         root.Children.Add(effects.SceneRippleLayer);
-        root.Children.Add(music.ListeningLayer);
+        root.Children.Add(activityHost);
         root.Children.Add(textSelection.ActionLayer);
         root.Children.Add(bottom.Root);
         root.Children.Add(debug.Panel);
@@ -77,6 +84,7 @@ public static class OverlayVisualFactory
             actions,
             translationAction,
             translationOverlay,
+            activityHost,
             provider,
             music,
             debug,

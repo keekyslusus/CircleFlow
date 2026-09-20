@@ -41,7 +41,7 @@ public sealed class OverlayVisualCompositionTests
                 visual.TextSelection.HighlightLayer,
                 visual.Selection.InputSurface,
                 visual.Effects.SceneRippleLayer,
-                visual.Music.ListeningLayer,
+                visual.ActivityHost,
                 visual.TextSelection.ActionLayer,
                 visual.Bottom.Root,
                 visual.Debug.Panel,
@@ -63,7 +63,7 @@ public sealed class OverlayVisualCompositionTests
             Assert.IsType<System.Windows.Media.TranslateTransform>(visual.Bottom.ActionSlot.RenderTransform);
             Assert.Same(visual.Actions.Lift, visual.Actions.Tray.RenderTransform);
             Assert.Same(visual.Root, visual.Debug.Panel.Parent);
-            Assert.DoesNotContain(visual.Debug.Panel, visual.Music.ListeningLayer.Children.Cast<UIElement>());
+            Assert.DoesNotContain(visual.Debug.Panel, visual.ActivityHost.Children.Cast<UIElement>());
             Assert.DoesNotContain(visual.Debug.Panel, visual.Music.ResultHost.Children.Cast<UIElement>());
             Assert.True(visual.Root.Children.IndexOf(visual.Debug.Panel) > visual.Root.Children.IndexOf(visual.Bottom.Root));
             visual.Music.Waveform.Dispose();

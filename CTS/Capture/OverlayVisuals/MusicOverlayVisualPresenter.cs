@@ -40,24 +40,12 @@ internal static class MusicOverlayVisualPresenter
         if (!listening)
         {
             BeginGlyphExit(visual, animationsEnabled);
-            visual.ListeningLayer.BeginAnimation(UIElement.OpacityProperty, null);
-            visual.ListeningLayer.Opacity = 0;
-            visual.ListeningLayer.Visibility = Visibility.Collapsed;
             RestoreDockShadow(visual, lightTheme, animationsEnabled);
             return;
         }
 
         BeginGlyphEntrance(visual, animationsEnabled);
-        visual.ListeningLayer.Visibility = Visibility.Visible;
-        if (!animationsEnabled)
-        {
-            visual.ListeningLayer.Opacity = 1;
-            return;
-        }
-        visual.ListeningLayer.BeginAnimation(
-            UIElement.OpacityProperty,
-            OverlayVisualResources.Animate(0, 1, TimeSpan.FromMilliseconds(220)));
-        BeginListeningHalo(visual, accent);
+        if (animationsEnabled) BeginListeningHalo(visual, accent);
     }
 
     private static void BeginGlyphEntrance(MusicOverlayVisual visual, bool animationsEnabled)

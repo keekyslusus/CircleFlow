@@ -5,7 +5,6 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using CircleToSearch.Ui;
 
@@ -64,34 +63,6 @@ internal static class MusicOverlayVisualFactory
         AutomationProperties.SetName(button, strings.MusicRecognitionAction);
 
         var waveform = new AudioWaveformVisual(lightTheme);
-        var listeningLayer = new StackPanel
-        {
-            Visibility = Visibility.Collapsed,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, size.Height * 0.45 - 34, 0, 0),
-            Opacity = 0,
-            IsHitTestVisible = false,
-        };
-        listeningLayer.Children.Add(waveform);
-        listeningLayer.Children.Add(new TextBlock
-        {
-            Text = strings.Listening,
-            Foreground = OverlayVisualResources.Frozen(PluginPalette.ListeningText),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            FontSize = 14,
-            FontWeight = FontWeights.Medium,
-            FontFamily = OverlayVisualResources.Font,
-            Margin = new Thickness(0, 10, 0, 0),
-            Effect = new DropShadowEffect
-            {
-                Color = PluginPalette.OpaqueBlack,
-                BlurRadius = 10,
-                ShadowDepth = 1,
-                Opacity = 0.4,
-            },
-        });
-
         var resultHost = new Grid
         {
             Visibility = Visibility.Collapsed,
@@ -103,7 +74,6 @@ internal static class MusicOverlayVisualFactory
             button,
             icon,
             loadingIndicator,
-            listeningLayer,
             waveform,
             resultHost);
     }

@@ -97,7 +97,9 @@ public sealed class MusicOverlayVisualTests
                 32,
                 lightTheme,
                 TestUiStrings.English);
-            var label = Assert.Single(root.Music.ListeningLayer.Children.OfType<TextBlock>());
+            using var activity = new OverlayActivityPresenter(root.ActivityHost, () => false);
+            using var presentation = activity.ShowContent(root.Music.Waveform, TestUiStrings.English.Listening);
+            var label = Assert.Single(Descendants(root.ActivityHost).OfType<TextBlock>());
             var foreground = Assert.IsType<SolidColorBrush>(label.Foreground);
             var shadow = Assert.IsType<DropShadowEffect>(label.Effect);
 
@@ -111,7 +113,7 @@ public sealed class MusicOverlayVisualTests
     }
 
     [Fact]
-    public void Listening_and_matched_result_states_are_owned_by_the_music_visual()
+    public void Listening_activity_and_matched_result_use_their_owned_visuals()
     {
         var failure = RunOnSta(() =>
         {
@@ -121,11 +123,14 @@ public sealed class MusicOverlayVisualTests
                 32,
                 lightTheme: false,
                 TestUiStrings.English);
+            using var activity = new OverlayActivityPresenter(root.ActivityHost, () => false);
             MusicOverlayVisualPresenter.SetListeningState(root.Music, listening: true, lightTheme: false);
-            Assert.Equal(Visibility.Visible, root.Music.ListeningLayer.Visibility);
+            using var listening = activity.ShowContent(root.Music.Waveform, TestUiStrings.English.Listening);
+            Assert.Equal(Visibility.Visible, root.ActivityHost.Visibility);
 
             MusicOverlayVisualPresenter.SetListeningState(root.Music, listening: false, lightTheme: false);
-            Assert.Equal(Visibility.Collapsed, root.Music.ListeningLayer.Visibility);
+            listening.Dispose();
+            Assert.Equal(Visibility.Collapsed, root.ActivityHost.Visibility);
 
             string? copiedTrack = null;
             var card = MusicOverlayVisualPresenter.PresentResult(

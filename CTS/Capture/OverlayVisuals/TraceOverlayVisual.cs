@@ -6,7 +6,6 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
@@ -17,6 +16,7 @@ namespace CircleToSearch.Capture;
 internal sealed class TraceOverlayVisual : IDisposable
 {
     private readonly Grid _root;
+    private readonly OverlayActivityPresenter _activityPresenter;
     private readonly OverlayEffectsVisual _effects;
     private readonly BottomOverlayVisual _bottom;
     private readonly UiStrings _strings;
@@ -24,8 +24,6 @@ internal sealed class TraceOverlayVisual : IDisposable
     private readonly Action _open;
     private readonly Action _close;
     private readonly ClipboardCopyService _clipboardCopy;
-    private readonly Grid _host = new() { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-    private readonly LoadingIndicatorVisual _loading = new() { Width = 80, Height = 80 };
     private ITraceVideoPreview? _media;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly Grid _resultHost = new()
@@ -33,8 +31,7 @@ internal sealed class TraceOverlayVisual : IDisposable
         Visibility = Visibility.Collapsed, Opacity = 0, IsHitTestVisible = false,
         HorizontalAlignment = HorizontalAlignment.Center,
     };
-    private StackPanel? _loadingPanel;
-    private CardTransitions.ExitHandle? _loadingExit;
+    private OverlayActivityPresenter.ActivityPresentation? _activity;
     internal Task Presentation { get; private set; } = Task.CompletedTask;
     private Func<Uri, ITraceVideoPreview>? _createVideo;
     private Border? _card;
@@ -44,10 +41,11 @@ internal sealed class TraceOverlayVisual : IDisposable
     private bool _disposed;
     private bool _closing;
 
-    private TraceOverlayVisual(Grid root, BottomOverlayVisual bottom, OverlayEffectsVisual effects, UiStrings strings,
+    private TraceOverlayVisual(Grid root, OverlayActivityPresenter activityPresenter, BottomOverlayVisual bottom, OverlayEffectsVisual effects, UiStrings strings,
         bool light, Action open, Action close, ClipboardCopyService clipboardCopy)
     {
         _root = root;
+        _activityPresenter = activityPresenter;
         _bottom = bottom;
         _resultHost.Margin = bottom.ResultSlot.Margin;
         _effects = effects;
@@ -58,10 +56,10 @@ internal sealed class TraceOverlayVisual : IDisposable
         _clipboardCopy = clipboardCopy ?? throw new ArgumentNullException(nameof(clipboardCopy));
     }
 
-    internal static TraceOverlayVisual Create(Grid root, BottomOverlayVisual bottom, OverlayEffectsVisual effects, UiStrings strings,
+    internal static TraceOverlayVisual Create(Grid root, OverlayActivityPresenter activityPresenter, BottomOverlayVisual bottom, OverlayEffectsVisual effects, UiStrings strings,
         bool light, Action open, Action close, ClipboardCopyService clipboardCopy, Func<Uri, ITraceVideoPreview>? createVideo = null)
     {
-        var visual = new TraceOverlayVisual(root, bottom, effects, strings, light, open, close, clipboardCopy);
+        var visual = new TraceOverlayVisual(root, activityPresenter, bottom, effects, strings, light, open, close, clipboardCopy);
         visual._createVideo = createVideo;
         visual.ShowLoading();
         return visual;
@@ -69,24 +67,9 @@ internal sealed class TraceOverlayVisual : IDisposable
 
     private void ShowLoading()
     {
-        Panel.SetZIndex(_host, 30);
-        _root.Children.Add(_host);
-        _loading.Fill = OverlayVisualResources.Frozen(PluginPalette.For(_light).MusicOverlay.Primary);
-        var panel = _loadingPanel = new StackPanel();
-        panel.Children.Add(_loading);
-        var label = Text(_strings.TraceSearching, 14);
-        label.HorizontalAlignment = HorizontalAlignment.Center;
-        label.Margin = new Thickness(0, 10, 0, 0);
-        label.Foreground = OverlayVisualResources.Frozen(PluginPalette.ListeningText);
-        label.FontWeight = FontWeights.Medium;
-        label.Effect = new DropShadowEffect
-        {
-            Color = PluginPalette.OpaqueBlack, BlurRadius = 10, ShadowDepth = 1, Opacity = 0.4,
-        };
-        panel.Children.Add(label);
-        _host.Children.Add(panel);
-        _loading.Start(OverlayVisualResources.AnimationsEnabled());
-        StateCardTransitions.BeginEntrance(panel, OverlayVisualResources.AnimationsEnabled());
+        _activity = _activityPresenter.ShowLoading(
+            _strings.TraceSearching,
+            OverlayVisualResources.Frozen(PluginPalette.For(_light).MusicOverlay.Primary));
     }
 
     internal void ShowResult(VisualSearchPreparationOutcome outcome)
@@ -262,19 +245,10 @@ internal sealed class TraceOverlayVisual : IDisposable
                 if (!ready) _media.Dispose();
             }
             if (_disposed || _closing) return;
-            if (_loadingPanel is not null)
-            {
-                _loading.BeginStop();
-                var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                _loadingExit = StateCardTransitions.BeginExit(_loadingPanel,
-                    OverlayVisualResources.AnimationsEnabled(), () => finished.TrySetResult());
-                await finished.Task.WaitAsync(_lifetime.Token);
-                if (_disposed || _closing) return;
-                _loadingExit.Dispose();
-                _loadingExit = null;
-            }
-            _loading.Stop();
-            _root.Children.Remove(_host);
+            var activity = _activity;
+            if (activity is not null) await activity.HideAsync().WaitAsync(_lifetime.Token);
+            if (_disposed || _closing) return;
+            if (ReferenceEquals(_activity, activity)) _activity = null;
             _resultHost.Opacity = 1;
             _resultHost.IsHitTestVisible = true;
             _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_resultHost));
@@ -346,12 +320,19 @@ internal sealed class TraceOverlayVisual : IDisposable
 
     internal void DismissResult()
     {
-        if (_disposed || _closing || _card is null) return;
+        if (_disposed || _closing) return;
         _closing = true;
         _lifetime.Cancel();
+        _activity?.Dispose();
+        _activity = null;
         _ripple?.Abort();
         _resultHost.IsHitTestVisible = false;
         _media?.Dispose();
+        if (_card is null)
+        {
+            Dispose();
+            return;
+        }
         _exit = StateCardTransitions.BeginExit(_card, OverlayVisualResources.AnimationsEnabled(),
             () => _bottom.LayoutTransitions.Apply(Dispose, OverlayVisualResources.AnimationsEnabled()));
     }
@@ -361,13 +342,12 @@ internal sealed class TraceOverlayVisual : IDisposable
         if (_disposed) return;
         _disposed = true;
         _lifetime.Cancel();
-        _loadingExit?.Dispose();
-        _loading.Dispose();
+        _activity?.Dispose();
+        _activity = null;
         _media?.Dispose();
         _exit?.Dispose();
         _ripple?.Abort();
         foreach (var ripple in _controlRipples) ripple.Dispose();
-        _root.Children.Remove(_host);
         _bottom.Stack.Children.Remove(_resultHost);
         _lifetime.Dispose();
     }

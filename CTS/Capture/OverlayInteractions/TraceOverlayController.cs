@@ -8,6 +8,7 @@ namespace CircleToSearch.Capture.OverlayInteractions;
 internal sealed class TraceOverlayController : IDisposable
 {
     private readonly Grid _root;
+    private readonly OverlayActivityPresenter _activityPresenter;
     private readonly BottomOverlayVisual _bottom;
     private readonly OverlayEffectsVisual _effects;
     private readonly UiStrings _strings;
@@ -23,6 +24,7 @@ internal sealed class TraceOverlayController : IDisposable
 
     internal TraceOverlayController(
         Grid root,
+        OverlayActivityPresenter activityPresenter,
         BottomOverlayVisual bottom,
         OverlayEffectsVisual effects,
         UiStrings strings,
@@ -35,6 +37,7 @@ internal sealed class TraceOverlayController : IDisposable
         Func<Uri, ITraceVideoPreview>? createVideo = null)
     {
         _root = root;
+        _activityPresenter = activityPresenter ?? throw new ArgumentNullException(nameof(activityPresenter));
         _bottom = bottom;
         _effects = effects;
         _strings = strings;
@@ -58,6 +61,7 @@ internal sealed class TraceOverlayController : IDisposable
         TraceOverlayVisual? visual = null;
         visual = TraceOverlayVisual.Create(
             _root,
+            _activityPresenter,
             _bottom,
             _effects,
             _strings,
