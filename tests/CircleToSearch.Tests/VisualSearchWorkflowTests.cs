@@ -2,6 +2,7 @@ using System.Drawing;
 using CircleToSearch.Capture;
 using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
+using CircleToSearch.Shell;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -180,11 +181,11 @@ public sealed class VisualSearchWorkflowTests
                 log);
             var presenter = new VisualSearchResultPresenter(
                 Host,
-                url =>
+                new UrlOpeningService(url =>
                 {
                     Opened.Add(url);
                     return true;
-                },
+                }, Notifier, TestUiStrings.English, log),
                 Notifier,
                 TestUiStrings.English,
                 log);

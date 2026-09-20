@@ -224,7 +224,9 @@ public sealed class ShellTests
     {
         string? target = null;
         var notifier = new TestPluginNotifier();
-        new ProjectSupport(url => { target = url; return success; }, notifier, TestUiStrings.English).Open();
+        var urlOpening = new UrlOpeningService(
+            url => { target = url; return success; }, notifier, TestUiStrings.English, CreateLog());
+        new ProjectSupport(urlOpening).Open();
         Assert.Equal("https://ko-fi.com/keekys", target);
         Assert.Equal(success ? 0 : 1, notifier.Errors.Count);
     }

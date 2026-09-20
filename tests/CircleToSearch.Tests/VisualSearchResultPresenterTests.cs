@@ -1,5 +1,6 @@
 using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
+using CircleToSearch.Shell;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -151,12 +152,13 @@ public sealed class VisualSearchResultPresenterTests
             Host = new FakeHost { Status = status, Owner = this };
             var directory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(directory);
+            var log = new PluginLog(directory);
             _presenter = new VisualSearchResultPresenter(
                 Host,
-                Open,
+                new UrlOpeningService(Open, Notifier, TestUiStrings.English, log),
                 Notifier,
                 TestUiStrings.English,
-                new PluginLog(directory));
+                log);
         }
 
         public FakeHost Host { get; }

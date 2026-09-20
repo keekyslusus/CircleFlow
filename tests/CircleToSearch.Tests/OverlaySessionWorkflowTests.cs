@@ -8,6 +8,7 @@ using CircleToSearch.MusicRecognition.Audio;
 using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
+using CircleToSearch.Shell;
 using CircleToSearch.Settings;
 using CircleToSearch.Translation;
 using Xunit;
@@ -628,6 +629,58 @@ public sealed class OverlaySessionWorkflowTests
         await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
         Assert.Equal(new[] { "trace", "close", "trace-open", "close" }, harness.Events);
         Assert.Equal(harness.Trace.Match!.AnilistUrl, Assert.Single(harness.Opened));
+        Assert.Empty(harness.Errors);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Trace_open_failure_notifies_once_after_close_and_ends_session(bool throws)
+    {
+        using var harness = new Harness(SearchProviderIds.TraceMoe);
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Overlay.CloseAsyncCompletion = closed.Task;
+        harness.TraceOpenResult = false;
+        harness.TraceOpenThrows = throws;
+        harness.Notifier.OnError = () => harness.Events.Add("error");
+        harness.Trace.Match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
+            "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")));
+        harness.Overlay.CommandsAfterResult.Add(new OpenTraceResult());
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.TraceMoe));
+
+        var run = harness.RunAsync();
+        try
+        {
+            await harness.Overlay.CloseStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.False(run.IsCompleted);
+            Assert.Equal(0, harness.TraceOpenCalls);
+            Assert.Empty(harness.Errors);
+            Assert.Equal(new[] { "trace", "close" }, harness.Events);
+        }
+        finally { closed.TrySetResult(); }
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, harness.TraceOpenCalls);
+        Assert.Equal(harness.Trace.Match!.AnilistUrl, Assert.Single(harness.Opened));
+        Assert.Equal(TestUiStrings.English.ResultsUrlOpenFailed, Assert.Single(harness.Errors));
+        Assert.Equal(new[] { "trace", "close", "trace-open", "error", "close" }, harness.Events);
+        Assert.Equal(1, harness.Overlay.DisposeCalls);
+    }
+
+    [Fact]
+    public async Task Trace_close_failure_does_not_open_url_or_report_open_failure()
+    {
+        using var harness = new Harness(SearchProviderIds.TraceMoe);
+        harness.Trace.Match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
+            "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")));
+        harness.Overlay.CloseException = new InvalidOperationException("close failed");
+        harness.Overlay.CommandsAfterResult.Add(new OpenTraceResult());
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.TraceMoe));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => harness.RunAsync());
+
+        Assert.Equal(0, harness.TraceOpenCalls);
+        Assert.Empty(harness.Errors);
     }
 
     [Fact]
@@ -675,6 +728,7 @@ public sealed class OverlaySessionWorkflowTests
         await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
 
         Assert.Empty(harness.Opened);
+        Assert.Empty(harness.Errors);
         Assert.Equal(new[] { "trace", "close" }, harness.Events);
     }
 
@@ -758,7 +812,7 @@ public sealed class OverlaySessionWorkflowTests
             Notifier = new FakeNotifier(Errors, Messages);
             var visualPresenter = new VisualSearchResultPresenter(
                 new FakeBrowserHost(),
-                _ => true,
+                new UrlOpeningService(_ => true, Notifier, TestUiStrings.English, Log),
                 Notifier,
                 TestUiStrings.English,
                 Log);
@@ -776,7 +830,8 @@ public sealed class OverlaySessionWorkflowTests
                 Log);
             var musicRecognition = new MusicRecognitionWorkflow(Music, Simulator, Log);
             var musicPresenter = new MusicResultPresenter(
-                url => { Events.Add("open"); Opened.Add(url); return true; },
+                new UrlOpeningService(url => { Events.Add("open"); Opened.Add(url); return true; },
+                    Notifier, TestUiStrings.English, Log),
                 Notifier,
                 TestUiStrings.English);
             var providerSelection = new ProviderSelectionStore(
@@ -787,7 +842,8 @@ public sealed class OverlaySessionWorkflowTests
                 Log);
             var textSearch = new TextSearchWorkflow(
                 new TextSearchUrlBuilder(),
-                url => { Events.Add("text-open"); Opened.Add(url); return true; },
+                new UrlOpeningService(url => { Events.Add("text-open"); Opened.Add(url); return true; },
+                    Notifier, TestUiStrings.English, Log),
                 Notifier,
                 TestUiStrings.English,
                 Log);
@@ -806,7 +862,7 @@ public sealed class OverlaySessionWorkflowTests
                         overlay,
                         visualSearch,
                         maxLongSidePx,
-                        url => { Events.Add("trace-open"); Opened.Add(url); return true; },
+                        new UrlOpeningService(OpenTrace, Notifier, TestUiStrings.English, Log),
                         cancellation);
                 },
                 providerSelection,
@@ -831,12 +887,24 @@ public sealed class OverlaySessionWorkflowTests
         public List<string> Messages { get; } = [];
         public List<string> Opened { get; } = [];
         public List<string> Events => Overlay.Events;
+        public bool TraceOpenResult { get; set; } = true;
+        public bool TraceOpenThrows { get; set; }
+        public int TraceOpenCalls { get; private set; }
         public int UploadStartedCalls { get; private set; }
         public int SaveCalls { get; private set; }
         public List<int> CropLimits { get; } = [];
 
         public Task RunAsync(CancellationToken cancellationToken = default) =>
             Workflow.RunAsync(GetSessionOptions(), () => UploadStartedCalls++, cancellationToken);
+
+        private bool OpenTrace(string url)
+        {
+            TraceOpenCalls++;
+            Events.Add("trace-open");
+            Opened.Add(url);
+            if (TraceOpenThrows) throw new InvalidOperationException("open failed");
+            return TraceOpenResult;
+        }
 
         private SearchSessionOptions GetSessionOptions() => SearchSessionOptions.From(Settings,
             new CircleToSearch.TextRecognition.OcrLanguageCatalog([]), System.Globalization.CultureInfo.CurrentUICulture);
@@ -854,10 +922,15 @@ public sealed class OverlaySessionWorkflowTests
 
     private sealed class FakeNotifier(List<string> errors, List<string> messages) : CircleToSearch.Ui.IPluginNotifier
     {
+        public Action? OnError { get; set; }
         public void ShowMessage(string title, string message) => messages.Add(message);
         public void ShowMessageWithButton(string title, string message, string button, Action action) =>
             messages.Add(message);
-        public void ShowError(string title, string message) => errors.Add(message);
+        public void ShowError(string title, string message)
+        {
+            OnError?.Invoke();
+            errors.Add(message);
+        }
     }
 
     private sealed class FakeOverlayFactory : IOverlaySessionFactory
@@ -883,6 +956,8 @@ public sealed class OverlaySessionWorkflowTests
     private sealed class FakeOverlay : IOverlaySession
     {
         public Task CloseCompletion { get; set; } = Task.CompletedTask;
+        public Task CloseAsyncCompletion { get; set; } = Task.CompletedTask;
+        public TaskCompletionSource CloseStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Task WaitForCloseAsync(CancellationToken cancellationToken) =>
             CloseCompletion.WaitAsync(cancellationToken);
         private readonly Channel<IOverlayCommand> _commands = Channel.CreateUnbounded<IOverlayCommand>();
@@ -941,8 +1016,9 @@ public sealed class OverlaySessionWorkflowTests
         {
             CloseCalls++;
             Events.Add("close");
+            CloseStarted.TrySetResult();
             if (CloseException is not null) throw CloseException;
-            return Task.CompletedTask;
+            return CloseAsyncCompletion;
         }
         public Task ShowTranslationAsync(ScreenTranslationResult result, CancellationToken cancellationToken)
         {

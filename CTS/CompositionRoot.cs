@@ -109,10 +109,11 @@ public static class CompositionRoot
                 lifetime.AddCleanup("close-notifications", () => { notifications.Dispose(); return Task.CompletedTask; });
                 var notifier = new PluginNotifier(notifications.ShowMessage, notifications.ShowMessageWithButton,
                     notifications.ShowError, log);
+                var urlOpening = new UrlOpeningService(OpenResultsUrl, notifier, strings, log);
                 TrayIcon? tray = null;
                 var rollback = new ResourceRollbackScope(log);
                 lifetime.AddCleanup("stop-runtime", () => rollback.DisposeAsync().AsTask());
-                var runtime = Create(paths, loaded.Settings, store, strings, notifier,
+                var runtime = Create(paths, loaded.Settings, store, strings, notifier, urlOpening,
                     () => application.Dispatcher.InvokeAsync(() =>
                     {
                         tray?.CloseMenu();
@@ -121,7 +122,7 @@ public static class CompositionRoot
                     }).Task, log, rollback);
                 lifetime.AddStop("stop-runtime-triggers", () => _ = runtime.StopAsync());
                 cancellation.ThrowIfCancellationRequested();
-                var support = new ProjectSupport(OpenResultsUrl, notifier, strings);
+                var support = new ProjectSupport(urlOpening);
                 tray = new TrayIcon(paths.TrayIconPath, strings, application.Dispatcher, log,
                     () => { activation.TryRequestOpen(); return Task.CompletedTask; },
                     () => { settingsWindow.Show(); return Task.CompletedTask; },
@@ -155,6 +156,7 @@ public static class CompositionRoot
         SettingsStore settingsStore,
         UiStrings strings,
         IPluginNotifier notifier,
+        UrlOpeningService urlOpening,
         Func<Task> hideOwnWindows,
         PluginLog log,
         ResourceRollbackScope rollback)
@@ -196,7 +198,7 @@ public static class CompositionRoot
             new VisualSearchLifetime(providerRouter.StopAsync, traceHttpClient, log));
         var visualSearchPresenter = new VisualSearchResultPresenter(
             searchBrowserHost,
-            OpenResultsUrl,
+            urlOpening,
             notifier,
             strings,
             log);
@@ -235,7 +237,7 @@ public static class CompositionRoot
             log);
         var musicSimulator = new MusicRecognitionSimulator(strings);
         var musicRecognition = new MusicRecognitionWorkflow(musicRecognizer, musicSimulator, log);
-        var musicResultPresenter = new MusicResultPresenter(OpenResultsUrl, notifier, strings);
+        var musicResultPresenter = new MusicResultPresenter(urlOpening, notifier, strings);
         var providerSelection = new ProviderSelectionStore(
             providerRouter,
             settings,
@@ -269,7 +271,7 @@ public static class CompositionRoot
             log);
         var textSearch = new TextSearchWorkflow(
             new TextSearchUrlBuilder(),
-            OpenResultsUrl,
+            urlOpening,
             notifier,
             strings,
             log);
@@ -298,7 +300,7 @@ public static class CompositionRoot
             (overlay, cancellation) => new OverlayTranslationSession(
                 overlay, screenTranslation, cancellation),
             (overlay, maxLongSidePx, cancellation) => new OverlayTraceSession(
-                overlay, visualSearch, maxLongSidePx, OpenResultsUrl, cancellation),
+                overlay, visualSearch, maxLongSidePx, urlOpening, cancellation),
             providerSelection,
             strings,
             log,
@@ -536,18 +538,11 @@ public static class CompositionRoot
 
     private static bool OpenResultsUrl(string url)
     {
-        try
+        using var process = Process.Start(new ProcessStartInfo
         {
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                UseShellExecute = true,
-                FileName = url,
-            });
-            return process is not null;
-        }
-        catch
-        {
-            return false;
-        }
+            UseShellExecute = true,
+            FileName = url,
+        });
+        return process is not null;
     }
 }

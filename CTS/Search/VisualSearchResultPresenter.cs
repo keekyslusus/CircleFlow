@@ -1,11 +1,12 @@
 using CircleToSearch.Search.Browser;
+using CircleToSearch.Shell;
 using CircleToSearch.Ui;
 
 namespace CircleToSearch.Search;
 
 internal sealed class VisualSearchResultPresenter(
     ISearchBrowserHost browserHost,
-    Func<string, bool> openUrl,
+    UrlOpeningService urlOpening,
     IPluginNotifier notifier,
     UiStrings strings,
     PluginLog log)
@@ -42,19 +43,7 @@ internal sealed class VisualSearchResultPresenter(
         if (technicalFailure && prepared.ExternalFallbackUrl is { } fallback)
         {
             if (cancel.IsCancellationRequested) return;
-            var opened = false;
-            try
-            {
-                opened = openUrl(fallback.AbsoluteUri);
-            }
-            catch (Exception exception)
-            {
-                log.Error(nameof(VisualSearchResultPresenter), "opening the external results URL failed", exception);
-            }
-
-            if (!opened)
-                notifier.ShowError(strings.PluginTitle, strings.ResultsUrlOpenFailed);
-            else
+            if (urlOpening.TryOpen(fallback.AbsoluteUri))
                 log.Info(
                     nameof(VisualSearchResultPresenter),
                     $"provider '{routed.ProviderId}' results opened in the default browser");

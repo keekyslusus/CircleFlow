@@ -1,11 +1,12 @@
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Shazam;
+using CircleToSearch.Shell;
 using CircleToSearch.Ui;
 
 namespace CircleToSearch.Search;
 
 internal sealed class MusicResultPresenter(
-    Func<string, bool> openUrl,
+    UrlOpeningService urlOpening,
     IPluginNotifier notifier,
     UiStrings strings)
 {
@@ -38,8 +39,7 @@ internal sealed class MusicResultPresenter(
 
     public void Open(ShazamRecognition recognition)
     {
-        if (!openUrl(recognition.ShazamUrl!))
-            notifier.ShowError(strings.PluginTitle, strings.ResultsUrlOpenFailed);
+        urlOpening.TryOpen(recognition.ShazamUrl!);
     }
 
     internal static bool IsSafeShazamUrl(string? url)

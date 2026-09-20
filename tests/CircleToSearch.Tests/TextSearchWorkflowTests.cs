@@ -1,4 +1,5 @@
 using CircleToSearch.Search;
+using CircleToSearch.Shell;
 using CircleToSearch.Ui;
 using Xunit;
 
@@ -41,12 +42,14 @@ public sealed class TextSearchWorkflowTests
     {
         var logDirectory = Path.Combine(TestOutputPaths.TempDirectory, "text-search-logs");
         Directory.CreateDirectory(logDirectory);
+        var notifier = new Notifier(errors);
+        var log = new PluginLog(logDirectory);
         return new TextSearchWorkflow(
             new TextSearchUrlBuilder(maximumScalars),
-            open,
-            new Notifier(errors),
+            new UrlOpeningService(open, notifier, TestUiStrings.English, log),
+            notifier,
             TestUiStrings.English,
-            new PluginLog(logDirectory));
+            log);
     }
 
     private sealed class Notifier(List<string> errors) : IPluginNotifier

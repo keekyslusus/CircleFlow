@@ -1,4 +1,5 @@
 using CircleToSearch.Capture;
+using CircleToSearch.Shell;
 
 namespace CircleToSearch.Search;
 
@@ -6,7 +7,7 @@ internal sealed class OverlayTraceSession(
     IOverlaySession overlay,
     VisualSearchWorkflow workflow,
     int maxLongSidePx,
-    Func<string, bool>? openTraceUrl,
+    UrlOpeningService urlOpening,
     CancellationToken sessionCancellation) : IOverlaySessionOperation
 {
     private CancellationTokenSource? _cancellation =
@@ -32,7 +33,7 @@ internal sealed class OverlayTraceSession(
     {
         if (_match is null) return OverlaySessionContinuation.Continue;
         await overlay.CloseAsync().ConfigureAwait(false);
-        openTraceUrl?.Invoke(_match.AnilistUrl);
+        urlOpening.TryOpen(_match.AnilistUrl);
         return OverlaySessionContinuation.EndSession;
     }
 

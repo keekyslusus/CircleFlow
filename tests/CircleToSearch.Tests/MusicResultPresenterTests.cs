@@ -1,6 +1,7 @@
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
+using CircleToSearch.Shell;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -19,7 +20,7 @@ public sealed class MusicResultPresenterTests
         string expected)
     {
         var notifier = new TestPluginNotifier();
-        var presenter = new MusicResultPresenter(_ => true, notifier, TestUiStrings.English);
+        var presenter = new MusicResultPresenter(Opening(_ => true, notifier), notifier, TestUiStrings.English);
 
         presenter.PresentFallback(MusicRecognitionOutcome.From(status));
 
@@ -35,7 +36,7 @@ public sealed class MusicResultPresenterTests
         var opened = new List<string>();
         var notifier = new TestPluginNotifier();
         var presenter = new MusicResultPresenter(
-            url => { opened.Add(url); return true; }, notifier, TestUiStrings.English);
+            Opening(url => { opened.Add(url); return true; }, notifier), notifier, TestUiStrings.English);
         var match = Match("https://www.shazam.com/track/1");
 
         presenter.PresentFallback(MusicRecognitionOutcome.Matched(match));
@@ -51,7 +52,7 @@ public sealed class MusicResultPresenterTests
     public void Unsafe_match_shows_plain_message()
     {
         var notifier = new TestPluginNotifier();
-        var presenter = new MusicResultPresenter(_ => true, notifier, TestUiStrings.English);
+        var presenter = new MusicResultPresenter(Opening(_ => true, notifier), notifier, TestUiStrings.English);
 
         presenter.PresentFallback(MusicRecognitionOutcome.Matched(Match("https://example.com/track/1")));
 
@@ -76,7 +77,7 @@ public sealed class MusicResultPresenterTests
     public void Opener_failure_surfaces_existing_error()
     {
         var notifier = new TestPluginNotifier();
-        var presenter = new MusicResultPresenter(_ => false, notifier, TestUiStrings.English);
+        var presenter = new MusicResultPresenter(Opening(_ => false, notifier), notifier, TestUiStrings.English);
 
         presenter.Open(Match("https://www.shazam.com/track/1"));
 
@@ -87,7 +88,7 @@ public sealed class MusicResultPresenterTests
     public void Canceled_outcome_has_no_ui_side_effects()
     {
         var notifier = new TestPluginNotifier();
-        var presenter = new MusicResultPresenter(_ => true, notifier, TestUiStrings.English);
+        var presenter = new MusicResultPresenter(Opening(_ => true, notifier), notifier, TestUiStrings.English);
 
         presenter.PresentFallback(MusicRecognitionOutcome.From(MusicRecognitionStatus.Canceled));
 
@@ -98,4 +99,7 @@ public sealed class MusicResultPresenterTests
 
     private static ShazamRecognition Match(string? url) =>
         new("Track", "Artist", "Album", "Genre", null, null, url);
+
+    private static UrlOpeningService Opening(Func<string, bool> open, TestPluginNotifier notifier) =>
+        new(open, notifier, TestUiStrings.English, new PluginLog(TestOutputPaths.TempDirectory));
 }

@@ -1,5 +1,6 @@
 using CircleToSearch.Interop;
 using CircleToSearch.Settings;
+using CircleToSearch.Shell;
 using CircleToSearch.Trigger;
 using Xunit;
 
@@ -23,7 +24,9 @@ public sealed class RuntimeActivationTests
         await using var rollback = new ResourceRollbackScope(log);
         var runtime = CompositionRoot.Create(paths,
             new AppSettings { HotkeyGesture = gesture, HideDelayMilliseconds = 2000 }, new SettingsStore(paths),
-            TestUiStrings.English, notifier, () => { hides++; return hiding.Task; }, log, rollback);
+            TestUiStrings.English, notifier,
+            new UrlOpeningService(_ => true, notifier, TestUiStrings.English, log),
+            () => { hides++; return hiding.Task; }, log, rollback);
         Assert.False(runtime.Settings.HotkeyStatus.IsActive);
         Assert.Equal(TestUiStrings.English.HotkeyConflict(gesture), Assert.Single(notifier.Errors).Message);
         var open = runtime.OpenAsync();

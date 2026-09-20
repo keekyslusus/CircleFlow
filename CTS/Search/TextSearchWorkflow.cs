@@ -1,10 +1,11 @@
+using CircleToSearch.Shell;
 using CircleToSearch.Ui;
 
 namespace CircleToSearch.Search;
 
 internal sealed class TextSearchWorkflow(
     TextSearchUrlBuilder urlBuilder,
-    Func<string, bool> openUrl,
+    UrlOpeningService urlOpening,
     IPluginNotifier notifier,
     UiStrings strings,
     PluginLog log)
@@ -25,12 +26,11 @@ internal sealed class TextSearchWorkflow(
             return false;
         }
 
-        if (openUrl(url))
+        if (urlOpening.TryOpen(url, strings.TextSearchOpenFailed))
         {
             log.Info(nameof(TextSearchWorkflow), $"text search opened with provider '{providerId}'");
             return true;
         }
-        notifier.ShowError(strings.PluginTitle, strings.TextSearchOpenFailed);
         return false;
     }
 }
