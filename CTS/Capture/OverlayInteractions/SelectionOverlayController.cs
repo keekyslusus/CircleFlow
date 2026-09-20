@@ -101,7 +101,11 @@ internal sealed class SelectionOverlayController : IDisposable
         CompleteGesture();
     }
 
-    internal void Cancel() => StopInput();
+    internal void Cancel()
+    {
+        StopInput();
+        ResetSelectionGesture();
+    }
 
     internal void StopInput()
     {

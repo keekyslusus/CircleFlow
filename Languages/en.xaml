@@ -246,4 +246,11 @@ Changes are not saved.</system:String>
     <system:String x:Key="app_settings_preview_shortcut">Shortcut updated in this window only.</system:String>
     <system:String x:Key="app_settings_invalid_shortcut">Use Ctrl, Alt, or Shift with a letter, number, or Space.</system:String>
     <system:String x:Key="app_settings_plus">+</system:String>
+    <system:String x:Key="plugin_circletosearch_ocr_language_changed">Text language: {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_ocr_processing">Recognizing text</system:String>
+    <system:String x:Key="plugin_circletosearch_ocr_language_unavailable">Text recognition is unavailable for {0}.</system:String>
+    <system:String x:Key="plugin_circletosearch_ocr_unknown_language">The current input language could not be detected.</system:String>
+    <system:String x:Key="plugin_circletosearch_ocr_no_text">No text found.</system:String>
+    <system:String x:Key="plugin_circletosearch_ocr_failed">Text recognition failed.</system:String>
+    <system:String x:Key="plugin_circletosearch_ocr_platform_unavailable">Text recognition is unavailable on this Windows installation.</system:String>
 </ResourceDictionary>

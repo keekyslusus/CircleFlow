@@ -129,6 +129,13 @@ public sealed class UiStrings
     public string SettingsOcrLanguageLabel => Get("plugin_circletosearch_settings_ocr_language_label");
     public string SettingsTranslationTargetLabel => Get("plugin_circletosearch_settings_translation_target_label");
     public string SystemDefaultLanguage => Get("plugin_circletosearch_system_default_language");
+    public string OcrLanguageChanged(string language) => Get("plugin_circletosearch_ocr_language_changed", language);
+    public string OcrProcessing => Get("plugin_circletosearch_ocr_processing");
+    public string OcrLanguageUnavailable(string language) => Get("plugin_circletosearch_ocr_language_unavailable", language);
+    public string OcrUnknownLanguage => Get("plugin_circletosearch_ocr_unknown_language");
+    public string OcrNoText => Get("plugin_circletosearch_ocr_no_text");
+    public string OcrFailed => Get("plugin_circletosearch_ocr_failed");
+    public string OcrPlatformUnavailable => Get("plugin_circletosearch_ocr_platform_unavailable");
 
     public string VisualSearchQuerySubtitle(string hotkeyStatus) =>
         Get("plugin_circletosearch_query_subtitle", hotkeyStatus);

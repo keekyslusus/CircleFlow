@@ -34,11 +34,18 @@ internal sealed class OcrOverlayController(
     internal void Restart(BitmapSource image, string? language)
     {
         if (_disposed) return;
+        Invalidate();
+        _started = true;
+        _ = RunAsync(_generation, image, language, _cancellation.Token);
+    }
+
+    internal void Invalidate()
+    {
+        if (_disposed) return;
         _cancellation.Cancel();
         _cancellation.Dispose();
         _cancellation = new CancellationTokenSource();
-        _started = true;
-        _ = RunAsync(++_generation, image, language, _cancellation.Token);
+        ++_generation;
     }
 
     public void Dispose()

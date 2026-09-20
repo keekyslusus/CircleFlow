@@ -40,11 +40,13 @@ internal sealed class PointerGestureRouter : IDisposable
 
     internal ActivePointerGesture ActiveGesture { get; private set; }
 
-    internal void Cancel()
+    internal ActivePointerGesture Cancel()
     {
+        var gesture = ActiveGesture;
         if (ActiveGesture == ActivePointerGesture.Lasso) _lasso.Cancel();
         if (ActiveGesture == ActivePointerGesture.Text) _text.CancelGesture();
         ActiveGesture = ActivePointerGesture.None;
+        return gesture;
     }
 
     public void Dispose()

@@ -14,6 +14,30 @@ namespace CircleToSearch.Tests;
 public sealed class ToastOverlayControllerTests
 {
     [Fact]
+    public void Keyed_language_toast_replaces_only_its_own_message_and_renews_lifetime()
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var visual = CreateVisual();
+            var window = ShowVisual(visual);
+            using var controller = new ToastOverlayController(visual.Bottom, false, () => true);
+            controller.Show(new ToastNotification("Copied", ToastTone.Success, TimeSpan.FromSeconds(2)));
+            controller.ShowOrUpdate("ocr-language", new ToastNotification("English", ToastTone.Neutral,
+                TimeSpan.FromMilliseconds(30)));
+            PumpFor(TimeSpan.FromMilliseconds(70));
+            controller.ShowOrUpdate("ocr-language", new ToastNotification("Russian", ToastTone.Neutral,
+                TimeSpan.FromSeconds(1)));
+            Assert.Equal(2, controller.ActiveCount);
+            Assert.Equal(["Copied", "Russian"], controller.ActiveVisuals.Select(v => v.Message.Text));
+            PumpFor(TimeSpan.FromMilliseconds(220));
+            Assert.Equal(2, controller.ActiveCount);
+            visual.Effects.SceneRipples.Dispose();
+            window.Content = null;
+            window.Close();
+        }));
+    }
+
+    [Fact]
     public void Multiple_toasts_keep_creation_order_spacing_and_independent_lifetimes()
     {
         Assert.Null(RunOnSta(() =>

@@ -14,6 +14,68 @@ namespace CircleToSearch.Tests;
 public sealed class OverlayImageTextCoordinatorTests
 {
     [Fact]
+    public void Rapid_language_changes_start_only_the_last_effective_language_after_debounce()
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var source = Source(100, 40);
+            var visual = OverlayVisualFactory.CreateRoot(
+                source, new Size(100, 40), 0, false, TestUiStrings.English);
+            var lasso = new SelectionOverlayController(
+                visual.Selection, visual.Root, new GdiRectangle(0, 0, 100, 40), 1, 0, 12,
+                false, () => true, (_, _) => true, () => { }, _ => { }, () => { }, () => { },
+                subscribeInput: false);
+            var text = new TextSelectionOverlayController(
+                visual.TextSelection, visual.Root, visual.Selection.InputSurface,
+                new OverlayCoordinateMapper(1, false, new GdiSize(100, 40)),
+                new OcrTextHitTester(),
+                new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English),
+                () => "google-lens", _ => { }, TestUiStrings.English, false);
+            var pointer = new PointerGestureRouter(
+                visual.Selection, visual.Root, lasso, text,
+                () => true, (_, _) => true, _ => new Point(20, 20));
+            var recognizer = new GestureObservingRecognizer(() => pointer.ActiveGesture);
+            var ocr = new OcrOverlayController(source, visual.Root.Dispatcher, recognizer,
+                "en-US", _ => { });
+            var clock = DateTime.UtcNow;
+            var scheduled = new List<Action>();
+            try
+            {
+                using var coordinator = new OverlayImageTextCoordinator(
+                    pointer, text, ocr, null, TestUiStrings.English, "en-US",
+                    source, new OcrLanguageCatalog([
+                        new("en-US", "English"), new("ru-RU", "Russian"), new("de-DE", "German")]),
+                    now: () => clock,
+                    scheduleDelay: (_, callback) => scheduled.Add(callback));
+                coordinator.Start();
+                Assert.Equal(["en-US"], recognizer.Languages);
+                coordinator.OnInputLanguageChanged("ru-RU");
+                clock += TimeSpan.FromMilliseconds(100);
+                coordinator.OnInputLanguageChanged("de-DE");
+                clock += TimeSpan.FromMilliseconds(50);
+                coordinator.OnInputLanguageChanged("de-AT");
+                Assert.Equal(2, scheduled.Count);
+                Assert.Equal(["en-US"], recognizer.Languages);
+                clock += TimeSpan.FromMilliseconds(300);
+                foreach (var callback in scheduled) callback();
+                Assert.Equal(["en-US", "de-DE"], recognizer.Languages);
+            }
+            finally
+            {
+                ocr.Dispose();
+                pointer.Dispose();
+                text.Dispose();
+                lasso.Dispose();
+                visual.TranslationAction.LoadingIndicator.Dispose();
+                visual.Music.LoadingIndicator.Dispose();
+                visual.Music.Waveform.Dispose();
+                visual.Bottom.LayoutTransitions.Dispose();
+                visual.Effects.SceneRipples.Dispose();
+            }
+        }));
+    }
+
+    [Fact]
     public void Image_change_cancels_active_gesture_before_restarting_ocr()
     {
         var failure = RunOnSta(() =>
@@ -22,6 +84,7 @@ public sealed class OverlayImageTextCoordinatorTests
             var translated = Source(100, 40);
             var visual = OverlayVisualFactory.CreateRoot(
                 source, new Size(100, 40), 0, false, TestUiStrings.English);
+            using var actionTray = new ActionTrayOverlayController(visual.Actions, visual.Bottom.Root);
             var lasso = new SelectionOverlayController(
                 visual.Selection,
                 visual.Root,
@@ -32,7 +95,7 @@ public sealed class OverlayImageTextCoordinatorTests
                 false,
                 () => true,
                 (_, _) => true,
-                () => { },
+                actionTray.HideForSelection,
                 _ => { },
                 () => { },
                 () => { },
@@ -73,20 +136,39 @@ public sealed class OverlayImageTextCoordinatorTests
                     Source = visual.Selection.InputSurface,
                 });
                 Assert.Equal(ActivePointerGesture.Lasso, pointer.ActiveGesture);
+                lasso.Update(new Point(60, 25));
+                Assert.NotEmpty(visual.Selection.Halo.Points);
+                Assert.False(visual.Actions.Tray.IsHitTestVisible);
 
-                var coordinator = new OverlayImageTextCoordinator(
+                using var coordinator = new OverlayImageTextCoordinator(
                     pointer,
                     text,
                     ocr,
                     null,
                     TestUiStrings.English,
-                    "en-US");
+                    "en-US",
+                    restoreActionTray: actionTray.Restore);
                 coordinator.OnImageChanged(translated, "ru-RU");
 
                 Assert.Equal(ActivePointerGesture.None, pointer.ActiveGesture);
+                Assert.Empty(visual.Selection.Halo.Points);
+                Assert.Empty(visual.Selection.Accent.Points);
+                Assert.True(visual.Actions.Tray.IsHitTestVisible);
                 Assert.Equal(ActivePointerGesture.None, recognizer.GestureAtStart);
                 Assert.Same(translated, recognizer.Image);
                 Assert.Equal("ru-RU", recognizer.Language);
+
+                visual.Selection.InputSurface.RaiseEvent(new MouseButtonEventArgs(
+                    Mouse.PrimaryDevice, 0, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+                    Source = visual.Selection.InputSurface,
+                });
+                lasso.Update(new Point(60, 25));
+                coordinator.OnInputLanguageChanged("de-DE");
+                Assert.Equal(ActivePointerGesture.None, pointer.ActiveGesture);
+                Assert.Empty(visual.Selection.Halo.Points);
+                Assert.True(visual.Actions.Tray.IsHitTestVisible);
             }
             finally
             {
@@ -135,6 +217,7 @@ public sealed class OverlayImageTextCoordinatorTests
         internal ActivePointerGesture? GestureAtStart { get; private set; }
         internal BitmapSource? Image { get; private set; }
         internal string? Language { get; private set; }
+        internal List<string?> Languages { get; } = [];
 
         public Task<OcrRecognitionOutcome> RecognizeAsync(
             BitmapSource source,
@@ -144,6 +227,7 @@ public sealed class OverlayImageTextCoordinatorTests
             GestureAtStart = activeGesture();
             Image = source;
             Language = requestedLanguageTag;
+            Languages.Add(requestedLanguageTag);
             var completion = new TaskCompletionSource<OcrRecognitionOutcome>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
             cancellationToken.Register(() => completion.TrySetCanceled(cancellationToken));

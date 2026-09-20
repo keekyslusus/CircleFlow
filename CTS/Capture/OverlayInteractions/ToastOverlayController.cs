@@ -31,6 +31,28 @@ internal sealed class ToastOverlayController : IDisposable
         _active.Select(entry => entry.Visual).ToArray();
 
     internal void Show(ToastNotification notification)
+        => ShowCore(notification, null);
+
+    internal void ShowOrUpdate(string key, ToastNotification notification)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        var existing = _active.FirstOrDefault(entry => entry.Key == key);
+        if (existing is not null)
+        {
+            StopTimer(existing.Timer);
+            existing.Exit?.Dispose();
+            ToastTransitions.Settle(existing.Visual.Card);
+            _bottom.LayoutTransitions.Apply(() =>
+            {
+                _active.Remove(existing);
+                _bottom.Stack.Children.Remove(existing.Visual.Slot);
+                RepairMargins();
+            }, _animationsEnabled());
+        }
+        ShowCore(notification, key);
+    }
+
+    private void ShowCore(ToastNotification notification, string? key)
     {
         ArgumentNullException.ThrowIfNull(notification);
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -38,7 +60,7 @@ internal sealed class ToastOverlayController : IDisposable
         var animationsEnabled = _animationsEnabled();
         var visual = ToastOverlayVisualFactory.Create(notification, _lightTheme);
         var timer = new DispatcherTimer { Interval = notification.Duration };
-        var entry = new ActiveToast(++_nextId, visual, timer);
+        var entry = new ActiveToast(++_nextId, visual, timer, key);
         timer.Tick += OnLifetimeElapsed;
         timer.Tag = entry.Id;
 
@@ -133,9 +155,10 @@ internal sealed class ToastOverlayController : IDisposable
         timer.Tag = null;
     }
 
-    private sealed class ActiveToast(long id, ToastOverlayVisual visual, DispatcherTimer timer)
+    private sealed class ActiveToast(long id, ToastOverlayVisual visual, DispatcherTimer timer, string? key)
     {
         internal long Id { get; } = id;
+        internal string? Key { get; } = key;
         internal ToastOverlayVisual Visual { get; } = visual;
         internal DispatcherTimer Timer { get; } = timer;
         internal CardTransitions.ExitHandle? Exit { get; set; }

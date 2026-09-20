@@ -295,7 +295,7 @@ public sealed class SceneRippleHost : ISceneRippleSink, IDisposable
             0.07,
             TimeSpan.FromMilliseconds(520),
             TimeSpan.FromMilliseconds(90)),
-        SceneRipplePreset.TranslationComplete => new(
+        SceneRipplePreset.TranslationComplete or SceneRipplePreset.OcrComplete => new(
             SystemAccentColor.Read(),
             TimeSpan.FromMilliseconds(900),
             64,

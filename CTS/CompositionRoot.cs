@@ -40,7 +40,8 @@ public static class CompositionRoot
         PluginLog? Log,
         TranslationMemoryProfiler? MemoryProfiler,
         Func<Uri, ITraceVideoPreview>? CreateTraceVideo,
-        Func<bool> TraceTheme);
+        Func<bool> TraceTheme,
+        OcrLanguageCatalog? OcrLanguages = null);
 
     public static int Run() => Run(new AppPaths(),
         (message, title, icon) => MessageBox.Show(message, title, MessageBoxButton.OK, icon));
@@ -288,7 +289,8 @@ public static class CompositionRoot
             translationMemory,
             video => new TraceVideoPreview(video,
                 () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log),
-            SystemTheme.IsLight);
+            SystemTheme.IsLight,
+            ocrLanguages);
         var overlayControllerFactory = new OverlayControllerFactory(
             context => CreateOverlayControllers(context, overlayControllerDependencies));
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
@@ -308,7 +310,8 @@ public static class CompositionRoot
         var coordinator = new SearchCoordinator(
             workflow,
             hideOwnWindows,
-            () => SearchSessionOptions.From(settings.Snapshot, ocrLanguages, CultureInfo.CurrentUICulture),
+            () => SearchSessionOptions.From(settings.Snapshot, ocrLanguages, CultureInfo.CurrentUICulture,
+                KeyboardInputLanguageSource.CaptureForeground()),
             notifier,
             strings,
             log);
@@ -429,12 +432,13 @@ public static class CompositionRoot
                 context.Visual.LightTheme));
             var frameSource = context.Visual.Selection.Screenshot.Source as BitmapSource
                 ?? throw new InvalidOperationException("The overlay frame source is missing.");
+            OverlayImageTextCoordinator? imageText = null;
             var ocr = Track(new OcrOverlayController(
                 frameSource,
                 context.CoordinateRoot.Dispatcher,
                 dependencies.OcrRecognizer,
                 context.OcrLanguageTag,
-                outcome => textSelection.SetDocument(outcome.Document),
+                outcome => imageText?.OnCompleted(outcome),
                 dependencies.Log,
                 dependencies.MemoryProfiler));
             var pointer = Track(new PointerGestureRouter(
@@ -445,13 +449,31 @@ public static class CompositionRoot
                 context.CanAcceptPointerInput,
                 context.CanStartSelection,
                 dependencies.PointerPosition));
-            var imageText = new OverlayImageTextCoordinator(
+            var actionTray = Track(new ActionTrayOverlayController(
+                context.Visual.Actions,
+                context.Visual.Bottom.Root));
+            imageText = Track(new OverlayImageTextCoordinator(
                 pointer,
                 textSelection,
                 ocr,
                 context.Visual.Actions.Prompt,
                 context.Strings,
-                context.OcrLanguageTag);
+                context.InputLanguage.Tag ?? context.OcrLanguageTag,
+                frameSource,
+                dependencies.OcrLanguages,
+                toast,
+                activityPresenter,
+                context.Visual.Effects,
+                context.CoordinateRoot,
+                context.Visual.LightTheme,
+                restoreActionTray: actionTray.Restore));
+            var inputLanguage = Track(new KeyboardInputLanguageSource(
+                imageText.OnInputLanguageChanged,
+                tag =>
+                {
+                    imageText.SetInitialInputLanguage(tag);
+                    imageText.Start();
+                }));
             var translation = Track(new ScreenTranslationOverlayController(
                 context.Visual.TranslationAction,
                 activityPresenter,
@@ -507,13 +529,12 @@ public static class CompositionRoot
                 context.PublishCommand,
                 context.CreateSelectionCopy,
                 dependencies.CreateTraceVideo));
-            var actionTray = Track(new ActionTrayOverlayController(
-                context.Visual.Actions,
-                context.Visual.Bottom.Root));
             var controllers = new OverlayControllers(
                 selection,
                 textSelection,
                 pointer,
+                imageText,
+                inputLanguage,
                 ocr,
                 translation,
                 provider,

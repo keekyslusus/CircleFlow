@@ -4,6 +4,8 @@ internal sealed class OverlayControllers(
     SelectionOverlayController selection,
     TextSelectionOverlayController textSelection,
     PointerGestureRouter pointer,
+    OverlayImageTextCoordinator imageText,
+    CircleToSearch.Interop.KeyboardInputLanguageSource inputLanguage,
     OcrOverlayController ocr,
     ScreenTranslationOverlayController translation,
     ProviderMenuController provider,
@@ -19,6 +21,8 @@ internal sealed class OverlayControllers(
     internal SelectionOverlayController Selection { get; } = selection;
     internal TextSelectionOverlayController TextSelection { get; } = textSelection;
     internal PointerGestureRouter Pointer { get; } = pointer;
+    internal OverlayImageTextCoordinator ImageText { get; } = imageText;
+    internal CircleToSearch.Interop.KeyboardInputLanguageSource InputLanguage { get; } = inputLanguage;
     internal OcrOverlayController Ocr { get; } = ocr;
     internal ScreenTranslationOverlayController Translation { get; } = translation;
     internal ProviderMenuController Provider { get; } = provider;
@@ -37,6 +41,8 @@ internal sealed class OverlayControllers(
         ActionTray.Dispose();
         Music.Dispose();
         Debug.Dispose();
+        ImageText.Dispose();
+        InputLanguage.Dispose();
         Ocr.Dispose();
         Translation.Dispose();
         Pointer.Dispose();

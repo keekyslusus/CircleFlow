@@ -2,6 +2,7 @@ using System.Windows;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
+using CircleToSearch.Interop;
 using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Capture.OverlayInteractions;
@@ -34,4 +35,5 @@ internal sealed record OverlayControllerContext(
     Action<IOverlayCommand> MusicResultCommandRequested,
     Action<OverlayInteractionMode> TransitionMode,
     string? OcrLanguageTag = null,
-    string TranslationTargetLanguageTag = "en");
+    string TranslationTargetLanguageTag = "en",
+    KeyboardLanguageSnapshot InputLanguage = default);

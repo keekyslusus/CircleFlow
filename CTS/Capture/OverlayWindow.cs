@@ -37,7 +37,9 @@ public enum OverlayExitFade
 public sealed class OverlayWindow : Window
 {
     private const double ChipEdgeMarginDips = 32;
+    private static readonly TimeSpan ForegroundCheckInterval = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan ExitFadeDuration = TimeSpan.FromMilliseconds(160);
+    private const string InputLanguageSwitcherWindowClass = "Shell_InputSwitchTopLevelWindow";
 
     private readonly GdiBitmap _frame;
     private readonly OverlayVisual _visual;
@@ -52,6 +54,9 @@ public sealed class OverlayWindow : Window
     private readonly TextSelectionOverlayController _textSelection;
     private readonly PointerGestureRouter _pointer;
     private readonly OcrOverlayController _ocr;
+    private readonly OverlayImageTextCoordinator _imageText;
+    private readonly KeyboardInputLanguageSource _inputLanguage;
+    private readonly KeyboardLanguageSnapshot _initialInputLanguage;
     private readonly ScreenTranslationOverlayController _translation;
     private readonly ProviderMenuController _provider;
     private readonly MusicOverlayController _music;
@@ -62,6 +67,7 @@ public sealed class OverlayWindow : Window
     private bool _cancelPublished;
     private bool _entranceRipplePending;
     private bool _resourcesDisposed;
+    private DispatcherTimer? _inputSwitcherCheck;
 
     internal OverlayInteractionMode Mode => _interaction.Mode;
 
@@ -88,13 +94,15 @@ public sealed class OverlayWindow : Window
         string? initialProviderId = null,
         Action<IOverlayCommand>? publishCommand = null,
         string? ocrLanguageTag = null,
-        string translationTargetLanguageTag = "en")
+        string translationTargetLanguageTag = "en",
+        KeyboardLanguageSnapshot inputLanguage = default)
     {
         _frame = frame;
         _exitFade = exitFade;
         _clickThroughOnCancel = clickThroughOnCancel;
         _publishCommand = publishCommand;
         _strings = strings;
+        _initialInputLanguage = inputLanguage;
         ArgumentNullException.ThrowIfNull(controllerFactory);
         _entranceOrigin = entranceOrigin is null
             ? null
@@ -151,7 +159,8 @@ public sealed class OverlayWindow : Window
                 HandleMusicResultCommand,
                 ApplyModeTransition,
                 ocrLanguageTag,
-                translationTargetLanguageTag));
+                translationTargetLanguageTag,
+                inputLanguage));
         }
         catch
         {
@@ -163,6 +172,8 @@ public sealed class OverlayWindow : Window
         _textSelection = _controllers.TextSelection;
         _pointer = _controllers.Pointer;
         _ocr = _controllers.Ocr;
+        _imageText = _controllers.ImageText;
+        _inputLanguage = _controllers.InputLanguage;
         _translation = _controllers.Translation;
         _provider = _controllers.Provider;
         _music = _controllers.Music;
@@ -176,6 +187,7 @@ public sealed class OverlayWindow : Window
         PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
         MouseRightButtonDown += OnMouseRightButtonDown;
         Deactivated += OnDeactivated;
+        Activated += OnActivated;
         Closed += OnClosed;
         Dispatcher.ShutdownStarted += OnDispatcherShutdownStarted;
     }
@@ -210,7 +222,8 @@ public sealed class OverlayWindow : Window
             options.InitialProviderId,
             publishCommand,
             options.SessionOptions.OcrLanguageTag,
-            options.SessionOptions.TranslationTargetLanguageTag)
+            options.SessionOptions.TranslationTargetLanguageTag,
+            options.SessionOptions.InputLanguage)
     {
     }
 
@@ -220,6 +233,7 @@ public sealed class OverlayWindow : Window
     {
         _debug.SetOpen(open);
         if (open) _provider.SetOpen(false);
+        _imageText.SetAvailable(!open && Mode is (OverlayInteractionMode.Selecting or OverlayInteractionMode.TranslationShown));
     }
 
     internal bool IsOverlayChromeInteraction(object? originalSource, Point windowPoint)
@@ -304,7 +318,7 @@ public sealed class OverlayWindow : Window
     {
         _actionTray.ShowEntrance();
         QueueEntranceRipple();
-        _ocr.Start();
+        _inputLanguage.Attach(this, _initialInputLanguage);
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
@@ -405,12 +419,62 @@ public sealed class OverlayWindow : Window
 
     private void OnDeactivated(object? sender, EventArgs e)
     {
+        var windowsShortcut = Keyboard.Modifiers.HasFlag(ModifierKeys.Windows);
         Dispatcher.BeginInvoke(() =>
         {
-            if (_interaction.IsFinished || IsActive) return;
-            if (IsOverlayChromeInteraction(null, Mouse.GetPosition(this))) return;
-            CancelInternal();
+            var foreground = NativeMethods.GetForegroundWindow();
+            if (foreground == IntPtr.Zero || IsInputLanguageSwitcherWindow(foreground))
+            {
+                StartInputSwitcherCheck();
+                return;
+            }
+            CancelIfStillInactive(honorChrome: !windowsShortcut);
         }, DispatcherPriority.ContextIdle);
+    }
+
+    private void OnActivated(object? sender, EventArgs e) => StopInputSwitcherCheck();
+
+    private void StartInputSwitcherCheck()
+    {
+        if (_inputSwitcherCheck is not null || _resourcesDisposed) return;
+        _inputSwitcherCheck = new DispatcherTimer(DispatcherPriority.Normal, Dispatcher)
+        {
+            Interval = ForegroundCheckInterval,
+        };
+        _inputSwitcherCheck.Tick += OnInputSwitcherCheck;
+        _inputSwitcherCheck.Start();
+    }
+
+    private void OnInputSwitcherCheck(object? sender, EventArgs e)
+    {
+        var foreground = NativeMethods.GetForegroundWindow();
+        if (foreground == IntPtr.Zero || IsInputLanguageSwitcherWindow(foreground)) return;
+        StopInputSwitcherCheck();
+        if (foreground == new WindowInteropHelper(this).Handle) return;
+        if (!IsActive) CancelIfStillInactive(honorChrome: false);
+    }
+
+    private void StopInputSwitcherCheck()
+    {
+        if (_inputSwitcherCheck is null) return;
+        _inputSwitcherCheck.Stop();
+        _inputSwitcherCheck.Tick -= OnInputSwitcherCheck;
+        _inputSwitcherCheck = null;
+    }
+
+    private static bool IsInputLanguageSwitcherWindow(IntPtr window)
+    {
+        var className = new System.Text.StringBuilder(64);
+        return NativeMethods.GetClassNameW(window, className, className.Capacity) > 0 &&
+               string.Equals(className.ToString(), InputLanguageSwitcherWindowClass,
+                   StringComparison.Ordinal);
+    }
+
+    private void CancelIfStillInactive(bool honorChrome = true)
+    {
+        if (_interaction.IsFinished || IsActive) return;
+        if (honorChrome && IsOverlayChromeInteraction(null, Mouse.GetPosition(this))) return;
+        CancelInternal();
     }
 
     private void StartMusicRecognition()
@@ -449,6 +513,8 @@ public sealed class OverlayWindow : Window
     private void ApplyModeTransition(OverlayInteractionMode target)
     {
         if (!_interaction.TransitionTo(target)) return;
+        if (target is not OverlayInteractionMode.Selecting and not OverlayInteractionMode.TranslationShown)
+            _imageText.SetAvailable(false);
         switch (target)
         {
             case OverlayInteractionMode.TraceLoading:
@@ -509,6 +575,9 @@ public sealed class OverlayWindow : Window
                 _translation.SetActionEnabled(false);
                 break;
         }
+        if (target is OverlayInteractionMode.Selecting or OverlayInteractionMode.TranslationShown)
+            _imageText.SetAvailable(!_debug.IsOpen);
+        if (target == OverlayInteractionMode.Closing) _inputLanguage.Dispose();
     }
 
     private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -622,6 +691,8 @@ public sealed class OverlayWindow : Window
         PreviewMouseLeftButtonDown -= OnPreviewMouseLeftButtonDown;
         MouseRightButtonDown -= OnMouseRightButtonDown;
         Deactivated -= OnDeactivated;
+        Activated -= OnActivated;
+        StopInputSwitcherCheck();
         Closed -= OnClosed;
         Dispatcher.ShutdownStarted -= OnDispatcherShutdownStarted;
         UnqueueEntranceRipple();

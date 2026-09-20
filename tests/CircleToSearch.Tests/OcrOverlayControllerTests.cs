@@ -107,6 +107,51 @@ public sealed class OcrOverlayControllerTests
     }
 
     [Fact]
+    public void Invalidate_suppresses_late_native_result_before_another_ocr_starts()
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var source = CreateFrozenSource();
+            var recognizer = new DeferredIgnoringCancellationRecognizer();
+            var delivered = new List<OcrRecognitionOutcome>();
+            using var controller = new OcrOverlayController(
+                source, Dispatcher.CurrentDispatcher, recognizer, "en-US", delivered.Add);
+            controller.Start();
+            controller.Invalidate();
+            recognizer.Completions[0].SetResult(OcrRecognitionOutcome.Success(Document()));
+            PumpFor(TimeSpan.FromMilliseconds(30));
+            Assert.Empty(delivered);
+            controller.Restart(source, "ru-RU");
+            recognizer.Completions[1].SetResult(OcrRecognitionOutcome.NoText());
+            PumpUntil(() => delivered.Count == 1);
+            Assert.Equal(OcrRecognitionStatus.NoText, delivered[0].Status);
+        }));
+    }
+
+    private static void PumpFor(TimeSpan duration)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer { Interval = duration };
+        timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+    }
+
+    private sealed class DeferredIgnoringCancellationRecognizer : IOcrRecognizer
+    {
+        internal List<TaskCompletionSource<OcrRecognitionOutcome>> Completions { get; } = [];
+
+        public Task<OcrRecognitionOutcome> RecognizeAsync(
+            BitmapSource source, string? requestedLanguageTag, CancellationToken cancellationToken)
+        {
+            var completion = new TaskCompletionSource<OcrRecognitionOutcome>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            Completions.Add(completion);
+            return completion.Task;
+        }
+    }
+
+    [Fact]
     public void Frozen_bitmap_result_is_delivered_through_overlay_dispatcher_and_status_is_logged()
     {
         var failure = RunOnSta(() =>

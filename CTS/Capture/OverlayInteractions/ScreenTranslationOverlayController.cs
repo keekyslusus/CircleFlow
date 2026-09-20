@@ -279,11 +279,11 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         SetActionVisual(_strings.Translating, PluginIcons.TranslateFilled);
         TranslationActionVisualPresenter.SetTranslatingState(
             _action, translating: true, _lightTheme, _animationsEnabled());
+        _transition(OverlayInteractionMode.Translating);
         _activity?.Dispose();
         _activity = _activityPresenter.ShowLoading(
             _strings.Translating,
             OverlayVisualResources.Frozen(PluginPalette.For(_lightTheme).MusicOverlay.Primary));
-        _transition(OverlayInteractionMode.Translating);
         if (string.IsNullOrWhiteSpace(target)) ShowFailure(_requestId, TranslationFailure.Service);
         else _publish(new ScreenTranslationRequested(_requestId, _originalImage, target));
     }

@@ -10,7 +10,7 @@ internal sealed record ImageTranslationSignature(string Header, string UserAgent
 
 internal static class GoogleImageTranslationProtocol
 {
-    internal const string Origin = "https://translate.google.ru";
+    internal const string Origin = "https://translate.google.com";
     internal const string FrameUrl = Origin + "/_/TranslateWebserverUi/bscframe";
     internal const string Endpoint = Origin + "/_/TranslateWebserverUi/data/batchexecute?rpcids=WqWDPb&rt=c";
     internal const int MaxResponseBytes = 48 * 1024 * 1024;

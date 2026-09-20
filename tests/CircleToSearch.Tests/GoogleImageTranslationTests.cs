@@ -137,7 +137,8 @@ public sealed class GoogleImageTranslationTests
                 PaddingPx = 0, LassoMinDiagonalPx = 10, OcrLanguageTag = "en-US", TranslationTargetLanguageTag = "ru-RU",
             });
             var session = CircleToSearch.Search.SearchSessionOptions.From(service.Snapshot,
-                new OcrLanguageCatalog([new("en-US", "English")]), System.Globalization.CultureInfo.InvariantCulture);
+                new OcrLanguageCatalog([new("en-US", "English")]), System.Globalization.CultureInfo.InvariantCulture,
+                new CircleToSearch.Interop.KeyboardLanguageSnapshot(0, "en-US"));
             var launch = new OverlayLaunchOptions(new OverlayOptions(0, 10), TestUiStrings.English,
                 [new(CircleToSearch.Search.SearchProviderIds.GoogleLens, "Google Lens")], CircleToSearch.Search.SearchProviderIds.GoogleLens, session);
             var bounds = new System.Drawing.Rectangle(0, 0, 320, 200);
