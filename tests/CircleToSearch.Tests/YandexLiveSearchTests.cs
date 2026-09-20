@@ -47,10 +47,11 @@ public sealed class YandexLiveSearchTests
         using var host = new SearchBrowserHost(
             AppContext.BaseDirectory,
             paths.SearchProfileDirectory,
-            TestUiStrings.English,
             new PluginLog(paths.LogsDirectory),
             new StaDispatcher(CompositionRoot.SearchBrowserThreadName),
-            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true));
+            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true),
+            (content, anchor, lightTheme) => CompositionRoot.CreateSearchBrowserWindowView(
+                TestUiStrings.English, content, anchor, lightTheme));
         var shown = await host.ShowAsync(
             new SearchProviderDescriptor(SearchProviderIds.YandexImages, "Yandex Images"),
             preparation.PreparedSearch!,

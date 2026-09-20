@@ -170,10 +170,11 @@ public static class CompositionRoot
         var searchBrowserHost = rollback.Replace(searchBrowserDispatcher, new SearchBrowserHost(
             paths.RootDirectory,
             paths.SearchProfileDirectory,
-            strings,
             log,
             searchBrowserDispatcher,
-            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true)));
+            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true),
+            (content, anchor, lightTheme) => CreateSearchBrowserWindowView(
+                strings, content, anchor, lightTheme)));
         var visualSearchRollback = rollback.Own(new ResourceRollbackScope(log));
         var traceHttpClient = visualSearchRollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
         var providerRouter = visualSearchRollback.Own(new VisualSearchProviderRouter(
@@ -336,6 +337,17 @@ public static class CompositionRoot
             notifier.ShowError(strings.PluginTitle, strings.HotkeyConflict(settings.Snapshot.HotkeyGesture));
         return runtime;
     }
+
+    internal static SearchBrowserWindowView CreateSearchBrowserWindowView(
+        UiStrings strings,
+        FrameworkElement content,
+        POINT anchor,
+        bool lightTheme) => new(
+            strings,
+            content,
+            lightTheme,
+            loadingOverlayEnabled: false,
+            window => new BottomResultsPanel(window, anchor));
 
     internal static OverlayControllers CreateOverlayControllers(
         OverlayControllerContext context,

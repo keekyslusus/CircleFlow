@@ -22,10 +22,11 @@ public sealed class GoogleLensLiveSearchTests
         using var host = new SearchBrowserHost(
             AppContext.BaseDirectory,
             paths.SearchProfileDirectory,
-            TestUiStrings.English,
             log,
             new StaDispatcher(CompositionRoot.SearchBrowserThreadName),
-            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true));
+            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true),
+            (content, anchor, lightTheme) => CompositionRoot.CreateSearchBrowserWindowView(
+                TestUiStrings.English, content, anchor, lightTheme));
         var provider = new GoogleLensProvider(
             jpeg => new GoogleLensBrowserOperation(jpeg, log));
 

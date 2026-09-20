@@ -125,10 +125,37 @@ public sealed class SearchBrowserHostTests
     public void Composition_root_preserves_shared_webview_thread_name()
         => Assert.Equal("CircleToSearch WebView2", CompositionRoot.SearchBrowserThreadName);
 
+    [Fact]
+    public async Task Stop_during_environment_wait_never_creates_view_and_reuses_stop_task()
+    {
+        var initialization = new TaskCompletionSource<CoreWebView2Environment>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var dispatcher = new TestStaDispatcher { ExecutePostedAction = true };
+        var viewCalls = 0;
+        var host = CreateHost(dispatcher, () => initialization.Task,
+            viewCreated: () => viewCalls++);
+        var show = host.ShowAsync(
+            new SearchProviderDescriptor("test", "Test"),
+            PreparedVisualSearch.ForUrl(new Uri("https://example.com"), null),
+            CancellationToken.None);
+
+        var stop = host.StopAsync();
+        Assert.Same(stop, host.StopAsync());
+        Assert.False(stop.IsCompleted);
+        Assert.Equal(0, dispatcher.StopCalls);
+        initialization.SetException(new OperationCanceledException());
+
+        Assert.Equal(SearchBrowserShowStatus.Canceled, (await show).Status);
+        await stop;
+        Assert.Equal(0, viewCalls);
+        Assert.Equal(1, dispatcher.StopCalls);
+    }
+
     private static SearchBrowserHost CreateHost(
         TestStaDispatcher dispatcher,
         Func<Task<CoreWebView2Environment>>? createEnvironment = null,
-        TimeSpan? shutdownTimeout = null)
+        TimeSpan? shutdownTimeout = null,
+        Action? viewCreated = null)
     {
         var directory = Path.Combine(
             Path.GetTempPath(),
@@ -138,10 +165,14 @@ public sealed class SearchBrowserHostTests
         return new SearchBrowserHost(
             AppContext.BaseDirectory,
             Path.Combine(directory, "Profile"),
-            TestUiStrings.English,
             new PluginLog(directory),
             dispatcher,
             createEnvironment ?? (() => throw new InvalidOperationException("This test must not initialize a browser.")),
+            (_, _, _) =>
+            {
+                viewCreated?.Invoke();
+                throw new InvalidOperationException("This test must not create a view.");
+            },
             shutdownTimeout);
     }
 }
