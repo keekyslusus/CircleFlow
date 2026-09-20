@@ -22,7 +22,7 @@ internal static class StartupHook
 
     private static async Task RunAsync()
     {
-        var reportPath = Path.Combine(AppContext.BaseDirectory, "Data", "Temp", "publish-probe.json");
+        var reportPath = Path.Combine(new AppPaths().TempDirectory, "publish-probe.json");
         try
         {
             var timer = Stopwatch.StartNew();
@@ -59,6 +59,11 @@ internal static class StartupHook
         var paths = new AppPaths();
         Require(Path.GetFileName(Environment.ProcessPath) == "CircleFlow.exe", "The published executable must be the process host.");
         Require(!string.Equals(Environment.CurrentDirectory, paths.RootDirectory, StringComparison.OrdinalIgnoreCase), "Expected a different working directory.");
+        Require(Path.GetDirectoryName(Environment.ProcessPath) == paths.RootDirectory, "Assets must resolve beside the apphost.");
+        var settingsWindow = new CircleToSearch.Shell.SettingsPreview.SettingsWindowView(
+            new UiStrings(LocalUiStrings.LoadEmbeddedEnglish().Get), true, paths.TrayIconPath).Window;
+        Require(settingsWindow.Icon is not null, "Settings icon did not load.");
+        settingsWindow.Close();
         var source = LocalUiStrings.Load(paths.LanguagesDirectory, CultureInfo.GetCultureInfo("fr-CA"));
         var strings = new UiStrings(source.Get);
         foreach (var property in typeof(UiStrings).GetProperties().Where(property => property.PropertyType == typeof(string)))
@@ -153,7 +158,7 @@ internal static class StartupHook
     }
 
     private static void RequireLocalAssembly(Assembly assembly, AppPaths paths) =>
-        Require(Path.GetDirectoryName(assembly.Location)!.Equals(paths.RootDirectory, StringComparison.OrdinalIgnoreCase), "Assembly is not bundled: " + assembly.FullName);
+        Require(Path.GetDirectoryName(assembly.Location)!.Equals(Path.Combine(paths.RootDirectory, "deps"), StringComparison.OrdinalIgnoreCase), "Assembly is not bundled: " + assembly.FullName);
 
     private static void Require(bool condition, string message)
     {

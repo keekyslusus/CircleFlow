@@ -103,7 +103,7 @@ public static class CompositionRoot
                 if (loaded.Recovered)
                     reportStartupMessage(strings.StorageRecovered, strings.PluginTitle, MessageBoxImage.Warning);
                 cancellation.ThrowIfCancellationRequested();
-                var settingsWindow = new SettingsWindowController(application.Dispatcher, strings);
+                var settingsWindow = new SettingsWindowController(application.Dispatcher, strings, paths.TrayIconPath);
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });
                 var notifications = new NotificationPresenter(application.Dispatcher, strings, log);
                 lifetime.AddCleanup("close-notifications", () => { notifications.Dispose(); return Task.CompletedTask; });

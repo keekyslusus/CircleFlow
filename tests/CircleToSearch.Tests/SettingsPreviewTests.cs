@@ -22,7 +22,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Dialog_and_scrim_animate_in_and_out_retarget_and_restore_focus_after_closing(bool light) => OnSta(() =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
         try
         {
             window.Show();
@@ -115,7 +115,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Dropdowns_reveal_from_the_anchor_rotate_the_arrow_and_reset_on_close(bool light) => OnSta(() =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
         try
         {
             Find<RadioButton>(window, "Nav_search").IsChecked = true;
@@ -217,7 +217,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Toggles_have_solid_capsules_and_animate_without_jumping_on_reversal(bool light) => OnSta(() =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
         try
         {
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
@@ -305,7 +305,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Content_exits_down_then_enters_up_and_rapid_navigation_keeps_only_the_latest_page(bool light) => OnSta(() =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
         try
         {
             var surface = Find<FrameworkElement>(window, "PageTransitionSurface");
@@ -390,7 +390,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Shared_ripples_follow_settings_controls_pages_and_dialogs(bool light) => OnSta(() =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
         try
         {
             window.Show();
@@ -468,7 +468,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Sidebar_selection_slides_and_retargets_from_its_current_position(bool light) => OnSta(() =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
         try
         {
             window.Show();
@@ -556,7 +556,7 @@ public sealed class SettingsPreviewTests
     [Fact]
     public void Wheel_scroll_moves_through_intermediate_positions_accumulates_and_reverses() => OnSta(() =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, true).Window;
+        var window = new SettingsWindowView(TestUiStrings.English, true, new AppPaths().TrayIconPath).Window;
         try
         {
             window.Width = 960;
@@ -620,7 +620,7 @@ public sealed class SettingsPreviewTests
     [Fact]
     public void Overscroll_springs_at_both_edges_and_resets_on_navigation_and_hide() => OnSta(() =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, true).Window;
+        var window = new SettingsWindowView(TestUiStrings.English, true, new AppPaths().TrayIconPath).Window;
         try
         {
             window.Width = 960;
@@ -704,7 +704,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Scrolling_uses_the_full_viewport_and_overlay_fades_without_reserving_space(bool light) => OnSta(() =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light).Window;
+        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
         try
         {
             window.Width = 960;
@@ -765,7 +765,7 @@ public sealed class SettingsPreviewTests
     [Fact]
     public void Preview_edits_survive_navigation_and_reset_or_close_discards_them() => OnSta(() =>
     {
-        var view = new SettingsWindowView(TestUiStrings.English, true);
+        var view = new SettingsWindowView(TestUiStrings.English, true, new AppPaths().TrayIconPath);
         var window = view.Window;
         try
         {
@@ -804,7 +804,7 @@ public sealed class SettingsPreviewTests
         }
         finally { window.Close(); }
 
-        var fresh = new SettingsWindowView(TestUiStrings.English, true).Window;
+        var fresh = new SettingsWindowView(TestUiStrings.English, true, new AppPaths().TrayIconPath).Window;
         Assert.Equal(0, Find<ComboBox>(fresh, "Provider").SelectedIndex);
         fresh.Close();
     });
@@ -814,7 +814,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void All_pages_resolve_xaml_resources_and_render_at_default_and_minimum_size(bool light) => OnSta(() =>
     {
-        var view = new SettingsWindowView(TestUiStrings.English, light);
+        var view = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath);
         var window = view.Window;
         var bindingErrors = new StringWriter();
         using var listener = new TextWriterTraceListener(bindingErrors);

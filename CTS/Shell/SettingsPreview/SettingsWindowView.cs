@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -25,14 +24,14 @@ internal sealed class SettingsWindowView
     private IInputElement? _dialogOwner;
     private string[]? _pendingShortcut;
 
-    internal SettingsWindowView(UiStrings strings, bool lightTheme)
+    internal SettingsWindowView(UiStrings strings, bool lightTheme, string iconPath)
     {
         _strings = strings;
         Window = (Window)Application.LoadComponent(new Uri(
             "/CircleFlow;component/CTS/Shell/SettingsPreview/SettingsWindow.xaml", UriKind.Relative));
         ApplyPalette(PluginPalette.Settings(lightTheme));
         Window.Title = strings.SettingsWindowTitle;
-        Window.Icon = BitmapFrame.Create(new Uri(Path.Combine(AppContext.BaseDirectory, "Images", "app.ico")),
+        Window.Icon = BitmapFrame.Create(new Uri(iconPath),
             BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
         Window.SourceInitialized += (_, _) =>
         {

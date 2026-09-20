@@ -50,17 +50,17 @@ try {
         -p:PublishSingleFile=false -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o $appDirectory
     if ($LASTEXITCODE -ne 0) { throw 'Publish of CircleFlow failed.' }
 
-    $required = @('CircleFlow.exe', 'CircleFlow.dll', 'CircleFlow.deps.json', 'CircleFlow.runtimeconfig.json',
-        'coreclr.dll', 'hostfxr.dll', 'hostpolicy.dll', 'System.Private.CoreLib.dll', 'PresentationFramework.dll',
-        'WinRT.Runtime.dll', 'Microsoft.Windows.SDK.NET.dll', 'Microsoft.Web.WebView2.Core.dll',
-        'Microsoft.Web.WebView2.Wpf.dll', 'Languages/en.xaml', 'Images/app.png', 'Images/app.ico',
+    $required = @('CircleFlow.exe', 'deps/CircleFlow.dll', 'deps/CircleFlow.deps.json', 'deps/CircleFlow.runtimeconfig.json',
+        'deps/coreclr.dll', 'deps/hostfxr.dll', 'deps/hostpolicy.dll', 'deps/System.Private.CoreLib.dll', 'deps/PresentationFramework.dll',
+        'deps/WinRT.Runtime.dll', 'deps/Microsoft.Windows.SDK.NET.dll', 'deps/Microsoft.Web.WebView2.Core.dll',
+        'deps/Microsoft.Web.WebView2.Wpf.dll', 'Languages/en.xaml', 'Images/app.png', 'Images/app.ico',
         'Extensions/uBlockOriginLite.zip', 'LICENSE', 'THIRD_PARTY_NOTICES.txt',
         'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.LICENSE.txt', 'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.NOTICE.txt',
         'THIRD_PARTY_LICENSES/System.Numerics.Tensors.NOTICE.txt')
     foreach ($asset in $required) {
         if (-not (Test-Path -LiteralPath (Join-Path $appDirectory $asset) -PathType Leaf)) { throw "Missing published asset: $asset" }
     }
-    $loaders = @('WebView2Loader.dll', 'runtimes\win-x64\native\WebView2Loader.dll') |
+    $loaders = @('deps/WebView2Loader.dll', 'deps/runtimes/win-x64/native/WebView2Loader.dll') |
         Where-Object { Test-Path -LiteralPath (Join-Path $appDirectory $_) -PathType Leaf }
     if (-not $loaders) { throw 'The published x64 WebView2 loader is missing.' }
     $files = @(Get-ChildItem -LiteralPath $appDirectory -File -Recurse -Force | Sort-Object FullName)
@@ -70,7 +70,7 @@ try {
             throw "Unexpected published file: $relative"
         }
     }
-    $version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $appDirectory 'CircleFlow.dll')).ProductVersion.Split('+')[0]
+    $version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $appDirectory 'deps/CircleFlow.dll')).ProductVersion.Split('+')[0]
     if ($version -notmatch '^\d+\.\d+\.\d+(?:[.\-][0-9A-Za-z.\-]+)?$') { throw 'Unexpected product version.' }
     $archivePath = Join-Path $releases "CircleFlow-$version-win-x64.zip"
     $temporaryZip = Join-Path $staging 'package.zip'

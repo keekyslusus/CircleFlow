@@ -29,8 +29,13 @@ try {
             throw "ZIP entry escaped the application folder: $name"
         }
     }
-    $required = @('CircleFlow.exe', 'CircleFlow.dll', 'CircleFlow.runtimeconfig.json', 'CircleFlow.deps.json',
-        'WinRT.Runtime.dll', 'coreclr.dll', 'System.Private.CoreLib.dll', 'hostfxr.dll', 'hostpolicy.dll',
+    foreach ($name in $entries) {
+        if ($name -match '\.xml$' -or $name -notmatch '^CircleFlow/(deps/|Images/|Languages/|Extensions/|THIRD_PARTY_LICENSES/|CircleFlow\.exe$|LICENSE$|THIRD_PARTY_NOTICES\.txt$)') {
+            throw "Unexpected release layout: $name"
+        }
+    }
+    $required = @('CircleFlow.exe', 'deps/CircleFlow.dll', 'deps/CircleFlow.runtimeconfig.json', 'deps/CircleFlow.deps.json',
+        'deps/WinRT.Runtime.dll', 'deps/coreclr.dll', 'deps/System.Private.CoreLib.dll', 'deps/hostfxr.dll', 'deps/hostpolicy.dll',
         'Languages/en.xaml', 'Images/app.png', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip',
         'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.LICENSE.txt',
         'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.NOTICE.txt', 'THIRD_PARTY_LICENSES/System.Numerics.Tensors.NOTICE.txt')
@@ -48,7 +53,7 @@ foreach ($asset in @('Languages/en.xaml', 'Images/app.png', 'Images/app.ico', 'E
     if ((Get-FileHash -LiteralPath (Join-Path $workspace $asset)).Hash -ne
         (Get-FileHash -LiteralPath (Join-Path $appDirectory $asset)).Hash) { throw "Published asset differs from source: $asset" }
 }
-$runtimeConfig = Get-Content -LiteralPath (Join-Path $appDirectory 'CircleFlow.runtimeconfig.json') -Raw | ConvertFrom-Json
+$runtimeConfig = Get-Content -LiteralPath (Join-Path $appDirectory 'deps/CircleFlow.runtimeconfig.json') -Raw | ConvertFrom-Json
 if (-not $runtimeConfig.runtimeOptions.includedFrameworks -or $runtimeConfig.runtimeOptions.framework -or $runtimeConfig.runtimeOptions.frameworks) {
     throw 'The archive is not self-contained.'
 }

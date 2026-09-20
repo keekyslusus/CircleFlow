@@ -2,7 +2,7 @@
 
 # CircleFlow
 
-The release includes its own .NET runtime and `WinRT.Runtime.dll`; no separate .NET installation is required. Keep all files from the archive together.
+The release includes its own .NET runtime and `WinRT.Runtime.dll`; no separate .NET installation is required. Keep all files from the archive together. The root contains `CircleFlow.exe`, application assets and licenses; `deps` contains the managed application, .NET runtime, native libraries and dependency translations. Developer XML documentation is excluded. `Data` is created beside the executable on first launch.
 
 Browser features require the [Microsoft Edge WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download). It is an external prerequisite and is not bundled. OCR languages depend on the recognition packs installed in Windows. Search, translation and music recognition require an internet connection.
 
@@ -26,6 +26,8 @@ dotnet build .\CircleFlow.csproj -c Release
 dotnet test .\tests\CircleToSearch.Tests\CircleToSearch.Tests.csproj -c Release --filter "Category!=Live"
 powershell -ExecutionPolicy Bypass -File .\build_release.ps1 -NoPause
 ```
+
+Ordinary `dotnet build` output keeps the standard development layout. `dotnet publish` and the release script produce the clean `deps` layout; publish into a fresh directory to avoid leftover files from older builds.
 
 The release script works from any working directory. It publishes a self-contained x64 application into a new `bin\publish\stage-<id>\CircleFlow` folder and creates `bin\releases\CircleFlow-<version>-win-x64.zip`. Each build uses a fresh staging directory; existing build output and user `Data` are not merged into the archive or deleted. Archive entries use a stable order and timestamp.
 

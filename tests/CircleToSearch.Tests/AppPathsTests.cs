@@ -8,6 +8,23 @@ namespace CircleToSearch.Tests;
 public sealed class AppPathsTests
 {
     [Fact]
+    public void Published_dependencies_resolve_assets_beside_the_apphost()
+    {
+        var root = NewRoot();
+        var dependencies = Path.Combine(root, "deps");
+        Directory.CreateDirectory(dependencies);
+        try
+        {
+            Assert.Equal(dependencies, AppPaths.ResolveRootDirectory(dependencies));
+            File.WriteAllBytes(Path.Combine(root, "CircleFlow.exe"), []);
+            Assert.Equal(root, AppPaths.ResolveRootDirectory(dependencies + Path.DirectorySeparatorChar));
+            Assert.Equal(root, AppPaths.ResolveRootDirectory(root));
+            Assert.Equal(dependencies, new AppPaths(dependencies).RootDirectory);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
     public void Paths_are_absolute_and_construction_does_not_create_directories()
     {
         var root = NewRoot();

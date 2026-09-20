@@ -95,4 +95,23 @@
     </Content>
   </ItemGroup>
 
+  <Target Name="ArrangePublishedDependencies" AfterTargets="ComputeFilesToPublish">
+    <Error Condition="'PublishSingleFile' == 'true'" Text="The deps layout requires PublishSingleFile=false." />
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.xml' and Exists('%(RootDir)%(Directory)%(Filename).dll')" />
+      <ResolvedFileToPublish Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(RelativePath)', '^(Images|Languages|Extensions|THIRD_PARTY_LICENSES)[/\\]|^(CircleFlow\.exe|LICENSE|THIRD_PARTY_NOTICES\.txt)$'))">
+        <RelativePath>deps\%(RelativePath)</RelativePath>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="CreatePublishedAppHost" AfterTargets="Publish">
+    <CreateAppHost AppHostSourcePath="$(AppHostSourcePath)"
+                   AppHostDestinationPath="$(PublishDir)$(AssemblyName).exe"
+                   AppBinaryName="deps\$(AssemblyName)$(TargetExt)"
+                   IntermediateAssembly="@(IntermediateAssembly->'%(FullPath)')"
+                   WindowsGraphicalUserInterface="true"
+                   DisableCetCompat="$(_DisableCetCompat)" />
+  </Target>
+
 </Project>
