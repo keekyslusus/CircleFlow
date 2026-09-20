@@ -10,28 +10,34 @@ public sealed class FloatingToolbar
 {
     private readonly StackPanel _actions;
     private readonly FloatingToolbarPalette _palette;
+    private readonly Func<bool> _animationsEnabled;
+    private CardTransitions.ExitHandle? _exit;
 
-    internal FloatingToolbar(FloatingToolbarPalette palette)
+    internal FloatingToolbar(FloatingToolbarPalette palette, Func<bool>? animationsEnabled = null)
     {
         _palette = palette;
+        _animationsEnabled = animationsEnabled ?? OverlayVisualResources.AnimationsEnabled;
         _actions = new StackPanel { Orientation = Orientation.Horizontal };
         Surface = new Border
         {
             Child = _actions,
             Background = OverlayVisualResources.Frozen(palette.Surface),
-            BorderBrush = OverlayVisualResources.Frozen(palette.Border),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(12),
-            Padding = new Thickness(4),
+            CornerRadius = new CornerRadius(24),
+            MinHeight = 44,
+            Padding = new Thickness(6, 4, 6, 4),
             Visibility = Visibility.Collapsed,
+            IsHitTestVisible = false,
+            IsEnabled = false,
         };
+        Surface.SizeChanged += (_, _) => Surface.CornerRadius = new CornerRadius(Surface.ActualHeight / 2);
+        Surface.Unloaded += (_, _) => Hide(animate: false);
         Layer = new Canvas { Background = null, IsHitTestVisible = true };
         Layer.Children.Add(Surface);
     }
 
     internal Canvas Layer { get; }
     internal Border Surface { get; }
-    internal bool IsOpen => Surface.Visibility == Visibility.Visible;
+    internal bool IsOpen { get; private set; }
 
     internal Button AddAction(string label)
     {
@@ -41,13 +47,15 @@ public sealed class FloatingToolbar
             Foreground = OverlayVisualResources.Frozen(_palette.Text),
             Background = OverlayVisualResources.Frozen(_palette.Surface),
             BorderThickness = new Thickness(),
-            Padding = new Thickness(12, 8, 12, 8),
-            Margin = new Thickness(2),
+            Padding = new Thickness(16, 0, 16, 0),
+            MinHeight = 36,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
             Cursor = Cursors.Hand,
             FontFamily = OverlayVisualResources.Font,
-            FontSize = 13,
+            FontSize = 14,
         };
-        OverlayVisualResources.ApplyButtonTemplate(button, 8, _palette.ButtonHover, _palette.Text);
+        OverlayVisualResources.ApplyButtonTemplate(button, 20, _palette.ButtonHover, _palette.Text);
         AutomationProperties.SetName(button, label);
         _actions.Children.Add(button);
         return button;
@@ -55,12 +63,45 @@ public sealed class FloatingToolbar
 
     internal void Show(Rect anchorDips, Size viewportDips)
     {
+        var wasOpen = IsOpen;
+        var wasVisible = Surface.Visibility == Visibility.Visible;
+        _exit?.Dispose();
+        _exit = null;
+        IsOpen = true;
+        Surface.IsEnabled = true;
+        Surface.IsHitTestVisible = true;
         Surface.Visibility = Visibility.Visible;
         Surface.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var placement = FloatingToolbarLayout.Place(anchorDips, Surface.DesiredSize, viewportDips);
         Canvas.SetLeft(Surface, placement.X);
         Canvas.SetTop(Surface, placement.Y);
+        if (!wasOpen)
+            CardTransitions.BeginEntrance(
+                Surface, _animationsEnabled(), TimeSpan.FromMilliseconds(220), 0.96,
+                preserveCurrentValues: wasVisible);
     }
 
-    internal void Hide() => Surface.Visibility = Visibility.Collapsed;
+    internal void Hide(bool animate = true)
+    {
+        var wasOpen = IsOpen;
+        IsOpen = false;
+        Surface.IsHitTestVisible = false;
+        Surface.IsEnabled = false;
+        if (!animate || !_animationsEnabled())
+        {
+            CompleteExit();
+            return;
+        }
+        if (!wasOpen) return;
+        _exit = CardTransitions.BeginExit(
+            Surface, animationsEnabled: true, CompleteExit, TimeSpan.FromMilliseconds(150));
+    }
+
+    private void CompleteExit()
+    {
+        _exit?.Dispose();
+        _exit = null;
+        CardTransitions.Settle(Surface);
+        Surface.Visibility = Visibility.Collapsed;
+    }
 }

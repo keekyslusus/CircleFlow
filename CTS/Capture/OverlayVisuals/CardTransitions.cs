@@ -14,10 +14,15 @@ internal static class CardTransitions
         FrameworkElement card,
         bool animationsEnabled,
         TimeSpan duration,
-        double initialScale)
+        double initialScale,
+        bool preserveCurrentValues = false)
     {
         ArgumentNullException.ThrowIfNull(card);
         var transforms = Prepare(card);
+        var opacity = preserveCurrentValues ? card.Opacity : 0;
+        var scaleX = preserveCurrentValues ? transforms.Scale.ScaleX : initialScale;
+        var scaleY = preserveCurrentValues ? transforms.Scale.ScaleY : initialScale;
+        var offset = preserveCurrentValues ? transforms.Translate.Y : EntranceOffset;
         StopAnimations(card, transforms, preserveCurrentValues: false);
         card.Opacity = 1;
         transforms.Scale.ScaleX = 1;
@@ -25,10 +30,10 @@ internal static class CardTransitions
         transforms.Translate.Y = 0;
         if (!animationsEnabled) return;
 
-        Animate(card, UIElement.OpacityProperty, 0, 1, duration);
-        Animate(transforms.Scale, ScaleTransform.ScaleXProperty, initialScale, 1, duration);
-        Animate(transforms.Scale, ScaleTransform.ScaleYProperty, initialScale, 1, duration);
-        Animate(transforms.Translate, TranslateTransform.YProperty, EntranceOffset, 0, duration);
+        Animate(card, UIElement.OpacityProperty, opacity, 1, duration);
+        Animate(transforms.Scale, ScaleTransform.ScaleXProperty, scaleX, 1, duration);
+        Animate(transforms.Scale, ScaleTransform.ScaleYProperty, scaleY, 1, duration);
+        Animate(transforms.Translate, TranslateTransform.YProperty, offset, 0, duration);
     }
 
     internal static ExitHandle BeginExit(

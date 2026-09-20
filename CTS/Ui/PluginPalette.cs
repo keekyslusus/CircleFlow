@@ -153,7 +153,6 @@ internal static class PluginPalette
         FloatingToolbar: new FloatingToolbarPalette(
             Surface: Color.FromRgb(0x21, 0x1F, 0x26),
             Text: Color.FromRgb(0xE6, 0xE1, 0xE5),
-            Border: Color.FromRgb(0x44, 0x47, 0x46),
             ButtonHover: Color.FromRgb(0x4A, 0x44, 0x58)),
         Translation: new TranslationPalette(
             Surface: DarkDockSurface,
@@ -227,7 +226,6 @@ internal static class PluginPalette
         FloatingToolbar: new FloatingToolbarPalette(
             Surface: Color.FromRgb(0xF3, 0xF3, 0xFA),
             Text: Color.FromRgb(0x1C, 0x1B, 0x1F),
-            Border: Color.FromRgb(0xC4, 0xC7, 0xC5),
             ButtonHover: Color.FromRgb(0xE8, 0xDE, 0xF8)),
         Translation: new TranslationPalette(
             Surface: LightDockSurface,
@@ -278,7 +276,6 @@ internal sealed record TextInteractionPalette(
 internal sealed record FloatingToolbarPalette(
     Color Surface,
     Color Text,
-    Color Border,
     Color ButtonHover);
 
 internal sealed record TranslationPalette(

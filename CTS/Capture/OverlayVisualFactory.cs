@@ -2,6 +2,7 @@ namespace CircleToSearch.Capture;
 
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media.Imaging;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
@@ -54,6 +55,11 @@ public static class OverlayVisualFactory
             provider,
             music,
             translationAction);
+        textSelection.Toolbar.Surface.SetBinding(FrameworkElement.HeightProperty, new Binding(nameof(FrameworkElement.ActualHeight))
+        {
+            Source = actions.Chip,
+            Mode = BindingMode.OneWay,
+        });
         var bottom = BottomOverlayVisualFactory.Create(chipBottomMargin, actions, provider, music);
         var sceneRippleLayer = new Canvas { IsHitTestVisible = false };
         var effects = new OverlayEffectsVisual(

@@ -113,7 +113,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         if (_selection is null) RenderHighlights(word is null ? [] : [word.BoundsPx], hover: true);
     }
 
-    internal void Dismiss()
+    internal void Dismiss(bool animate = true)
     {
         ReleaseCapture();
         _gestureDocument = null;
@@ -122,7 +122,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _selection = null;
         _hovered = null;
         _searchPublished = false;
-        _visual.Toolbar.Hide();
+        _visual.Toolbar.Hide(animate);
         _visual.HighlightLayer.Children.Clear();
     }
 
@@ -138,7 +138,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _disposed = true;
         _visual.CopyButton.Click -= OnCopy;
         _visual.SearchButton.Click -= OnSearch;
-        Dismiss();
+        Dismiss(animate: false);
     }
 
     private void OnCopy(object sender, RoutedEventArgs e)

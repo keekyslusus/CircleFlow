@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Ui;
 using Xunit;
@@ -32,9 +33,14 @@ public sealed class OcrTranslationPreviewTests
             AddHighlight(visual.TextSelection.HighlightLayer, new Rect(120, 120, 160, 25));
             AddHighlight(visual.TextSelection.HighlightLayer, new Rect(120, 154, 260, 25));
             visual.TextSelection.Toolbar.Show(new Rect(120, 120, 260, 59), new Size(800, 500));
+            var frame = new DispatcherFrame();
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(280) };
+            timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
+            timer.Start();
+            Dispatcher.PushFrame(frame);
             Capture(visual.Root, Path.Combine(directory, "ocr-text-selection-preview.png"));
 
-            visual.TextSelection.Toolbar.Hide();
+            visual.TextSelection.Toolbar.Hide(animate: false);
             visual.TextSelection.HighlightLayer.Children.Clear();
             var consent = StateCardVisualFactory.Create(new StateCardOptions(
                 PluginIcons.TranslateFilled,
