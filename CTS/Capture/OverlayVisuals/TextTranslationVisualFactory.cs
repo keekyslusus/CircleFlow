@@ -10,34 +10,6 @@ using CircleToSearch.Ui;
 
 internal static class TextTranslationVisualFactory
 {
-    internal static TextSelectionVisual CreateTextSelection(bool lightTheme, UiStrings strings)
-    {
-        var palette = PluginPalette.For(lightTheme).TextInteraction;
-        var copy = CreateCardButton(strings.TextCopy, palette);
-        var search = CreateCardButton(strings.TextSearch, palette);
-        var row = new StackPanel { Orientation = Orientation.Horizontal };
-        row.Children.Add(copy);
-        row.Children.Add(search);
-        var card = new Border
-        {
-            Child = row,
-            Background = OverlayVisualResources.Frozen(palette.CardSurface),
-            BorderBrush = OverlayVisualResources.Frozen(palette.CardBorder),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(12),
-            Padding = new Thickness(4),
-            Visibility = Visibility.Collapsed,
-        };
-        var actionLayer = new Canvas { Background = null, IsHitTestVisible = true };
-        actionLayer.Children.Add(card);
-        return new TextSelectionVisual(
-            new Canvas { IsHitTestVisible = false },
-            actionLayer,
-            card,
-            copy,
-            search);
-    }
-
     internal static TranslationActionVisual CreateTranslationAction(bool lightTheme, UiStrings strings)
     {
         var palette = PluginPalette.For(lightTheme).Translation;
@@ -95,23 +67,4 @@ internal static class TextTranslationVisualFactory
         IsHitTestVisible = false,
         HorizontalAlignment = HorizontalAlignment.Center,
     });
-
-    private static Button CreateCardButton(string text, TextInteractionPalette palette)
-    {
-        var button = new Button
-        {
-            Content = text,
-            Foreground = OverlayVisualResources.Frozen(palette.CardText),
-            Background = OverlayVisualResources.Frozen(palette.CardSurface),
-            BorderThickness = new Thickness(),
-            Padding = new Thickness(12, 8, 12, 8),
-            Margin = new Thickness(2),
-            Cursor = Cursors.Hand,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 13,
-        };
-        OverlayVisualResources.ApplyButtonTemplate(button, 8, palette.ButtonHover, palette.CardText);
-        AutomationProperties.SetName(button, text);
-        return button;
-    }
 }

@@ -57,7 +57,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
     }
 
     internal bool HasSelection => _selection is not null;
-    internal bool IsActionMenuOpen => _visual.ActionCard.Visibility == Visibility.Visible;
+    internal bool IsActionMenuOpen => _visual.Toolbar.IsOpen;
 
     internal void SetDocument(OcrDocument? document)
     {
@@ -122,7 +122,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _selection = null;
         _hovered = null;
         _searchPublished = false;
-        _visual.ActionCard.Visibility = Visibility.Collapsed;
+        _visual.Toolbar.Hide();
         _visual.HighlightLayer.Children.Clear();
     }
 
@@ -163,17 +163,10 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _searchPublished = false;
         RenderHighlights(range.HighlightBoundsPx, hover: false);
         if (!showMenu) return;
-        _visual.ActionCard.Visibility = Visibility.Visible;
         _visual.SearchButton.IsEnabled = true;
-        _visual.ActionCard.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var selected = _mapper.ToDips(range.BoundsPx);
-        var desired = _visual.ActionCard.DesiredSize;
-        var placement = TextActionCardLayout.Place(
-            selected,
-            desired,
+        _visual.Toolbar.Show(
+            _mapper.ToDips(range.BoundsPx),
             new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight));
-        Canvas.SetLeft(_visual.ActionCard, placement.X);
-        Canvas.SetTop(_visual.ActionCard, placement.Y);
     }
 
     private void RenderHighlights(IReadOnlyList<GdiRectangle> rectangles, bool hover)

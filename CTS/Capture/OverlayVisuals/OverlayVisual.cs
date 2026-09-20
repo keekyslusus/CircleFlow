@@ -40,8 +40,7 @@ public sealed record ActionTrayVisual(
 
 public sealed record TextSelectionVisual(
     Canvas HighlightLayer,
-    Canvas ActionLayer,
-    Border ActionCard,
+    FloatingToolbar Toolbar,
     Button CopyButton,
     Button SearchButton);
 

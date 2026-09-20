@@ -227,13 +227,13 @@ public sealed class OverlayWindow : Window
         var hit = InputHitTest(windowPoint) as DependencyObject;
         return IsWithin(originalSource as DependencyObject, _visual.Bottom.Root) ||
                IsWithin(originalSource as DependencyObject, _visual.Debug.Panel) ||
-               IsWithin(originalSource as DependencyObject, _visual.TextSelection.ActionCard) ||
+               IsWithin(originalSource as DependencyObject, _visual.TextSelection.Toolbar.Surface) ||
                IsWithin(hit, _visual.Bottom.Root) ||
                IsWithin(hit, _visual.Debug.Panel) ||
-               IsWithin(hit, _visual.TextSelection.ActionCard) ||
+               IsWithin(hit, _visual.TextSelection.Toolbar.Surface) ||
                _visual.Bottom.Root.IsMouseOver ||
                _visual.Debug.Panel.IsMouseOver ||
-               _visual.TextSelection.ActionCard.IsMouseOver;
+               _visual.TextSelection.Toolbar.Surface.IsMouseOver;
     }
 
     internal void ShowListening()
@@ -514,7 +514,7 @@ public sealed class OverlayWindow : Window
     private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (!_textSelection.HasSelection) return;
-        if (IsWithin(e.OriginalSource as DependencyObject, _visual.TextSelection.ActionCard)) return;
+        if (IsWithin(e.OriginalSource as DependencyObject, _visual.TextSelection.Toolbar.Surface)) return;
         _textSelection.Dismiss();
     }
 

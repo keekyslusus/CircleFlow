@@ -140,6 +140,53 @@ public sealed class PointerGestureRouterTests
     }
 
     [Fact]
+    public void New_text_selection_reenables_search_after_a_previous_search()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var harness = new RouterHarness(new Point(15, 15));
+            using (harness)
+            {
+                harness.Text.SetDocument(Document());
+                RaiseGesture(harness.Input);
+                harness.Visual.TextSelection.SearchButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.False(harness.Visual.TextSelection.SearchButton.IsEnabled);
+
+                RaiseGesture(harness.Input);
+
+                Assert.True(harness.Visual.TextSelection.SearchButton.IsEnabled);
+                harness.Visual.TextSelection.SearchButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(2, harness.Commands.Count);
+            }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Actions_do_nothing_after_text_controller_is_disposed()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var copied = new List<string>();
+            var harness = new RouterHarness(new Point(15, 15), copied.Add);
+            using (harness)
+            {
+                harness.Text.SetDocument(Document());
+                RaiseGesture(harness.Input);
+
+                harness.Text.Dispose();
+                harness.Visual.TextSelection.CopyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                harness.Visual.TextSelection.SearchButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                Assert.Empty(copied);
+                Assert.Empty(harness.Commands);
+                Assert.False(harness.Text.IsActionMenuOpen);
+            }
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Clipboard_failure_keeps_selection_and_shows_localized_toast()
     {
         var failure = RunOnSta(() =>

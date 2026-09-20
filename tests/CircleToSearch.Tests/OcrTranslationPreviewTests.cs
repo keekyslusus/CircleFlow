@@ -31,12 +31,10 @@ public sealed class OcrTranslationPreviewTests
 
             AddHighlight(visual.TextSelection.HighlightLayer, new Rect(120, 120, 160, 25));
             AddHighlight(visual.TextSelection.HighlightLayer, new Rect(120, 154, 260, 25));
-            visual.TextSelection.ActionCard.Visibility = Visibility.Visible;
-            Canvas.SetLeft(visual.TextSelection.ActionCard, 170);
-            Canvas.SetTop(visual.TextSelection.ActionCard, 72);
+            visual.TextSelection.Toolbar.Show(new Rect(120, 120, 260, 59), new Size(800, 500));
             Capture(visual.Root, Path.Combine(directory, "ocr-text-selection-preview.png"));
 
-            visual.TextSelection.ActionCard.Visibility = Visibility.Collapsed;
+            visual.TextSelection.Toolbar.Hide();
             visual.TextSelection.HighlightLayer.Children.Clear();
             var consent = StateCardVisualFactory.Create(new StateCardOptions(
                 PluginIcons.TranslateFilled,

@@ -42,7 +42,7 @@ public sealed class OverlayVisualCompositionTests
                 visual.Selection.InputSurface,
                 visual.Effects.SceneRippleLayer,
                 visual.ActivityHost,
-                visual.TextSelection.ActionLayer,
+                visual.TextSelection.Toolbar.Layer,
                 visual.Bottom.Root,
                 visual.Debug.Panel,
             ];
@@ -50,6 +50,12 @@ public sealed class OverlayVisualCompositionTests
             Assert.Equal(expected, visual.Root.Children.Cast<UIElement>());
             Assert.All(expected.Take(8), layer => Assert.False(layer.IsHitTestVisible));
             Assert.True(visual.Selection.InputSurface.IsHitTestVisible);
+            Assert.Null(visual.TextSelection.Toolbar.Layer.Background);
+            Assert.Equal(Visibility.Collapsed, visual.TextSelection.Toolbar.Surface.Visibility);
+            visual.TextSelection.Toolbar.Show(new Rect(100, 100, 40, 20), new Size(640, 400));
+            Assert.Equal(Visibility.Visible, visual.TextSelection.Toolbar.Surface.Visibility);
+            Assert.True(visual.TextSelection.CopyButton.IsHitTestVisible);
+            Assert.True(visual.TextSelection.SearchButton.IsHitTestVisible);
             Assert.True(visual.Bottom.Root.IsHitTestVisible);
             Assert.Null(visual.Bottom.Root.Background);
             Assert.Equal(
