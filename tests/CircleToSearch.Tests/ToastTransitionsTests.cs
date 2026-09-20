@@ -68,6 +68,45 @@ public sealed class ToastTransitionsTests
         }));
     }
 
+    [Fact]
+    public void Settle_preserves_effective_values_and_removes_animation_clocks()
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var card = new Border();
+            var host = new Window { Width = 200, Height = 100, Content = card };
+            try
+            {
+                host.Show();
+                ToastTransitions.BeginEntrance(card, animationsEnabled: true);
+                PumpFor(TimeSpan.FromMilliseconds(40));
+                var transforms = ToastTransitions.GetTransforms(card);
+                var opacity = card.Opacity;
+                var scaleX = transforms.Scale.ScaleX;
+                var scaleY = transforms.Scale.ScaleY;
+                var offset = transforms.Translate.Y;
+                Assert.InRange(opacity, 0, 0.999);
+
+                ToastTransitions.Settle(card);
+
+                Assert.Equal(opacity, card.Opacity, 3);
+                Assert.Equal(scaleX, transforms.Scale.ScaleX, 3);
+                Assert.Equal(scaleY, transforms.Scale.ScaleY, 3);
+                Assert.Equal(offset, transforms.Translate.Y, 3);
+                Assert.False(card.HasAnimatedProperties);
+                Assert.False(transforms.Scale.HasAnimatedProperties);
+                Assert.False(transforms.Translate.HasAnimatedProperties);
+                PumpFor(TimeSpan.FromMilliseconds(220));
+                Assert.Equal(opacity, card.Opacity, 3);
+                Assert.Equal(offset, transforms.Translate.Y, 3);
+            }
+            finally
+            {
+                host.Close();
+            }
+        }));
+    }
+
     private static void PumpFor(TimeSpan duration)
     {
         var frame = new DispatcherFrame();

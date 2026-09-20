@@ -138,6 +138,6 @@ internal sealed class ToastOverlayController : IDisposable
         internal long Id { get; } = id;
         internal ToastOverlayVisual Visual { get; } = visual;
         internal DispatcherTimer Timer { get; } = timer;
-        internal ToastTransitions.ExitHandle? Exit { get; set; }
+        internal CardTransitions.ExitHandle? Exit { get; set; }
     }
 }

@@ -27,7 +27,7 @@ internal sealed class MusicOverlayController : IDisposable
     private readonly List<IDisposable> _resultRipples = [];
     private DispatcherOperation? _matchRippleOperation;
     private FrameworkElement? _currentResultCard;
-    private StateCardTransitions.ExitHandle? _pendingResultExit;
+    private CardTransitions.ExitHandle? _pendingResultExit;
     private long _resultGeneration;
     private bool _disposed;
 

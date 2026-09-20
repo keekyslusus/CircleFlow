@@ -34,11 +34,11 @@ internal sealed class TraceOverlayVisual : IDisposable
         HorizontalAlignment = HorizontalAlignment.Center,
     };
     private StackPanel? _loadingPanel;
-    private StateCardTransitions.ExitHandle? _loadingExit;
+    private CardTransitions.ExitHandle? _loadingExit;
     internal Task Presentation { get; private set; } = Task.CompletedTask;
     private Func<Uri, ITraceVideoPreview>? _createVideo;
     private Border? _card;
-    private StateCardTransitions.ExitHandle? _exit;
+    private CardTransitions.ExitHandle? _exit;
     private DispatcherOperation? _ripple;
     private readonly List<IDisposable> _controlRipples = [];
     private bool _disposed;

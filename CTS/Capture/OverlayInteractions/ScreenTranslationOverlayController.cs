@@ -41,7 +41,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private readonly string _profileScope = Guid.NewGuid().ToString("N");
     private StateCardVisual? _stateCard;
     private TranslationCardKind _cardKind;
-    private StateCardTransitions.ExitHandle? _pendingCardExit;
+    private CardTransitions.ExitHandle? _pendingCardExit;
     private long _cardGeneration;
     private readonly List<IDisposable> _cardRipples = [];
 

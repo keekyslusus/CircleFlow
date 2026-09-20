@@ -145,6 +145,78 @@ public sealed class StateCardTransitionsTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Disposed_exit_preserves_current_values_and_suppresses_callback()
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var card = new Border();
+            var window = new Window { Width = 320, Height = 200, Content = card };
+            try
+            {
+                window.Show();
+                StateCardTransitions.BeginEntrance(card, animationsEnabled: false);
+                var transforms = StateCardTransitions.GetTransforms(card);
+                var completions = 0;
+                var exit = StateCardTransitions.BeginExit(card, true, () => completions++);
+                PumpFor(TimeSpan.FromMilliseconds(40));
+                var opacity = card.Opacity;
+                var scale = transforms.Scale.ScaleX;
+                var offset = transforms.Translate.Y;
+
+                exit.Dispose();
+                exit.Dispose();
+
+                Assert.False(exit.IsCompleted);
+                Assert.Equal(opacity, card.Opacity, 3);
+                Assert.Equal(scale, transforms.Scale.ScaleX, 3);
+                Assert.Equal(offset, transforms.Translate.Y, 3);
+                Assert.False(card.HasAnimatedProperties);
+                Assert.False(transforms.Scale.HasAnimatedProperties);
+                Assert.False(transforms.Translate.HasAnimatedProperties);
+                PumpFor(TimeSpan.FromMilliseconds(220));
+                Assert.Equal(0, completions);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }));
+    }
+
+    [Fact]
+    public void Completion_callback_can_dispose_its_own_handle()
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var card = new Border();
+            var window = new Window { Width = 320, Height = 200, Content = card };
+            try
+            {
+                window.Show();
+                StateCardTransitions.BeginEntrance(card, animationsEnabled: false);
+                var completions = 0;
+                CardTransitions.ExitHandle? exit = null;
+                exit = StateCardTransitions.BeginExit(card, true, () =>
+                {
+                    completions++;
+                    Assert.True(exit!.IsCompleted);
+                    exit.Dispose();
+                });
+
+                PumpFor(TimeSpan.FromMilliseconds(220));
+
+                Assert.True(exit.IsCompleted);
+                Assert.Equal(1, completions);
+                exit.Dispose();
+            }
+            finally
+            {
+                window.Close();
+            }
+        }));
+    }
+
     private static void PumpFor(TimeSpan duration)
     {
         var frame = new DispatcherFrame();
