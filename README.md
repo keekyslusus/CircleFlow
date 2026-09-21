@@ -9,7 +9,7 @@ Browser features require the [Microsoft Edge WebView2 Evergreen Runtime](https:/
 
 ## Data and updates
 
-Settings, logs, browser profiles and application temporary files are stored under `Data` beside `CircleFlow.exe`. The folder must be writable. CircleFlow does not import settings or profiles from Flow Launcher and does not switch to a different data folder if this location is unavailable.
+Settings, logs, browser profiles and application temporary files are stored under `Data` beside `CircleFlow.exe`. The folder must be writable.
 
 Exit CircleFlow before moving or replacing its files. Keep `Data` when updating; do not delete the bundled runtime DLLs. A future installer may use `%LocalAppData%\Programs\CircleFlow`; the current release is a portable ZIP with no installer, automatic startup or updater.
 

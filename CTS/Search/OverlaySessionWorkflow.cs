@@ -19,7 +19,8 @@ internal sealed class OverlaySessionWorkflow(
     ProviderSelectionStore providerSelection,
     UiStrings strings,
     PluginLog log,
-    TextSearchWorkflow? textSearch = null) : ISearchSessionWorkflow
+    TextSearchWorkflow? textSearch = null,
+    Func<System.Windows.Media.Imaging.BitmapSource, Task>? saveImage = null) : ISearchSessionWorkflow
 {
     public async Task RunAsync(SearchSessionOptions options, Action onUploadStarted, CancellationToken cancellationToken)
     {
@@ -72,6 +73,12 @@ internal sealed class OverlaySessionWorkflow(
                 {
                     switch (command)
                     {
+                        case SaveSelectedImage saved when saveImage is not null:
+                            await overlay.CloseAsync().ConfigureAwait(false);
+                            cancellationToken.ThrowIfCancellationRequested();
+                            await saveImage(saved.Image).ConfigureAwait(false);
+                            return;
+
                         case ProviderSelected provider:
                             providerSelection.Save(provider.ProviderId);
                             break;

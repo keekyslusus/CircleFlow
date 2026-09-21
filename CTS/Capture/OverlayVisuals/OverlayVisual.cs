@@ -18,7 +18,15 @@ public sealed record OverlayVisual(
     MusicOverlayVisual Music,
     DebugOverlayVisual Debug,
     BottomOverlayVisual Bottom,
-    OverlayEffectsVisual Effects);
+    OverlayEffectsVisual Effects,
+    ImageSelectionVisual ImageSelection);
+
+public sealed record ImageSelectionVisual(
+    FloatingToolbar Toolbar,
+    Button SearchButton,
+    Button CopyButton,
+    Button SaveButton,
+    Button TranslateButton);
 
 public sealed record SelectionOverlayVisual(
     Image Screenshot,

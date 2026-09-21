@@ -35,6 +35,7 @@ internal sealed class OverlayInteractionState
         (source, target) switch
         {
             (OverlayInteractionMode.Selecting, OverlayInteractionMode.TraceLoading) => true,
+            (OverlayInteractionMode.TranslationShown, OverlayInteractionMode.TraceLoading) => true,
             (OverlayInteractionMode.TraceLoading, OverlayInteractionMode.TraceResult) => true,
             (OverlayInteractionMode.TraceResult, OverlayInteractionMode.Selecting) => true,
             (OverlayInteractionMode.Selecting, OverlayInteractionMode.Listening) => true,

@@ -43,6 +43,7 @@ public sealed class OverlayVisualCompositionTests
                 visual.Effects.SceneRippleLayer,
                 visual.ActivityHost,
                 visual.TextSelection.Toolbar.Layer,
+                visual.ImageSelection.Toolbar.Layer,
                 visual.Bottom.Root,
                 visual.Debug.Panel,
             ];

@@ -3,6 +3,11 @@
                     xmlns:system="clr-namespace:System;assembly=mscorlib">
 
     <system:String x:Key="plugin_circletosearch_plugin_name">CircleFlow</system:String>
+    <system:String x:Key="plugin_circletosearch_image_copied">Image copied to clipboard</system:String>
+    <system:String x:Key="plugin_circletosearch_image_save">Save</system:String>
+    <system:String x:Key="plugin_circletosearch_image_save_title">Save image as</system:String>
+    <system:String x:Key="plugin_circletosearch_image_save_filter">PNG image (*.png)|*.png|JPEG image (*.jpg;*.jpeg)|*.jpg;*.jpeg</system:String>
+    <system:String x:Key="plugin_circletosearch_image_file_name">circleflow_{0:yyyy-MM-dd_HH-mm}</system:String>
     <system:String x:Key="app_tray_open">Open</system:String>
     <system:String x:Key="app_tray_settings">Settings</system:String>
     <system:String x:Key="app_tray_support">Support the project</system:String>

@@ -15,6 +15,9 @@ internal sealed class PointerGestureRouter : IDisposable
     private readonly Func<MouseEventArgs, Point> _pointerPosition;
     private readonly Func<ModifierKeys> _modifiers;
     private bool _disposed;
+    private bool _startingGesture;
+    private Point _rightOrigin;
+    internal bool IsActionSelection { get; private set; }
 
     internal PointerGestureRouter(
         SelectionOverlayVisual visual,
@@ -36,6 +39,8 @@ internal sealed class PointerGestureRouter : IDisposable
         _visual.InputSurface.MouseLeftButtonDown += OnDown;
         _visual.InputSurface.MouseMove += OnMove;
         _visual.InputSurface.MouseLeftButtonUp += OnUp;
+        _visual.InputSurface.MouseRightButtonDown += OnRightDown;
+        _visual.InputSurface.MouseRightButtonUp += OnRightUp;
     }
 
     internal ActivePointerGesture ActiveGesture { get; private set; }
@@ -43,9 +48,12 @@ internal sealed class PointerGestureRouter : IDisposable
     internal ActivePointerGesture Cancel()
     {
         var gesture = ActiveGesture;
-        if (ActiveGesture == ActivePointerGesture.Lasso) _lasso.Cancel();
-        if (ActiveGesture == ActivePointerGesture.Text) _text.CancelGesture();
+        var wasActionSelection = IsActionSelection;
         ActiveGesture = ActivePointerGesture.None;
+        IsActionSelection = false;
+        if (gesture == ActivePointerGesture.Lasso) _lasso.Cancel();
+        if (gesture == ActivePointerGesture.Text) _text.CancelGesture();
+        if (wasActionSelection && ReferenceEquals(Mouse.Captured, _visual.InputSurface)) Mouse.Capture(null);
         return gesture;
     }
 
@@ -56,12 +64,14 @@ internal sealed class PointerGestureRouter : IDisposable
         _visual.InputSurface.MouseLeftButtonDown -= OnDown;
         _visual.InputSurface.MouseMove -= OnMove;
         _visual.InputSurface.MouseLeftButtonUp -= OnUp;
+        _visual.InputSurface.MouseRightButtonDown -= OnRightDown;
+        _visual.InputSurface.MouseRightButtonUp -= OnRightUp;
         Cancel();
     }
 
     private void OnDown(object sender, MouseButtonEventArgs e)
     {
-        if (_disposed || !_canAcceptInput()) return;
+        if (_disposed || !_canAcceptInput() || IsActionSelection || ActiveGesture != ActivePointerGesture.None) return;
         var point = _pointerPosition(e);
         if (!_canStart(e.OriginalSource, point))
         {
@@ -78,8 +88,21 @@ internal sealed class PointerGestureRouter : IDisposable
 
     private void OnMove(object sender, MouseEventArgs e)
     {
-        if (_disposed || !_canAcceptInput()) return;
+        if (_disposed || _startingGesture || !_canAcceptInput()) return;
         var point = _pointerPosition(e);
+        if (IsActionSelection && ActiveGesture == ActivePointerGesture.None)
+        {
+            if ((point - _rightOrigin).Length < 4) return;
+            // WPF synchronizes the pointer during CaptureMouse and can re-enter MouseMove.
+            _startingGesture = true;
+            try
+            {
+                if (!_lasso.Begin(_rightOrigin)) { Cancel(); return; }
+                IsActionSelection = true;
+                ActiveGesture = ActivePointerGesture.Lasso;
+            }
+            finally { _startingGesture = false; }
+        }
         if (ActiveGesture == ActivePointerGesture.Lasso) _lasso.Update(point);
         else if (ActiveGesture == ActivePointerGesture.Text) _text.Update(point);
         else _text.Hover(point);
@@ -88,11 +111,32 @@ internal sealed class PointerGestureRouter : IDisposable
 
     private void OnUp(object sender, MouseButtonEventArgs e)
     {
-        if (_disposed || ActiveGesture == ActivePointerGesture.None) return;
+        if (_disposed || IsActionSelection || ActiveGesture == ActivePointerGesture.None) return;
         var point = _pointerPosition(e);
         if (ActiveGesture == ActivePointerGesture.Lasso) _lasso.Complete(point);
         else _text.Complete(point);
         ActiveGesture = ActivePointerGesture.None;
         e.Handled = true;
+    }
+
+    private void OnRightDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (_disposed || !_canAcceptInput() || ActiveGesture != ActivePointerGesture.None || IsActionSelection) return;
+        var point = _pointerPosition(e);
+        if (!_canStart(e.OriginalSource, point)) return;
+        _rightOrigin = point;
+        IsActionSelection = true;
+        _visual.InputSurface.CaptureMouse();
+    }
+
+    private void OnRightUp(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (_disposed || !IsActionSelection) return;
+        if (ActiveGesture == ActivePointerGesture.Lasso) _lasso.Complete(_pointerPosition(e));
+        ActiveGesture = ActivePointerGesture.None;
+        IsActionSelection = false;
+        if (ReferenceEquals(Mouse.Captured, _visual.InputSurface)) Mouse.Capture(null);
     }
 }

@@ -41,7 +41,8 @@ public static class CompositionRoot
         TranslationMemoryProfiler? MemoryProfiler,
         Func<Uri, ITraceVideoPreview>? CreateTraceVideo,
         Func<bool> TraceTheme,
-        OcrLanguageCatalog? OcrLanguages = null);
+        OcrLanguageCatalog? OcrLanguages = null,
+        Action<BitmapSource>? SetImageClipboard = null);
 
     public static int Run() => Run(new AppPaths(),
         (message, title, icon) => MessageBox.Show(message, title, MessageBoxButton.OK, icon));
@@ -290,10 +291,13 @@ public static class CompositionRoot
             video => new TraceVideoPreview(video,
                 () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log),
             SystemTheme.IsLight,
-            ocrLanguages);
+            ocrLanguages,
+            Clipboard.SetImage);
         var overlayControllerFactory = new OverlayControllerFactory(
             context => CreateOverlayControllers(context, overlayControllerDependencies));
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
+        var imageSave = new ImageSaveService(
+            action => Application.Current.Dispatcher.InvokeAsync(action).Task, strings, notifier);
         var workflow = new OverlaySessionWorkflow(
             new OverlaySessionFactory(log, new PointerMonitorCapture(), overlayWindowFactory),
             visualSearch,
@@ -306,7 +310,8 @@ public static class CompositionRoot
             providerSelection,
             strings,
             log,
-            textSearch);
+            textSearch,
+            imageSave.SaveAsync);
         var coordinator = new SearchCoordinator(
             workflow,
             hideOwnWindows,
@@ -388,7 +393,8 @@ public static class CompositionRoot
             var clipboardCopy = new ClipboardCopyService(
                 dependencies.SetClipboard,
                 toast.Show,
-                context.Strings);
+                context.Strings,
+                dependencies.SetImageClipboard);
             var publishCommand = context.PublishCommand ?? (_ => { });
             var provider = Track(new ProviderMenuController(
                 context.Visual.Provider,
@@ -411,7 +417,7 @@ public static class CompositionRoot
                 context.Options.PaddingPx,
                 context.Options.MinDiagonalPx,
                 context.Overscan,
-                context.CanAcceptSelectionInput,
+                context.CanAcceptPointerInput,
                 context.CanStartSelection,
                 context.SelectionStarted,
                 context.SelectionCompleted,
@@ -502,6 +508,18 @@ public static class CompositionRoot
                 toast.Show,
                 dependencies.ResetTranslationConsent,
                 context.Strings));
+            var imageSelection = Track(new ImageSelectionOverlayController(
+                context.Visual.ImageSelection,
+                context.CoordinateRoot,
+                mapper,
+                selection,
+                translation,
+                clipboardCopy,
+                () => (BitmapSource)context.Visual.Selection.Screenshot.Source,
+                context.SelectionCompleted,
+                publishCommand,
+                context.CloseRequested ?? (() => publishCommand(new CancelSession())),
+                context.Strings));
             var music = Track(new MusicOverlayController(
                 context.Visual.Music,
                 activityPresenter,
@@ -543,7 +561,8 @@ public static class CompositionRoot
                 actionTray,
                 toast,
                 debug,
-                activityPresenter);
+                activityPresenter,
+                imageSelection);
             rollback.Clear();
             return controllers;
         }

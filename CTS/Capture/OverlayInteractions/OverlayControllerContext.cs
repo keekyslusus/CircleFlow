@@ -36,4 +36,5 @@ internal sealed record OverlayControllerContext(
     Action<OverlayInteractionMode> TransitionMode,
     string? OcrLanguageTag = null,
     string TranslationTargetLanguageTag = "en",
-    KeyboardLanguageSnapshot InputLanguage = default);
+    KeyboardLanguageSnapshot InputLanguage = default,
+    Action? CloseRequested = null);

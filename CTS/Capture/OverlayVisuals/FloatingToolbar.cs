@@ -8,7 +8,9 @@ using CircleToSearch.Ui;
 
 public sealed class FloatingToolbar
 {
-    private readonly StackPanel _actions;
+    private const double ActionPadding = 16;
+    private const double CompactActionPadding = 4;
+    private readonly WrapPanel _actions;
     private readonly FloatingToolbarPalette _palette;
     private readonly Func<bool> _animationsEnabled;
     private CardTransitions.ExitHandle? _exit;
@@ -17,7 +19,7 @@ public sealed class FloatingToolbar
     {
         _palette = palette;
         _animationsEnabled = animationsEnabled ?? OverlayVisualResources.AnimationsEnabled;
-        _actions = new StackPanel { Orientation = Orientation.Horizontal };
+        _actions = new WrapPanel { Orientation = Orientation.Horizontal };
         Surface = new Border
         {
             Child = _actions,
@@ -47,7 +49,7 @@ public sealed class FloatingToolbar
             Foreground = OverlayVisualResources.Frozen(_palette.Text),
             Background = OverlayVisualResources.Frozen(_palette.Surface),
             BorderThickness = new Thickness(),
-            Padding = new Thickness(16, 0, 16, 0),
+            Padding = new Thickness(ActionPadding, 0, ActionPadding, 0),
             MinHeight = 36,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
@@ -71,7 +73,7 @@ public sealed class FloatingToolbar
         Surface.IsEnabled = true;
         Surface.IsHitTestVisible = true;
         Surface.Visibility = Visibility.Visible;
-        Surface.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        MeasureWithin(viewportDips.Width);
         var placement = FloatingToolbarLayout.Place(anchorDips, Surface.DesiredSize, viewportDips);
         Canvas.SetLeft(Surface, placement.X);
         Canvas.SetTop(Surface, placement.Y);
@@ -79,6 +81,22 @@ public sealed class FloatingToolbar
             CardTransitions.BeginEntrance(
                 Surface, _animationsEnabled(), TimeSpan.FromMilliseconds(220), 0.96,
                 preserveCurrentValues: wasVisible);
+    }
+
+    private void MeasureWithin(double width)
+    {
+        var buttons = _actions.Children.OfType<Button>().ToArray();
+        foreach (var button in buttons) button.Padding = new Thickness(ActionPadding, 0, ActionPadding, 0);
+        Surface.MaxWidth = double.PositiveInfinity;
+        Surface.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var overflow = Surface.DesiredSize.Width - width;
+        if (overflow > 0 && buttons.Length > 0)
+        {
+            var padding = Math.Max(CompactActionPadding, ActionPadding - overflow / (2 * buttons.Length));
+            foreach (var button in buttons) button.Padding = new Thickness(padding, 0, padding, 0);
+        }
+        Surface.MaxWidth = Math.Max(0, width);
+        Surface.Measure(new Size(Surface.MaxWidth, double.PositiveInfinity));
     }
 
     internal void Hide(bool animate = true)

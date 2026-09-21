@@ -37,6 +37,8 @@ public sealed record RetryMusicRecognition : IOverlayCommand;
 public sealed record OpenTraceResult : IOverlayCommand;
 public sealed record OpenMusicResult : IOverlayCommand;
 
+public sealed record SaveSelectedImage(System.Windows.Media.Imaging.BitmapSource Image) : IOverlayCommand;
+
 internal static class OverlayCommandOwnership
 {
     public static void DisposePayload(IOverlayCommand command)

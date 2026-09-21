@@ -31,7 +31,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private DispatcherOperation? _completionRippleOperation;
     private bool _disposed;
     private readonly Image _screenshot;
-    private readonly BitmapSource _originalImage;
+    private BitmapSource _scopeOriginal;
+    private System.Drawing.Rectangle? _region;
     private readonly Action<BitmapSource, string?>? _imageChanged;
     private bool _imageShown;
     private BitmapSource? _cachedImage;
@@ -85,7 +86,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _animationsEnabled = animationsEnabled;
         _lightTheme = lightTheme;
         _screenshot = screenshot ?? throw new ArgumentNullException(nameof(screenshot));
-        _originalImage = screenshot.Source as BitmapSource
+        _scopeOriginal = screenshot.Source as BitmapSource
             ?? throw new InvalidOperationException("The overlay screenshot source must be a bitmap.");
         _imageChanged = imageChanged;
         _profiler = profiler;
@@ -97,6 +98,28 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     internal bool IsTranslating => _requestId != Guid.Empty;
     internal bool IsTranslationShown => _imageShown;
     internal bool IsImageShown => _imageShown;
+
+    internal void SetRegion(System.Drawing.Rectangle bounds)
+    {
+        _scopeOriginal = (BitmapSource)_screenshot.Source;
+        _region = bounds;
+        _cachedImage = null;
+        _cachedTarget = null;
+        _imageShown = false;
+        SetActionVisual(_strings.Translate, PluginIcons.TranslateFilled);
+    }
+
+    internal void CommitVisibleImage()
+    {
+        _scopeOriginal = (BitmapSource)_screenshot.Source;
+        _region = null;
+        _cachedImage = null;
+        _cachedTarget = null;
+        _imageShown = false;
+        AbortPendingCompletionRipple();
+        SetActionVisual(_strings.Translate, PluginIcons.TranslateFilled);
+    }
+
     internal bool HasPendingCompletionRipple =>
         _completionRippleOperation?.Status == DispatcherOperationStatus.Pending;
 
@@ -115,10 +138,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _requestId = Guid.Empty;
         SetActionVisual(_strings.ShowOriginal, PluginIcons.ShowOriginalFilled);
         StopLoading();
-        var scaled = new TransformedBitmap(result.Image, new ScaleTransform(
-            (double)_originalImage.PixelWidth / result.Image.PixelWidth,
-            (double)_originalImage.PixelHeight / result.Image.PixelHeight));
-        scaled.Freeze();
+        var bounds = _region ?? new System.Drawing.Rectangle(0, 0, _scopeOriginal.PixelWidth, _scopeOriginal.PixelHeight);
+        var scaled = VisibleImage.ReplaceRegion(_scopeOriginal, result.Image, bounds);
         _cachedImage = scaled;
         _cachedTarget = target;
         DisplayImage(scaled, _cachedTarget);
@@ -208,13 +229,18 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
 
     private void OnTranslate(object sender, RoutedEventArgs e)
     {
+        Toggle();
+        e.Handled = true;
+    }
+
+    internal void Toggle()
+    {
         if (_disposed || _closing) return;
         if (IsTranslationShown) DismissTranslation();
         else if (IsTranslating) CancelTranslation();
         else if (_cardKind != TranslationCardKind.None) return;
         else if (!_consentAccepted()) ShowConsent();
         else BeginTranslation();
-        e.Handled = true;
     }
 
     private void ShowConsent()
@@ -285,7 +311,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
             _strings.Translating,
             OverlayVisualResources.Frozen(PluginPalette.For(_lightTheme).MusicOverlay.Primary));
         if (string.IsNullOrWhiteSpace(target)) ShowFailure(_requestId, TranslationFailure.Service);
-        else _publish(new ScreenTranslationRequested(_requestId, _originalImage, target));
+        else _publish(new ScreenTranslationRequested(_requestId,
+            _region is { } bounds ? VisibleImage.Crop(_scopeOriginal, bounds) : _scopeOriginal, target));
     }
 
     private void CancelTranslation()
@@ -303,8 +330,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         if (_imageShown)
         {
             _imageShown = false;
-            _screenshot.Source = _originalImage;
-            _imageChanged?.Invoke(_originalImage, null);
+            _screenshot.Source = _scopeOriginal;
+            _imageChanged?.Invoke(_scopeOriginal, null);
         }
         SetActionVisual(_strings.Translate, PluginIcons.TranslateFilled);
         _transition(OverlayInteractionMode.Selecting);

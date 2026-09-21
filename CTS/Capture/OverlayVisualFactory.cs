@@ -37,6 +37,7 @@ public static class OverlayVisualFactory
         var palette = PluginPalette.For(lightTheme);
         var selection = SelectionOverlayVisualFactory.Create(frame, size);
         var textSelection = TextSelectionVisualFactory.Create(lightTheme, strings);
+        var imageSelection = ImageSelectionVisualFactory.Create(lightTheme, strings);
         var translationAction = TextTranslationVisualFactory.CreateTranslationAction(lightTheme, strings);
         var translationOverlay = TextTranslationVisualFactory.CreateTranslationOverlay();
         var activityHost = new Grid
@@ -79,6 +80,7 @@ public static class OverlayVisualFactory
         root.Children.Add(effects.SceneRippleLayer);
         root.Children.Add(activityHost);
         root.Children.Add(textSelection.Toolbar.Layer);
+        root.Children.Add(imageSelection.Toolbar.Layer);
         root.Children.Add(bottom.Root);
         root.Children.Add(debug.Panel);
 
@@ -95,6 +97,7 @@ public static class OverlayVisualFactory
             music,
             debug,
             bottom,
-            effects);
+            effects,
+            imageSelection);
     }
 }

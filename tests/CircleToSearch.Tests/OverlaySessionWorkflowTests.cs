@@ -18,6 +18,30 @@ namespace CircleToSearch.Tests;
 public sealed class OverlaySessionWorkflowTests
 {
     [Fact]
+    public async Task Save_waits_for_overlay_close_before_showing_dialog_and_does_not_reopen_overlay()
+    {
+        var saved = new List<BitmapSource>();
+        using var harness = new Harness(saveImage: image => { saved.Add(image); return Task.CompletedTask; });
+        var image = TranslationImage();
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Overlay.CloseAsyncCompletion = closed.Task;
+        harness.Overlay.Enqueue(new SaveSelectedImage(image));
+        var run = harness.RunAsync();
+        try
+        {
+            await harness.Overlay.CloseStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.Empty(saved);
+            Assert.False(run.IsCompleted);
+        }
+        finally { closed.TrySetResult(); }
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Same(image, Assert.Single(saved));
+        Assert.Equal(1, harness.Overlay.DisposeCalls);
+        Assert.Empty(harness.Opened);
+        Assert.Equal(0, harness.Google.Calls);
+    }
+
+    [Fact]
     public async Task Visual_search_waits_until_selection_overlay_is_gone()
     {
         using var harness = new Harness();
@@ -782,7 +806,8 @@ public sealed class OverlaySessionWorkflowTests
             IReadOnlyList<FakeOverlay>? overlays = null,
             IImageTranslationProvider? translationProvider = null,
             bool cropThrows = false,
-            bool traceFactoryThrows = false)
+            bool traceFactoryThrows = false,
+            Func<BitmapSource, Task>? saveImage = null)
         {
             _logDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_logDirectory);
@@ -868,7 +893,8 @@ public sealed class OverlaySessionWorkflowTests
                 providerSelection,
                 TestUiStrings.English,
                 Log,
-                textSearch);
+                textSearch,
+                saveImage);
         }
 
         public OverlaySessionWorkflow Workflow { get; }

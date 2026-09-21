@@ -57,6 +57,11 @@ public sealed class UiStrings
     public string CopyTrackInfo => Get("plugin_circletosearch_music_copy_track_info");
     public string Copied => Get("plugin_circletosearch_music_copied");
     public string CopyFailed => Get("plugin_circletosearch_copy_failed");
+    public string ImageCopied => Get("plugin_circletosearch_image_copied");
+    public string ImageSave => Get("plugin_circletosearch_image_save");
+    public string ImageSaveTitle => Get("plugin_circletosearch_image_save_title");
+    public string ImageSaveFilter => Get("plugin_circletosearch_image_save_filter");
+    public string ImageFileName => Get("plugin_circletosearch_image_file_name");
     public string Close => Get("plugin_circletosearch_close");
     public string MusicResultTitle => Get("plugin_circletosearch_music_result_title");
     public string MusicNoMatch => Get("plugin_circletosearch_music_no_match");

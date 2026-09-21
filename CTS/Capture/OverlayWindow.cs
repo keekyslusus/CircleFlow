@@ -42,6 +42,7 @@ public sealed class OverlayWindow : Window
     private const string InputLanguageSwitcherWindowClass = "Shell_InputSwitchTopLevelWindow";
 
     private readonly GdiBitmap _frame;
+    private readonly BitmapSource _capturedImage;
     private readonly OverlayVisual _visual;
     private readonly OverlayExitFade _exitFade;
     private readonly bool _clickThroughOnCancel;
@@ -51,6 +52,7 @@ public sealed class OverlayWindow : Window
     private readonly OverlayInteractionState _interaction = new();
     private readonly OverlayControllers _controllers;
     private readonly SelectionOverlayController _selection;
+    private readonly ImageSelectionOverlayController _imageSelection;
     private readonly TextSelectionOverlayController _textSelection;
     private readonly PointerGestureRouter _pointer;
     private readonly OcrOverlayController _ocr;
@@ -114,6 +116,7 @@ public sealed class OverlayWindow : Window
 
         ConfigureWindow(monitor, scale, strings, allowsTransparency, overscan);
         var frameSource = CreateFrozenFrame(frame);
+        _capturedImage = frameSource;
         var visualSize = new Size(Width, Height);
         var bottomMargin = ChipBottomMargin(monitor, workArea, scale) + (overscan ? 1 : 0);
         _visual = availableProviders.Count == 0
@@ -160,7 +163,8 @@ public sealed class OverlayWindow : Window
                 ApplyModeTransition,
                 ocrLanguageTag,
                 translationTargetLanguageTag,
-                inputLanguage));
+                inputLanguage,
+                () => CancelInternal()));
         }
         catch
         {
@@ -169,6 +173,7 @@ public sealed class OverlayWindow : Window
             throw;
         }
         _selection = _controllers.Selection;
+        _imageSelection = _controllers.ImageSelection;
         _textSelection = _controllers.TextSelection;
         _pointer = _controllers.Pointer;
         _ocr = _controllers.Ocr;
@@ -185,7 +190,6 @@ public sealed class OverlayWindow : Window
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
-        MouseRightButtonDown += OnMouseRightButtonDown;
         Deactivated += OnDeactivated;
         Activated += OnActivated;
         Closed += OnClosed;
@@ -242,12 +246,15 @@ public sealed class OverlayWindow : Window
         return IsWithin(originalSource as DependencyObject, _visual.Bottom.Root) ||
                IsWithin(originalSource as DependencyObject, _visual.Debug.Panel) ||
                IsWithin(originalSource as DependencyObject, _visual.TextSelection.Toolbar.Surface) ||
+               IsWithin(originalSource as DependencyObject, _visual.ImageSelection.Toolbar.Surface) ||
                IsWithin(hit, _visual.Bottom.Root) ||
                IsWithin(hit, _visual.Debug.Panel) ||
                IsWithin(hit, _visual.TextSelection.Toolbar.Surface) ||
+               IsWithin(hit, _visual.ImageSelection.Toolbar.Surface) ||
                _visual.Bottom.Root.IsMouseOver ||
                _visual.Debug.Panel.IsMouseOver ||
-               _visual.TextSelection.Toolbar.Surface.IsMouseOver;
+               _visual.TextSelection.Toolbar.Surface.IsMouseOver ||
+               _visual.ImageSelection.Toolbar.Surface.IsMouseOver;
     }
 
     internal void ShowListening()
@@ -369,21 +376,36 @@ public sealed class OverlayWindow : Window
     }
 
     private bool CanAcceptPointerInput() =>
-        _interaction.CanAcceptSelectionInput ||
-        (_translation.IsImageShown && Mode == OverlayInteractionMode.TranslationShown);
+        _imageSelection?.IsCompleting != true &&
+        (_interaction.CanAcceptSelectionInput ||
+        (_translation.IsImageShown && Mode == OverlayInteractionMode.TranslationShown));
 
     private void OnSelectionStarted()
     {
+        _imageSelection.Dismiss();
+        _textSelection.Dismiss();
+        if (Mode == OverlayInteractionMode.TranslationShown)
+        {
+            _translation.CommitVisibleImage();
+            ApplyModeTransition(OverlayInteractionMode.Selecting);
+        }
         _actionTray.HideForSelection();
     }
 
     private void OnSelectionCompleted(GdiRectangle bounds)
     {
         if (_interaction.IsFinished) return;
+        if (_pointer.IsActionSelection && _pointer.ActiveGesture == ActivePointerGesture.Lasso)
+        {
+            _imageSelection.Select(bounds);
+            return;
+        }
         if (_trace.TryStart(_provider.SelectedProviderId, bounds)) return;
+        var waitForSelectionHold = _pointer.ActiveGesture == ActivePointerGesture.Lasso;
+        var usesCapturedImage = ReferenceEquals(_visual.Selection.Screenshot.Source, _capturedImage);
+        var selection = usesCapturedImage ? new SelectionOutcome(bounds, _frame) : CreateSelectionCopy(bounds);
+        FrameTransferred = usesCapturedImage;
         ApplyModeTransition(OverlayInteractionMode.Closing);
-        var selection = new SelectionOutcome(bounds, _frame);
-        FrameTransferred = true;
         if (_publishCommand is null) Outcome = OverlayOutcome.VisualSelection(selection);
         else
         {
@@ -394,6 +416,7 @@ public sealed class OverlayWindow : Window
                 throw;
             }
         }
+        if (!waitForSelectionHold) FinishShutdown();
     }
 
     private void OnSelectionHoldCompleted()
@@ -409,12 +432,6 @@ public sealed class OverlayWindow : Window
         if (_interaction.IsFinished || Mode != OverlayInteractionMode.Selecting) return;
         _actionTray.Restore();
         _toast.Show(new ToastNotification(_strings.SelectionTooSmall, ToastTone.Error));
-    }
-
-    private void OnMouseRightButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        CancelInternal();
-        e.Handled = true;
     }
 
     private void OnDeactivated(object? sender, EventArgs e)
@@ -519,6 +536,7 @@ public sealed class OverlayWindow : Window
         {
             case OverlayInteractionMode.TraceLoading:
             case OverlayInteractionMode.TraceResult:
+                _imageSelection.Dismiss();
                 _pointer.Cancel();
                 _textSelection.Dismiss();
                 _provider.SetOpen(false);
@@ -532,6 +550,7 @@ public sealed class OverlayWindow : Window
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Listening:
+                _imageSelection.Dismiss();
                 _pointer.Cancel();
                 _textSelection.Dismiss();
                 _translation.SetActionEnabled(false);
@@ -565,6 +584,7 @@ public sealed class OverlayWindow : Window
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Closing:
+                _imageSelection.Dismiss();
                 _pointer.Cancel();
                 _textSelection.Dismiss();
                 _translation.CancelForClosing();
@@ -578,10 +598,20 @@ public sealed class OverlayWindow : Window
         if (target is OverlayInteractionMode.Selecting or OverlayInteractionMode.TranslationShown)
             _imageText.SetAvailable(!_debug.IsOpen);
         if (target == OverlayInteractionMode.Closing) _inputLanguage.Dispose();
+        _imageSelection.Refresh(target);
     }
 
     private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_imageSelection.Bounds is not null && !IsOverlayChromeInteraction(e.OriginalSource, e.GetPosition(this)))
+        {
+            if (!CanAcceptPointerInput()) { e.Handled = true; return; }
+            _imageSelection.Dismiss();
+            _selection.Cancel();
+            if (Mode == OverlayInteractionMode.TranslationShown)
+                ApplyModeTransition(OverlayInteractionMode.Selecting);
+            _actionTray.Restore();
+        }
         if (!_textSelection.HasSelection) return;
         if (IsWithin(e.OriginalSource as DependencyObject, _visual.TextSelection.Toolbar.Surface)) return;
         _textSelection.Dismiss();
@@ -689,7 +719,6 @@ public sealed class OverlayWindow : Window
         Loaded -= OnLoaded;
         PreviewKeyDown -= OnPreviewKeyDown;
         PreviewMouseLeftButtonDown -= OnPreviewMouseLeftButtonDown;
-        MouseRightButtonDown -= OnMouseRightButtonDown;
         Deactivated -= OnDeactivated;
         Activated -= OnActivated;
         StopInputSwitcherCheck();
@@ -743,7 +772,9 @@ public sealed class OverlayWindow : Window
     }
 
     private SelectionOutcome CreateSelectionCopy(GdiRectangle bounds) =>
-        new(bounds, (GdiBitmap)_frame.Clone());
+        ReferenceEquals(_visual.Selection.Screenshot.Source, _capturedImage)
+            ? new(bounds, (GdiBitmap)_frame.Clone())
+            : VisibleImage.CreateSelection((BitmapSource)_visual.Selection.Screenshot.Source, bounds);
 
     private void DisposeUnownedVisualResources()
     {

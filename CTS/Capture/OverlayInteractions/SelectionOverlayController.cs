@@ -77,8 +77,9 @@ internal sealed class SelectionOverlayController : IDisposable
     internal bool Begin(Point point, object? originalSource = null)
     {
         if (_disposed || !_canAcceptInput() || !_canStartSelection(originalSource, point)) return false;
-        _drawing = true;
         _selectionStarted();
+        ResetSelectionGesture();
+        _drawing = true;
         _sampler.Reset();
         _stroke.Clear();
         Track(point);
@@ -154,7 +155,7 @@ internal sealed class SelectionOverlayController : IDisposable
             });
     }
 
-    internal void ShowSelectionFrame(GdiRectangle bounds)
+    internal void ShowSelectionFrame(GdiRectangle bounds, bool hold = true)
     {
         UnqueueRevealUpdate();
         var size = new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight);
@@ -172,6 +173,7 @@ internal sealed class SelectionOverlayController : IDisposable
             SelectionOverlayTransitions.BuildSelectionFrameGeometry(rect));
 
         StopHoldTimer();
+        if (!hold) return;
         _holdTimer = new DispatcherTimer { Interval = SelectionHoldDuration };
         _holdTimer.Tick += OnHoldCompleted;
         _holdTimer.Start();

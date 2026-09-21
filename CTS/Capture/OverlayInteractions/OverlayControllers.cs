@@ -14,11 +14,13 @@ internal sealed class OverlayControllers(
     ActionTrayOverlayController actionTray,
     ToastOverlayController toast,
     DebugOverlayController debug,
-    OverlayActivityPresenter activityPresenter) : IDisposable
+    OverlayActivityPresenter activityPresenter,
+    ImageSelectionOverlayController imageSelection) : IDisposable
 {
     private bool _disposed;
 
     internal SelectionOverlayController Selection { get; } = selection;
+    internal ImageSelectionOverlayController ImageSelection { get; } = imageSelection;
     internal TextSelectionOverlayController TextSelection { get; } = textSelection;
     internal PointerGestureRouter Pointer { get; } = pointer;
     internal OverlayImageTextCoordinator ImageText { get; } = imageText;
@@ -37,6 +39,7 @@ internal sealed class OverlayControllers(
     {
         if (_disposed) return;
         _disposed = true;
+        ImageSelection.Dispose();
         Trace.Dispose();
         ActionTray.Dispose();
         Music.Dispose();

@@ -21,7 +21,8 @@ internal static class TestOverlayControllers
         PluginLog? log = null,
         TranslationMemoryProfiler? memoryProfiler = null,
         Func<Uri, ITraceVideoPreview>? createTraceVideo = null,
-        Func<bool>? traceTheme = null) =>
+        Func<bool>? traceTheme = null,
+        Action<System.Windows.Media.Imaging.BitmapSource>? setImageClipboard = null) =>
         new(context => CompositionRoot.CreateOverlayControllers(
             context,
             new CompositionRoot.OverlayControllerDependencies(
@@ -36,5 +37,6 @@ internal static class TestOverlayControllers
                 log,
                 memoryProfiler,
                 createTraceVideo,
-                traceTheme ?? (() => context.Visual.LightTheme))));
+                traceTheme ?? (() => context.Visual.LightTheme),
+                SetImageClipboard: setImageClipboard)));
 }
