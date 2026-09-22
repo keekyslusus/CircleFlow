@@ -2,12 +2,100 @@ using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
 using CircleToSearch.Ui;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
 using Xunit;
 
 namespace CircleToSearch.Tests;
 
 public sealed class SearchBrowserHostLifecycleLiveTests
 {
+    [Theory]
+    [Trait("Category", "Live")]
+    [InlineData("document.querySelector('a').click()", true)]
+    [InlineData("window.open('/target.html', '_blank')", true)]
+    [InlineData("window.open('about:blank', '_blank')", false)]
+    [InlineData("window.open('javascript:alert(1)', '_blank')", false)]
+    public async Task Popup_requests_stay_in_the_configured_browser(string script, bool navigates)
+    {
+        if (!Enabled()) return;
+        var directory = Path.Combine(TestOutputPaths.TempDirectory,
+            "CircleFlow.PopupLinks", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(Path.Combine(directory, "index.html"),
+            "<!doctype html><a href='/target.html' target='_blank' rel='noopener'>Open</a>");
+        await File.WriteAllTextAsync(Path.Combine(directory, "target.html"),
+            "<!doctype html><body style='margin:0'><div style='height:3000px'>Target</div></body>");
+        var (host, dispatcher, views) = CreateHost();
+        await using (host)
+        {
+            Assert.Equal(SearchBrowserShowStatus.Shown, (await host.ShowAsync(Descriptor(),
+                PreparedVisualSearch.ForBrowserOperation(new ImmediateOperation(), null),
+                CancellationToken.None)).Status);
+            var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Assert.True(dispatcher.TryPost(async () =>
+            {
+                try
+                {
+                    var view = Assert.Single(views);
+                    var grid = Assert.IsType<System.Windows.Controls.Grid>(view.Window.Content);
+                    var core = grid.Children.OfType<WebView2>().Single().CoreWebView2;
+                    core.SetVirtualHostNameToFolderMapping("popup.test", directory,
+                        CoreWebView2HostResourceAccessKind.DenyCors);
+                    async Task Navigate(Action start)
+                    {
+                        var finished = new TaskCompletionSource<bool>(
+                            TaskCreationOptions.RunContinuationsAsynchronously);
+                        void OnCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)
+                            => finished.TrySetResult(args.IsSuccess);
+                        core.NavigationCompleted += OnCompleted;
+                        try
+                        {
+                            start();
+                            Assert.True(await finished.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+                        }
+                        finally { core.NavigationCompleted -= OnCompleted; }
+                    }
+
+                    await Navigate(() => core.Navigate("https://popup.test/index.html"));
+                    var popupHandled = new TaskCompletionSource<bool>(
+                        TaskCreationOptions.RunContinuationsAsynchronously);
+                    void OnPopup(object? sender, CoreWebView2NewWindowRequestedEventArgs args)
+                        => popupHandled.TrySetResult(args.Handled && args.NewWindow is null);
+                    core.NewWindowRequested += OnPopup;
+                    try
+                    {
+                        if (navigates)
+                            await Navigate(() => _ = core.ExecuteScriptAsync(script));
+                        else
+                            await core.ExecuteScriptAsync(script);
+                        Assert.True(await popupHandled.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+                        Assert.Equal(navigates ? "https://popup.test/target.html" : "https://popup.test/index.html",
+                            core.Source);
+                        Assert.False(view.IsClosed);
+                        Assert.Single(views);
+                        Assert.Equal("true", await core.ExecuteScriptAsync(
+                            "document.querySelector('[data-circle-flow-scrollbar=overlay]') !== null"));
+                        if (navigates)
+                        {
+                            Assert.Equal("true", await core.ExecuteScriptAsync(
+                                "window.innerWidth === document.documentElement.clientWidth"));
+                            Assert.Equal("true", await core.ExecuteScriptAsync(
+                                "window.scrollTo(0, 500); window.scrollY > 0"));
+                            Assert.True(core.CanGoBack);
+                            await Navigate(core.GoBack);
+                            Assert.Equal("https://popup.test/index.html", core.Source);
+                        }
+                    }
+                    finally { core.NewWindowRequested -= OnPopup; }
+                    completion.SetResult();
+                }
+                catch (Exception exception) { completion.SetException(exception); }
+            }));
+            await completion.Task.WaitAsync(TimeSpan.FromSeconds(45));
+        }
+    }
+
     [Fact]
     [Trait("Category", "Live")]
     public async Task Successful_shows_reuse_view_until_close()

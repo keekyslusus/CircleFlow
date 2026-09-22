@@ -297,10 +297,32 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         }
 
         var cleaned = false;
+        CoreWebView2? browserCore = null;
+        void OnNewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs args)
+        {
+            // The runtime's default popup bypasses our window and document setup.
+            args.Handled = true;
+            if (cleaned || !ReferenceEquals(_view, view) ||
+                !Uri.TryCreate(args.Uri, UriKind.Absolute, out var target) ||
+                (target.Scheme != Uri.UriSchemeHttp && target.Scheme != Uri.UriSchemeHttps)) return;
+
+            try { browserCore!.Navigate(target.AbsoluteUri); }
+            catch (Exception exception)
+            {
+                _log.SafeError(nameof(SearchBrowserHost), "navigate-popup-in-browser", exception);
+            }
+        }
         void Cleanup()
         {
             if (cleaned) return;
             cleaned = true;
+            if (browserCore is not null)
+            {
+                WebView2VisualSearchBrowserSession.TryCleanup(
+                    () => browserCore.NewWindowRequested -= OnNewWindowRequested);
+                WebView2VisualSearchBrowserSession.TryCleanup(
+                    () => browserCore.ContextMenuRequested -= OnContextMenuRequested);
+            }
             try { windowLifetime.Cancel(); }
             catch (Exception exception)
             {
@@ -345,6 +367,9 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
             await webView.EnsureCoreWebView2Async(_environment, controllerOptions).ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
             if (view.IsClosed || !ReferenceEquals(_view, view)) throw new OperationCanceledException();
+            browserCore = webView.CoreWebView2;
+            browserCore.NewWindowRequested += OnNewWindowRequested;
+            browserCore.ContextMenuRequested += OnContextMenuRequested;
             await webView.CoreWebView2
                 .AddScriptToExecuteOnDocumentCreatedAsync(OverlayScrollbarScript.Create())
                 .ConfigureAwait(true);
@@ -379,6 +404,15 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
             }
             if (wasClosed) throw new OperationCanceledException();
             throw;
+        }
+    }
+
+    private static void OnContextMenuRequested(object? sender, CoreWebView2ContextMenuRequestedEventArgs args)
+    {
+        for (var index = args.MenuItems.Count - 1; index >= 0; index--)
+        {
+            if (args.MenuItems[index].Name == "openLinkInNewWindow")
+                args.MenuItems.RemoveAt(index);
         }
     }
 
