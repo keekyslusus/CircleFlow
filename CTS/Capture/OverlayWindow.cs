@@ -67,6 +67,7 @@ public sealed class OverlayWindow : Window
     private readonly ToastOverlayController _toast;
     private readonly DebugOverlayController _debug;
     private bool _cancelPublished;
+    private bool _exitFadeStarted;
     private bool _entranceRipplePending;
     private bool _resourcesDisposed;
     private DispatcherTimer? _inputSwitcherCheck;
@@ -287,10 +288,9 @@ public sealed class OverlayWindow : Window
 
     internal void CloseFromSession()
     {
-        if (!_interaction.IsFinished) ApplyModeTransition(OverlayInteractionMode.Closing);
-        DisposeVisualResources();
-        if (!Dispatcher.HasShutdownStarted)
-            Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+        if (_exitFadeStarted || Dispatcher.HasShutdownStarted) return;
+        if (_interaction.IsFinished) FinishShutdown();
+        else CancelInternal(publish: false);
     }
 
     private void ConfigureWindow(
@@ -629,11 +629,12 @@ public sealed class OverlayWindow : Window
     private void CancelInternal(bool publish = true)
     {
         if (_interaction.IsFinished) return;
-        if (publish && _publishCommand is not null) PublishCancel();
+        _exitFadeStarted = true;
         ApplyModeTransition(OverlayInteractionMode.Closing);
-        if (!OverlayVisualResources.AnimationsEnabled())
+        if (publish && _publishCommand is not null) PublishCancel();
+        if (!IsVisible || !OverlayVisualResources.AnimationsEnabled())
         {
-            Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+            FinishShutdown();
             return;
         }
 
@@ -641,12 +642,12 @@ public sealed class OverlayWindow : Window
         switch (_exitFade)
         {
             case OverlayExitFade.Root:
-                fade.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                fade.Completed += (_, _) => FinishShutdown();
                 _visual.Root.BeginAnimation(OpacityProperty, fade);
                 break;
             case OverlayExitFade.DimLayers:
                 var completed = Fade(1, 0);
-                completed.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                completed.Completed += (_, _) => FinishShutdown();
                 _visual.Selection.Dim.BeginAnimation(OpacityProperty, completed);
                 _visual.Selection.Sheen.BeginAnimation(OpacityProperty, Fade(1, 0));
                 _visual.Selection.Halo.BeginAnimation(OpacityProperty, Fade(1, 0));
@@ -654,7 +655,7 @@ public sealed class OverlayWindow : Window
                 _actionTray.BeginExit();
                 break;
             default:
-                fade.Completed += (_, _) => Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
+                fade.Completed += (_, _) => FinishShutdown();
                 BeginAnimation(OpacityProperty, fade);
                 break;
         }

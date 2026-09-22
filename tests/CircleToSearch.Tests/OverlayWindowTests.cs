@@ -335,13 +335,16 @@ public sealed class OverlayWindowTests
         Assert.Null(failure);
     }
 
-    [Fact]
-    public void Session_close_forces_shutdown_after_cancel_has_already_started()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Repeated_session_close_waits_for_exit_fade(bool cancelFirst)
     {
         var failure = RunOnSta(() =>
         {
             using var frame = new GdiBitmap(64, 48);
             var monitor = new GdiRectangle(0, 0, 64, 48);
+            var commands = new List<IOverlayCommand>();
             var overlay = new OverlayWindow(
                 frame,
                 monitor,
@@ -349,13 +352,26 @@ public sealed class OverlayWindowTests
                 1.0,
                 new OverlayOptions(8, 12),
                 TestUiStrings.English,
-                TestOverlayControllers.CreateFactory());
+                TestOverlayControllers.CreateFactory(),
+                publishCommand: commands.Add);
             overlay.Show();
-            overlay.CancelFromCoordinator();
-            overlay.Dispatcher.BeginInvoke(overlay.CloseFromSession, DispatcherPriority.Background);
+            double? opacityAtShutdown = null;
+            overlay.Dispatcher.ShutdownStarted += (_, _) =>
+                opacityAtShutdown = overlay.VisualState.Root.Opacity;
+            if (cancelFirst) RaiseEscape(overlay);
+            else overlay.CloseFromSession();
+            overlay.Dispatcher.BeginInvoke(() =>
+            {
+                overlay.CloseFromSession();
+                overlay.CloseFromSession();
+            }, DispatcherPriority.Send);
             Dispatcher.Run();
 
             Assert.True(overlay.Dispatcher.HasShutdownFinished);
+            Assert.Equal(cancelFirst ? 1 : 0, commands.Count);
+            if (cancelFirst) Assert.IsType<CancelSession>(commands[0]);
+            Assert.NotNull(opacityAtShutdown);
+            if (OverlayVisualResources.AnimationsEnabled()) Assert.Equal(0, opacityAtShutdown.Value, 5);
         });
 
         Assert.Null(failure);
