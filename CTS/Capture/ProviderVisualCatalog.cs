@@ -9,6 +9,28 @@ namespace CircleToSearch.Capture;
 
 internal static class ProviderVisualCatalog
 {
+    private const double SearchMarkSize = 14;
+
+    internal static FrameworkElement CreateSearchMark(string providerId, bool lightTheme, bool textSearch = false)
+    {
+        var palette = PluginPalette.For(lightTheme).Provider;
+        if (!textSearch || !string.Equals(providerId, SearchProviderIds.TraceMoe, StringComparison.OrdinalIgnoreCase))
+            return CreateMark(providerId.ToLowerInvariant(), palette, SearchMarkSize);
+
+        var drawing = new DrawingGroup();
+        drawing.Children.Add(Draw(PluginPalette.AniListBlue, PluginIcons.AniListBlue));
+        drawing.Children.Add(Draw(lightTheme ? palette.Text : PluginPalette.AniListWhite, PluginIcons.AniListLetter));
+        drawing.Freeze();
+        return new Image
+        {
+            Source = new DrawingImage(drawing),
+            Width = SearchMarkSize,
+            Height = SearchMarkSize,
+            Stretch = Stretch.Uniform,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+    }
+
     public static FrameworkElement Create(
         SearchProviderDescriptor descriptor,
         UiStrings strings,
@@ -61,7 +83,7 @@ internal static class ProviderVisualCatalog
         return row;
     }
 
-    private static FrameworkElement CreateMark(string providerId, ProviderPalette palette)
+    private static FrameworkElement CreateMark(string providerId, ProviderPalette palette, double size = 16)
     {
         if (providerId == SearchProviderIds.GoogleLens)
         {
@@ -74,8 +96,8 @@ internal static class ProviderVisualCatalog
             return new Image
             {
                 Source = new DrawingImage(drawing),
-                Width = 16,
-                Height = 16,
+                Width = size,
+                Height = size,
                 Stretch = Stretch.Uniform,
                 VerticalAlignment = VerticalAlignment.Center,
             };
@@ -85,14 +107,14 @@ internal static class ProviderVisualCatalog
         {
             return new TextBlock
             {
-                Width = 16,
+                Width = size,
                 Text = "Я",
                 FontFamily = OverlayFont,
-                FontSize = 15,
+                FontSize = size * 15 / 16,
                 FontWeight = FontWeights.Bold,
                 Foreground = Frozen(palette.Yandex),
                 TextAlignment = TextAlignment.Center,
-                LineHeight = 16,
+                LineHeight = size,
                 VerticalAlignment = VerticalAlignment.Center,
             };
         }
@@ -102,8 +124,8 @@ internal static class ProviderVisualCatalog
             return new Path
             {
                 Data = TraceMoeMark,
-                Width = 16,
-                Height = 16,
+                Width = size,
+                Height = size,
                 Stretch = Stretch.Uniform,
                 Fill = Frozen(palette.Trace),
                 VerticalAlignment = VerticalAlignment.Center,
@@ -112,8 +134,8 @@ internal static class ProviderVisualCatalog
 
         return new Ellipse
         {
-            Width = 16,
-            Height = 16,
+            Width = size,
+            Height = size,
             VerticalAlignment = VerticalAlignment.Center,
             Fill = Frozen(palette.Neutral),
         };

@@ -4,6 +4,8 @@ using System.Windows.Media;
 
 internal static class PluginPalette
 {
+    internal static Color AniListBlue { get; } = Color.FromRgb(0x02, 0xA9, 0xFF);
+    internal static Color AniListWhite { get; } = Color.FromRgb(0xFE, 0xFE, 0xFE);
     private static Color DarkMusicPrimary { get; } = Color.FromRgb(0xD0, 0xBC, 0xFF);
     private static Color LightMusicPrimary { get; } = Color.FromRgb(0x67, 0x50, 0xA4);
     private static Color DarkDockSurface { get; } = Color.FromArgb(0xE6, 0x20, 0x21, 0x24);

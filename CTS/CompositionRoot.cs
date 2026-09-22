@@ -396,6 +396,17 @@ public static class CompositionRoot
                 context.Strings,
                 dependencies.SetImageClipboard);
             var publishCommand = context.PublishCommand ?? (_ => { });
+            void UpdateSearchIcons(string providerId)
+            {
+                var visual = context.Visual;
+                visual.TextSelection.Toolbar.SetActionContent(
+                    visual.TextSelection.SearchButton, context.Strings.TextSearch,
+                    ProviderVisualCatalog.CreateSearchMark(providerId, visual.LightTheme, textSearch: true));
+                visual.ImageSelection.Toolbar.SetActionContent(
+                    visual.ImageSelection.SearchButton, context.Strings.TextSearch,
+                    ProviderVisualCatalog.CreateSearchMark(providerId, visual.LightTheme));
+            }
+            UpdateSearchIcons(context.SelectedProviderId);
             var provider = Track(new ProviderMenuController(
                 context.Visual.Provider,
                 context.Visual.Bottom.Root,
@@ -404,7 +415,11 @@ public static class CompositionRoot
                 context.Strings,
                 context.Visual.LightTheme,
                 context.CanUseProvider,
-                context.ProviderSelected));
+                providerId =>
+                {
+                    UpdateSearchIcons(providerId);
+                    context.ProviderSelected(providerId);
+                }));
             var mapper = new OverlayCoordinateMapper(
                 context.Scale,
                 context.Overscan,

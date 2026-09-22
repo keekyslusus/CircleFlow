@@ -6,6 +6,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Ui;
+using CircleToSearch.Search;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -21,6 +22,8 @@ public sealed class FloatingToolbarTests
         RunOnSta(() =>
         {
             var visual = ImageSelectionVisualFactory.Create(false, TestUiStrings.English);
+            visual.Toolbar.SetActionContent(visual.SearchButton, TestUiStrings.English.TextSearch,
+                ProviderVisualCatalog.CreateSearchMark(SearchProviderIds.GoogleLens, false));
             var window = new Window
             {
                 Width = width, Height = 240, WindowStyle = WindowStyle.None, Content = visual.Toolbar.Layer,
@@ -64,6 +67,56 @@ public sealed class FloatingToolbarTests
                 window.UpdateLayout();
                 Assert.All(buttons, button => Assert.Equal(new Thickness(16, 0, 16, 0), button.Padding));
                 Assert.Equal(44, visual.Toolbar.Surface.ActualHeight);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Updating_search_icon_keeps_open_toolbar_inside_viewport_and_preserves_button(bool lightTheme)
+    {
+        RunOnSta(() =>
+        {
+            var toolbar = new FloatingToolbar(PluginPalette.For(lightTheme).FloatingToolbar, () => false);
+            var search = toolbar.AddAction(TestUiStrings.English.TextSearch);
+            var clicks = 0;
+            search.Click += (_, _) => clicks++;
+            var window = new Window { Width = 320, Height = 200, Content = toolbar.Layer };
+            try
+            {
+                window.Show();
+                toolbar.Show(new Rect(290, 100, 30, 20), new Size(320, 200));
+                window.UpdateLayout();
+                var initialWidth = toolbar.Surface.ActualWidth;
+                foreach (var provider in new[] { SearchProviderIds.GoogleLens, SearchProviderIds.YandexImages, SearchProviderIds.TraceMoe })
+                {
+                    var icon = ProviderVisualCatalog.CreateSearchMark(provider, lightTheme, textSearch: true);
+                    toolbar.SetActionContent(search, TestUiStrings.English.TextSearch, icon);
+                    window.UpdateLayout();
+                    Assert.True(toolbar.IsOpen);
+                    Assert.True(toolbar.Surface.ActualWidth > initialWidth);
+                    Assert.InRange(Canvas.GetLeft(toolbar.Surface) + toolbar.Surface.ActualWidth, 0, 320);
+                    Assert.Equal(44, toolbar.Surface.ActualHeight);
+                    var bounds = search.TransformToAncestor(toolbar.Surface).TransformBounds(new Rect(search.RenderSize));
+                    Assert.Equal(bounds.Top, toolbar.Surface.ActualHeight - bounds.Bottom, 6);
+                    var row = Assert.IsType<StackPanel>(search.Content);
+                    Assert.Same(icon, Assert.IsType<ContentControl>(row.Children[0]).Content);
+                    Assert.Equal(TestUiStrings.English.TextSearch, Assert.IsType<TextBlock>(row.Children[1]).Text);
+                    search.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    if (provider == SearchProviderIds.TraceMoe)
+                    {
+                        var drawing = Assert.IsType<DrawingGroup>(Assert.IsType<DrawingImage>(Assert.IsType<Image>(icon).Source).Drawing);
+                        Assert.Same(PluginIcons.AniListBlue, Assert.IsType<GeometryDrawing>(drawing.Children[0]).Geometry);
+                        Assert.IsType<System.Windows.Shapes.Path>(ProviderVisualCatalog.CreateSearchMark(provider, lightTheme));
+                    }
+                }
+                Assert.Equal(3, clicks);
+                toolbar.SetActionContent(search, TestUiStrings.English.TextSearch);
+                window.UpdateLayout();
+                Assert.Equal(initialWidth, toolbar.Surface.ActualWidth);
+                Assert.Equal(TestUiStrings.English.TextSearch, search.Content);
             }
             finally { window.Close(); }
         });

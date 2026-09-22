@@ -14,6 +14,8 @@ public sealed class FloatingToolbar
     private readonly FloatingToolbarPalette _palette;
     private readonly Func<bool> _animationsEnabled;
     private CardTransitions.ExitHandle? _exit;
+    private Rect _anchor;
+    private Size _viewport;
 
     internal FloatingToolbar(FloatingToolbarPalette palette, Func<bool>? animationsEnabled = null)
     {
@@ -41,7 +43,7 @@ public sealed class FloatingToolbar
     internal Border Surface { get; }
     internal bool IsOpen { get; private set; }
 
-    internal Button AddAction(string label)
+    internal Button AddAction(string label, FrameworkElement? icon = null)
     {
         var button = new Button
         {
@@ -60,11 +62,41 @@ public sealed class FloatingToolbar
         OverlayVisualResources.ApplyButtonTemplate(button, 20, _palette.ButtonHover, _palette.Text);
         AutomationProperties.SetName(button, label);
         _actions.Children.Add(button);
+        SetActionContent(button, label, icon);
         return button;
+    }
+
+    internal void SetActionContent(Button button, string label, FrameworkElement? icon = null)
+    {
+        if (!_actions.Children.Contains(button))
+            throw new ArgumentException("The action does not belong to this toolbar.", nameof(button));
+        if (icon is null) button.Content = label;
+        else
+        {
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+                IsHitTestVisible = false,
+            };
+            row.Children.Add(new ContentControl
+            {
+                Content = icon,
+                Margin = new Thickness(0, 0, 7, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Focusable = false,
+            });
+            row.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
+            button.Content = row;
+        }
+        AutomationProperties.SetName(button, label);
+        if (IsOpen) UpdatePlacement();
     }
 
     internal void Show(Rect anchorDips, Size viewportDips)
     {
+        _anchor = anchorDips;
+        _viewport = viewportDips;
         var wasOpen = IsOpen;
         var wasVisible = Surface.Visibility == Visibility.Visible;
         _exit?.Dispose();
@@ -73,14 +105,19 @@ public sealed class FloatingToolbar
         Surface.IsEnabled = true;
         Surface.IsHitTestVisible = true;
         Surface.Visibility = Visibility.Visible;
-        MeasureWithin(viewportDips.Width);
-        var placement = FloatingToolbarLayout.Place(anchorDips, Surface.DesiredSize, viewportDips);
-        Canvas.SetLeft(Surface, placement.X);
-        Canvas.SetTop(Surface, placement.Y);
+        UpdatePlacement();
         if (!wasOpen)
             CardTransitions.BeginEntrance(
                 Surface, _animationsEnabled(), TimeSpan.FromMilliseconds(220), 0.96,
                 preserveCurrentValues: wasVisible);
+    }
+
+    private void UpdatePlacement()
+    {
+        MeasureWithin(_viewport.Width);
+        var placement = FloatingToolbarLayout.Place(_anchor, Surface.DesiredSize, _viewport);
+        Canvas.SetLeft(Surface, placement.X);
+        Canvas.SetTop(Surface, placement.Y);
     }
 
     private void MeasureWithin(double width)

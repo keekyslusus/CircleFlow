@@ -316,6 +316,12 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.IsType<StartMusicRecognition>(Assert.Single(commands));
             Assert.False(overlay.Dispatcher.HasShutdownStarted);
 
+            var searches = buttons.Where(button =>
+                AutomationProperties.GetName(button) == TestUiStrings.English.TextSearch).ToArray();
+            Assert.Equal(2, searches.Length);
+            Assert.All(searches, button => Assert.IsType<Image>(
+                Assert.IsType<ContentControl>(Assert.IsType<StackPanel>(button.Content).Children[0]).Content));
+
             var provider = Assert.Single(buttons, button => ReferenceEquals(button.Tag, null) &&
                 AutomationProperties.GetName(button).Contains("choose provider", StringComparison.Ordinal));
             provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -326,6 +332,8 @@ public sealed class ProviderMusicOverlayUiTests
 
             Assert.Equal(SearchProviderIds.YandexImages,
                 Assert.IsType<ProviderSelected>(commands[1]).ProviderId);
+            Assert.All(searches, button => Assert.IsType<TextBlock>(
+                Assert.IsType<ContentControl>(Assert.IsType<StackPanel>(button.Content).Children[0]).Content));
             provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             overlay.UpdateLayout();
             var google = Descendants((DependencyObject)overlay.Content).OfType<Button>()
@@ -335,6 +343,8 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Equal(3, commands.Count);
             Assert.Equal(SearchProviderIds.GoogleLens,
                 Assert.IsType<ProviderSelected>(commands[2]).ProviderId);
+            Assert.All(searches, button => Assert.IsType<Image>(
+                Assert.IsType<ContentControl>(Assert.IsType<StackPanel>(button.Content).Children[0]).Content));
             Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
             overlay.CloseFromSession();
             Dispatcher.Run();
