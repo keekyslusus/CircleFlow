@@ -72,6 +72,7 @@ internal sealed class SearchBrowserWindowView
                 Background = background,
                 Foreground = Frozen(palette.PrimaryText),
                 BorderThickness = new Thickness(0),
+                Template = CreateCloseButtonTemplate(),
             };
             var closeIcon = new System.Windows.Shapes.Path
             {
@@ -135,6 +136,7 @@ internal sealed class SearchBrowserWindowView
         _titleText.Foreground = Frozen(palette.PrimaryText);
         _closeButton.Background = background;
         _closeButton.Foreground = Frozen(palette.PrimaryText);
+        _closeButton.BorderBrush = Frozen(SystemAccentColor.Read());
         ApplyWindowChromeTheme(Window, lightTheme);
     }
 
@@ -171,6 +173,52 @@ internal sealed class SearchBrowserWindowView
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs args) => Window.Close();
+
+    private static ControlTemplate CreateCloseButtonTemplate()
+    {
+        var root = new FrameworkElementFactory(typeof(Grid));
+        root.SetValue(Panel.BackgroundProperty, Frozen(PluginPalette.Transparent));
+        var hoverSurface = new FrameworkElementFactory(typeof(Ellipse), "HoverSurface");
+        hoverSurface.SetValue(FrameworkElement.WidthProperty, 28d);
+        hoverSurface.SetValue(FrameworkElement.HeightProperty, 28d);
+        hoverSurface.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        hoverSurface.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        hoverSurface.SetValue(UIElement.OpacityProperty, 0d);
+        hoverSurface.SetBinding(System.Windows.Shapes.Shape.FillProperty, new Binding(nameof(Control.BorderBrush))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent),
+        });
+        root.AppendChild(hoverSurface);
+        var content = new FrameworkElementFactory(typeof(ContentPresenter));
+        content.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        content.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        content.SetBinding(ContentPresenter.ContentProperty, new Binding(nameof(ContentControl.Content))
+        {
+            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent),
+        });
+        root.AppendChild(content);
+        var template = new ControlTemplate(typeof(Button)) { VisualTree = root };
+        var hover = new System.Windows.Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+        hover.EnterActions.Add(FadeCloseButtonHover(0.24));
+        hover.ExitActions.Add(FadeCloseButtonHover(0));
+        template.Triggers.Add(hover);
+        return template;
+    }
+
+    private static BeginStoryboard FadeCloseButtonHover(double opacity)
+    {
+        var animation = new DoubleAnimation
+        {
+            To = opacity,
+            Duration = UiAnimationPolicy.ToggleTransitionDuration,
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        Storyboard.SetTargetName(animation, "HoverSurface");
+        Storyboard.SetTargetProperty(animation, new PropertyPath(UIElement.OpacityProperty));
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(animation);
+        return new BeginStoryboard { Storyboard = storyboard, HandoffBehavior = HandoffBehavior.SnapshotAndReplace };
+    }
 
     private void OnSourceInitialized(object? sender, EventArgs args)
         => ApplyWindowChromeTheme(Window, _lightTheme);
