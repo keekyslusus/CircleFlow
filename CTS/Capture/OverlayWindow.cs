@@ -323,6 +323,8 @@ public sealed class OverlayWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Activate();
+        Keyboard.Focus(this);
         _actionTray.ShowEntrance();
         QueueEntranceRipple();
         _inputLanguage.Attach(this, _initialInputLanguage);

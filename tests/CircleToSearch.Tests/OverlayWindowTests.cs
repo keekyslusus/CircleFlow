@@ -17,6 +17,26 @@ namespace CircleToSearch.Tests;
 public sealed class OverlayWindowTests
 {
     [Fact]
+    public void Shown_overlay_takes_keyboard_focus_before_pointer_interaction()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var bounds = new GdiRectangle(0, 0, 640, 400);
+            var overlay = new OverlayWindow(frame, bounds, bounds, 1, new OverlayOptions(8, 12),
+                TestUiStrings.English, TestOverlayControllers.CreateFactory(), overscan: false);
+
+            overlay.Show();
+
+            Assert.True(overlay.IsActive);
+            Assert.True(overlay.IsKeyboardFocused);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Debug_reset_makes_the_next_translate_show_privacy_consent()
     {
         var failure = RunOnSta(() =>
