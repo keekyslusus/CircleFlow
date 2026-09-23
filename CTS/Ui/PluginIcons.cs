@@ -84,6 +84,11 @@ internal static class PluginIcons
     public static Geometry TranslateOutlined { get; } = Group(
         Geometry.Parse("M3 5h12M9 3v2m4 0c0 7-4 10-9 12m1-9c1 4 4 7 8 8m1 5 4-11 4 11m-6-4h4"));
 
+    public static Geometry GlobeOutlined { get; } = Group(
+        new EllipseGeometry(new Point(12, 12), 9, 9),
+        new EllipseGeometry(new Point(12, 12), 3.75, 9),
+        Geometry.Parse("M3 12h18"));
+
     public static Geometry MusicOutlined { get; } = Group(
         Geometry.Parse("M10 17V5l10-2v12M10 8l10-2"),
         new EllipseGeometry(new Point(7, 18), 3, 2),
@@ -133,6 +138,16 @@ internal static class PluginIcons
 
     public static Geometry LinkOutlined { get; } = Group(
         Geometry.Parse("M14 3h7v7m0-7L10 14m0-9H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"));
+
+    public static Geometry CopyOutlined { get; } = Group(
+        new RectangleGeometry(new Rect(8, 8, 13, 13), 2, 2),
+        Geometry.Parse("M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"));
+
+    public static Geometry DownloadOutlined { get; } = Group(
+        Geometry.Parse("M12 3v12m-5-5 5 5 5-5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"));
+
+    public static Geometry SparkleOutlined { get; } = Group(
+        Geometry.Parse("M12 3c.7 4.8 4.2 8.3 9 9-4.8.7-8.3 4.2-9 9-.7-4.8-4.2-8.3-9-9 4.8-.7 8.3-4.2 9-9Z"));
 
     public static Geometry CoffeeOutlined { get; } = Group(
         Geometry.Parse("M4 8h13v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM17 9h2a3 3 0 0 1 0 6h-2M3 22h16M7 3v2m4-3v3m4-2v2"));

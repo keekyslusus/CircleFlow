@@ -171,6 +171,16 @@
     <system:String x:Key="app_settings_never">Never</system:String>
     <system:String x:Key="app_settings_cleanup">Clear search browser data</system:String>
     <system:String x:Key="app_settings_cleanup_sub">Cookies and cache of the built-in results window</system:String>
+    <system:String x:Key="app_settings_selection_toolbar">Selection toolbar</system:String>
+    <system:String x:Key="app_settings_toolbar_ask">Ask</system:String>
+    <system:String x:Key="app_settings_toolbar_ask_sub">Ask Gemini about the selected area</system:String>
+    <system:String x:Key="app_settings_toolbar_copy">Copy</system:String>
+    <system:String x:Key="app_settings_toolbar_copy_sub">Copy the selected area as an image</system:String>
+    <system:String x:Key="app_settings_toolbar_save">Save</system:String>
+    <system:String x:Key="app_settings_toolbar_save_sub">Save the selected area as an image file</system:String>
+    <system:String x:Key="app_settings_toolbar_translate">Translate</system:String>
+    <system:String x:Key="app_settings_toolbar_translate_sub">Translate text in the selected area</system:String>
+    <system:String x:Key="app_settings_selection_toolbar_hint">Search is always shown. The toolbar for selected text is not affected.</system:String>
     <system:String x:Key="app_settings_primary_shortcut">Primary shortcut</system:String>
     <system:String x:Key="app_settings_edit_shortcut">Edit shortcut</system:String>
     <system:String x:Key="app_settings_open_selection">Open selection</system:String>

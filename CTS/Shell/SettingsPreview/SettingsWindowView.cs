@@ -71,7 +71,7 @@ internal sealed class SettingsWindowView
         Element<TextBox>("ShortcutInput").PreviewKeyDown += RecordShortcut;
 
         // The preview owns only control values. No application settings or services enter this view.
-        foreach (var name in new[] { "Launch", "IgnoreFullscreen" })
+        foreach (var name in new[] { "Launch", "ToolbarAsk", "ToolbarCopy", "ToolbarSave", "ToolbarTranslate", "IgnoreFullscreen" })
         {
             var control = Element<CheckBox>(name);
             var initial = control.IsChecked;

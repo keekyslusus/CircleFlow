@@ -740,10 +740,10 @@ public sealed class SettingsPreviewTests
             Assert.Equal(pageWidth, Find<StackPanel>(window, "PageContent").ActualWidth);
             scroll.ScrollToBottom();
             Pump();
-            var language = Find<ComboBox>(window, "AppLanguage");
-            var languageTop = language.TranslatePoint(new Point(), scroll).Y;
-            Assert.True(languageTop >= 0);
-            Assert.True(languageTop + language.ActualHeight < viewport.ActualHeight);
+            var translate = Find<CheckBox>(window, "ToolbarTranslate");
+            var translateTop = translate.TranslatePoint(new Point(), scroll).Y;
+            Assert.True(translateTop >= 0);
+            Assert.True(translateTop + translate.ActualHeight < viewport.ActualHeight);
             if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
                 Capture(window, $"settings-{(light ? "light" : "dark")}-general-bottom.png");
 
@@ -779,6 +779,7 @@ public sealed class SettingsPreviewTests
             provider.SelectedIndex = 2;
             textSearch.SelectedIndex = 3;
             launch.IsChecked = false;
+            Find<CheckBox>(window, "ToolbarAsk").IsChecked = false;
             Find<RadioButton>(window, "Nav_search").IsChecked = true;
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
             Assert.Equal(2, provider.SelectedIndex);
@@ -797,6 +798,7 @@ public sealed class SettingsPreviewTests
             Assert.True(launch.IsChecked);
             Assert.Equal(0, provider.SelectedIndex);
             Assert.Equal(0, textSearch.SelectedIndex);
+            Assert.True(Find<CheckBox>(window, "ToolbarAsk").IsChecked);
             Assert.True(Find<Grid>(window, "Workspace").IsEnabled);
 
             Find<RadioButton>(window, "Nav_hotkeys").IsChecked = true;
