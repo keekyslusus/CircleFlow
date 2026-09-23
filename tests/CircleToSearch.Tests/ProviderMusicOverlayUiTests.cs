@@ -443,9 +443,10 @@ public sealed class ProviderMusicOverlayUiTests
                 PumpUntil(() => ReferenceEquals(Mouse.Captured, input));
                 Assert.True(SetCursorPos((int)Math.Round(finish.X), (int)Math.Round(finish.Y)));
                 mouse_event(MouseEventLeftUp, 0, 0, 0, UIntPtr.Zero);
-                PumpUntil(() => commands.Count == 1);
+                PumpUntil(() => commands.Count == 2);
 
-                var selected = Assert.IsType<VisualSelection>(Assert.Single(commands));
+                Assert.IsType<VisualSelectionStarted>(commands[0]);
+                var selected = Assert.IsType<VisualSelection>(commands[1]);
                 Assert.True(overlay.FrameTransferred);
                 Assert.Same(frame, selected.Selection.FrozenFrame);
                 Assert.True(selected.Selection.Bounds.Width > 0);
@@ -456,7 +457,7 @@ public sealed class ProviderMusicOverlayUiTests
                 Dispatcher.Run();
 
                 Assert.Equal(640, selected.Selection.FrozenFrame.Width);
-                Assert.Single(commands);
+                Assert.Equal(2, commands.Count);
             }
             finally
             {

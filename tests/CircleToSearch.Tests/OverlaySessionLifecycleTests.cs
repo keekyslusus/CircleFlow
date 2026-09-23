@@ -96,6 +96,8 @@ public sealed class OverlaySessionLifecycleTests
             Assert.True(SetCursorPos((int)Math.Round(points.Finish.X), (int)Math.Round(points.Finish.Y)));
             mouse_event(MouseEventLeftUp, 0, 0, 0, UIntPtr.Zero);
 
+            Assert.IsType<VisualSelectionStarted>(
+                await session.ReadCommandAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5)));
             selection = Assert.IsType<VisualSelection>(
                 await session.ReadCommandAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5)));
             var closed = await Assert.ThrowsAsync<ChannelClosedException>(

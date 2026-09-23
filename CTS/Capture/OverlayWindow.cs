@@ -165,7 +165,8 @@ public sealed class OverlayWindow : Window
                 ocrLanguageTag,
                 translationTargetLanguageTag,
                 inputLanguage,
-                () => CancelInternal()));
+                () => CancelInternal(),
+                OnSelectionDrawn));
         }
         catch
         {
@@ -396,6 +397,12 @@ public sealed class OverlayWindow : Window
             ApplyModeTransition(OverlayInteractionMode.Selecting);
         }
         _actionTray.HideForSelection();
+    }
+
+    private void OnSelectionDrawn()
+    {
+        if (!_pointer.IsActionSelection)
+            _publishCommand?.Invoke(new VisualSelectionStarted(_provider.SelectedProviderId));
     }
 
     private void OnSelectionCompleted(GdiRectangle bounds)

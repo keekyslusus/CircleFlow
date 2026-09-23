@@ -16,9 +16,7 @@ internal sealed class VisualSearchWorkflow(
     internal async Task<VisualSearchPreparationOutcome> PrepareTraceAsync(
         SelectionOutcome selection, int maxLongSidePx, CancellationToken cancellationToken)
     {
-        byte[] jpeg;
-        try { jpeg = crop(selection.FrozenFrame, selection.Bounds, maxLongSidePx); }
-        finally { selection.Dispose(); }
+        var jpeg = selection.Encode(crop, maxLongSidePx);
         var routed = await providerRouter.PrepareAsync(SearchProviderIds.TraceMoe, jpeg, cancellationToken).ConfigureAwait(false);
         return routed.Outcome;
     }
@@ -30,9 +28,7 @@ internal sealed class VisualSearchWorkflow(
         int maxLongSidePx,
         CancellationToken cancellationToken)
     {
-        byte[] jpeg;
-        try { jpeg = crop(selection.FrozenFrame, selection.Bounds, maxLongSidePx); }
-        finally { selection.Dispose(); }
+        var jpeg = selection.Encode(crop, maxLongSidePx);
 
         onUploadStarted();
         var selectedProvider = providerRouter.GetEffectiveDescriptor(requestedProviderId);

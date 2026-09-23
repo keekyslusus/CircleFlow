@@ -288,7 +288,9 @@ public sealed class TraceOverlayTests
             lasso.Update(new Point(110, 110));
             lasso.Complete(new Point(10, 110));
             Assert.NotEmpty(overlay.VisualState.Selection.Accent.Points);
-            var selection = Assert.IsType<VisualSelection>(Assert.Single(commands));
+            Assert.Equal(2, commands.Count);
+            Assert.IsType<VisualSelectionStarted>(commands[0]);
+            var selection = Assert.IsType<VisualSelection>(commands[1]);
             Assert.NotSame(frame, selection.Selection.FrozenFrame);
             selection.Selection.Dispose();
             typeof(OverlayWindow).GetMethod("OnSelectionHoldCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(overlay, null);

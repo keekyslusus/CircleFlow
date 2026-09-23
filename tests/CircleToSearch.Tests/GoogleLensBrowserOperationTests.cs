@@ -94,6 +94,41 @@ public sealed class GoogleLensBrowserOperationTests
     }
 
     [Fact]
+    public async Task Prewarmed_operation_uploads_only_after_the_image_arrives()
+    {
+        var session = new FakeBrowserSession
+        {
+            CurrentUri = new Uri("https://lens.google.com/search?p=abc"),
+        };
+        session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+        var image = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var execution = new GoogleLensBrowserOperation(image.Task, NewLog()).ExecuteAsync(session, CancellationToken.None);
+        await Task.Delay(50);
+        Assert.False(execution.IsCompleted);
+        Assert.Empty(session.Events);
+
+        image.SetResult(CreateJpeg());
+
+        Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, await execution.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(["POST"], session.Events);
+    }
+
+    [Fact]
+    public async Task Prewarmed_operation_canceled_before_the_image_does_not_navigate()
+    {
+        var session = new FakeBrowserSession();
+        var image = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation = new CancellationTokenSource();
+
+        var execution = new GoogleLensBrowserOperation(image.Task, NewLog()).ExecuteAsync(session, cancellation.Token);
+        cancellation.Cancel();
+
+        Assert.Equal(VisualSearchBrowserOperationStatus.Canceled, await execution.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Empty(session.Events);
+    }
+
+    [Fact]
     public async Task Question_continues_lens_results_in_ai_mode_with_the_page_token()
     {
         var session = new FakeBrowserSession

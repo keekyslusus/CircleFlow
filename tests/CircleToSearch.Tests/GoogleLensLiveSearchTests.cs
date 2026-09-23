@@ -133,6 +133,67 @@ public sealed class GoogleLensLiveSearchTests
             await Task.Delay(TimeSpan.FromSeconds(30));
     }
 
+    [Fact]
+    [Trait("Category", "Live")]
+    public async Task Google_lens_prewarms_hidden_and_logs_results_timing_against_a_cold_browser()
+    {
+        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+
+        var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "CircleFlow.WebView2Live"));
+        AppDataDirectory.Initialize(paths);
+        var environments = new WebViewEnvironmentFactory(paths, TestUiStrings.English, new TestPluginNotifier());
+        var log = new PluginLog(paths.LogsDirectory);
+        var descriptor = new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens");
+        SearchBrowserHost CreateHost() => new(
+            AppContext.BaseDirectory,
+            paths.SearchProfileDirectory,
+            log,
+            new StaDispatcher(CompositionRoot.SearchBrowserThreadName),
+            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true),
+            (content, anchor, lightTheme) => CompositionRoot.CreateSearchBrowserWindowView(
+                TestUiStrings.English, content, anchor, lightTheme));
+
+        TimeSpan cold;
+        using (var host = CreateHost())
+        {
+            var started = DateTime.UtcNow;
+            var shown = await host.ShowAsync(
+                descriptor,
+                PreparedVisualSearch.ForBrowserOperation(
+                    new GoogleLensBrowserOperation(CreateJpeg(), log), externalFallbackUrl: null),
+                CancellationToken.None);
+            cold = DateTime.UtcNow - started;
+            Assert.Equal(SearchBrowserShowStatus.Shown, shown.Status);
+        }
+
+        using (var host = CreateHost())
+        {
+            var image = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var overlayClosed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var show = host.ShowAsync(
+                descriptor,
+                PreparedVisualSearch.ForBrowserOperation(
+                    new GoogleLensBrowserOperation(image.Task, log), externalFallbackUrl: null, overlayClosed.Task),
+                CancellationToken.None);
+            // The browser starts while the lasso is drawn and uploads while the overlay closes.
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            var selectedAt = DateTime.UtcNow;
+            image.SetResult(CreateJpeg());
+            await Task.Delay(TimeSpan.FromMilliseconds(600));
+            overlayClosed.SetResult();
+            var shown = await show;
+            var warm = DateTime.UtcNow - selectedAt;
+
+            log.Info(
+                nameof(GoogleLensLiveSearchTests),
+                $"Lens results after the selection: cold {cold.TotalMilliseconds:F0} ms, prewarmed {warm.TotalMilliseconds:F0} ms");
+            // Network timing varies too much to assert on, so the comparison is only logged.
+            Assert.Equal(SearchBrowserShowStatus.Shown, shown.Status);
+            if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_PREVIEW") == "1")
+                await Task.Delay(TimeSpan.FromSeconds(30));
+        }
+    }
+
     private sealed class AttachmentCountingOperation(IVisualSearchBrowserOperation inner) : IVisualSearchBrowserOperation
     {
         public List<int> AttachedChips { get; } = [];

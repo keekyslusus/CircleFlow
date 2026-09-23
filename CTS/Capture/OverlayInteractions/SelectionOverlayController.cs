@@ -24,6 +24,7 @@ internal sealed class SelectionOverlayController : IDisposable
     private readonly Action<GdiRectangle> _selectionCompleted;
     private readonly Action _selectionRejected;
     private readonly Action _holdCompleted;
+    private readonly Action? _selectionDrawn;
     private readonly LassoPathSampler _sampler;
     private readonly List<Point> _stroke = [];
     private DispatcherTimer? _holdTimer;
@@ -50,7 +51,8 @@ internal sealed class SelectionOverlayController : IDisposable
         Action selectionRejected,
         Action holdCompleted,
         Func<MouseEventArgs, Point>? pointerPosition = null,
-        bool subscribeInput = true)
+        bool subscribeInput = true,
+        Action? selectionDrawn = null)
     {
         _visual = visual;
         _coordinateRoot = coordinateRoot;
@@ -64,6 +66,7 @@ internal sealed class SelectionOverlayController : IDisposable
         _selectionCompleted = selectionCompleted;
         _selectionRejected = selectionRejected;
         _holdCompleted = holdCompleted;
+        _selectionDrawn = selectionDrawn;
         _sampler = new LassoPathSampler(SampleDistanceDips * scale);
 
         if (subscribeInput)
@@ -242,6 +245,8 @@ internal sealed class SelectionOverlayController : IDisposable
         _visual.Halo.Points.Add(dip);
         _visual.Accent.Points.Add(dip);
         QueueRevealUpdate();
+        // A second sample means the pointer moved, so a plain click never counts as drawing.
+        if (_stroke.Count == 2 && !final) _selectionDrawn?.Invoke();
     }
 
     private void QueueRevealUpdate()

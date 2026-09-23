@@ -21,7 +21,8 @@ internal sealed class OverlaySessionWorkflow(
     PluginLog log,
     TextSearchWorkflow? textSearch = null,
     Func<System.Windows.Media.Imaging.BitmapSource, Task>? saveImage = null,
-    Func<int, CancellationToken, OverlayAskSession>? createAskSession = null) : ISearchSessionWorkflow
+    Func<int, CancellationToken, OverlayAskSession>? createAskSession = null,
+    Func<int, CancellationToken, OverlayLensSession>? createLensSession = null) : ISearchSessionWorkflow
 {
     public async Task RunAsync(SearchSessionOptions options, Action onUploadStarted, CancellationToken cancellationToken)
     {
@@ -41,6 +42,7 @@ internal sealed class OverlaySessionWorkflow(
         OverlayTranslationSession? translation = null;
         OverlayTraceSession? trace = null;
         OverlayAskSession? ask = null;
+        OverlayLensSession? lens = null;
         Task<IOverlayCommand>? commandTask = null;
         try
         {
@@ -48,6 +50,8 @@ internal sealed class OverlaySessionWorkflow(
             operations.Add(music);
             ask = createAskSession?.Invoke(options.MaxLongSidePx, cancellationToken);
             if (ask is not null) operations.Add(ask);
+            lens = createLensSession?.Invoke(options.MaxLongSidePx, cancellationToken);
+            if (lens is not null) operations.Add(lens);
             translation = createTranslationSession?.Invoke(overlay, cancellationToken);
             if (translation is not null) operations.Add(translation);
             trace = createTraceSession(overlay, options.MaxLongSidePx, cancellationToken);
@@ -85,6 +89,8 @@ internal sealed class OverlaySessionWorkflow(
 
                         case ProviderSelected provider:
                             providerSelection.Save(provider.ProviderId);
+                            if (!OverlayLensSession.Handles(provider.ProviderId))
+                                await ReleaseWarmLensAsync(lens).ConfigureAwait(false);
                             break;
 
                         case MusicDebugScenarioSelected selected:
@@ -101,6 +107,21 @@ internal sealed class OverlaySessionWorkflow(
                                 OverlaySessionContinuation.EndSession)
                                 return;
                             break;
+
+                        case VisualSelectionStarted started when lens is not null && ask?.PendingTask is null &&
+                            !music.IsRunning && OverlayLensSession.Handles(started.ProviderId):
+                            lens.Start();
+                            break;
+
+                        case VisualSelection visual when lens is { IsWarming: true } && !music.IsRunning &&
+                            OverlayLensSession.Handles(visual.ProviderId):
+                            var searching = lens.SubmitAsync(
+                                visual.Selection,
+                                overlay.WaitForCloseAsync(cancellationToken),
+                                onUploadStarted);
+                            commandOwnershipTransferred = true;
+                            await searching.ConfigureAwait(false);
+                            return;
 
                         case VisualSelection visual when !music.IsRunning:
                             // Selection is published before its topmost confirmation overlay finishes closing.
@@ -152,6 +173,7 @@ internal sealed class OverlaySessionWorkflow(
 
                         case StartMusicRecognition when !music.IsRunning:
                         case RetryMusicRecognition when !music.IsRunning:
+                            await ReleaseWarmLensAsync(lens).ConfigureAwait(false);
                             await music.StartAsync().ConfigureAwait(false);
                             break;
 
@@ -197,6 +219,10 @@ internal sealed class OverlaySessionWorkflow(
             await DisposeOverlayAsync(overlay).ConfigureAwait(false);
         }
     }
+
+    // A warm Lens browser only pays off while the next lasso may still search with Lens.
+    private static Task ReleaseWarmLensAsync(OverlayLensSession? lens) =>
+        lens?.CancelAsync() ?? Task.CompletedTask;
 
     private void TryCleanup(Action action, string operation)
     {

@@ -218,6 +218,12 @@ public static class CompositionRoot
             visualSearchPresenter,
             strings,
             log);
+        var lensPrewarm = new LensPrewarmWorkflow(
+            image => new GoogleLensBrowserOperation(image, log),
+            ImageCropper.EncodeJpeg,
+            visualSearchPresenter,
+            strings,
+            log);
         var musicClock = new SystemMusicRecognitionClock();
         var musicRollback = rollback.Own(new ResourceRollbackScope(log));
         var musicThrottle = musicRollback.Own(new ShazamRequestThrottle(musicClock));
@@ -319,7 +325,8 @@ public static class CompositionRoot
             log,
             textSearch,
             imageSave.SaveAsync,
-            (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation));
+            (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation),
+            (maxLongSidePx, cancellation) => new OverlayLensSession(lensPrewarm, maxLongSidePx, cancellation));
         var coordinator = new SearchCoordinator(
             workflow,
             hideOwnWindows,
@@ -447,7 +454,8 @@ public static class CompositionRoot
                 context.SelectionRejected,
                 context.SelectionHoldCompleted,
                 dependencies.PointerPosition,
-                subscribeInput: false));
+                subscribeInput: false,
+                selectionDrawn: context.SelectionDrawn));
             var textSelection = Track(new TextSelectionOverlayController(
                 context.Visual.TextSelection,
                 context.CoordinateRoot,

@@ -2,42 +2,37 @@ using CircleToSearch.Capture;
 
 namespace CircleToSearch.Search;
 
-internal sealed class OverlayAskSession(
-    ImageAskWorkflow workflow,
+internal sealed class OverlayLensSession(
+    LensPrewarmWorkflow workflow,
     int maxLongSidePx,
     CancellationToken sessionCancellation) : IOverlaySessionOperation
 {
     private readonly PendingPresentation _presentation = new(sessionCancellation);
     private TaskCompletionSource<byte[]>? _image;
-    private TaskCompletionSource<string>? _question;
+    private TaskCompletionSource? _reveal;
 
     public Task? PendingTask => _presentation.Pending;
+
+    public bool IsWarming => _presentation.IsRunning;
+
+    public static bool Handles(string providerId) =>
+        string.Equals(providerId, SearchProviderIds.GoogleLens, StringComparison.OrdinalIgnoreCase);
 
     public void Start() => _presentation.Start(cancellation =>
     {
         _image = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _question = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        return workflow.PresentAsync(_image.Task, _question.Task, cancellation);
+        _reveal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        return workflow.PresentAsync(_image.Task, _reveal.Task, cancellation);
     });
 
-    public void AttachImage(SelectionOutcome selection)
+    public async Task SubmitAsync(SelectionOutcome selection, Task overlayClosed, Action onUploadStarted)
     {
-        if (!_presentation.IsRunning || _image!.Task.IsCompleted)
-        {
-            selection.Dispose();
-            return;
-        }
-        _image.TrySetResult(workflow.Encode(selection, maxLongSidePx));
-    }
-
-    public async Task SubmitAsync(AskAboutSelection asked, Action onUploadStarted)
-    {
-        Start();
-        if (asked.Selection is { } selection) AttachImage(selection);
-        else if (!_image!.Task.IsCompleted)
-            _image.TrySetException(new InvalidOperationException("The question arrived without an attached image."));
-        _question!.TrySetResult(asked.Question);
+        // The upload runs hidden while the overlay plays its closing hold.
+        _image!.TrySetResult(workflow.Encode(selection, maxLongSidePx));
+        await overlayClosed.ConfigureAwait(false);
+        // Until the overlay is gone the hotkey still cancels the search, as it does on the normal path.
         onUploadStarted();
+        _reveal!.TrySetResult();
         await _presentation.CompleteAsync().ConfigureAwait(false);
     }
 

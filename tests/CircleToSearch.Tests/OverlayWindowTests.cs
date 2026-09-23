@@ -632,6 +632,66 @@ public sealed class OverlayWindowTests
     }
 
     [Fact]
+    public void Left_lasso_announces_its_provider_only_once_the_pointer_moves()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, frame.Width, frame.Height);
+            var commands = new List<IOverlayCommand>();
+            var pointer = new Point(100, 100);
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                TestOverlayControllers.CreateFactory(_ => { }, () => false, _ => pointer),
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+            var input = overlay.VisualState.Selection.InputSurface;
+
+            input.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+                System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left)
+            {
+                RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+                Source = input,
+            });
+            Assert.Empty(commands);
+            foreach (var point in new[] { new Point(140, 100), new Point(140, 130), new Point(100, 130) })
+            {
+                pointer = point;
+                input.RaiseEvent(new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0)
+                {
+                    RoutedEvent = UIElement.MouseMoveEvent,
+                    Source = input,
+                });
+            }
+            Assert.Equal(
+                SearchProviderIds.GoogleLens,
+                Assert.IsType<VisualSelectionStarted>(Assert.Single(commands)).ProviderId);
+            input.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+                System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left)
+            {
+                RoutedEvent = UIElement.MouseLeftButtonUpEvent,
+                Source = input,
+            });
+
+            Assert.Equal(2, commands.Count);
+            Assert.IsType<VisualSelection>(commands[1]);
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Debug_toast_buttons_spawn_all_tones_in_the_overlay_stack()
     {
         var failure = RunOnSta(() =>

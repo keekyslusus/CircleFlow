@@ -137,6 +137,112 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
+    public async Task Lens_lasso_warms_hidden_uploads_during_close_and_reveals_after_it()
+    {
+        using var harness = new Harness();
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Overlay.CloseCompletion = closed.Task;
+        var selection = NewSelection();
+        harness.Overlay.Enqueue(new VisualSelectionStarted(SearchProviderIds.GoogleLens));
+
+        var run = harness.RunAsync();
+        await WaitUntilAsync(() => harness.LensImages.Count == 1);
+        var image = harness.LensImages[0];
+        Assert.False(image.IsCompleted);
+
+        harness.Overlay.Enqueue(new VisualSelection(selection, SearchProviderIds.GoogleLens));
+        try
+        {
+            Assert.Equal([9], await image.WaitAsync(TimeSpan.FromSeconds(2)));
+            await Task.Delay(50);
+            Assert.False(run.IsCompleted);
+            Assert.Equal(0, harness.UploadStartedCalls);
+            Assert.Empty(harness.LensRevealedAfterClose);
+        }
+        finally { closed.TrySetResult(); }
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, harness.UploadStartedCalls);
+        Assert.Equal([true], harness.LensRevealedAfterClose);
+        Assert.Equal(1, harness.LensCrops);
+        Assert.Equal(0, harness.Google.Calls);
+        Assert.Throws<ObjectDisposedException>(() => _ = selection.FrozenFrame);
+    }
+
+    [Fact]
+    public async Task Repeated_lasso_starts_keep_one_warm_lens_that_closes_with_the_session()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new VisualSelectionStarted(SearchProviderIds.GoogleLens));
+        harness.Overlay.Enqueue(new VisualSelectionStarted(SearchProviderIds.GoogleLens));
+        harness.Overlay.Enqueue(new CancelSession());
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        _ = Assert.Single(harness.LensImages);
+        Assert.Equal(1, harness.LensHost.CanceledCalls);
+        Assert.Equal(0, harness.LensCrops);
+        Assert.Equal(0, harness.UploadStartedCalls);
+    }
+
+    [Fact]
+    public async Task Lasso_with_another_provider_does_not_warm_lens()
+    {
+        using var harness = new Harness(providerId: SearchProviderIds.YandexImages);
+        harness.Overlay.Enqueue(new VisualSelectionStarted(SearchProviderIds.YandexImages));
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.YandexImages));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Empty(harness.LensImages);
+        Assert.Equal(1, harness.Yandex.Calls);
+    }
+
+    [Fact]
+    public async Task Switching_away_from_lens_releases_the_warm_browser()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new VisualSelectionStarted(SearchProviderIds.GoogleLens));
+        harness.Overlay.Enqueue(new ProviderSelected(SearchProviderIds.YandexImages));
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.YandexImages));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, harness.LensHost.CanceledCalls);
+        Assert.Equal(0, harness.LensCrops);
+        Assert.Equal(1, harness.Yandex.Calls);
+    }
+
+    [Fact]
+    public async Task Music_recognition_releases_a_warm_lens()
+    {
+        using var harness = new Harness();
+        harness.Music.Gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Overlay.Enqueue(new VisualSelectionStarted(SearchProviderIds.GoogleLens));
+        harness.Overlay.Enqueue(new StartMusicRecognition());
+
+        var run = harness.RunAsync();
+        await WaitUntilAsync(() => harness.Music.Calls == 1);
+        Assert.Equal(1, harness.LensHost.CanceledCalls);
+        harness.Overlay.Enqueue(new CancelSession());
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public async Task Lasso_during_an_ask_draft_does_not_warm_a_second_browser()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new AskDraftStarted());
+        harness.Overlay.Enqueue(new VisualSelectionStarted(SearchProviderIds.GoogleLens));
+        harness.Overlay.Enqueue(new CancelSession());
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        _ = Assert.Single(harness.AskedQuestions);
+        Assert.Empty(harness.LensImages);
+    }
+
+    [Fact]
     public async Task Visual_search_waits_until_selection_overlay_is_gone()
     {
         using var harness = new Harness();
@@ -988,6 +1094,25 @@ public sealed class OverlaySessionWorkflowTests
                     Log),
                 TestUiStrings.English,
                 Log);
+            var lensPrewarm = new LensPrewarmWorkflow(
+                image =>
+                {
+                    LensImages.Add(image);
+                    return new FakeBrowserOperation();
+                },
+                (_, _, _) =>
+                {
+                    LensCrops++;
+                    return [9];
+                },
+                new VisualSearchResultPresenter(
+                    LensHost,
+                    new UrlOpeningService(_ => true, Notifier, TestUiStrings.English, Log),
+                    Notifier,
+                    TestUiStrings.English,
+                    Log),
+                TestUiStrings.English,
+                Log);
             Workflow = new OverlaySessionWorkflow(
                 Factory,
                 visualSearch,
@@ -1010,9 +1135,16 @@ public sealed class OverlaySessionWorkflowTests
                 Log,
                 textSearch,
                 saveImage,
-                (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation));
+                (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation),
+                (maxLongSidePx, cancellation) => new OverlayLensSession(lensPrewarm, maxLongSidePx, cancellation));
             AskHost.Revealed = () => CloseCallsWhenRevealed.Add(Overlay.CloseCalls);
+            LensHost.Revealed = () => LensRevealedAfterClose.Add(Overlay.CloseCompletion.IsCompleted);
         }
+
+        public FakeBrowserHost LensHost { get; } = new();
+        public List<Task<byte[]>> LensImages { get; } = [];
+        public List<bool> LensRevealedAfterClose { get; } = [];
+        public int LensCrops { get; private set; }
 
         public FakeBrowserHost AskHost { get; } = new();
         public List<Task<byte[]>> AskedImages { get; } = [];

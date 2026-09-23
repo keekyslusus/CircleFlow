@@ -30,6 +30,7 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
     private Action? _cleanupView;
     private long _showGeneration;
     private SearchBrowserUiOperation? _activeOperation;
+    private (CancellationTokenSource Show, Task Reveal)? _hiddenShow;
     private int _disposed;
     private Task? _stopTask;
 
@@ -73,10 +74,34 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(preparedSearch);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancel, _lifetime.Token);
+        lock (_lifecycleGate)
+        {
+            // A show still hidden behind its reveal was never committed by the user, so a newer show replaces it.
+            if (_hiddenShow is { Reveal.IsCompleted: false } replaced) replaced.Show.Cancel();
+            _hiddenShow = preparedSearch.RevealAfter is { IsCompleted: false } reveal ? (linked, reveal) : null;
+        }
+        try
+        {
+            return await ShowWhenGateOpensAsync(descriptor, preparedSearch, linked.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (_lifecycleGate)
+            {
+                if (_hiddenShow?.Show == linked) _hiddenShow = null;
+            }
+        }
+    }
+
+    private async Task<SearchBrowserShowResult> ShowWhenGateOpensAsync(
+        SearchProviderDescriptor descriptor,
+        PreparedVisualSearch preparedSearch,
+        CancellationToken cancel)
+    {
         SearchBrowserUiOperation? activeOperation = null;
         try
         {
-            await _showGate.WaitAsync(linked.Token).ConfigureAwait(false);
+            await _showGate.WaitAsync(cancel).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -85,7 +110,7 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
 
         try
         {
-            if (linked.IsCancellationRequested)
+            if (cancel.IsCancellationRequested)
                 return new SearchBrowserShowResult(SearchBrowserShowStatus.Canceled);
 
             var operation = new SearchBrowserUiOperation();
@@ -100,7 +125,7 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
             if (!_dispatcher.TryPost(() =>
                 {
                     if (operation.TryStart())
-                        _ = ShowOnUiThreadAsync(descriptor, preparedSearch, linked.Token, operation, anchor);
+                        _ = ShowOnUiThreadAsync(descriptor, preparedSearch, cancel, operation, anchor);
                 }))
             {
                 operation.CancelBeforeStart();
@@ -274,14 +299,19 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
     private static async Task RevealAsync(
         SearchBrowserWindowView view,
         Task reveal,
-        Task execution,
-        POINT anchor,
+        Task<VisualSearchBrowserOperationStatus> execution,
+        POINT showAnchor,
         CancellationToken cancel)
     {
         // A failed operation closes the hidden window itself, so it is never revealed.
-        if (await Task.WhenAny(reveal, execution).ConfigureAwait(true) != reveal) return;
+        if (await Task.WhenAny(reveal, execution).ConfigureAwait(true) != reveal &&
+            !(execution.IsCompletedSuccessfully && execution.Result == VisualSearchBrowserOperationStatus.Succeeded))
+            return;
+        // Results can finish loading while the overlay that hides them is still closing.
+        await reveal.WaitAsync(cancel).ConfigureAwait(true);
         if (cancel.IsCancellationRequested || view.IsClosed) return;
-        view.MoveTo(anchor);
+        // The pointer moved while the hidden browser loaded, so the window follows where it ended up.
+        view.MoveTo(NativeMethods.GetCursorPos(out var pointer) ? pointer : showAnchor);
         _ = view.ShowAsync();
         view.Window.Activate();
     }

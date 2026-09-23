@@ -18,10 +18,15 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
 
     private readonly PluginLog _log;
     private readonly string? _question;
-    private byte[]? _jpeg;
+    private Task<byte[]>? _jpeg;
     private int _started;
 
     public GoogleLensBrowserOperation(byte[] jpeg, PluginLog log, string? question = null)
+        : this(Task.FromResult(jpeg ?? throw new ArgumentNullException(nameof(jpeg))), log, question)
+    {
+    }
+
+    public GoogleLensBrowserOperation(Task<byte[]> jpeg, PluginLog log, string? question = null)
     {
         ArgumentNullException.ThrowIfNull(jpeg);
         if (question is not null) ArgumentException.ThrowIfNullOrWhiteSpace(question);
@@ -38,10 +43,12 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         if (Interlocked.Exchange(ref _started, 1) != 0)
             throw new InvalidOperationException("A Google Lens browser operation can only be executed once.");
 
-        var jpeg = Interlocked.Exchange(ref _jpeg, null)
-                  ?? throw new InvalidOperationException("The image is no longer available.");
+        var image = Interlocked.Exchange(ref _jpeg, null)
+                    ?? throw new InvalidOperationException("The image is no longer available.");
         try
         {
+            // A prewarmed browser starts this before the selection is finished.
+            var jpeg = await image.WaitAsync(cancel).ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
             if (!await TryDirectUploadAsync(session, jpeg, cancel).ConfigureAwait(true))
             {

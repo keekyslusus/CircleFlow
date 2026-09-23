@@ -233,6 +233,61 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
+    [Fact]
+    [Trait("Category", "Live")]
+    public async Task Background_show_that_succeeds_before_reveal_is_shown_once_revealed()
+    {
+        if (!Enabled()) return;
+        var (host, dispatcher, views) = CreateHost();
+        await using (host)
+        {
+            var reveal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var operation = new CountingOperation();
+            var show = host.ShowAsync(Descriptor(),
+                PreparedVisualSearch.ForBrowserOperation(operation, null, revealAfter: reveal.Task),
+                CancellationToken.None);
+            Assert.True(SpinWait.SpinUntil(() => operation.Calls == 1, TimeSpan.FromSeconds(20)));
+            await Task.Delay(300);
+            var view = Assert.Single(views);
+            Assert.False(show.IsCompleted);
+            Assert.False(ShowActivated(dispatcher, view));
+
+            reveal.SetResult();
+            Assert.Equal(SearchBrowserShowStatus.Shown, (await show).Status);
+            Assert.True(ShowActivated(dispatcher, view));
+            Assert.False(view.IsClosed);
+            await host.StopAsync();
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "Live")]
+    public async Task New_show_replaces_a_background_show_that_was_never_revealed()
+    {
+        if (!Enabled()) return;
+        var (host, _, views) = CreateHost();
+        await using (host)
+        {
+            var hiddenOperation = new CancelableOperation();
+            var hidden = host.ShowAsync(Descriptor(),
+                PreparedVisualSearch.ForBrowserOperation(hiddenOperation, null,
+                    revealAfter: new TaskCompletionSource().Task),
+                CancellationToken.None);
+            await hiddenOperation.Entered.WaitAsync(TimeSpan.FromSeconds(20));
+
+            var shown = await host.ShowAsync(Descriptor(),
+                PreparedVisualSearch.ForBrowserOperation(new ImmediateOperation(), null),
+                CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(20));
+
+            Assert.Equal(SearchBrowserShowStatus.Canceled, (await hidden).Status);
+            Assert.Equal(SearchBrowserShowStatus.Shown, shown.Status);
+            Assert.Equal(2, views.Count);
+            Assert.True(views[0].IsClosed);
+            Assert.False(views[1].IsClosed);
+            await host.StopAsync();
+        }
+    }
+
     [Theory]
     [Trait("Category", "Live")]
     [InlineData(false)]

@@ -19,6 +19,13 @@ public sealed class SelectionOutcome : IDisposable
     public Bitmap FrozenFrame => Volatile.Read(ref _frozenFrame)
         ?? throw new ObjectDisposedException(nameof(SelectionOutcome));
 
+    // Encoding consumes the selection so its full-screen frame is released as soon as the bytes exist.
+    public byte[] Encode(Func<Bitmap, Rectangle, int, byte[]> crop, int maxLongSidePx)
+    {
+        try { return crop(FrozenFrame, Bounds, maxLongSidePx); }
+        finally { Dispose(); }
+    }
+
     public void Dispose() => Interlocked.Exchange(ref _frozenFrame, null)?.Dispose();
 }
 
