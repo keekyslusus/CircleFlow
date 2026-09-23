@@ -48,7 +48,7 @@ public static class CompositionRoot
         (message, title, icon) => MessageBox.Show(message, title, MessageBoxButton.OK, icon));
 
     internal static int Run(AppPaths paths, Action<string, string, MessageBoxImage> reportStartupMessage,
-        string? instanceName = null, CancellationToken startupCancellation = default)
+        string? instanceName = null, CancellationToken startupCancellation = default, TimeSpan? activationTimeout = null)
     {
         var application = CreateApplication();
         UiStrings strings;
@@ -67,7 +67,8 @@ public static class CompositionRoot
 
         try
         {
-            var launch = SingleInstanceCoordinator.AcquireOrActivate(instanceName ?? SingleInstanceCoordinator.CurrentSessionName);
+            var launch = SingleInstanceCoordinator.AcquireOrActivate(
+                instanceName ?? SingleInstanceCoordinator.CurrentSessionName, activationTimeout);
             using var instance = launch.Instance;
             if (instance is null)
             {

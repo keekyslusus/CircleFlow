@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -14,8 +13,7 @@ internal sealed class SettingsScrollMotionController : IDisposable
     private const double ScrollFrequency = 22;
     private readonly ScrollViewer _scroll;
     private readonly TranslateTransform _translation;
-    private readonly Stopwatch _clock = new();
-    private double _lastFrameSeconds;
+    private TimeSpan? _lastFrame;
     private double _velocity;
     private double _scrollPosition;
     private double _scrollTarget;
@@ -72,8 +70,7 @@ internal sealed class SettingsScrollMotionController : IDisposable
         if (!_animating)
         {
             _animating = true;
-            _lastFrameSeconds = 0;
-            _clock.Restart();
+            _lastFrame = null;
             CompositionTarget.Rendering += OnRendering;
         }
         e.Handled = true;
@@ -96,9 +93,10 @@ internal sealed class SettingsScrollMotionController : IDisposable
             Reset();
             return;
         }
-        var now = _clock.Elapsed.TotalSeconds;
-        var elapsed = now - _lastFrameSeconds;
-        _lastFrameSeconds = now;
+        // Frame time comes from the WPF animation clock, keeping this motion in step with the other animations.
+        var now = ((RenderingEventArgs)e).RenderingTime;
+        var elapsed = _lastFrame is { } last ? (now - last).TotalSeconds : 0;
+        _lastFrame = now;
 
         if (_scrolling)
         {
@@ -147,7 +145,7 @@ internal sealed class SettingsScrollMotionController : IDisposable
     {
         if (_animating) CompositionTarget.Rendering -= OnRendering;
         _animating = false;
-        _clock.Reset();
+        _lastFrame = null;
         _velocity = 0;
         _scrolling = false;
         _scrollVelocity = 0;

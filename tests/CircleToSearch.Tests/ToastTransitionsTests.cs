@@ -12,7 +12,7 @@ public sealed class ToastTransitionsTests
     [Fact]
     public void Disabled_entrance_and_exit_are_synchronous_without_clocks()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var card = new Border();
             ToastTransitions.BeginEntrance(card, animationsEnabled: false);
@@ -37,13 +37,13 @@ public sealed class ToastTransitionsTests
     [Fact]
     public void Animated_exit_completes_once_and_disposed_exit_never_completes()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var card = new Border();
             var host = new Window { Width = 200, Height = 100, Content = card };
             host.Show();
             ToastTransitions.BeginEntrance(card, animationsEnabled: true);
-            PumpFor(TimeSpan.FromMilliseconds(40));
+            time.Advance(40);
             var currentOpacity = card.Opacity;
             var transforms = ToastTransitions.GetTransforms(card);
             var currentY = transforms.Translate.Y;
@@ -51,10 +51,10 @@ public sealed class ToastTransitionsTests
             var completions = 0;
             using (var exit = ToastTransitions.BeginExit(card, true, () => completions++))
             {
-                PumpFor(TimeSpan.FromMilliseconds(15));
+                time.Advance(15);
                 Assert.InRange(card.Opacity, 0, currentOpacity);
                 Assert.InRange(transforms.Translate.Y, -8, currentY);
-                PumpFor(TimeSpan.FromMilliseconds(220));
+                time.Advance(220);
                 Assert.True(exit.IsCompleted);
                 Assert.Equal(1, completions);
             }
@@ -62,7 +62,7 @@ public sealed class ToastTransitionsTests
             ToastTransitions.BeginEntrance(card, animationsEnabled: true);
             var canceled = ToastTransitions.BeginExit(card, true, () => completions++);
             canceled.Dispose();
-            PumpFor(TimeSpan.FromMilliseconds(220));
+            time.Advance(220);
             Assert.Equal(1, completions);
             host.Close();
         }));
@@ -71,7 +71,7 @@ public sealed class ToastTransitionsTests
     [Fact]
     public void Settle_preserves_effective_values_and_removes_animation_clocks()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var card = new Border();
             var host = new Window { Width = 200, Height = 100, Content = card };
@@ -79,7 +79,7 @@ public sealed class ToastTransitionsTests
             {
                 host.Show();
                 ToastTransitions.BeginEntrance(card, animationsEnabled: true);
-                PumpFor(TimeSpan.FromMilliseconds(40));
+                time.Advance(40);
                 var transforms = ToastTransitions.GetTransforms(card);
                 var opacity = card.Opacity;
                 var scaleX = transforms.Scale.ScaleX;
@@ -96,7 +96,7 @@ public sealed class ToastTransitionsTests
                 Assert.False(card.HasAnimatedProperties);
                 Assert.False(transforms.Scale.HasAnimatedProperties);
                 Assert.False(transforms.Translate.HasAnimatedProperties);
-                PumpFor(TimeSpan.FromMilliseconds(220));
+                time.Advance(220);
                 Assert.Equal(opacity, card.Opacity, 3);
                 Assert.Equal(offset, transforms.Translate.Y, 3);
             }
@@ -107,25 +107,16 @@ public sealed class ToastTransitionsTests
         }));
     }
 
-    private static void PumpFor(TimeSpan duration)
-    {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = duration };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            frame.Continue = false;
-        };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-    }
-
-    private static Exception? RunOnSta(Action action)
+    private static Exception? RunOnSta(Action<ManualAnimationClock> action)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
         {
-            try { action(); }
+            try
+            {
+                using var time = ManualAnimationClock.Install();
+                action(time);
+            }
             catch (Exception exception) { failure = exception; }
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);

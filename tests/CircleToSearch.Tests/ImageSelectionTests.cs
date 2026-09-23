@@ -16,6 +16,7 @@ using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class ImageSelectionTests
 {
     [Fact]
@@ -43,12 +44,12 @@ public sealed class ImageSelectionTests
             source.Freeze();
             h.Window.VisualState.Selection.Screenshot.Source = source;
             h.Select(new Point(54, 106), new Point(575, 150));
-            Pump(TimeSpan.FromMilliseconds(300));
+            DispatcherPump.For(300);
             Capture(h, "image-selection-actions.png");
             Click(h.Actions.TranslateButton);
             var request = h.Commands.OfType<ScreenTranslationRequested>().Last();
             h.Window.ShowTranslation(new ScreenTranslationResult(request.RequestId, request.Image));
-            Pump(TimeSpan.FromMilliseconds(300));
+            DispatcherPump.For(300);
             Capture(h, "image-selection-show-original.png");
         });
     }
@@ -192,9 +193,10 @@ public sealed class ImageSelectionTests
         var toast = Assert.IsType<Grid>(h.Window.VisualState.Bottom.Stack.Children[0]);
         Assert.Equal(TestUiStrings.English.ImageCopied,
             Assert.IsType<TextBlock>(Assert.IsType<Border>(toast.Children[0]).Child).Text);
-        Pump(TimeSpan.FromMilliseconds(300));
+        // The feedback delay is a DispatcherTimer, so it follows real time.
+        DispatcherPump.For(300);
         Assert.DoesNotContain(h.Commands, command => command is CancelSession);
-        Pump(TimeSpan.FromMilliseconds(650));
+        Assert.True(DispatcherPump.Until(() => h.Commands.OfType<CancelSession>().Any()));
         Assert.Single(h.Commands.OfType<CancelSession>());
     });
 
@@ -308,9 +310,10 @@ public sealed class ImageSelectionTests
         Click(h.Actions.SearchButton);
         Assert.Same(visible, h.Window.VisualState.Selection.Screenshot.Source);
         h.Window.ShowTraceResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(null)));
-        Pump(TimeSpan.FromMilliseconds(450));
         var close = Descendants(h.Window.VisualState.Bottom.Stack).OfType<Button>()
             .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.Close);
+        // The result becomes interactive after thread-pool continuations, not after a fixed delay.
+        Assert.True(DispatcherPump.Until(() => Ancestors(close, h.Window.VisualState.Bottom.Stack).All(x => x.IsHitTestVisible)));
         Click(close);
         Assert.Equal(OverlayInteractionMode.Selecting, h.Window.Mode);
         Assert.False(h.Actions.Toolbar.IsOpen);
@@ -335,6 +338,12 @@ public sealed class ImageSelectionTests
             yield return child;
             foreach (var nested in Descendants(child)) yield return nested;
         }
+    }
+
+    private static IEnumerable<UIElement> Ancestors(DependencyObject element, UIElement root)
+    {
+        for (var current = VisualTreeHelper.GetParent(element); current is not null && current != root; current = VisualTreeHelper.GetParent(current))
+            if (current is UIElement ancestor) yield return ancestor;
     }
 
     [Fact]
@@ -409,15 +418,6 @@ public sealed class ImageSelectionTests
     }
 
     private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-
-    private static void Pump(TimeSpan duration)
-    {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = duration };
-        timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-    }
 
     private static void Run(Action action)
     {

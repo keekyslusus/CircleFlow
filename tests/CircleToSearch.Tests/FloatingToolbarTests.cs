@@ -11,6 +11,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class FloatingToolbarTests
 {
     [Theory]
@@ -19,7 +20,7 @@ public sealed class FloatingToolbarTests
     [InlineData(200)]
     public void Image_actions_fit_narrow_viewports_and_restore_spacing_when_width_grows(double width)
     {
-        RunOnSta(() =>
+        RunOnSta(time =>
         {
             var visual = ImageSelectionVisualFactory.Create(false, TestUiStrings.English);
             visual.Toolbar.SetActionContent(visual.SearchButton, TestUiStrings.English.TextSearch,
@@ -37,7 +38,7 @@ public sealed class FloatingToolbarTests
                 {
                     visual.TranslateButton.Content = label;
                     visual.Toolbar.Show(new Rect(width - 100, 180, 100, 40), new Size(width, 240));
-                    Pump(260);
+                    time.Advance(260);
                     window.UpdateLayout();
                     Assert.InRange(visual.Toolbar.Surface.ActualWidth, 1, width);
                     foreach (var button in buttons)
@@ -63,7 +64,7 @@ public sealed class FloatingToolbarTests
                 window.Width = 640;
                 window.UpdateLayout();
                 visual.Toolbar.Show(new Rect(100, 100, 100, 40), new Size(640, 240));
-                Pump(260);
+                time.Advance(260);
                 window.UpdateLayout();
                 Assert.All(buttons, button => Assert.Equal(new Thickness(16, 0, 16, 0), button.Padding));
                 Assert.Equal(44, visual.Toolbar.Surface.ActualHeight);
@@ -77,7 +78,7 @@ public sealed class FloatingToolbarTests
     [InlineData(240)]
     public void Ask_prompt_replaces_actions_within_viewport_and_restores_them(double width)
     {
-        RunOnSta(() =>
+        RunOnSta(time =>
         {
             var visual = ImageSelectionVisualFactory.Create(false, TestUiStrings.English);
             var window = new Window
@@ -116,7 +117,7 @@ public sealed class FloatingToolbarTests
     [InlineData(true)]
     public void Updating_search_icon_keeps_open_toolbar_inside_viewport_and_preserves_button(bool lightTheme)
     {
-        RunOnSta(() =>
+        RunOnSta(time =>
         {
             var toolbar = new FloatingToolbar(PluginPalette.For(lightTheme).FloatingToolbar, () => false);
             var search = toolbar.AddAction(TestUiStrings.English.TextSearch);
@@ -167,7 +168,7 @@ public sealed class FloatingToolbarTests
     [Fact]
     public void Hidden_toolbar_stops_input_immediately_and_reopening_cancels_pending_exit()
     {
-        RunOnSta(() =>
+        RunOnSta(time =>
         {
             var toolbar = new FloatingToolbar(PluginPalette.For(false).FloatingToolbar, () => true);
             var copy = toolbar.AddAction(TestUiStrings.English.TextCopy);
@@ -176,7 +177,7 @@ public sealed class FloatingToolbarTests
             {
                 window.Show();
                 toolbar.Show(new Rect(120, 100, 80, 20), new Size(400, 200));
-                Pump(280);
+                time.Advance(280);
                 Assert.Equal(1, toolbar.Surface.Opacity, 3);
 
                 toolbar.Hide();
@@ -184,12 +185,12 @@ public sealed class FloatingToolbarTests
                 Assert.False(copy.IsEnabled);
                 Assert.False(toolbar.Surface.IsHitTestVisible);
                 Assert.Equal(Visibility.Visible, toolbar.Surface.Visibility);
-                Pump(45);
+                time.Advance(45);
                 var opacity = toolbar.Surface.Opacity;
                 toolbar.Show(new Rect(120, 100, 80, 20), new Size(400, 200));
-                Pump(20);
+                time.Advance(20);
                 Assert.InRange(toolbar.Surface.Opacity, opacity, 0.999);
-                Pump(300);
+                time.Advance(300);
 
                 Assert.True(toolbar.IsOpen);
                 Assert.True(copy.IsEnabled);
@@ -198,7 +199,7 @@ public sealed class FloatingToolbarTests
                 Assert.Equal(1, toolbar.Surface.Opacity, 3);
                 toolbar.Hide();
                 toolbar.Hide();
-                Pump(200);
+                time.Advance(200);
                 Assert.Equal(Visibility.Collapsed, toolbar.Surface.Visibility);
                 Assert.False(toolbar.Surface.HasAnimatedProperties);
             }
@@ -209,7 +210,7 @@ public sealed class FloatingToolbarTests
     [Fact]
     public void Disabled_animation_policy_and_immediate_hide_leave_no_animation_clocks()
     {
-        RunOnSta(() =>
+        RunOnSta(time =>
         {
             var enabled = false;
             var toolbar = new FloatingToolbar(PluginPalette.For(true).FloatingToolbar, () => enabled);
@@ -235,7 +236,7 @@ public sealed class FloatingToolbarTests
     [Fact]
     public void Unloading_during_exit_cancels_animations_and_collapses_toolbar()
     {
-        RunOnSta(() =>
+        RunOnSta(time =>
         {
             var toolbar = new FloatingToolbar(PluginPalette.For(false).FloatingToolbar, () => true);
             toolbar.AddAction(TestUiStrings.English.TextCopy);
@@ -245,26 +246,21 @@ public sealed class FloatingToolbarTests
             Assert.False(toolbar.IsOpen);
             Assert.Equal(Visibility.Collapsed, toolbar.Surface.Visibility);
             Assert.False(toolbar.Surface.HasAnimatedProperties);
-            Pump(240);
+            time.Advance(240);
             Assert.Equal(Visibility.Collapsed, toolbar.Surface.Visibility);
         });
     }
 
-    private static void Pump(int milliseconds)
-    {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(milliseconds) };
-        timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-    }
-
-    private static void RunOnSta(Action action)
+    private static void RunOnSta(Action<ManualAnimationClock> action)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
         {
-            try { action(); }
+            try
+            {
+                using var time = ManualAnimationClock.Install();
+                action(time);
+            }
             catch (Exception exception) { failure = exception; }
             finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }
         }) { IsBackground = true };

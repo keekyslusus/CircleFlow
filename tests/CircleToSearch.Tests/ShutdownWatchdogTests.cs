@@ -1,10 +1,10 @@
-using System.Diagnostics;
 using System.Windows;
 using CircleToSearch.Shell;
 using Xunit;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class ShutdownWatchdogTests
 {
     [Fact]
@@ -85,27 +85,12 @@ public sealed class ShutdownWatchdogTests
         }
         var directory = Path.Combine(TestOutputPaths.TempDirectory, "watchdog-process-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
-        var start = new ProcessStartInfo("dotnet")
-        {
-            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
-        };
-        start.ArgumentList.Add("vstest");
-        start.ArgumentList.Add(typeof(ShutdownWatchdogTests).Assembly.Location);
-        start.ArgumentList.Add("/TestCaseFilter:FullyQualifiedName=" + typeof(ShutdownWatchdogTests).FullName + "." + nameof(A_blocked_process_is_terminated_after_emergency_cleanup));
-        start.Environment[marker] = directory;
-        using var process = Process.Start(start)!;
-        var output = process.StandardOutput.ReadToEndAsync();
-        var error = process.StandardError.ReadToEndAsync();
-        try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)); }
-        catch
-        {
-            if (!process.HasExited) process.Kill(entireProcessTree: true);
-            throw;
-        }
-        Assert.NotEqual(0, process.ExitCode);
+        var (exitCode, _) = await IsolatedTestHost.RunChildAsync(
+            typeof(ShutdownWatchdogTests).FullName + "." + nameof(A_blocked_process_is_terminated_after_emergency_cleanup),
+            marker, directory, TimeSpan.FromSeconds(10));
+        Assert.NotEqual(0, exitCode);
         Assert.Equal("attempted", File.ReadAllText(Path.Combine(directory, "emergency.txt")));
         Assert.Contains("shutdown timed out", File.ReadAllText(Path.Combine(directory, "plugin.log")));
-        await Task.WhenAll(output, error);
     }
 
     private static PluginLog NewLog() => new(TestOutputPaths.TempDirectory);

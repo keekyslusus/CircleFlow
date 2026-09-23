@@ -14,6 +14,7 @@ using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class OverlayWindowTests
 {
     [Fact]

@@ -17,6 +17,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class TraceOverlayTests
 {
     [Theory]
@@ -26,7 +27,7 @@ public sealed class TraceOverlayTests
     [InlineData(true, true)]
     public void Renders_card_and_loading_and_copy_does_not_open_anilist(bool light, bool hostButtonAlignment)
     {
-        RunSta(() =>
+        RunSta(time =>
         {
             _ = Windows.Media.Ocr.OcrEngine.AvailableRecognizerLanguages;
             var visual = OverlayVisualFactory.CreateRoot(null, new Size(960, 600), 32, light,
@@ -51,7 +52,7 @@ public sealed class TraceOverlayTests
                     new PluginLog(TestOutputPaths.TempDirectory)));
             try
             {
-                Pump(240);
+                time.Advance(240);
                 Assert.Single(Descendants(visual.Root).OfType<LoadingIndicatorVisual>(), x => x.IsRequestedActive);
                 var loadingText = Descendants(visual.Root).OfType<TextBlock>().Single(x => x.Text == TestUiStrings.English.TraceSearching);
                 Assert.Equal("Searching...", loadingText.Text);
@@ -68,10 +69,10 @@ public sealed class TraceOverlayTests
                 if (live)
                 {
                     var media = Assert.Single(Descendants(visual.Root).OfType<Microsoft.Web.WebView2.Wpf.WebView2CompositionControl>());
-                    Pump(6000);
+                    DispatcherPump.For(6000);
                     Assert.NotNull(media.CoreWebView2);
                     var state = media.CoreWebView2.ExecuteScriptAsync("JSON.stringify({ready:document.querySelector('video').readyState,muted:document.querySelector('video').muted,time:document.querySelector('video').currentTime,loop:document.querySelector('video').loop})");
-                    while (!state.IsCompleted) Pump(50);
+                    Assert.True(DispatcherPump.Until(() => state.IsCompleted));
                     File.WriteAllText(Path.Combine(TestOutputPaths.TempDirectory, "trace-video-state.txt"), state.Result);
                     var decoded = System.Text.Json.JsonSerializer.Deserialize<string>(state.Result)!;
                     using var playback = System.Text.Json.JsonDocument.Parse(decoded);
@@ -81,7 +82,7 @@ public sealed class TraceOverlayTests
                     Assert.True(playback.RootElement.GetProperty("loop").GetBoolean());
                     Assert.True(media.CoreWebView2.IsMuted);
                 }
-                Pump(450);
+                Reveal(time, trace);
                 Assert.True(trace.Presentation.IsCompletedSuccessfully, trace.Presentation.Exception?.ToString());
                 Assert.DoesNotContain(Descendants(visual.Root).OfType<LoadingIndicatorVisual>(), x => x.IsRequestedActive);
                 Assert.Contains(Descendants(visual.Root).OfType<TextBlock>(), x => x.Text == match.Title);
@@ -97,7 +98,7 @@ public sealed class TraceOverlayTests
                 foreach (var hovered in new[] { true, false })
                 {
                     card.SetValue(mouseOverKey, hovered);
-                    Pump(20);
+                    time.Advance(20);
                     var surface = hovered ? PluginPalette.TraceCardHover(light) : PluginPalette.For(light).MusicOverlay.Surface;
                     Assert.Equal(surface, Assert.IsType<SolidColorBrush>(card.Background).Color);
                     Assert.Equal(surface, Assert.IsType<SolidColorBrush>(segment.Background).Color);
@@ -130,7 +131,7 @@ public sealed class TraceOverlayTests
                 Assert.Equal(0, opened);
                 var close = Descendants(visual.Root).OfType<Button>().Last(x => AutomationProperties.GetName(x) == TestUiStrings.English.Close);
                 close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Pump(200);
+                time.Advance(200);
                 Assert.Equal(1, closed);
             }
             finally
@@ -147,7 +148,7 @@ public sealed class TraceOverlayTests
     [Fact]
     public void Clipboard_failure_shows_error_without_copy_success_state()
     {
-        RunSta(() =>
+        RunSta(time =>
         {
             var visual = OverlayVisualFactory.CreateRoot(null, new Size(640, 400), 32, false,
                 TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
@@ -172,11 +173,11 @@ public sealed class TraceOverlayTests
                 clipboardCopy);
             try
             {
-                Pump(240);
+                time.Advance(240);
                 var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
                     "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null, Video = null };
                 trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
-                Pump(450);
+                Reveal(time, trace);
                 var copy = Descendants(visual.Root).OfType<Button>()
                     .Single(x => AutomationProperties.GetName(x) == TestUiStrings.English.TraceCopy);
                 var initialCopyContent = copy.Content;
@@ -204,7 +205,7 @@ public sealed class TraceOverlayTests
     [Fact]
     public void Copy_toast_stays_above_dynamic_trace_result_host()
     {
-        RunSta(() =>
+        RunSta(time =>
         {
             var visual = OverlayVisualFactory.CreateRoot(null, new Size(640, 400), 32, false,
                 TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
@@ -226,11 +227,11 @@ public sealed class TraceOverlayTests
                 clipboardCopy);
             try
             {
-                Pump(240);
+                time.Advance(240);
                 var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
                     "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null, Video = null };
                 trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
-                Pump(450);
+                Reveal(time, trace);
                 Assert.True(trace.Presentation.IsCompletedSuccessfully, trace.Presentation.Exception?.ToString());
                 var copy = Descendants(visual.Bottom.Stack).OfType<Button>()
                     .Single(x => AutomationProperties.GetName(x) == TestUiStrings.English.TraceCopy);
@@ -270,7 +271,7 @@ public sealed class TraceOverlayTests
     [InlineData(true, true)]
     public void Trace_result_keeps_overlay_open_and_supports_close_retry_and_music(bool startMusic, bool matched)
     {
-        RunSta(() =>
+        RunSta(time =>
         {
             using var frame = new System.Drawing.Bitmap(640, 400);
             var monitor = new System.Drawing.Rectangle(0, 0, 640, 400);
@@ -294,7 +295,7 @@ public sealed class TraceOverlayTests
             Assert.NotSame(frame, selection.Selection.FrozenFrame);
             selection.Selection.Dispose();
             typeof(OverlayWindow).GetMethod("OnSelectionHoldCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(overlay, null);
-            Pump(520);
+            time.Advance(520);
             Assert.False(overlay.Dispatcher.HasShutdownStarted);
             Assert.Equal(OverlayInteractionMode.TraceLoading, overlay.Mode);
             Assert.Equal(Visibility.Visible, overlay.VisualState.Bottom.Root.Visibility);
@@ -316,7 +317,7 @@ public sealed class TraceOverlayTests
                 Assert.Contains(Descendants(stateCard).OfType<System.Windows.Shapes.Path>(),
                     icon => ReferenceEquals(icon.Data, PluginIcons.TraceMoe));
             }
-            Pump(450);
+            time.Advance(450);
             var provider = overlay.VisualState.Provider!;
             Assert.True(provider.Button.IsEnabled);
             provider.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -339,7 +340,7 @@ public sealed class TraceOverlayTests
                 typeof(OverlayWindow).GetMethod("OnSelectionHoldCompleted", BindingFlags.NonPublic | BindingFlags.Instance)!
                     .Invoke(overlay, null);
             }
-            Pump(300);
+            time.Advance(300);
             Assert.False(overlay.Dispatcher.HasShutdownStarted);
             Assert.DoesNotContain(commands, x => x is CancelSession);
             Assert.DoesNotContain(Descendants(overlay.VisualState.Root).OfType<TextBlock>(), x => x.Text == resultText);
@@ -362,7 +363,7 @@ public sealed class TraceOverlayTests
                 commands.OfType<VisualSelection>().Last().Selection.Dispose();
             }
             overlay.CloseFromSession();
-            Dispatcher.Run();
+            Assert.True(time.AdvanceUntil(() => overlay.Dispatcher.HasShutdownStarted), "The overlay did not finish closing.");
         });
     }
 
@@ -371,7 +372,7 @@ public sealed class TraceOverlayTests
     [InlineData(false)]
     public void Waits_for_preview_then_fades_loading_before_revealing_card(bool videoReady)
     {
-        RunSta(() =>
+        RunSta(time =>
         {
             var visual = OverlayVisualFactory.CreateRoot(null, new Size(960, 600), 32, false,
                 TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
@@ -385,13 +386,14 @@ public sealed class TraceOverlayTests
                 false, () => { }, () => { }, clipboardCopy, _ => preview);
             try
             {
-                Pump(240);
+                time.Advance(240);
                 var loading = Descendants(visual.Root).OfType<TextBlock>().Single(x => x.Text == TestUiStrings.English.TraceSearching);
                 var loadingPanel = Assert.IsType<Grid>(loading.Parent);
+                var loadingIndicator = Assert.Single(Descendants(visual.Root).OfType<LoadingIndicatorVisual>(), x => x.IsRequestedActive);
                 var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
                     "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null };
                 trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
-                Pump(250);
+                time.Advance(250);
                 var card = Descendants(visual.Bottom.Stack).OfType<Border>().Single(x => x.Width == 640);
                 var slot = (Grid)card.Parent;
                 Assert.Equal(0, slot.Opacity);
@@ -399,14 +401,16 @@ public sealed class TraceOverlayTests
                 Assert.True(loadingPanel.IsVisible);
                 Assert.False(trace.Presentation.IsCompleted);
                 preview.Complete(videoReady);
-                Pump(50);
+                // Readiness reaches the dispatcher through a thread-pool continuation; the loading fade starts after it.
+                Assert.True(DispatcherPump.Until(() => !loadingIndicator.IsRequestedActive));
+                time.Advance(50);
                 if (OverlayVisualResources.AnimationsEnabled())
                 {
                     Assert.True(loadingPanel.HasAnimatedProperties);
                     Assert.InRange(loadingPanel.Opacity, 0.01, 0.99);
                     Assert.Equal(0, slot.Opacity);
                 }
-                Pump(400);
+                Assert.True(time.AdvanceUntil(() => trace.Presentation.IsCompleted));
                 Assert.True(trace.Presentation.IsCompletedSuccessfully, trace.Presentation.Exception?.ToString());
                 Assert.Equal(1, slot.Opacity);
                 Assert.True(slot.IsHitTestVisible);
@@ -430,7 +434,7 @@ public sealed class TraceOverlayTests
     [InlineData(true)]
     public void Closing_while_video_is_pending_cancels_reveal_and_releases_preview(bool beforeQueuedReveal)
     {
-        RunSta(() =>
+        RunSta(time =>
         {
             var visual = OverlayVisualFactory.CreateRoot(null, new Size(640, 400), 32, false,
                 TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
@@ -445,10 +449,11 @@ public sealed class TraceOverlayTests
             var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
                 "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null };
             trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
-            if (!beforeQueuedReveal) Pump(50);
+            if (!beforeQueuedReveal) time.Advance(50);
             trace.Dispose();
             preview.Complete(true);
-            Pump(250);
+            Assert.True(time.AdvanceUntil(() => trace.Presentation.IsCompleted));
+            time.Advance(250);
             Assert.True(trace.Presentation.IsCompletedSuccessfully, trace.Presentation.Exception?.ToString());
             Assert.True(preview.Disposed);
             Assert.Equal(2, visual.Bottom.Stack.Children.Count);
@@ -491,19 +496,26 @@ public sealed class TraceOverlayTests
         encoder.Save(stream);
     }
 
-    private static void Pump(int milliseconds)
+    // The reveal waits on thread-pool continuations, so the clock keeps running until it lands;
+    // then the card entrance gets its full duration.
+    private static void Reveal(ManualAnimationClock time, TraceOverlayVisual trace)
     {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(milliseconds) };
-        timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
+        Assert.True(time.AdvanceUntil(() => trace.Presentation.IsCompleted), "The trace result was not revealed.");
+        time.Advance((int)StateCardTransitions.EntranceDuration.TotalMilliseconds);
     }
 
-    private static void RunSta(Action action)
+    private static void RunSta(Action<ManualAnimationClock> action)
     {
         Exception? failure = null;
-        var thread = new Thread(() => { try { action(); } catch (Exception exception) { failure = exception; } }) { IsBackground = true };
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                using var time = ManualAnimationClock.Install();
+                action(time);
+            }
+            catch (Exception exception) { failure = exception; }
+        }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         Assert.True(thread.Join(TimeSpan.FromSeconds(15)));

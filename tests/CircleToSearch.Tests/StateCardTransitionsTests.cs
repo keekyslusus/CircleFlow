@@ -15,7 +15,7 @@ public sealed class StateCardTransitionsTests
     [InlineData(112)]
     public void Entrance_owns_centered_render_transforms_and_settles_without_reflow(double cardHeight)
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var card = new Border { Width = 180, Height = cardHeight };
             var tray = new Border { Width = 240, Height = 44 };
@@ -35,7 +35,7 @@ public sealed class StateCardTransitionsTests
             StateCardTransitions.BeginEntrance(card, animationsEnabled: true);
             var transforms = StateCardTransitions.GetTransforms(card);
             var group = Assert.IsType<TransformGroup>(card.RenderTransform);
-            PumpFor(TimeSpan.FromMilliseconds(15));
+            time.Advance(15);
 
             Assert.Equal(new Point(0.5, 0.5), card.RenderTransformOrigin);
             Assert.Collection(
@@ -50,7 +50,7 @@ public sealed class StateCardTransitionsTests
             Assert.Equal(cardSlot, LayoutInformation.GetLayoutSlot(card));
             Assert.Equal(trayOrigin, tray.TranslatePoint(new Point(), stack));
 
-            PumpFor(TimeSpan.FromMilliseconds(260));
+            time.Advance(260);
 
             Assert.Equal(1, card.Opacity, 3);
             Assert.Equal(1, transforms.Scale.ScaleX, 3);
@@ -67,14 +67,14 @@ public sealed class StateCardTransitionsTests
     [Fact]
     public void Exit_during_entrance_starts_from_effective_values_and_completes_once()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var card = new Border { Width = 180, Height = 72 };
             var window = new Window { Width = 320, Height = 200, Content = card };
             window.Show();
             window.UpdateLayout();
             StateCardTransitions.BeginEntrance(card, animationsEnabled: true);
-            PumpFor(TimeSpan.FromMilliseconds(70));
+            time.Advance(70);
             var transforms = StateCardTransitions.GetTransforms(card);
             var opacityBeforeExit = card.Opacity;
             var scaleBeforeExit = transforms.Scale.ScaleX;
@@ -85,7 +85,7 @@ public sealed class StateCardTransitionsTests
                 card,
                 animationsEnabled: true,
                 () => completions++);
-            PumpFor(TimeSpan.FromMilliseconds(15));
+            time.Advance(15);
 
             Assert.InRange(card.Opacity, 0, opacityBeforeExit);
             Assert.InRange(
@@ -93,7 +93,7 @@ public sealed class StateCardTransitionsTests
                 Math.Min(0.98, scaleBeforeExit),
                 Math.Max(0.98, scaleBeforeExit));
             Assert.InRange(transforms.Translate.Y, -8, offsetBeforeExit);
-            PumpFor(TimeSpan.FromMilliseconds(220));
+            time.Advance(220);
 
             Assert.True(exit.IsCompleted);
             Assert.Equal(1, completions);
@@ -110,7 +110,7 @@ public sealed class StateCardTransitionsTests
     [Fact]
     public void Disabled_entrance_and_exit_settle_synchronously_without_clocks()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var card = new Border();
 
@@ -148,7 +148,7 @@ public sealed class StateCardTransitionsTests
     [Fact]
     public void Disposed_exit_preserves_current_values_and_suppresses_callback()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var card = new Border();
             var window = new Window { Width = 320, Height = 200, Content = card };
@@ -159,7 +159,7 @@ public sealed class StateCardTransitionsTests
                 var transforms = StateCardTransitions.GetTransforms(card);
                 var completions = 0;
                 var exit = StateCardTransitions.BeginExit(card, true, () => completions++);
-                PumpFor(TimeSpan.FromMilliseconds(40));
+                time.Advance(40);
                 var opacity = card.Opacity;
                 var scale = transforms.Scale.ScaleX;
                 var offset = transforms.Translate.Y;
@@ -174,7 +174,7 @@ public sealed class StateCardTransitionsTests
                 Assert.False(card.HasAnimatedProperties);
                 Assert.False(transforms.Scale.HasAnimatedProperties);
                 Assert.False(transforms.Translate.HasAnimatedProperties);
-                PumpFor(TimeSpan.FromMilliseconds(220));
+                time.Advance(220);
                 Assert.Equal(0, completions);
             }
             finally
@@ -187,7 +187,7 @@ public sealed class StateCardTransitionsTests
     [Fact]
     public void Completion_callback_can_dispose_its_own_handle()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var card = new Border();
             var window = new Window { Width = 320, Height = 200, Content = card };
@@ -204,7 +204,7 @@ public sealed class StateCardTransitionsTests
                     exit.Dispose();
                 });
 
-                PumpFor(TimeSpan.FromMilliseconds(220));
+                time.Advance(220);
 
                 Assert.True(exit.IsCompleted);
                 Assert.Equal(1, completions);
@@ -217,25 +217,16 @@ public sealed class StateCardTransitionsTests
         }));
     }
 
-    private static void PumpFor(TimeSpan duration)
-    {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = duration };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            frame.Continue = false;
-        };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-    }
-
-    private static Exception? RunOnSta(Action action)
+    private static Exception? RunOnSta(Action<ManualAnimationClock> action)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
         {
-            try { action(); }
+            try
+            {
+                using var time = ManualAnimationClock.Install();
+                action(time);
+            }
             catch (Exception exception) { failure = exception; }
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);

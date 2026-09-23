@@ -6,6 +6,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class AppShutdownTests
 {
     [Fact]
@@ -148,10 +149,10 @@ public sealed class AppShutdownTests
             lifetime.AddRelease("release", () => released = true);
             var elapsed = Stopwatch.StartNew();
             RaiseSessionEnding(app, ReasonSessionEnding.Shutdown);
-            Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(4));
+            Assert.True(elapsed.Elapsed < AppLifetime.DefaultSessionEndingDeadline);
             Assert.False(lifetime.RequestExitAsync().IsCompleted);
             Assert.False(released);
-        }, afterStartup: true);
+        }, afterStartup: true, sessionEndingDeadline: TimeSpan.FromMilliseconds(200));
         Assert.Equal(1, result.Code);
         Assert.Equal(1, calls);
     }
@@ -200,7 +201,8 @@ public sealed class AppShutdownTests
         Assert.False(args.Cancel);
     }
 
-    private static (int Code, Exception? StartupFailure) Run(Action<Application, AppLifetime> startup, bool afterStartup = false)
+    private static (int Code, Exception? StartupFailure) Run(
+        Action<Application, AppLifetime> startup, bool afterStartup = false, TimeSpan? sessionEndingDeadline = null)
     {
         Exception? failure = null;
         Exception? startupFailure = null;
@@ -217,7 +219,7 @@ public sealed class AppShutdownTests
                     expired = true;
                     app.Dispatcher.BeginInvoke(() => app.Shutdown(1));
                 }, TimeSpan.FromSeconds(5));
-                var lifetime = new AppLifetime(app, log, watchdog);
+                var lifetime = new AppLifetime(app, log, watchdog, sessionEndingDeadline);
                 code = lifetime.Run(_ =>
                 {
                     if (!afterStartup) startup(app, lifetime);

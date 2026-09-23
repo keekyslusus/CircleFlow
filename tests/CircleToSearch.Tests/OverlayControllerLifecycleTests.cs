@@ -18,12 +18,13 @@ using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class OverlayControllerLifecycleTests
 {
     [Fact]
     public void Partial_composition_failure_removes_pointer_subscriptions()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             using var frame = new GdiBitmap(640, 400);
             var bounds = new GdiRectangle(0, 0, 640, 400);
@@ -101,10 +102,10 @@ public sealed class OverlayControllerLifecycleTests
     {
         WeakReference? controllerReference = null;
         WeakReference? windowReference = null;
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             CreateAndDisposePendingRenderController(out controllerReference, out windowReference);
-            PumpFor(TimeSpan.FromMilliseconds(100));
+            time.Advance(100);
             ForceCollection();
             Assert.False(controllerReference.IsAlive);
             Assert.False(windowReference.IsAlive);
@@ -116,7 +117,7 @@ public sealed class OverlayControllerLifecycleTests
     [Fact]
     public void Dispose_stops_pending_selection_hold_callback()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var visual = CreateVisual();
             var holdCompleted = 0;
@@ -126,7 +127,8 @@ public sealed class OverlayControllerLifecycleTests
 
             controller.Dispose();
             Assert.False(controller.HasPendingHold);
-            PumpFor(TimeSpan.FromMilliseconds(600));
+            // The hold is a DispatcherTimer, so only real time can show that it stays stopped.
+            DispatcherPump.For(600);
 
             Assert.Equal(0, holdCompleted);
         });
@@ -137,7 +139,7 @@ public sealed class OverlayControllerLifecycleTests
     [Fact]
     public void Dispose_stops_pending_copy_restore_callback()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var visual = CreateVisual();
             var commands = new List<IOverlayCommand>();
@@ -157,7 +159,8 @@ public sealed class OverlayControllerLifecycleTests
 
             controller.Dispose();
             Assert.Equal(0, controller.PendingCopyRestoreCount);
-            PumpFor(TimeSpan.FromMilliseconds(1450));
+            // The restore is a DispatcherTimer, so only real time can show that it stays stopped.
+            DispatcherPump.For(1450);
 
             Assert.Equal(TestUiStrings.English.Copied, AutomationProperties.GetName(copy));
             Assert.Empty(commands);
@@ -169,7 +172,7 @@ public sealed class OverlayControllerLifecycleTests
     [Fact]
     public void Clipboard_failure_shows_error_without_confirming_or_scheduling_restore()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var visual = CreateVisual();
             var notifications = new List<ToastNotification>();
@@ -198,7 +201,7 @@ public sealed class OverlayControllerLifecycleTests
     [Fact]
     public void Dispose_aborts_pending_match_dispatcher_operation()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var visual = CreateVisual();
             var commands = new List<IOverlayCommand>();
@@ -208,7 +211,7 @@ public sealed class OverlayControllerLifecycleTests
 
             controller.Dispose();
             Assert.False(controller.HasPendingMatchRipple);
-            PumpFor(TimeSpan.FromMilliseconds(100));
+            time.Advance(100);
 
             Assert.Equal(0, visual.Effects.SceneRipples.ActiveCount);
             Assert.Empty(commands);
@@ -221,7 +224,7 @@ public sealed class OverlayControllerLifecycleTests
     [Fact]
     public void Animated_dismiss_keeps_card_visible_and_noninteractive_until_cleanup()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var visual = CreateVisual();
             var window = ShowVisual(visual);
@@ -236,7 +239,7 @@ public sealed class OverlayControllerLifecycleTests
             Assert.Equal(Visibility.Visible, visual.Music.ResultHost.Visibility);
             Assert.False(visual.Music.ResultHost.IsHitTestVisible);
             Assert.Same(card, Assert.Single(visual.Music.ResultHost.Children));
-            PumpFor(TimeSpan.FromMilliseconds(220));
+            time.Advance(220);
 
             Assert.False(controller.HasPendingResultExit);
             Assert.Equal(Visibility.Collapsed, visual.Music.ResultHost.Visibility);
@@ -253,7 +256,7 @@ public sealed class OverlayControllerLifecycleTests
     [Fact]
     public void Disabled_dismiss_collapses_and_clears_synchronously()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var visual = CreateVisual();
             var commands = new List<IOverlayCommand>();
@@ -275,7 +278,7 @@ public sealed class OverlayControllerLifecycleTests
     [Fact]
     public void Retry_listening_starts_while_old_card_finishes_noninteractive_exit()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var visual = CreateVisual();
             var window = ShowVisual(visual);
@@ -292,7 +295,7 @@ public sealed class OverlayControllerLifecycleTests
             Assert.Equal(Visibility.Visible, visual.Music.ResultHost.Visibility);
             Assert.False(visual.Music.ResultHost.IsHitTestVisible);
             Assert.NotEmpty(visual.Music.ResultHost.Children);
-            PumpFor(TimeSpan.FromMilliseconds(220));
+            time.Advance(220);
 
             Assert.Equal(Visibility.Collapsed, visual.Music.ResultHost.Visibility);
             Assert.Empty(visual.Music.ResultHost.Children);
@@ -307,7 +310,7 @@ public sealed class OverlayControllerLifecycleTests
     [Fact]
     public void New_result_cancels_old_exit_and_stale_deadline_cannot_clear_it()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var visual = CreateVisual();
             var window = ShowVisual(visual);
@@ -319,7 +322,7 @@ public sealed class OverlayControllerLifecycleTests
 
             controller.ShowResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio));
             var replacement = Assert.Single(visual.Music.ResultHost.Children.OfType<FrameworkElement>());
-            PumpFor(TimeSpan.FromMilliseconds(220));
+            time.Advance(220);
 
             Assert.False(controller.HasPendingResultExit);
             Assert.Equal(Visibility.Visible, visual.Music.ResultHost.Visibility);
@@ -336,7 +339,7 @@ public sealed class OverlayControllerLifecycleTests
     [Fact]
     public void Production_result_mutations_move_a_persistent_slot_without_replacing_component_transforms()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var visual = CreateVisual();
             var toastSlot = new Grid();
@@ -358,7 +361,7 @@ public sealed class OverlayControllerLifecycleTests
             var matchedTransforms = StateCardTransitions.GetTransforms(matchedCard);
             Assert.Same(matchedTransforms.Translate,
                 Assert.IsType<TransformGroup>(matchedCard.RenderTransform).Children[1]);
-            PumpFor(TimeSpan.FromMilliseconds(260));
+            time.Advance(260);
             var matchedToastY = toastSlot.TranslatePoint(new Point(), visual.Root).Y;
 
             controller.ShowResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio));
@@ -369,18 +372,18 @@ public sealed class OverlayControllerLifecycleTests
             var replacement = Assert.Single(visual.Music.ResultHost.Children.OfType<FrameworkElement>());
             Assert.NotSame(matchedCard, replacement);
             Assert.IsType<TransformGroup>(replacement.RenderTransform);
-            PumpFor(TimeSpan.FromMilliseconds(260));
+            time.Advance(260);
             var tallToastY = toastSlot.TranslatePoint(new Point(), visual.Root).Y;
             Assert.Equal(matchedToastY + matchedCard.ActualHeight - replacement.ActualHeight, tallToastY, 2);
 
             controller.DismissResult();
             Assert.Equal(Visibility.Visible, visual.Music.ResultHost.Visibility);
-            PumpFor(TimeSpan.FromMilliseconds(190));
+            time.Advance(190);
 
             Assert.Equal(Visibility.Collapsed, visual.Music.ResultHost.Visibility);
             Assert.True(toastOffset.HasAnimatedProperties);
             Assert.Same(trayLift, visual.Actions.Tray.RenderTransform);
-            PumpFor(TimeSpan.FromMilliseconds(260));
+            time.Advance(260);
             Assert.Equal(oldToastY, toastSlot.TranslatePoint(new Point(), visual.Root).Y, 2);
             Assert.Equal(0, toastOffset.Y, 3);
             Assert.False(toastOffset.HasAnimatedProperties);
@@ -396,7 +399,7 @@ public sealed class OverlayControllerLifecycleTests
     [Fact]
     public void Dispose_cancels_pending_result_exit()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             var visual = CreateVisual();
             var window = ShowVisual(visual);
@@ -410,7 +413,7 @@ public sealed class OverlayControllerLifecycleTests
 
             Assert.False(controller.HasPendingResultExit);
             Assert.Empty(visual.Music.ResultHost.Children);
-            PumpFor(TimeSpan.FromMilliseconds(220));
+            time.Advance(220);
             Assert.Empty(commands);
             visual.Effects.SceneRipples.Dispose();
             window.Content = null;
@@ -425,10 +428,10 @@ public sealed class OverlayControllerLifecycleTests
     {
         WeakReference? controllerReference = null;
         WeakReference? windowReference = null;
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             CreateAndDisposePendingResultController(out controllerReference, out windowReference);
-            PumpFor(TimeSpan.FromMilliseconds(220));
+            time.Advance(220);
             ForceCollection();
 
             Assert.False(controllerReference.IsAlive);
@@ -563,19 +566,6 @@ public sealed class OverlayControllerLifecycleTests
             null,
             "https://www.shazam.com/track/1"));
 
-    private static void PumpFor(TimeSpan duration)
-    {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = duration };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            frame.Continue = false;
-        };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-    }
-
     private static void ForceCollection()
     {
         GC.Collect();
@@ -583,12 +573,16 @@ public sealed class OverlayControllerLifecycleTests
         GC.Collect();
     }
 
-    private static Exception? RunOnSta(Action action)
+    private static Exception? RunOnSta(Action<ManualAnimationClock> action)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
         {
-            try { action(); }
+            try
+            {
+                using var time = ManualAnimationClock.Install();
+                action(time);
+            }
             catch (Exception exception) { failure = exception; }
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);

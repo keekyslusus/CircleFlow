@@ -7,6 +7,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class AppStartupTests
 {
     [Fact]
@@ -57,7 +58,7 @@ public sealed class AppStartupTests
         var instanceName = "Local\\CircleFlow.StartupTests." + Guid.NewGuid().ToString("N");
         using var owner = Shell.SingleInstanceCoordinator.TryAcquire(instanceName);
         Assert.NotNull(owner);
-        var result = RunOnSta(paths, instanceName);
+        var result = RunOnSta(paths, instanceName, activationTimeout: TimeSpan.FromMilliseconds(300));
         Assert.Equal(1, result.ExitCode);
         Assert.Equal(TestUiStrings.English.ActivationFailed, result.Message);
         Assert.Equal(MessageBoxImage.Error, result.Icon);
@@ -138,7 +139,8 @@ public sealed class AppStartupTests
         Assert.NotNull(instance);
     }
 
-    private static (int ExitCode, string? Message, string? Title, MessageBoxImage Icon) RunOnSta(AppPaths paths, string instanceName)
+    private static (int ExitCode, string? Message, string? Title, MessageBoxImage Icon) RunOnSta(
+        AppPaths paths, string instanceName, TimeSpan? activationTimeout = null)
     {
         var exitCode = -1;
         string? message = null, title = null;
@@ -152,7 +154,7 @@ public sealed class AppStartupTests
                 {
                     Assert.Null(message);
                     (message, title, icon) = (text, caption, image);
-                }, instanceName);
+                }, instanceName, activationTimeout: activationTimeout);
             }
             catch (Exception exception) { failure = exception; }
         }) { IsBackground = true };

@@ -18,6 +18,7 @@ using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class ProviderMusicOverlayUiTests
 {
     private static readonly SearchProviderDescriptor[] Providers =

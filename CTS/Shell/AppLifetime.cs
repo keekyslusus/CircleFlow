@@ -3,8 +3,14 @@ using System.Windows.Threading;
 
 namespace CircleToSearch.Shell;
 
-internal sealed class AppLifetime(Application application, PluginLog log, ShutdownWatchdog watchdog)
+internal sealed class AppLifetime(
+    Application application,
+    PluginLog log,
+    ShutdownWatchdog watchdog,
+    TimeSpan? sessionEndingDeadline = null)
 {
+    internal static TimeSpan DefaultSessionEndingDeadline => TimeSpan.FromSeconds(2);
+
     private readonly List<(string Name, Action Stop)> _stop = [];
     private readonly List<(string Name, Func<Task> Cleanup)> _cleanup = [];
     private readonly List<(string Name, Action Release)> _release = [];
@@ -125,7 +131,7 @@ internal sealed class AppLifetime(Application application, PluginLog log, Shutdo
         var frame = new DispatcherFrame();
         var deadline = new DispatcherTimer(DispatcherPriority.Send, application.Dispatcher)
         {
-            Interval = TimeSpan.FromSeconds(2),
+            Interval = sessionEndingDeadline ?? DefaultSessionEndingDeadline,
         };
         deadline.Tick += (_, _) => frame.Continue = false;
         deadline.Start();

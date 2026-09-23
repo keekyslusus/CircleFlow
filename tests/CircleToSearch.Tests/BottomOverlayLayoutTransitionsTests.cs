@@ -13,7 +13,7 @@ public sealed class BottomOverlayLayoutTransitionsTests
     [Fact]
     public void Appearance_applies_final_layout_and_moves_persistent_slot_from_its_old_position()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             using var fixture = new BottomStackFixture(resultVisible: false, resultHeight: 48);
             var oldToastY = fixture.VisualY(fixture.ToastSlot);
@@ -30,7 +30,7 @@ public sealed class BottomOverlayLayoutTransitionsTests
             Assert.Equal(0, fixture.Offset(fixture.ActionSlot).Y, 3);
             Assert.False(fixture.Offset(fixture.ActionSlot).HasAnimatedProperties);
 
-            PumpFor(TimeSpan.FromMilliseconds(260));
+            time.Advance(260);
 
             Assert.Equal(oldToastY - 48, fixture.VisualY(fixture.ToastSlot), 2);
             AssertSettled(fixture.Offset(fixture.ToastSlot));
@@ -42,7 +42,7 @@ public sealed class BottomOverlayLayoutTransitionsTests
     [Fact]
     public void Disappearance_moves_persistent_slot_down_and_skips_collapsed_slot()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             using var fixture = new BottomStackFixture(resultVisible: true, resultHeight: 48);
             var oldToastY = fixture.VisualY(fixture.ToastSlot);
@@ -55,7 +55,7 @@ public sealed class BottomOverlayLayoutTransitionsTests
             Assert.Equal(oldToastY, fixture.VisualY(fixture.ToastSlot), 2);
             AssertSettled(fixture.Offset(fixture.ResultSlot));
 
-            PumpFor(TimeSpan.FromMilliseconds(260));
+            time.Advance(260);
 
             Assert.Equal(oldToastY + 48, fixture.VisualY(fixture.ToastSlot), 2);
             AssertSettled(fixture.Offset(fixture.ToastSlot));
@@ -67,7 +67,7 @@ public sealed class BottomOverlayLayoutTransitionsTests
     [Fact]
     public void Newly_visible_removed_and_zero_height_slots_do_not_receive_flip_clocks()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             using var fixture = new BottomStackFixture(resultVisible: false, resultHeight: 48);
             var zeroSlot = fixture.AddSlot(0, index: 1);
@@ -97,7 +97,7 @@ public sealed class BottomOverlayLayoutTransitionsTests
     [Fact]
     public void Height_change_uses_measured_delta_instead_of_a_fixed_result_height()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             using var fixture = new BottomStackFixture(resultVisible: true, resultHeight: 48);
             var oldToastY = fixture.VisualY(fixture.ToastSlot);
@@ -119,13 +119,13 @@ public sealed class BottomOverlayLayoutTransitionsTests
     [Fact]
     public void Interruption_rebases_from_the_current_rendered_position_without_a_jump()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             using var fixture = new BottomStackFixture(resultVisible: false, resultHeight: 72);
             fixture.Transitions.Apply(
                 () => fixture.ResultSlot.Visibility = Visibility.Visible,
                 animationsEnabled: true);
-            PumpFor(TimeSpan.FromMilliseconds(70));
+            time.Advance(70);
             var beforeInterruption = fixture.VisualY(fixture.ToastSlot);
 
             fixture.Transitions.Apply(
@@ -136,7 +136,7 @@ public sealed class BottomOverlayLayoutTransitionsTests
                 Math.Abs(fixture.VisualY(fixture.ToastSlot) - beforeInterruption),
                 0,
                 1.5);
-            PumpFor(TimeSpan.FromMilliseconds(260));
+            time.Advance(260);
 
             AssertSettled(fixture.Offset(fixture.ToastSlot));
             Assert.Equal(fixture.LayoutY(fixture.ToastSlot), fixture.VisualY(fixture.ToastSlot), 3);
@@ -148,13 +148,13 @@ public sealed class BottomOverlayLayoutTransitionsTests
     [Fact]
     public void Disabled_motion_cancels_active_clocks_and_settles_synchronously()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             using var fixture = new BottomStackFixture(resultVisible: false, resultHeight: 72);
             fixture.Transitions.Apply(
                 () => fixture.ResultSlot.Visibility = Visibility.Visible,
                 animationsEnabled: true);
-            PumpFor(TimeSpan.FromMilliseconds(50));
+            time.Advance(50);
             Assert.True(fixture.Offset(fixture.ToastSlot).HasAnimatedProperties);
 
             fixture.Transitions.Apply(
@@ -173,7 +173,7 @@ public sealed class BottomOverlayLayoutTransitionsTests
     [Fact]
     public void Nested_mutation_joins_outer_capture_and_disposal_removes_pending_clocks()
     {
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             using var fixture = new BottomStackFixture(resultVisible: false, resultHeight: 64);
             var oldToastY = fixture.VisualY(fixture.ToastSlot);
@@ -202,10 +202,10 @@ public sealed class BottomOverlayLayoutTransitionsTests
     {
         WeakReference? coordinatorReference = null;
         WeakReference? windowReference = null;
-        var failure = RunOnSta(() =>
+        var failure = RunOnSta(time =>
         {
             CreateAndDisposeAnimatingFixture(out coordinatorReference, out windowReference);
-            PumpFor(TimeSpan.FromMilliseconds(260));
+            time.Advance(260);
             ForceCollection();
 
             Assert.False(coordinatorReference.IsAlive);
@@ -221,25 +221,16 @@ public sealed class BottomOverlayLayoutTransitionsTests
         Assert.False(offset.HasAnimatedProperties);
     }
 
-    private static void PumpFor(TimeSpan duration)
-    {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = duration };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            frame.Continue = false;
-        };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-    }
-
-    private static Exception? RunOnSta(Action action)
+    private static Exception? RunOnSta(Action<ManualAnimationClock> action)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
         {
-            try { action(); }
+            try
+            {
+                using var time = ManualAnimationClock.Install();
+                action(time);
+            }
             catch (Exception exception) { failure = exception; }
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);

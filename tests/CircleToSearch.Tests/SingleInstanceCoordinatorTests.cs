@@ -7,6 +7,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class SingleInstanceCoordinatorTests
 {
     [Fact]
@@ -179,24 +180,10 @@ public sealed class SingleInstanceCoordinatorTests
 
     private static async Task RunSecondaryProcessAsync(string marker, string name)
     {
-        var start = new ProcessStartInfo("dotnet")
-        {
-            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
-        };
-        start.ArgumentList.Add("vstest");
-        start.ArgumentList.Add(typeof(SingleInstanceCoordinatorTests).Assembly.Location);
-        start.ArgumentList.Add("/TestCaseFilter:FullyQualifiedName=" + typeof(SingleInstanceCoordinatorTests).FullName + "." + nameof(Concurrent_secondary_processes_activate_one_owner));
-        start.Environment[marker] = name;
-        using var process = Process.Start(start)!;
-        var output = process.StandardOutput.ReadToEndAsync();
-        var error = process.StandardError.ReadToEndAsync();
-        try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20)); }
-        catch
-        {
-            if (!process.HasExited) process.Kill(entireProcessTree: true);
-            throw;
-        }
-        Assert.True(process.ExitCode == 0, await output + await error);
+        var (exitCode, output) = await IsolatedTestHost.RunChildAsync(
+            typeof(SingleInstanceCoordinatorTests).FullName + "." + nameof(Concurrent_secondary_processes_activate_one_owner),
+            marker, name, TimeSpan.FromSeconds(20));
+        Assert.True(exitCode == 0, output);
     }
 
     private static async Task<NamedPipeClientStream> ConnectAsync(string name)

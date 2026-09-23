@@ -7,6 +7,9 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- IsolatedTestHost provides the entry point for tests that need their own process. -->
+    <GenerateProgramFile>false</GenerateProgramFile>
+    <StartupObject>CircleToSearch.Tests.IsolatedTestHost</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>

@@ -10,6 +10,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class SearchBrowserWindowViewTests
 {
     [Fact]
