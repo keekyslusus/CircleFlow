@@ -671,7 +671,7 @@
                                             <StackPanel Orientation="Horizontal">
                                                 <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                     <Canvas Width="24" Height="24">
-                                                        <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.ChevronRightOutlined}"/>
+                                                        <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.LinkOutlined}"/>
                                                     </Canvas>
                                                 </Viewbox>
                                                 <Border Width="8"/>
@@ -703,7 +703,15 @@
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
                                                 <Button Tag="preview">
-                                                    <TextBlock Text="{Binding [check_updates]}"/>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Viewbox Width="20" Height="20" VerticalAlignment="Center">
+                                                            <Canvas Width="24" Height="24">
+                                                                <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.UpdateOutlined}"/>
+                                                            </Canvas>
+                                                        </Viewbox>
+                                                        <Border Width="8"/>
+                                                        <TextBlock Text="{Binding [check_updates]}"/>
+                                                    </StackPanel>
                                                 </Button>
                                             </ContentControl>
                                         </Grid>
@@ -723,11 +731,19 @@
                                             </Viewbox>
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
                                                 <TextBlock Text="{Binding [open_source]}" Style="{StaticResource RowTitle}"/>
-                                                <TextBlock Text="{Binding [open_source_sub]}" Style="{StaticResource RowSubtitle}"/>
+                                                <TextBlock Text="{Binding [license]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <Button Tag="preview" Foreground="{DynamicResource SettingsAccent}">
-                                                    <TextBlock Text="{Binding [license]}"/>
+                                                <Button Tag="preview">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Viewbox Width="20" Height="20" VerticalAlignment="Center">
+                                                            <Canvas Width="24" Height="24">
+                                                                <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.LinkOutlined}"/>
+                                                            </Canvas>
+                                                        </Viewbox>
+                                                        <Border Width="8"/>
+                                                        <TextBlock Text="{Binding [view_license]}"/>
+                                                    </StackPanel>
                                                 </Button>
                                             </ContentControl>
                                         </Grid>
@@ -750,9 +766,7 @@
                                                 <TextBlock Text="{Binding [runtime_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="5" Padding="9,4">
-                                                    <TextBlock Text="{Binding [runtime_preview]}" Style="{StaticResource Muted}"/>
-                                                </Border>
+                                                <TextBlock Text="{Binding [runtime_preview]}" Foreground="{DynamicResource SettingsMuted}" FontSize="12"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>
@@ -781,7 +795,7 @@
                                                             </Canvas>
                                                         </Viewbox>
                                                         <Border Width="8"/>
-                                                        <TextBlock Text="{Binding [kofi]}"/>
+                                                        <TextBlock Text="{Binding [donate]}"/>
                                                     </StackPanel>
                                                 </Button>
                                             </ContentControl>

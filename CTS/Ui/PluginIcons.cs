@@ -59,6 +59,9 @@ internal static class PluginIcons
     public static Geometry RestoreOutlined { get; } = Group(
         Geometry.Parse("M3 10a9 9 0 1 1 1 8M3 4v6h6"));
 
+    public static Geometry UpdateOutlined { get; } = Group(
+        Geometry.Parse("M21 10a9 9 0 1 0-1 8M21 4v6h-6M12.5 8.5V13l3 2"));
+
     public static Geometry MaintenanceOutlined { get; } = Group(
         Geometry.Parse("M14.7 6.3a5.5 5.5 0 0 0-7-3.1l3.4 3.4-4.5 4.5-3.4-3.4a5.5 5.5 0 0 0 7 7l5.9 5.9a3.2 3.2 0 0 0 4.5-4.5l-5.9-5.9a5.5 5.5 0 0 0 0-3.9Z"));
 

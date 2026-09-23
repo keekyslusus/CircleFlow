@@ -216,12 +216,12 @@
     <system:String x:Key="app_settings_version_value_sub">Version</system:String>
     <system:String x:Key="app_settings_license">GPL-3.0-or-later</system:String>
     <system:String x:Key="app_settings_open_source">Open source</system:String>
-    <system:String x:Key="app_settings_open_source_sub">Project license</system:String>
+    <system:String x:Key="app_settings_view_license">View license</system:String>
     <system:String x:Key="app_settings_runtime_preview">Preview</system:String>
     <system:String x:Key="app_settings_runtime">WebView2 Runtime</system:String>
     <system:String x:Key="app_settings_runtime_sub">Embedded browser component</system:String>
-    <system:String x:Key="app_settings_kofi">Ko-fi</system:String>
-    <system:String x:Key="app_settings_support">Support the project</system:String>
+    <system:String x:Key="app_settings_donate">Donate</system:String>
+    <system:String x:Key="app_settings_support">Support the project on Ko-fi</system:String>
     <system:String x:Key="app_settings_folder">Folder</system:String>
     <system:String x:Key="app_settings_logs">Logs</system:String>
     <system:String x:Key="app_settings_reset">Reset</system:String>
