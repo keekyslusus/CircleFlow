@@ -147,8 +147,11 @@ public sealed class FloatingToolbarTests
                     if (provider == SearchProviderIds.TraceMoe)
                     {
                         var drawing = Assert.IsType<DrawingGroup>(Assert.IsType<DrawingImage>(Assert.IsType<Image>(icon).Source).Drawing);
-                        Assert.Same(PluginIcons.AniListBlue, Assert.IsType<GeometryDrawing>(drawing.Children[0]).Geometry);
-                        Assert.IsType<System.Windows.Shapes.Path>(ProviderVisualCatalog.CreateSearchMark(provider, lightTheme));
+                        Assert.Equal(new Rect(0, 0, 24, 24), drawing.Bounds);
+                        Assert.Same(PluginIcons.AniListBlue, Assert.IsType<GeometryDrawing>(drawing.Children[1]).Geometry);
+                        var imageMark = Assert.IsType<Image>(ProviderVisualCatalog.CreateSearchMark(provider, lightTheme));
+                        var imageDrawing = Assert.IsType<DrawingGroup>(Assert.IsType<DrawingImage>(imageMark.Source).Drawing);
+                        Assert.Same(PluginIcons.TraceMoe, Assert.IsType<GeometryDrawing>(imageDrawing.Children[1]).Geometry);
                     }
                 }
                 Assert.Equal(3, clicks);

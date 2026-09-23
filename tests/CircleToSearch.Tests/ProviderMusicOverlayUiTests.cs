@@ -319,8 +319,7 @@ public sealed class ProviderMusicOverlayUiTests
             var searches = buttons.Where(button =>
                 AutomationProperties.GetName(button) == TestUiStrings.English.TextSearch).ToArray();
             Assert.Equal(2, searches.Length);
-            Assert.All(searches, button => Assert.IsType<Image>(
-                Assert.IsType<ContentControl>(Assert.IsType<StackPanel>(button.Content).Children[0]).Content));
+            Assert.All(searches, button => Assert.Same(PluginIcons.GoogleRed, SearchMarkGeometry(button)));
 
             var provider = Assert.Single(buttons, button => ReferenceEquals(button.Tag, null) &&
                 AutomationProperties.GetName(button).Contains("choose provider", StringComparison.Ordinal));
@@ -332,8 +331,7 @@ public sealed class ProviderMusicOverlayUiTests
 
             Assert.Equal(SearchProviderIds.YandexImages,
                 Assert.IsType<ProviderSelected>(commands[1]).ProviderId);
-            Assert.All(searches, button => Assert.IsType<TextBlock>(
-                Assert.IsType<ContentControl>(Assert.IsType<StackPanel>(button.Content).Children[0]).Content));
+            Assert.All(searches, button => Assert.Same(PluginIcons.YandexLetter, SearchMarkGeometry(button)));
             provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             overlay.UpdateLayout();
             var google = Descendants((DependencyObject)overlay.Content).OfType<Button>()
@@ -343,8 +341,7 @@ public sealed class ProviderMusicOverlayUiTests
             Assert.Equal(3, commands.Count);
             Assert.Equal(SearchProviderIds.GoogleLens,
                 Assert.IsType<ProviderSelected>(commands[2]).ProviderId);
-            Assert.All(searches, button => Assert.IsType<Image>(
-                Assert.IsType<ContentControl>(Assert.IsType<StackPanel>(button.Content).Children[0]).Content));
+            Assert.All(searches, button => Assert.Same(PluginIcons.GoogleRed, SearchMarkGeometry(button)));
             Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
             overlay.CloseFromSession();
             Dispatcher.Run();
@@ -746,6 +743,14 @@ public sealed class ProviderMusicOverlayUiTests
 
     [DllImport("user32.dll")]
     private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
+
+    private static System.Windows.Media.Geometry SearchMarkGeometry(Button button)
+    {
+        var mark = Assert.IsType<ContentControl>(Assert.IsType<StackPanel>(button.Content).Children[0]).Content;
+        var image = Assert.IsType<System.Windows.Media.DrawingImage>(Assert.IsType<Image>(mark).Source);
+        var drawing = Assert.IsType<System.Windows.Media.DrawingGroup>(image.Drawing);
+        return Assert.IsType<System.Windows.Media.GeometryDrawing>(drawing.Children[1]).Geometry;
+    }
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {

@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
 
@@ -9,7 +8,7 @@ namespace CircleToSearch.Capture;
 
 internal static class ProviderVisualCatalog
 {
-    private const double SearchMarkSize = 14;
+    private const double SearchMarkSize = 18;
 
     internal static FrameworkElement CreateSearchMark(string providerId, bool lightTheme, bool textSearch = false)
     {
@@ -17,18 +16,9 @@ internal static class ProviderVisualCatalog
         if (!textSearch || !string.Equals(providerId, SearchProviderIds.TraceMoe, StringComparison.OrdinalIgnoreCase))
             return CreateMark(providerId.ToLowerInvariant(), palette, SearchMarkSize);
 
-        var drawing = new DrawingGroup();
-        drawing.Children.Add(Draw(PluginPalette.AniListBlue, PluginIcons.AniListBlue));
-        drawing.Children.Add(Draw(lightTheme ? palette.Text : PluginPalette.AniListWhite, PluginIcons.AniListLetter));
-        drawing.Freeze();
-        return new Image
-        {
-            Source = new DrawingImage(drawing),
-            Width = SearchMarkSize,
-            Height = SearchMarkSize,
-            Stretch = Stretch.Uniform,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
+        return OverlayVisualResources.BrandMark(SearchMarkSize,
+            (Frozen(PluginPalette.AniListBlue), PluginIcons.AniListBlue),
+            (Frozen(lightTheme ? palette.Text : PluginPalette.AniListWhite), PluginIcons.AniListLetter));
     }
 
     public static FrameworkElement Create(
@@ -83,94 +73,31 @@ internal static class ProviderVisualCatalog
         return row;
     }
 
-    private static FrameworkElement CreateMark(string providerId, ProviderPalette palette, double size = 16)
-    {
-        if (providerId == SearchProviderIds.GoogleLens)
+    private static FrameworkElement CreateMark(string providerId, ProviderPalette palette, double size = 20) =>
+        providerId switch
         {
-            var drawing = new DrawingGroup();
-            drawing.Children.Add(Draw(palette.GoogleRed, GoogleRed));
-            drawing.Children.Add(Draw(palette.Google, GoogleBlue));
-            drawing.Children.Add(Draw(palette.GoogleYellow, GoogleYellow));
-            drawing.Children.Add(Draw(palette.GoogleGreen, GoogleGreen));
-            drawing.Freeze();
-            return new Image
-            {
-                Source = new DrawingImage(drawing),
-                Width = size,
-                Height = size,
-                Stretch = Stretch.Uniform,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-        }
-
-        if (providerId == SearchProviderIds.YandexImages)
-        {
-            return new TextBlock
-            {
-                Width = size,
-                Text = "Я",
-                FontFamily = OverlayFont,
-                FontSize = size * 15 / 16,
-                FontWeight = FontWeights.Bold,
-                Foreground = Frozen(palette.Yandex),
-                TextAlignment = TextAlignment.Center,
-                LineHeight = size,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-        }
-
-        if (providerId == SearchProviderIds.TraceMoe)
-        {
-            return new Path
-            {
-                Data = TraceMoeMark,
-                Width = size,
-                Height = size,
-                Stretch = Stretch.Uniform,
-                Fill = Frozen(palette.Trace),
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-        }
-
-        return new Ellipse
-        {
-            Width = size,
-            Height = size,
-            VerticalAlignment = VerticalAlignment.Center,
-            Fill = Frozen(palette.Neutral),
+            SearchProviderIds.GoogleLens => OverlayVisualResources.BrandMark(size,
+                (Frozen(palette.GoogleRed), PluginIcons.GoogleRed),
+                (Frozen(palette.Google), PluginIcons.GoogleBlue),
+                (Frozen(palette.GoogleYellow), PluginIcons.GoogleYellow),
+                (Frozen(palette.GoogleGreen), PluginIcons.GoogleGreen)),
+            SearchProviderIds.YandexImages => OverlayVisualResources.BrandMark(size,
+                (Frozen(palette.Yandex), PluginIcons.YandexLetter)),
+            SearchProviderIds.TraceMoe => OverlayVisualResources.BrandMark(size,
+                (Frozen(palette.Trace), PluginIcons.TraceMoe)),
+            _ => OverlayVisualResources.BrandMark(size,
+                (Frozen(palette.Neutral), NeutralMark)),
         };
-    }
 
-    private static GeometryDrawing Draw(Color color, Geometry geometry)
-    {
-        var drawing = new GeometryDrawing(Frozen(color), null, geometry);
-        drawing.Freeze();
-        return drawing;
-    }
+    private static readonly FontFamily OverlayFont = new("Segoe UI Variable Text");
+    private static readonly Geometry NeutralMark = CreateNeutralMark();
 
-    private static Geometry FrozenGeometry(string data)
+    private static Geometry CreateNeutralMark()
     {
-        var geometry = Geometry.Parse(data);
+        var geometry = new EllipseGeometry(new Point(12, 12), 10, 10);
         geometry.Freeze();
         return geometry;
     }
 
-    private static readonly FontFamily OverlayFont = new("Segoe UI Variable Text");
-    private static readonly Geometry GoogleRed = FrozenGeometry(
-        "M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z");
-    private static readonly Geometry GoogleBlue = FrozenGeometry(
-        "M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z");
-    private static readonly Geometry GoogleYellow = FrozenGeometry(
-        "M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z");
-    private static readonly Geometry GoogleGreen = FrozenGeometry(
-        "M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z");
-    internal static readonly Geometry TraceMoeMark = FrozenGeometry(
-        "M248 60L279 78L320 54V105L352 161V12L342 18V6Z M0 0V161L32 105V56L71 79L104 60Z");
-
-    private static SolidColorBrush Frozen(Color color)
-    {
-        var brush = new SolidColorBrush(color);
-        brush.Freeze();
-        return brush;
-    }
+    private static SolidColorBrush Frozen(Color color) => OverlayVisualResources.Frozen(color);
 }

@@ -168,7 +168,8 @@ public sealed class FloatingToolbar
             row.Children.Add(new ContentControl
             {
                 Content = icon,
-                Margin = new Thickness(0, 0, 7, 0),
+                // Label glyphs sit about 1px below the center of their line box, so a centered icon looks raised.
+                Margin = new Thickness(0, 1, 7, -1),
                 VerticalAlignment = VerticalAlignment.Center,
                 Focusable = false,
             });

@@ -8,8 +8,8 @@ internal static class TextSelectionVisualFactory
     internal static TextSelectionVisual Create(bool lightTheme, UiStrings strings)
     {
         var toolbar = new FloatingToolbar(PluginPalette.For(lightTheme).FloatingToolbar);
-        var copy = toolbar.AddAction(strings.TextCopy);
         var search = toolbar.AddAction(strings.TextSearch);
+        var copy = toolbar.AddAction(strings.TextCopy);
         return new TextSelectionVisual(
             new Canvas { IsHitTestVisible = false },
             toolbar,

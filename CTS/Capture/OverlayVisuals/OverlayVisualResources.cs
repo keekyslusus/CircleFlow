@@ -37,6 +37,32 @@ internal static class OverlayVisualResources
 
     internal static bool HardwareEffectsEnabled() => RenderCapability.Tier >> 16 >= 2;
 
+    internal static Image BrandMark(double size, params (Brush Fill, Geometry Geometry)[] layers)
+    {
+        var drawing = new DrawingGroup();
+        // DrawingImage crops to drawn bounds; the frame keeps the marks' shared 24x24 optical sizing.
+        drawing.Children.Add(new GeometryDrawing(Frozen(PluginPalette.Transparent), null, BrandMarkFrame));
+        foreach (var (fill, geometry) in layers) drawing.Children.Add(new GeometryDrawing(fill, null, geometry));
+        drawing.Freeze();
+        return new Image
+        {
+            Source = new DrawingImage(drawing),
+            Width = size,
+            Height = size,
+            Stretch = Stretch.Uniform,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+    }
+
+    private static readonly Geometry BrandMarkFrame = CreateBrandMarkFrame();
+
+    private static Geometry CreateBrandMarkFrame()
+    {
+        var frame = new RectangleGeometry(new Rect(0, 0, 24, 24));
+        frame.Freeze();
+        return frame;
+    }
+
     internal static Path Icon(Geometry geometry, double size, Color color) => new()
     {
         Data = geometry,
