@@ -11,7 +11,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Direct_upload_success_does_not_use_the_page_script()
     {
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             CurrentUri = new Uri("https://lens.google.com/search?p=abc"),
         };
@@ -29,7 +29,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Direct_upload_failure_uses_page_script_and_validates_result_url()
     {
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             CurrentUri = new Uri("https://www.google.com/search?udm=26&q=image"),
             Message = "CTS:submitted",
@@ -49,7 +49,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Both_upload_paths_failing_returns_failed()
     {
-        var session = new FakeSession();
+        var session = new FakeBrowserSession();
         session.Navigations.Enqueue(BrowserNavigationResult.Failed());
         session.Navigations.Enqueue(BrowserNavigationResult.Failed());
 
@@ -63,7 +63,7 @@ public sealed class GoogleLensBrowserOperationTests
     public async Task Cancellation_after_direct_upload_does_not_start_page_fallback()
     {
         using var cancellation = new CancellationTokenSource();
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             OnPostNavigation = cancellation.Cancel,
         };
@@ -79,7 +79,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Operation_can_only_run_once_and_releases_its_image()
     {
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             CurrentUri = new Uri("https://lens.google.com/search?p=abc"),
         };
@@ -92,6 +92,117 @@ public sealed class GoogleLensBrowserOperationTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             operation.ExecuteAsync(session, CancellationToken.None));
     }
+
+    [Fact]
+    public async Task Question_continues_lens_results_in_ai_mode_with_the_page_token()
+    {
+        var session = new FakeBrowserSession
+        {
+            CurrentUri = new Uri(LensResults),
+            ScriptResult = "\"token-1\"",
+        };
+        session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+        session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+
+        var result = await new GoogleLensBrowserOperation(CreateJpeg(), NewLog(), "What is red?")
+            .ExecuteAsync(session, CancellationToken.None);
+
+        Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, result);
+        Assert.Equal(["POST", "SCRIPT", "GET"], session.Events);
+        var target = Assert.Single(session.GetTargets);
+        Assert.Contains("mstk=token-1", target.Query, StringComparison.Ordinal);
+        Assert.Contains("mq=What%20is%20red%3F", target.Query, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Direct_upload_waits_for_the_user_to_pass_the_traffic_check()
+    {
+        var session = new FakeBrowserSession
+        {
+            CurrentUri = new Uri("https://www.google.com/sorry/index?continue=results"),
+        };
+        session.OnWait = () => session.CurrentUri = new Uri(LensResults);
+        session.Navigations.Enqueue(BrowserNavigationResult.Failed("Unknown"));
+        session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+
+        var result = await NewOperation().ExecuteAsync(session, CancellationToken.None);
+
+        Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, result);
+        Assert.Equal(["POST", "WAIT"], session.Events);
+    }
+
+    [Fact]
+    public async Task Question_keeps_lens_results_when_they_cannot_continue_in_ai_mode()
+    {
+        var session = new FakeBrowserSession
+        {
+            CurrentUri = new Uri("https://lens.google.com/search?p=abc"),
+            ScriptResult = "\"token-1\"",
+        };
+        session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+
+        var result = await new GoogleLensBrowserOperation(CreateJpeg(), NewLog(), "What is red?")
+            .ExecuteAsync(session, CancellationToken.None);
+
+        Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, result);
+        Assert.Equal(0, session.GetNavigations);
+    }
+
+    [Fact]
+    public async Task Failed_ai_mode_navigation_fails_the_operation()
+    {
+        var session = new FakeBrowserSession
+        {
+            CurrentUri = new Uri(LensResults),
+            ScriptResult = "\"token-1\"",
+        };
+        session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+        session.Navigations.Enqueue(BrowserNavigationResult.Failed("ConnectionReset"));
+
+        var result = await new GoogleLensBrowserOperation(CreateJpeg(), NewLog(), "What is red?")
+            .ExecuteAsync(session, CancellationToken.None);
+
+        Assert.Equal(VisualSearchBrowserOperationStatus.Failed, result);
+    }
+
+    [Fact]
+    public void Ai_mode_url_keeps_image_context_and_replaces_follow_up_fields()
+    {
+        var uri = GoogleLensBrowserOperation.CreateAiModeUri(
+            new Uri(LensResults + "#frag"), "a-b_c", "Какого цвета круг? + & # test")!;
+
+        Assert.Equal("https://www.google.com/search", uri.GetLeftPart(UriPartial.Path));
+        Assert.Empty(uri.Fragment);
+        var parameters = uri.Query.TrimStart('?').Split('&').Select(part => part.Split('=', 2))
+            .ToLookup(pair => pair[0], pair => Uri.UnescapeDataString(pair[1]));
+        Assert.Equal("CAIQ", Assert.Single(parameters["vsrid"]));
+        Assert.Equal("sess", Assert.Single(parameters["gsessionid"]));
+        Assert.Equal("un", Assert.Single(parameters["lns_mode"]));
+        Assert.Equal("50", Assert.Single(parameters["udm"]));
+        Assert.Equal("", Assert.Single(parameters["q"]));
+        Assert.Equal("Какого цвета круг? + & # test", Assert.Single(parameters["mq"]));
+        Assert.Equal("a-b_c", Assert.Single(parameters["mstk"]));
+        Assert.Empty(parameters["source"]);
+        Assert.Equal(["10", "1", "1", "1", "0"],
+            new[] { "aep", "ntc", "aioh", "csuir", "cs" }.Select(name => Assert.Single(parameters[name])));
+    }
+
+    [Theory]
+    [InlineData("https://www.google.com/sorry/index?continue=x", true)]
+    [InlineData("https://google.com/sorry/index", true)]
+    [InlineData("https://www.google.com/search?q=sorry", false)]
+    [InlineData("https://example.com/sorry/index", false)]
+    public void Traffic_check_is_recognized_only_on_google(string url, bool expected)
+        => Assert.Equal(expected, GoogleTrafficCheck.IsShown(new Uri(url)));
+
+    [Theory]
+    [InlineData("https://lens.google.com/search?vsrid=a&gsessionid=b")]
+    [InlineData("http://www.google.com/search?vsrid=a&gsessionid=b")]
+    [InlineData("https://www.google.com/search?gsessionid=b")]
+    [InlineData("https://www.google.com/search?vsrid=a")]
+    [InlineData("https://example.com/search?vsrid=a&gsessionid=b")]
+    public void Ai_mode_url_requires_google_search_image_context(string url)
+        => Assert.Null(GoogleLensBrowserOperation.CreateAiModeUri(new Uri(url), "token", "question"));
 
     [Theory]
     [InlineData("https://lens.google.com/search?p=abc", true)]
@@ -133,6 +244,9 @@ public sealed class GoogleLensBrowserOperationTests
             GoogleLensBrowserOperation.CreateLensUploadBody([1, 2, 3], boundary));
     }
 
+    private const string LensResults =
+        "https://www.google.com/search?vsrid=CAIQ&udm=26&lns_mode=un&source=lns.web.ukn&gsessionid=sess&lns_surface=26";
+
     private static GoogleLensBrowserOperation NewOperation()
         => new(CreateJpeg(), NewLog());
 
@@ -147,68 +261,5 @@ public sealed class GoogleLensBrowserOperationTests
         var directory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         return new PluginLog(directory);
-    }
-
-    private sealed class FakeSession : IVisualSearchBrowserSession
-    {
-        public Queue<BrowserNavigationResult> Navigations { get; } = new();
-        public List<string> Events { get; } = [];
-        public Uri? CurrentUri { get; set; }
-        public string ScriptResult { get; set; } = "\"ready\"";
-        public string? Message { get; set; }
-        public Action? OnPostNavigation { get; set; }
-        public int PostNavigations { get; private set; }
-        public int GetNavigations { get; private set; }
-        public int ScriptCalls { get; private set; }
-        public int MessageCalls { get; private set; }
-
-        public Task<BrowserNavigationResult> NavigateAsync(
-            Uri target,
-            TimeSpan timeout,
-            CancellationToken cancel)
-        {
-            Events.Add("GET");
-            GetNavigations++;
-            return Task.FromResult(Navigations.Dequeue());
-        }
-
-        public Task<BrowserNavigationResult> NavigatePostAsync(
-            Uri target,
-            Stream body,
-            string headers,
-            TimeSpan timeout,
-            CancellationToken cancel)
-        {
-            Events.Add("POST");
-            PostNavigations++;
-            OnPostNavigation?.Invoke();
-            return Task.FromResult(Navigations.Dequeue());
-        }
-
-        public Task<BrowserNavigationResult> WaitForNavigationAsync(
-            TimeSpan timeout,
-            CancellationToken cancel)
-        {
-            Events.Add("WAIT");
-            return Task.FromResult(Navigations.Dequeue());
-        }
-
-        public Task<string> ExecuteScriptAsync(string script, CancellationToken cancel)
-        {
-            Events.Add("SCRIPT");
-            ScriptCalls++;
-            return Task.FromResult(ScriptResult);
-        }
-
-        public Task<string?> PostWebMessageAndWaitAsync(
-            string message,
-            Func<string, bool> predicate,
-            TimeSpan timeout,
-            CancellationToken cancel)
-        {
-            Events.Add("MESSAGE");
-            MessageCalls++;
-            return Task.FromResult(Message);
-        }
     }
 }

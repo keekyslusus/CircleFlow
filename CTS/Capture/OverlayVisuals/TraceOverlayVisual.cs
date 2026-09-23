@@ -209,7 +209,7 @@ internal sealed class TraceOverlayVisual : IDisposable
                 _ => _strings.SearchNetworkError,
             };
             var options = new StateCardOptions(
-                ProviderVisualCatalog.TraceMoeMark,
+                PluginIcons.TraceMoe,
                 message,
                 _strings.TraceMoeProviderName,
                 _strings.Close,

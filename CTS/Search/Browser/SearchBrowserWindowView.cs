@@ -144,6 +144,8 @@ internal sealed class SearchBrowserWindowView
 
     internal Task ShowAsync() => _resultsPanel.ShowAsync();
 
+    internal void ShowHidden() => _resultsPanel.ShowHidden();
+
     internal void ShowLoading()
     {
         var overlay = _loadingOverlay;

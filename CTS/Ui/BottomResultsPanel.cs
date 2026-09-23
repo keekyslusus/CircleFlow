@@ -86,8 +86,18 @@ internal sealed class BottomResultsPanel
         Position(_animationsEnabled ? _target.Bottom : _target.Top);
     }
 
+    internal void ShowHidden()
+    {
+        // A window clipped below its target keeps its HWND alive for WebView2 without being visible or active.
+        _window.ShowActivated = false;
+        SetNativeTransitions(false);
+        _window.Show();
+        Position(_target.Bottom);
+    }
+
     internal Task ShowAsync()
     {
+        _window.ShowActivated = true;
         SetNativeTransitions(false);
         _window.Show();
         if (_rendering) return _entrance.Task;

@@ -73,6 +73,45 @@ public sealed class FloatingToolbarTests
     }
 
     [Theory]
+    [InlineData(640)]
+    [InlineData(240)]
+    public void Ask_prompt_replaces_actions_within_viewport_and_restores_them(double width)
+    {
+        RunOnSta(() =>
+        {
+            var visual = ImageSelectionVisualFactory.Create(false, TestUiStrings.English);
+            var window = new Window
+            {
+                Width = width, Height = 240, WindowStyle = WindowStyle.None, Content = visual.Toolbar.Layer,
+            };
+            try
+            {
+                window.Show();
+                visual.Toolbar.Show(new Rect(width - 60, 180, 60, 40), new Size(width, 240));
+                visual.Toolbar.SetPromptOpen(true);
+                window.UpdateLayout();
+
+                Assert.Same(visual.AskPrompt.Root, visual.Toolbar.Surface.Child);
+                Assert.True(visual.AskPrompt.Input.IsKeyboardFocused);
+                var left = Canvas.GetLeft(visual.Toolbar.Surface);
+                Assert.InRange(left, 0, width);
+                Assert.InRange(left + visual.Toolbar.Surface.ActualWidth, 0, width + 0.01);
+                Assert.InRange(visual.Toolbar.Surface.ActualWidth, Math.Min(380, width - 12), width);
+                Assert.Equal(44, visual.Toolbar.Surface.ActualHeight);
+                var send = visual.AskPrompt.SendButton;
+                var bounds = send.TransformToAncestor(visual.Toolbar.Layer).TransformBounds(new Rect(send.RenderSize));
+                Assert.InRange(bounds.Right, 0, width + 0.01);
+
+                visual.Toolbar.SetPromptOpen(false);
+                window.UpdateLayout();
+                Assert.False(visual.Toolbar.IsPromptOpen);
+                Assert.IsType<WrapPanel>(visual.Toolbar.Surface.Child);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void Updating_search_icon_keeps_open_toolbar_inside_viewport_and_preserves_button(bool lightTheme)
@@ -108,8 +147,11 @@ public sealed class FloatingToolbarTests
                     if (provider == SearchProviderIds.TraceMoe)
                     {
                         var drawing = Assert.IsType<DrawingGroup>(Assert.IsType<DrawingImage>(Assert.IsType<Image>(icon).Source).Drawing);
-                        Assert.Same(PluginIcons.AniListBlue, Assert.IsType<GeometryDrawing>(drawing.Children[0]).Geometry);
-                        Assert.IsType<System.Windows.Shapes.Path>(ProviderVisualCatalog.CreateSearchMark(provider, lightTheme));
+                        Assert.Equal(new Rect(0, 0, 24, 24), drawing.Bounds);
+                        Assert.Same(PluginIcons.AniListBlue, Assert.IsType<GeometryDrawing>(drawing.Children[1]).Geometry);
+                        var imageMark = Assert.IsType<Image>(ProviderVisualCatalog.CreateSearchMark(provider, lightTheme));
+                        var imageDrawing = Assert.IsType<DrawingGroup>(Assert.IsType<DrawingImage>(imageMark.Source).Drawing);
+                        Assert.Same(PluginIcons.TraceMoe, Assert.IsType<GeometryDrawing>(imageDrawing.Children[1]).Geometry);
                     }
                 }
                 Assert.Equal(3, clicks);

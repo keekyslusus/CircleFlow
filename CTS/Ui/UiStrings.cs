@@ -62,6 +62,9 @@ public sealed class UiStrings
     public string ImageSaveTitle => Get("plugin_circletosearch_image_save_title");
     public string ImageSaveFilter => Get("plugin_circletosearch_image_save_filter");
     public string ImageFileName => Get("plugin_circletosearch_image_file_name");
+    public string Ask => Get("plugin_circletosearch_image_ask");
+    public string AskPlaceholder => Get("plugin_circletosearch_image_ask_placeholder");
+    public string AskSend => Get("plugin_circletosearch_image_ask_send");
     public string Close => Get("plugin_circletosearch_close");
     public string MusicResultTitle => Get("plugin_circletosearch_music_result_title");
     public string MusicNoMatch => Get("plugin_circletosearch_music_no_match");

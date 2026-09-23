@@ -6,6 +6,10 @@ internal static class PluginPalette
 {
     internal static Color AniListBlue { get; } = Color.FromRgb(0x02, 0xA9, 0xFF);
     internal static Color AniListWhite { get; } = Color.FromRgb(0xFE, 0xFE, 0xFE);
+    internal static Color GeminiBlue { get; } = Color.FromRgb(0x31, 0x86, 0xFF);
+    internal static Color GeminiRed { get; } = Color.FromRgb(0xFA, 0x43, 0x40);
+    internal static Color GeminiYellow { get; } = Color.FromRgb(0xF6, 0xC0, 0x13);
+    internal static Color GeminiGreen { get; } = Color.FromRgb(0x14, 0xBB, 0x69);
     private static Color DarkMusicPrimary { get; } = Color.FromRgb(0xD0, 0xBC, 0xFF);
     private static Color LightMusicPrimary { get; } = Color.FromRgb(0x67, 0x50, 0xA4);
     private static Color DarkDockSurface { get; } = Color.FromArgb(0xE6, 0x20, 0x21, 0x24);

@@ -39,11 +39,38 @@ public sealed record OpenMusicResult : IOverlayCommand;
 
 public sealed record SaveSelectedImage(System.Windows.Media.Imaging.BitmapSource Image) : IOverlayCommand;
 
+public sealed record AskAboutSelection : IOverlayCommand
+{
+    // Null when the image was already attached while the question was typed.
+    public AskAboutSelection(SelectionOutcome? selection, string question)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(question);
+        Selection = selection;
+        Question = question;
+    }
+
+    public SelectionOutcome? Selection { get; }
+    public string Question { get; }
+}
+
+public sealed record AskDraftStarted : IOverlayCommand;
+public sealed record AskDraftCanceled : IOverlayCommand;
+
+public sealed record AskImageAttached : IOverlayCommand
+{
+    public AskImageAttached(SelectionOutcome selection) =>
+        Selection = selection ?? throw new ArgumentNullException(nameof(selection));
+
+    public SelectionOutcome Selection { get; }
+}
+
 internal static class OverlayCommandOwnership
 {
     public static void DisposePayload(IOverlayCommand command)
     {
         if (command is VisualSelection visual) visual.Selection.Dispose();
+        else if (command is AskAboutSelection ask) ask.Selection?.Dispose();
+        else if (command is AskImageAttached attached) attached.Selection.Dispose();
     }
 }
 

@@ -20,7 +20,8 @@ internal sealed class OverlaySessionWorkflow(
     UiStrings strings,
     PluginLog log,
     TextSearchWorkflow? textSearch = null,
-    Func<System.Windows.Media.Imaging.BitmapSource, Task>? saveImage = null) : ISearchSessionWorkflow
+    Func<System.Windows.Media.Imaging.BitmapSource, Task>? saveImage = null,
+    Func<int, CancellationToken, OverlayAskSession>? createAskSession = null) : ISearchSessionWorkflow
 {
     public async Task RunAsync(SearchSessionOptions options, Action onUploadStarted, CancellationToken cancellationToken)
     {
@@ -39,11 +40,14 @@ internal sealed class OverlaySessionWorkflow(
         OverlayMusicSession? music = null;
         OverlayTranslationSession? translation = null;
         OverlayTraceSession? trace = null;
+        OverlayAskSession? ask = null;
         Task<IOverlayCommand>? commandTask = null;
         try
         {
             music = createMusicSession(overlay, cancellationToken);
             operations.Add(music);
+            ask = createAskSession?.Invoke(options.MaxLongSidePx, cancellationToken);
+            if (ask is not null) operations.Add(ask);
             translation = createTranslationSession?.Invoke(overlay, cancellationToken);
             if (translation is not null) operations.Add(translation);
             trace = createTraceSession(overlay, options.MaxLongSidePx, cancellationToken);
@@ -109,6 +113,27 @@ internal sealed class OverlaySessionWorkflow(
                                 cancellationToken);
                             commandOwnershipTransferred = true;
                             await execution.ConfigureAwait(false);
+                            return;
+
+                        case AskDraftStarted when ask is not null && !music.IsRunning:
+                            ask.Start();
+                            break;
+
+                        case AskImageAttached attached when ask is not null:
+                            commandOwnershipTransferred = true;
+                            ask.AttachImage(attached.Selection);
+                            break;
+
+                        case AskDraftCanceled when ask is not null:
+                            await ask.CancelAsync().ConfigureAwait(false);
+                            break;
+
+                        case AskAboutSelection asked when ask is not null && !music.IsRunning:
+                            await overlay.CloseAsync().ConfigureAwait(false);
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var asking = ask.SubmitAsync(asked, onUploadStarted);
+                            commandOwnershipTransferred = true;
+                            await asking.ConfigureAwait(false);
                             return;
 
                         case SearchSelectedText selectedText when textSearch is not null:

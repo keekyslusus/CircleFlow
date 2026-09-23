@@ -211,6 +211,13 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
+        var imageAsk = new ImageAskWorkflow(
+            (image, question) => new GoogleAiModeBrowserOperation(
+                image, question, (jpeg, asked) => new GoogleLensBrowserOperation(jpeg, log, asked), log),
+            ImageCropper.EncodeJpeg,
+            visualSearchPresenter,
+            strings,
+            log);
         var musicClock = new SystemMusicRecognitionClock();
         var musicRollback = rollback.Own(new ResourceRollbackScope(log));
         var musicThrottle = musicRollback.Own(new ShazamRequestThrottle(musicClock));
@@ -311,7 +318,8 @@ public static class CompositionRoot
             strings,
             log,
             textSearch,
-            imageSave.SaveAsync);
+            imageSave.SaveAsync,
+            (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation));
         var coordinator = new SearchCoordinator(
             workflow,
             hideOwnWindows,
@@ -531,6 +539,7 @@ public static class CompositionRoot
                 translation,
                 clipboardCopy,
                 () => (BitmapSource)context.Visual.Selection.Screenshot.Source,
+                context.CreateSelectionCopy,
                 context.SelectionCompleted,
                 publishCommand,
                 context.CloseRequested ?? (() => publishCommand(new CancelSession())),

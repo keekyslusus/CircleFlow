@@ -137,12 +137,19 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         POINT anchor)
     {
         var generation = ++_showGeneration;
+        var reveal = preparedSearch.RevealAfter is { IsCompleted: false } pending ? pending : null;
         try
         {
             try
             {
                 cancel.ThrowIfCancellationRequested();
-                await EnsureWindowAsync(anchor, descriptor, cancel).ConfigureAwait(true);
+                if (reveal is not null && _view is not null)
+                {
+                    // An open results window belongs to the user until they submit; its browser is already warm.
+                    await reveal.WaitAsync(cancel).ConfigureAwait(true);
+                    reveal = null;
+                }
+                await EnsureWindowAsync(anchor, descriptor, hidden: reveal is not null, cancel).ConfigureAwait(true);
                 cancel.ThrowIfCancellationRequested();
             }
             catch (WebView2RuntimeNotFoundException exception)
@@ -180,8 +187,11 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
             ApplyBrowserTheme(webView, lightTheme);
             view.ShowLoading();
             webView.CoreWebView2.Stop();
-            window.Show();
-            window.Activate();
+            if (reveal is null)
+            {
+                window.Show();
+                window.Activate();
+            }
 
             var session = new WebView2VisualSearchBrowserSession(
                 webView,
@@ -208,9 +218,11 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
                 }
                 else
                 {
-                    var browserOperationStatus = await preparedSearch.RequireBrowserOperation()
-                        .ExecuteAsync(session, showLifetime.Token)
-                        .ConfigureAwait(true);
+                    var execution = preparedSearch.RequireBrowserOperation()
+                        .ExecuteAsync(session, showLifetime.Token);
+                    if (reveal is not null)
+                        await RevealAsync(view, reveal, execution, anchor, showLifetime.Token).ConfigureAwait(true);
+                    var browserOperationStatus = await execution.ConfigureAwait(true);
                     status = browserOperationStatus switch
                     {
                         VisualSearchBrowserOperationStatus.Succeeded => SearchBrowserShowStatus.Shown,
@@ -259,9 +271,25 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         }
     }
 
+    private static async Task RevealAsync(
+        SearchBrowserWindowView view,
+        Task reveal,
+        Task execution,
+        POINT anchor,
+        CancellationToken cancel)
+    {
+        // A failed operation closes the hidden window itself, so it is never revealed.
+        if (await Task.WhenAny(reveal, execution).ConfigureAwait(true) != reveal) return;
+        if (cancel.IsCancellationRequested || view.IsClosed) return;
+        view.MoveTo(anchor);
+        _ = view.ShowAsync();
+        view.Window.Activate();
+    }
+
     private async Task EnsureWindowAsync(
         POINT anchor,
         SearchProviderDescriptor descriptor,
+        bool hidden,
         CancellationToken cancel)
     {
         if (_view is not null && _webView is not null)
@@ -359,7 +387,8 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         try
         {
             view.SetProvider(descriptor);
-            await view.ShowAsync().ConfigureAwait(true);
+            if (hidden) view.ShowHidden();
+            else await view.ShowAsync().ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
             if (view.IsClosed || !ReferenceEquals(_view, view)) throw new OperationCanceledException();
             var controllerOptions = _environment.CreateCoreWebView2ControllerOptions();

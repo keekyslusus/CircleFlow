@@ -26,7 +26,9 @@ public sealed record ImageSelectionVisual(
     Button SearchButton,
     Button CopyButton,
     Button SaveButton,
-    Button TranslateButton);
+    Button TranslateButton,
+    Button AskButton,
+    FloatingToolbarPrompt AskPrompt);
 
 public sealed record SelectionOverlayVisual(
     Image Screenshot,

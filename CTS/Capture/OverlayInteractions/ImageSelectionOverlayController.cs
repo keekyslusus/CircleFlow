@@ -1,8 +1,11 @@
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Ui;
+using CircleToSearch.Ui.Effects;
 using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Capture.OverlayInteractions;
@@ -17,19 +20,22 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     private readonly ScreenTranslationOverlayController _translation;
     private readonly ClipboardCopyService _clipboard;
     private readonly Func<BitmapSource> _visibleImage;
+    private readonly Func<GdiRectangle, SelectionOutcome> _createSelection;
     private readonly Action<GdiRectangle> _search;
     private readonly Action<IOverlayCommand> _publish;
     private readonly Action _close;
     private readonly UiStrings _strings;
     private readonly DispatcherTimer _copyTimer;
     private readonly List<IDisposable> _ripples;
+    private bool _askDraftStarted;
+    private bool _askImageAttached;
     private bool _disposed;
 
     internal ImageSelectionOverlayController(ImageSelectionVisual visual, FrameworkElement root,
         OverlayCoordinateMapper mapper, SelectionOverlayController selection,
         ScreenTranslationOverlayController translation, ClipboardCopyService clipboard,
-        Func<BitmapSource> visibleImage, Action<GdiRectangle> search, Action<IOverlayCommand> publish,
-        Action close, UiStrings strings)
+        Func<BitmapSource> visibleImage, Func<GdiRectangle, SelectionOutcome> createSelection,
+        Action<GdiRectangle> search, Action<IOverlayCommand> publish, Action close, UiStrings strings)
     {
         _visual = visual;
         _root = root;
@@ -38,6 +44,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         _translation = translation;
         _clipboard = clipboard;
         _visibleImage = visibleImage;
+        _createSelection = createSelection;
         _search = search;
         _publish = publish;
         _close = close;
@@ -49,7 +56,12 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         visual.CopyButton.Click += OnCopy;
         visual.SaveButton.Click += OnSave;
         visual.TranslateButton.Click += OnTranslate;
-        _ripples = [.. OverlayVisualResources.AttachControlRipples(visual.Toolbar.Layer)];
+        visual.AskButton.Click += OnAsk;
+        visual.AskPrompt.SendButton.Click += OnSend;
+        visual.AskPrompt.Input.KeyDown += OnPromptKeyDown;
+        visual.AskPrompt.Input.TextChanged += OnPromptTextChanged;
+        _ripples = [.. OverlayVisualResources.AttachControlRipples(visual.Toolbar.Layer),
+            ControlRippleHost.Attach(visual.AskPrompt.SendButton)];
     }
 
     internal GdiRectangle? Bounds { get; private set; }
@@ -87,6 +99,23 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         _copyTimer.Stop();
         IsCompleting = false;
         _visual.Toolbar.Hide();
+        ResetAskPrompt();
+    }
+
+    internal bool CloseAskPrompt()
+    {
+        if (_disposed || !_visual.Toolbar.IsPromptOpen) return false;
+        ResetAskPrompt();
+        return true;
+    }
+
+    private void ResetAskPrompt()
+    {
+        if (_askDraftStarted && !_disposed) _publish(new AskDraftCanceled());
+        _askDraftStarted = false;
+        _askImageAttached = false;
+        _visual.Toolbar.SetPromptOpen(false);
+        _visual.AskPrompt.Input.Clear();
     }
 
     private bool CanAct => !_disposed && !IsCompleting && Bounds is not null && _visual.Toolbar.IsOpen;
@@ -128,6 +157,58 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         e.Handled = true;
     }
 
+    private void OnAsk(object sender, RoutedEventArgs e)
+    {
+        if (!CanAct) return;
+        _visual.Toolbar.SetPromptOpen(true);
+        // Warming the browser now hides its startup behind typing; the image waits for the first character.
+        _askDraftStarted = true;
+        _publish(new AskDraftStarted());
+        e.Handled = true;
+    }
+
+    private void OnPromptTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!_askDraftStarted || _askImageAttached || _visual.AskPrompt.Input.Text.Length == 0 || !CanAct) return;
+        var selection = _createSelection(Bounds!.Value);
+        _askImageAttached = true;
+        try { _publish(new AskImageAttached(selection)); }
+        catch
+        {
+            selection.Dispose();
+            throw;
+        }
+    }
+
+    private void OnSend(object sender, RoutedEventArgs e)
+    {
+        SubmitQuestion();
+        e.Handled = true;
+    }
+
+    private void OnPromptKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        SubmitQuestion();
+        e.Handled = true;
+    }
+
+    private void SubmitQuestion()
+    {
+        var question = _visual.AskPrompt.Input.Text.Trim();
+        if (!CanAct || question.Length == 0) return;
+        var selection = _askImageAttached ? null : _createSelection(Bounds!.Value);
+        IsCompleting = true;
+        _askDraftStarted = false;
+        _visual.Toolbar.Hide();
+        try { _publish(new AskAboutSelection(selection, question)); }
+        catch
+        {
+            selection?.Dispose();
+            throw;
+        }
+    }
+
     private void OnCopyFeedbackCompleted(object? sender, EventArgs e)
     {
         _copyTimer.Stop();
@@ -145,6 +226,10 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         _visual.CopyButton.Click -= OnCopy;
         _visual.SaveButton.Click -= OnSave;
         _visual.TranslateButton.Click -= OnTranslate;
+        _visual.AskButton.Click -= OnAsk;
+        _visual.AskPrompt.SendButton.Click -= OnSend;
+        _visual.AskPrompt.Input.KeyDown -= OnPromptKeyDown;
+        _visual.AskPrompt.Input.TextChanged -= OnPromptTextChanged;
         foreach (var ripple in _ripples) ripple.Dispose();
     }
 }

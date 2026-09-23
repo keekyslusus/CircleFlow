@@ -312,7 +312,7 @@ public sealed class TraceOverlayTests
                 Assert.Equal(340, stateCard.Width);
                 Assert.Equal(new CornerRadius(18), stateCard.CornerRadius);
                 Assert.Contains(Descendants(stateCard).OfType<System.Windows.Shapes.Path>(),
-                    icon => ReferenceEquals(icon.Data, ProviderVisualCatalog.TraceMoeMark));
+                    icon => ReferenceEquals(icon.Data, PluginIcons.TraceMoe));
             }
             Pump(450);
             var provider = overlay.VisualState.Provider!;
