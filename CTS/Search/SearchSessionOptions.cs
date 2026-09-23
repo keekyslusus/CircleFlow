@@ -12,7 +12,8 @@ public sealed record SearchSessionOptions(
     int MaxLongSidePx = 1600,
     string? OcrLanguageTag = null,
     string TranslationTargetLanguageTag = "en",
-    KeyboardLanguageSnapshot InputLanguage = default)
+    KeyboardLanguageSnapshot InputLanguage = default,
+    string TextSearchEngineId = TextSearchEngines.MatchImageSearch)
 {
     internal static SearchSessionOptions From(AppSettings settings, OcrLanguageCatalog languages, CultureInfo culture,
         KeyboardLanguageSnapshot inputLanguage = default) =>
@@ -21,5 +22,6 @@ public sealed record SearchSessionOptions(
             string.IsNullOrWhiteSpace(settings.TranslationTargetLanguageTag)
                 ? string.IsNullOrWhiteSpace(culture.Name) ? "en" : culture.Name
                 : settings.TranslationTargetLanguageTag,
-            inputLanguage);
+            inputLanguage,
+            settings.TextSearchEngineId);
 }

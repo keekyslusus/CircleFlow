@@ -38,4 +38,5 @@ internal sealed record OverlayControllerContext(
     string TranslationTargetLanguageTag = "en",
     KeyboardLanguageSnapshot InputLanguage = default,
     Action? CloseRequested = null,
-    Action? SelectionDrawn = null);
+    Action? SelectionDrawn = null,
+    string TextSearchEngineId = TextSearchEngines.MatchImageSearch);

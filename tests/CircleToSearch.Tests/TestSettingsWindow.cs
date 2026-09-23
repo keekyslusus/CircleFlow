@@ -7,7 +7,8 @@ namespace CircleToSearch.Tests;
 
 internal sealed class TestSettingsWindow
 {
-    public TestSettingsWindow(SettingsService? settings = null, bool openSucceeds = true)
+    public TestSettingsWindow(SettingsService? settings = null, bool openSucceeds = true,
+        string? webViewRuntimeVersion = "140.0.3485.54")
     {
         var log = new PluginLog(Path.Combine(TestOutputPaths.TempDirectory, "settings-window-" + Guid.NewGuid().ToString("N")));
         Settings = settings ?? TestSettings.Create();
@@ -23,7 +24,7 @@ internal sealed class TestSettingsWindow
         var urlOpening = new UrlOpeningService(
             target => { Opened.Add(target); return openSucceeds; }, Notifier, TestUiStrings.English, log);
         Model = new SettingsWindowModel(Settings, providers, new ProjectSupport(urlOpening), urlOpening, Paths,
-            TestUiStrings.English);
+            TestUiStrings.English, () => webViewRuntimeVersion);
     }
 
     public SettingsService Settings { get; }

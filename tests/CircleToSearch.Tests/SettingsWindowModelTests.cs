@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using CircleToSearch.Search;
 using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.Trigger;
 using Xunit;
@@ -22,6 +23,11 @@ public sealed class SettingsWindowModelTests
         Assert.Equal(expected, gesture);
         if (gesture is not null) Assert.True(HotkeyGestureParser.TryParse(gesture, out _, out _));
     }
+
+    [Fact]
+    public void Every_text_search_engine_has_a_localized_name() =>
+        Assert.All(TextSearchEngines.All, engine =>
+            Assert.True(TestUiStrings.EnglishValues.ContainsKey("app_settings_engine_" + engine.Id), engine.Id));
 
     [Fact]
     public void Shortcut_conflicts_are_reported_and_keep_the_previous_shortcut()

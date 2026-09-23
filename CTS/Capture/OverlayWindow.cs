@@ -98,7 +98,8 @@ public sealed class OverlayWindow : Window
         Action<IOverlayCommand>? publishCommand = null,
         string? ocrLanguageTag = null,
         string translationTargetLanguageTag = "en",
-        KeyboardLanguageSnapshot inputLanguage = default)
+        KeyboardLanguageSnapshot inputLanguage = default,
+        string textSearchEngineId = TextSearchEngines.MatchImageSearch)
     {
         _frame = frame;
         _exitFade = exitFade;
@@ -166,7 +167,8 @@ public sealed class OverlayWindow : Window
                 translationTargetLanguageTag,
                 inputLanguage,
                 () => CancelInternal(),
-                OnSelectionDrawn));
+                OnSelectionDrawn,
+                textSearchEngineId));
         }
         catch
         {
@@ -229,7 +231,8 @@ public sealed class OverlayWindow : Window
             publishCommand,
             options.SessionOptions.OcrLanguageTag,
             options.SessionOptions.TranslationTargetLanguageTag,
-            options.SessionOptions.InputLanguage)
+            options.SessionOptions.InputLanguage,
+            options.SessionOptions.TextSearchEngineId)
     {
     }
 

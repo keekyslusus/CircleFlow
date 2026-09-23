@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Interop;
+using CircleToSearch.Search;
 using CircleToSearch.Ui;
 
 namespace CircleToSearch.Shell.SettingsPreview;
@@ -78,6 +79,15 @@ internal sealed class SettingsWindowView
             provider.Items.Add(new ComboBoxItem { Content = descriptor.DisplayName, Tag = descriptor.Id });
         provider.SelectionChanged += OnProviderChanged;
         _dropdowns.Add(new SettingsDropdownMotion(provider));
+        var textSearch = Element<ComboBox>("TextSearch");
+        textSearch.Items.Add(new ComboBoxItem
+        {
+            Content = strings.SettingsPreviewText("match_image_search"), Tag = TextSearchEngines.MatchImageSearch,
+        });
+        foreach (var engine in TextSearchEngines.All)
+            textSearch.Items.Add(new ComboBoxItem { Content = strings.SettingsPreviewText("engine_" + engine.Id), Tag = engine.Id });
+        textSearch.SelectionChanged += OnTextSearchChanged;
+        _dropdowns.Add(new SettingsDropdownMotion(textSearch));
 
         // These controls have no application setting yet, so their values live only in this window.
         foreach (var name in new[] { "Launch", "ToolbarAsk", "ToolbarCopy", "ToolbarSave", "ToolbarTranslate", "IgnoreFullscreen" })
@@ -86,7 +96,7 @@ internal sealed class SettingsWindowView
             var initial = control.IsChecked;
             _restoreDefaults.Add(() => control.IsChecked = initial);
         }
-        foreach (var name in new[] { "AppLanguage", "Cleanup", "TextSearch", "OcrLanguage", "TargetLanguage" })
+        foreach (var name in new[] { "AppLanguage", "Cleanup", "OcrLanguage", "TargetLanguage" })
         {
             var control = Element<ComboBox>(name);
             _dropdowns.Add(new SettingsDropdownMotion(control));
@@ -253,18 +263,29 @@ internal sealed class SettingsWindowView
 
     private void LoadSettings()
     {
-        var provider = Element<ComboBox>("Provider");
         _loadingSettings = true;
         try
         {
-            provider.SelectedItem = provider.Items.OfType<ComboBoxItem>()
-                .FirstOrDefault(item => Equals(item.Tag, _model.ProviderId));
+            Select(Element<ComboBox>("Provider"), _model.ProviderId);
+            Select(Element<ComboBox>("TextSearch"), _model.TextSearchEngineId);
         }
         finally { _loadingSettings = false; }
         var keys = _model.HotkeyGesture.Split('+')
             .Select((token, index) => new ShortcutPart(ShortcutLabel(token), index > 0)).ToArray();
         Element<ItemsControl>("ShortcutKeys").ItemsSource = keys;
         Element<ItemsControl>("HeroShortcutKeys").ItemsSource = keys;
+        Element<TextBlock>("RuntimeVersion").Text = _model.WebViewRuntimeVersion ?? _strings.SettingsRuntimeMissing;
+    }
+
+    private static void Select(ComboBox comboBox, string id) =>
+        comboBox.SelectedItem = comboBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item => Equals(item.Tag, id));
+
+    private void OnTextSearchChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings || Element<ComboBox>("TextSearch").SelectedItem is not ComboBoxItem { Tag: string id }) return;
+        if (_model.SelectTextSearchEngine(id)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
     }
 
     private void OnProviderChanged(object sender, SelectionChangedEventArgs e)

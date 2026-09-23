@@ -10,6 +10,22 @@ internal static class PluginPalette
     internal static Color GeminiRed { get; } = Color.FromRgb(0xFA, 0x43, 0x40);
     internal static Color GeminiYellow { get; } = Color.FromRgb(0xF6, 0xC0, 0x13);
     internal static Color GeminiGreen { get; } = Color.FromRgb(0x14, 0xBB, 0x69);
+    internal static Color BingTeal { get; } = Color.FromRgb(0x00, 0xCA, 0xCC);
+    internal static Color BingBlue { get; } = Color.FromRgb(0x04, 0x8F, 0xCE);
+    internal static Color BingSky { get; } = Color.FromRgb(0x00, 0xBB, 0xEC);
+    internal static Color BingNavy { get; } = Color.FromRgb(0x27, 0x56, 0xA9);
+    internal static Color DuckDuckGoOrange { get; } = Color.FromRgb(0xDE, 0x58, 0x33);
+    internal static Color DuckDuckGoFeather { get; } = Color.FromRgb(0xDD, 0xDD, 0xDD);
+    internal static Color DuckDuckGoWhite { get; } = Color.FromRgb(0xFF, 0xFF, 0xFF);
+    internal static Color DuckDuckGoTie { get; } = Color.FromRgb(0x3C, 0xA8, 0x2B);
+    internal static Color DuckDuckGoTieHighlight { get; } = Color.FromRgb(0x4C, 0xBA, 0x3C);
+    internal static Color DuckDuckGoBeak { get; } = Color.FromRgb(0xFF, 0xCC, 0x33);
+    // The SVG draws the eyes and brows in a group with 80% opacity.
+    internal static Color DuckDuckGoEyes { get; } = Color.FromArgb(0xCC, 0x14, 0x30, 0x7E);
+    internal static Color KagiYellow { get; } = Color.FromRgb(0xFF, 0xB3, 0x19);
+    internal static Color KagiWhite { get; } = Color.FromRgb(0xFF, 0xFF, 0xFF);
+    internal static Color KagiInk { get; } = Color.FromRgb(0x18, 0x18, 0x1A);
+    internal static Color StartpageViolet { get; } = Color.FromRgb(0x65, 0x63, 0xFF);
     private static Color DarkMusicPrimary { get; } = Color.FromRgb(0xD0, 0xBC, 0xFF);
     private static Color LightMusicPrimary { get; } = Color.FromRgb(0x67, 0x50, 0xA4);
     private static Color DarkDockSurface { get; } = Color.FromArgb(0xE6, 0x20, 0x21, 0x24);
@@ -133,6 +149,7 @@ internal static class PluginPalette
             GoogleGreen: Color.FromRgb(0x34, 0xA8, 0x53),
             Yandex: Color.FromRgb(0xFC, 0x3F, 0x1D),
             Trace: Color.FromRgb(0xE5, 0xE8, 0xFF),
+            Qwant: Color.FromRgb(0xE8, 0xEA, 0xED),
             Neutral: Color.FromRgb(0xBD, 0xC1, 0xC6)),
         MusicOverlay: new MusicOverlayPalette(
             Surface: DarkStateCard.Surface,
@@ -206,6 +223,7 @@ internal static class PluginPalette
             GoogleGreen: Color.FromRgb(0x34, 0xA8, 0x53),
             Yandex: Color.FromRgb(0xFC, 0x3F, 0x1D),
             Trace: Color.FromRgb(0x45, 0x4A, 0x75),
+            Qwant: Color.FromRgb(0x28, 0x2B, 0x2F),
             Neutral: Color.FromRgb(0x5F, 0x63, 0x68)),
         MusicOverlay: new MusicOverlayPalette(
             Surface: LightStateCard.Surface,
@@ -332,6 +350,7 @@ internal sealed record ProviderPalette(
     Color GoogleGreen,
     Color Yandex,
     Color Trace,
+    Color Qwant,
     Color Neutral);
 
 internal sealed record MusicOverlayPalette(

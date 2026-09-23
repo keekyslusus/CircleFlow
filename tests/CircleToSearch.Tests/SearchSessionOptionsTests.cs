@@ -15,12 +15,13 @@ public sealed class SearchSessionOptionsTests
         var service = TestSettings.Create(new AppSettings
         {
             HideDelayMilliseconds = 0, PaddingPx = 12, LassoMinDiagonalPx = 14, MaxLongSidePx = 1700,
-            OcrLanguageTag = "en-US", TranslationTargetLanguageTag = "ru-RU",
+            OcrLanguageTag = "en-US", TranslationTargetLanguageTag = "ru-RU", TextSearchEngineId = "kagi",
         });
         var languages = new OcrLanguageCatalog([new("en-US", "English"), new("ja-JP", "Japanese")]);
         var inputTag = "en-US";
         var initial = SearchSessionOptions.From(service.Snapshot, languages, CultureInfo.GetCultureInfo("fr-FR"),
             new KeyboardLanguageSnapshot(0, inputTag));
+        Assert.Equal("kagi", initial.TextSearchEngineId);
         var reads = 0;
         var workflow = new RecordingWorkflow();
         var directory = Path.Combine(TestOutputPaths.TempDirectory, "session-options-" + Guid.NewGuid().ToString("N"));

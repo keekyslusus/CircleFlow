@@ -127,7 +127,7 @@ public static class CompositionRoot
                 cancellation.ThrowIfCancellationRequested();
                 var support = new ProjectSupport(urlOpening);
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, support, urlOpening,
-                    paths, strings);
+                    paths, strings, WebViewEnvironmentFactory.RuntimeVersion);
                 settingsWindow = new SettingsWindowController(application.Dispatcher,
                     () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });
@@ -292,6 +292,7 @@ public static class CompositionRoot
             log);
         var textSearch = new TextSearchWorkflow(
             new TextSearchUrlBuilder(),
+            () => settings.Snapshot.TextSearchEngineId,
             urlOpening,
             notifier,
             strings,
@@ -422,7 +423,7 @@ public static class CompositionRoot
                 var visual = context.Visual;
                 visual.TextSelection.Toolbar.SetActionContent(
                     visual.TextSelection.SearchButton, context.Strings.TextSearch,
-                    ProviderVisualCatalog.CreateSearchMark(providerId, visual.LightTheme, textSearch: true));
+                    ProviderVisualCatalog.CreateTextSearchMark(providerId, context.TextSearchEngineId, visual.LightTheme));
                 visual.ImageSelection.Toolbar.SetActionContent(
                     visual.ImageSelection.SearchButton, context.Strings.TextSearch,
                     ProviderVisualCatalog.CreateSearchMark(providerId, visual.LightTheme));

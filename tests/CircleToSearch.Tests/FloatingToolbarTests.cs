@@ -132,7 +132,7 @@ public sealed class FloatingToolbarTests
                 var initialWidth = toolbar.Surface.ActualWidth;
                 foreach (var provider in new[] { SearchProviderIds.GoogleLens, SearchProviderIds.YandexImages, SearchProviderIds.TraceMoe })
                 {
-                    var icon = ProviderVisualCatalog.CreateSearchMark(provider, lightTheme, textSearch: true);
+                    var icon = ProviderVisualCatalog.CreateTextSearchMark(provider, TextSearchEngines.MatchImageSearch, lightTheme);
                     toolbar.SetActionContent(search, TestUiStrings.English.TextSearch, icon);
                     window.UpdateLayout();
                     Assert.True(toolbar.IsOpen);
@@ -249,6 +249,48 @@ public sealed class FloatingToolbarTests
             time.Advance(240);
             Assert.Equal(Visibility.Collapsed, toolbar.Surface.Visibility);
         });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Text_search_mark_follows_the_selected_engine_and_falls_back_to_the_image_provider(bool lightTheme)
+    {
+        RunOnSta(_ =>
+        {
+            var marks = new Dictionary<string, Geometry>
+            {
+                [TextSearchEngines.Bing] = PluginIcons.BingUpper,
+                [TextSearchEngines.DuckDuckGo] = PluginIcons.DuckDuckGoDisc,
+                [TextSearchEngines.Google] = PluginIcons.GoogleRed,
+                [TextSearchEngines.Kagi] = PluginIcons.KagiHandle,
+                [TextSearchEngines.Qwant] = PluginIcons.QwantMark,
+                [TextSearchEngines.Startpage] = PluginIcons.StartpageMark,
+            };
+            Assert.Equal(TextSearchEngines.All.Select(engine => engine.Id), marks.Keys);
+            foreach (var (engine, geometry) in marks)
+            {
+                var layer = FirstMarkLayer(ProviderVisualCatalog.CreateTextSearchMark(SearchProviderIds.TraceMoe, engine, lightTheme));
+                Assert.Same(geometry, layer.Geometry);
+            }
+            var qwant = FirstMarkLayer(ProviderVisualCatalog.CreateTextSearchMark(
+                SearchProviderIds.GoogleLens, TextSearchEngines.Qwant, lightTheme));
+            Assert.Equal(PluginPalette.For(lightTheme).Provider.Qwant, Assert.IsType<SolidColorBrush>(qwant.Brush).Color);
+            Assert.Same(PluginIcons.AniListBlue, FirstMarkLayer(ProviderVisualCatalog.CreateTextSearchMark(
+                SearchProviderIds.TraceMoe, TextSearchEngines.MatchImageSearch, lightTheme)).Geometry);
+            Assert.Same(PluginIcons.YandexLetter, FirstMarkLayer(ProviderVisualCatalog.CreateTextSearchMark(
+                SearchProviderIds.YandexImages, TextSearchEngines.MatchImageSearch, lightTheme)).Geometry);
+        });
+    }
+
+    private static GeometryDrawing FirstMarkLayer(FrameworkElement mark)
+    {
+        var drawing = Assert.IsType<DrawingGroup>(Assert.IsType<DrawingImage>(Assert.IsType<Image>(mark).Source).Drawing);
+        Assert.Equal(0, drawing.Bounds.Left, 3);
+        Assert.Equal(0, drawing.Bounds.Top, 3);
+        Assert.Equal(24, drawing.Bounds.Right, 3);
+        Assert.Equal(24, drawing.Bounds.Bottom, 3);
+        return Assert.IsType<GeometryDrawing>(drawing.Children[1]);
     }
 
     private static void RunOnSta(Action<ManualAnimationClock> action)

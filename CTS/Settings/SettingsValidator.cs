@@ -31,6 +31,13 @@ internal static class SettingsValidator
         var provider = new[] { SearchProviderIds.GoogleLens, SearchProviderIds.YandexImages, SearchProviderIds.TraceMoe }
             .FirstOrDefault(id => string.Equals(id, settings.SearchProviderId?.Trim(), StringComparison.OrdinalIgnoreCase));
         if (provider is null) invalid.Add(nameof(AppSettings.SearchProviderId));
+        var engine = settings.TextSearchEngineId switch
+        {
+            null => null,
+            var id when string.IsNullOrWhiteSpace(id) => TextSearchEngines.MatchImageSearch,
+            var id => TextSearchEngines.Find(id)?.Id,
+        };
+        if (engine is null) invalid.Add(nameof(AppSettings.TextSearchEngineId));
         var gesture = defaults.HotkeyGesture;
         if (HotkeyGestureParser.TryParse(settings.HotkeyGesture, out var modifiers, out var key))
             gesture = HotkeyGestureParser.Format(modifiers, key);
@@ -38,6 +45,7 @@ internal static class SettingsValidator
         var normalized = settings with
         {
             SearchProviderId = provider ?? defaults.SearchProviderId,
+            TextSearchEngineId = engine ?? defaults.TextSearchEngineId,
             HotkeyGesture = gesture,
             MaxLongSidePx = Range(settings.MaxLongSidePx, 256, 8000, defaults.MaxLongSidePx, nameof(AppSettings.MaxLongSidePx)),
             PaddingPx = Range(settings.PaddingPx, 0, 100, defaults.PaddingPx, nameof(AppSettings.PaddingPx)),

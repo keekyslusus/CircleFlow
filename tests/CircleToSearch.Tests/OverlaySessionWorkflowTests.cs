@@ -1068,6 +1068,7 @@ public sealed class OverlaySessionWorkflowTests
                 Log);
             var textSearch = new TextSearchWorkflow(
                 new TextSearchUrlBuilder(),
+                () => Service.Snapshot.TextSearchEngineId,
                 new UrlOpeningService(url => { Events.Add("text-open"); Opened.Add(url); return true; },
                     Notifier, TestUiStrings.English, Log),
                 Notifier,

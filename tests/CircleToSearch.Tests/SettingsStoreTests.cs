@@ -19,7 +19,7 @@ public sealed class SettingsStoreTests
         Assert.False(File.Exists(paths.SettingsBackupFilePath));
         var updated = new AppSettings
         {
-            SearchProviderId = SearchProviderIds.TraceMoe, HotkeyGesture = "Win+Ctrl+Shift+F7",
+            SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "kagi", HotkeyGesture = "Win+Ctrl+Shift+F7",
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
             OcrLanguageTag = "ru-RU", TranslationTargetLanguageTag = "ja-JP", ImageTranslationPrivacyConsentAccepted = true,
         };
@@ -74,12 +74,12 @@ public sealed class SettingsStoreTests
         File.WriteAllText(paths.SettingsFilePath, JsonSerializer.Serialize(new AppSettings
         {
             MaxLongSidePx = 1, PaddingPx = -1, HideDelayMilliseconds = 2001, LassoMinDiagonalPx = 0,
-            SearchProviderId = "unknown", HotkeyGesture = "Ctrl++A", OcrLanguageTag = "not a language",
+            SearchProviderId = "unknown", TextSearchEngineId = "yandex", HotkeyGesture = "Ctrl++A", OcrLanguageTag = "not a language",
             TranslationTargetLanguageTag = " en-us ", ImageTranslationPrivacyConsentAccepted = true,
         }));
         var result = store.Load();
         Assert.False(result.Recovered);
-        Assert.Equal(7, result.ResetFields.Count);
+        Assert.Equal(8, result.ResetFields.Count);
         Assert.Equal(new AppSettings { TranslationTargetLanguageTag = "en-US", ImageTranslationPrivacyConsentAccepted = true }, result.Settings);
         Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
         Assert.Empty(store.Load().ResetFields);

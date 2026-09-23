@@ -6,6 +6,8 @@ public sealed record AppSettings
 {
     public string SearchProviderId { get; init; } = SearchProviderIds.GoogleLens;
 
+    public string TextSearchEngineId { get; init; } = TextSearchEngines.MatchImageSearch;
+
     public string HotkeyGesture { get; init; } = "Ctrl+Alt+Space";
 
     public int MaxLongSidePx { get; init; } = 1600;

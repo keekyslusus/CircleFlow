@@ -18,6 +18,13 @@ internal sealed class WebViewEnvironmentFactory(AppPaths paths, UiStrings string
         return environment;
     }
 
+    // Resolves the runtime the loader would pick, including per-user installs and override policies.
+    internal static string? RuntimeVersion()
+    {
+        try { return CoreWebView2Environment.GetAvailableBrowserVersionString(); }
+        catch { return null; }
+    }
+
     internal void ValidateProfileDirectory(string directory)
     {
         if (!paths.IsInsideData(directory))

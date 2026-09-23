@@ -82,6 +82,7 @@ internal sealed class SettingsStore(AppPaths paths)
         var settings = defaults with
         {
             SearchProviderId = Text(nameof(AppSettings.SearchProviderId), defaults.SearchProviderId),
+            TextSearchEngineId = Text(nameof(AppSettings.TextSearchEngineId), defaults.TextSearchEngineId),
             HotkeyGesture = Text(nameof(AppSettings.HotkeyGesture), defaults.HotkeyGesture),
             MaxLongSidePx = Number(nameof(AppSettings.MaxLongSidePx), defaults.MaxLongSidePx),
             PaddingPx = Number(nameof(AppSettings.PaddingPx), defaults.PaddingPx),

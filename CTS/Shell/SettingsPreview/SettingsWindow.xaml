@@ -563,15 +563,7 @@
                                                 <TextBlock Text="{Binding [text_search_engine_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <ComboBox x:Name="TextSearch" SelectedIndex="0" Width="160" AutomationProperties.Name="{Binding [text_search_engine]}">
-                                                    <ComboBoxItem Content="{Binding [match_image_search]}"/>
-                                                    <ComboBoxItem Content="{Binding [engine_bing]}"/>
-                                                    <ComboBoxItem Content="{Binding [engine_duckduckgo]}"/>
-                                                    <ComboBoxItem Content="{Binding [engine_google]}"/>
-                                                    <ComboBoxItem Content="{Binding [engine_kagi]}"/>
-                                                    <ComboBoxItem Content="{Binding [engine_startpage]}"/>
-                                                    <ComboBoxItem Content="{Binding [engine_yandex]}"/>
-                                                </ComboBox>
+                                                <ComboBox x:Name="TextSearch" Width="160" AutomationProperties.Name="{Binding [text_search_engine]}"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>
@@ -822,7 +814,7 @@
                                                 <TextBlock Text="{Binding [runtime_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding [runtime_preview]}" Foreground="{DynamicResource SettingsMuted}" FontSize="12"/>
+                                                <TextBlock x:Name="RuntimeVersion" Foreground="{DynamicResource SettingsMuted}" FontSize="12"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>

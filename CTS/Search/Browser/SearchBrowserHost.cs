@@ -54,18 +54,6 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
             throw new ArgumentOutOfRangeException(nameof(shutdownTimeout));
     }
 
-    public static string? GetRuntimeVersion()
-    {
-        try
-        {
-            return CoreWebView2Environment.GetAvailableBrowserVersionString();
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     public async Task<SearchBrowserShowResult> ShowAsync(
         SearchProviderDescriptor descriptor,
         PreparedVisualSearch preparedSearch,

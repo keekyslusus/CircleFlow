@@ -791,11 +791,20 @@ public sealed class SettingsPreviewTests
             provider.SelectedIndex = 2;
             Assert.Equal(SearchProviderIds.TraceMoe, harness.Settings.Snapshot.SearchProviderId);
 
+            var textSearch = Find<ComboBox>(window, "TextSearch");
+            Assert.Equal(["Match image search", "Bing", "DuckDuckGo", "Google", "Kagi", "Qwant", "Startpage"],
+                textSearch.Items.OfType<ComboBoxItem>().Select(item => (string)item.Content));
+            Assert.Equal(0, textSearch.SelectedIndex);
+            textSearch.SelectedIndex = 5;
+            Assert.Equal("qwant", harness.Settings.Snapshot.TextSearchEngineId);
+            harness.Settings.SetTextSearchEngine("kagi");
+
             harness.Settings.SetProvider(SearchProviderIds.GoogleLens);
             harness.Settings.ChangeHotkey("Ctrl+Shift+K");
             typeof(Window).GetMethod("OnActivated", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(window, [EventArgs.Empty]);
             Assert.Equal(0, provider.SelectedIndex);
+            Assert.Equal(4, textSearch.SelectedIndex);
             Assert.Equal(["Ctrl", "Shift", "K"], ShortcutLabels(window, "ShortcutKeys"));
             Assert.Empty(harness.Notifier.Errors);
         }
@@ -803,7 +812,7 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
-    public void Failed_provider_save_restores_the_saved_selection() => OnSta(time =>
+    public void Failed_saves_restore_the_saved_selection() => OnSta(time =>
     {
         var harness = new TestSettingsWindow(TestSettings.Create(save: _ => throw new IOException("disk unavailable")));
         var window = harness.CreateView().Window;
@@ -815,6 +824,12 @@ public sealed class SettingsPreviewTests
             Assert.Equal(0, provider.SelectedIndex);
             Assert.Equal(SearchProviderIds.GoogleLens, harness.Settings.Snapshot.SearchProviderId);
             Assert.Equal([TestUiStrings.English.StorageSaveFailed], harness.Notifier.Errors.Select(error => error.Message));
+
+            var textSearch = Find<ComboBox>(window, "TextSearch");
+            textSearch.SelectedIndex = 2;
+            Assert.Equal(0, textSearch.SelectedIndex);
+            Assert.Equal(TextSearchEngines.MatchImageSearch, harness.Settings.Snapshot.TextSearchEngineId);
+            Assert.Equal(TestUiStrings.English.StorageSaveFailed, Find<TextBlock>(window, "StatusText").Text);
         }
         finally { window.Close(); }
     });
@@ -825,6 +840,7 @@ public sealed class SettingsPreviewTests
         var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings
         {
             SearchProviderId = SearchProviderIds.YandexImages,
+            TextSearchEngineId = "bing",
             HotkeyGesture = "Ctrl+Shift+K",
         }));
         var window = harness.CreateView().Window;
@@ -834,7 +850,9 @@ public sealed class SettingsPreviewTests
             var provider = Find<ComboBox>(window, "Provider");
             var launch = Find<CheckBox>(window, "Launch");
             var textSearch = Find<ComboBox>(window, "TextSearch");
+            Assert.Equal(1, textSearch.SelectedIndex);
             textSearch.SelectedIndex = 3;
+            Assert.Equal("google", harness.Settings.Snapshot.TextSearchEngineId);
             launch.IsChecked = false;
             Find<CheckBox>(window, "ToolbarAsk").IsChecked = false;
             Find<RadioButton>(window, "Nav_search").IsChecked = true;
@@ -855,6 +873,7 @@ public sealed class SettingsPreviewTests
             CompleteDialogTransition(window, time, open: false);
             var defaults = new AppSettings();
             Assert.Equal(defaults.SearchProviderId, harness.Settings.Snapshot.SearchProviderId);
+            Assert.Equal(defaults.TextSearchEngineId, harness.Settings.Snapshot.TextSearchEngineId);
             Assert.Equal(defaults.HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
             Assert.Equal(0, provider.SelectedIndex);
             Assert.Equal(["Ctrl", "Alt", "Space"], ShortcutLabels(window, "ShortcutKeys"));
@@ -877,6 +896,16 @@ public sealed class SettingsPreviewTests
         Assert.True(Find<CheckBox>(fresh, "Launch").IsChecked);
         Assert.Equal(0, Find<ComboBox>(fresh, "Provider").SelectedIndex);
         fresh.Close();
+    });
+
+    [Theory]
+    [InlineData("140.0.3485.54", "140.0.3485.54")]
+    [InlineData(null, "Not installed")]
+    public void About_shows_the_webview2_runtime_version(string? version, string expected) => OnSta(time =>
+    {
+        var window = new TestSettingsWindow(webViewRuntimeVersion: version).CreateView().Window;
+        try { Assert.Equal(expected, Find<TextBlock>(window, "RuntimeVersion").Text); }
+        finally { window.Close(); }
     });
 
     [Fact]

@@ -5,6 +5,7 @@ namespace CircleToSearch.Search;
 
 internal sealed class TextSearchWorkflow(
     TextSearchUrlBuilder urlBuilder,
+    Func<string> engineId,
     UrlOpeningService urlOpening,
     IPluginNotifier notifier,
     UiStrings strings,
@@ -12,8 +13,9 @@ internal sealed class TextSearchWorkflow(
 {
     public bool Execute(string text, string providerId)
     {
+        var engine = engineId();
         string url;
-        try { url = urlBuilder.Build(text, providerId); }
+        try { url = urlBuilder.Build(text, providerId, engine); }
         catch (TextSearchQueryTooLongException)
         {
             notifier.ShowError(strings.PluginTitle, strings.TextSearchTooLong);
@@ -28,7 +30,7 @@ internal sealed class TextSearchWorkflow(
 
         if (urlOpening.TryOpen(url, strings.TextSearchOpenFailed))
         {
-            log.Info(nameof(TextSearchWorkflow), $"text search opened with provider '{providerId}'");
+            log.Info(nameof(TextSearchWorkflow), $"text search opened with provider '{providerId}', engine '{engine}'");
             return true;
         }
         return false;

@@ -66,6 +66,11 @@ public sealed class SettingsService
         lock (_gate) return Commit(_current with { SearchProviderId = providerId });
     }
 
+    public SettingsChangeResult SetTextSearchEngine(string engineId)
+    {
+        lock (_gate) return Commit(_current with { TextSearchEngineId = engineId });
+    }
+
     public SettingsChangeResult SetTranslationConsent(bool accepted)
     {
         lock (_gate) return Commit(_current with { ImageTranslationPrivacyConsentAccepted = accepted });

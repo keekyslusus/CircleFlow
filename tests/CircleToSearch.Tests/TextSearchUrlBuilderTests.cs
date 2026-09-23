@@ -19,6 +19,30 @@ public sealed class TextSearchUrlBuilderTests
         Assert.DoesNotContain("%2526", uri.Query);
     }
 
+    [Theory]
+    [InlineData("bing", "https://www.bing.com/search?q=")]
+    [InlineData("duckduckgo", "https://duckduckgo.com/?q=")]
+    [InlineData("google", "https://www.google.com/search?q=")]
+    [InlineData("kagi", "https://kagi.com/search?q=")]
+    [InlineData("qwant", "https://www.qwant.com/?q=")]
+    [InlineData("startpage", "https://www.startpage.com/sp/search?q=")]
+    public void Selected_engine_replaces_the_placeholder_regardless_of_image_provider(string engine, string prefix)
+    {
+        var url = new TextSearchUrlBuilder().Build("a&b %s 世界", SearchProviderIds.YandexImages, engine);
+
+        Assert.Equal(prefix + "a%26b%20%25s%20%E4%B8%96%E7%95%8C", url);
+    }
+
+    [Fact]
+    public void Engines_are_alphabetical_and_unknown_engine_is_rejected()
+    {
+        var ids = TextSearchEngines.All.Select(engine => engine.Id).ToArray();
+
+        Assert.Equal(ids.Order(StringComparer.Ordinal), ids);
+        Assert.All(TextSearchEngines.All, engine => Assert.Contains(TextSearchEngines.QueryPlaceholder, engine.UrlTemplate));
+        Assert.Throws<ArgumentException>(() => new TextSearchUrlBuilder().Build("text", SearchProviderIds.GoogleLens, "yandex"));
+    }
+
     [Fact]
     public void Rejects_query_over_scalar_limit_without_splitting_surrogates()
     {

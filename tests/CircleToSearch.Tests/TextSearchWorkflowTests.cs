@@ -22,6 +22,20 @@ public sealed class TextSearchWorkflowTests
     }
 
     [Fact]
+    public void Uses_the_engine_selected_at_execution_time()
+    {
+        var opened = new List<string>();
+        var engine = TextSearchEngines.MatchImageSearch;
+        var workflow = CreateWorkflow(url => { opened.Add(url); return true; }, [], 2000, () => engine);
+
+        workflow.Execute("cat", SearchProviderIds.YandexImages);
+        engine = "duckduckgo";
+        workflow.Execute("cat", SearchProviderIds.YandexImages);
+
+        Assert.Equal(["https://yandex.com/search/?text=cat", "https://duckduckgo.com/?q=cat"], opened);
+    }
+
+    [Fact]
     public void Oversized_query_is_rejected_before_browser_open()
     {
         var openCalls = 0;
@@ -38,7 +52,8 @@ public sealed class TextSearchWorkflowTests
     private static TextSearchWorkflow CreateWorkflow(
         Func<string, bool> open,
         List<string> errors,
-        int maximumScalars)
+        int maximumScalars,
+        Func<string>? engine = null)
     {
         var logDirectory = Path.Combine(TestOutputPaths.TempDirectory, "text-search-logs");
         Directory.CreateDirectory(logDirectory);
@@ -46,6 +61,7 @@ public sealed class TextSearchWorkflowTests
         var log = new PluginLog(logDirectory);
         return new TextSearchWorkflow(
             new TextSearchUrlBuilder(maximumScalars),
+            engine ?? (() => TextSearchEngines.MatchImageSearch),
             new UrlOpeningService(open, notifier, TestUiStrings.English, log),
             notifier,
             TestUiStrings.English,
