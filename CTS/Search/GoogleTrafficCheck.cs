@@ -7,8 +7,7 @@ internal static class GoogleTrafficCheck
     private static readonly TimeSpan UserTimeout = TimeSpan.FromMinutes(3);
 
     internal static bool IsShown(Uri? uri) =>
-        uri is { Scheme: "https", Host: "google.com" or "www.google.com" } &&
-        uri.AbsolutePath.StartsWith("/sorry/", StringComparison.Ordinal);
+        GoogleSearchUrl.IsGoogle(uri) && uri!.AbsolutePath.StartsWith("/sorry/", StringComparison.Ordinal);
 
     // The user solves the check in the visible browser, which then continues to the blocked page.
     internal static async Task<bool> WaitForUserAsync(IVisualSearchBrowserSession session, CancellationToken cancel)

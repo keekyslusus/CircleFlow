@@ -184,6 +184,95 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
+    [Fact]
+    [Trait("Category", "Live")]
+    public async Task Background_show_runs_hidden_and_activates_only_after_reveal()
+    {
+        if (!Enabled()) return;
+        var (host, dispatcher, views) = CreateHost();
+        await using (host)
+        {
+            var reveal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var operation = new HeldOperation();
+            var show = host.ShowAsync(Descriptor(),
+                PreparedVisualSearch.ForBrowserOperation(operation, null, revealAfter: reveal.Task),
+                CancellationToken.None);
+            await operation.Entered.WaitAsync(TimeSpan.FromSeconds(20));
+            var view = Assert.Single(views);
+            Assert.False(ShowActivated(dispatcher, view));
+
+            reveal.SetResult();
+            Assert.True(SpinWait.SpinUntil(() => ShowActivated(dispatcher, view), TimeSpan.FromSeconds(5)));
+            operation.Release();
+            Assert.Equal(SearchBrowserShowStatus.Shown, (await show).Status);
+            Assert.False(view.IsClosed);
+            await host.StopAsync();
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "Live")]
+    public async Task Canceled_background_show_closes_only_its_hidden_window()
+    {
+        if (!Enabled()) return;
+        var (host, _, views) = CreateHost();
+        await using (host)
+        {
+            using var cancellation = new CancellationTokenSource();
+            var operation = new CancelableOperation();
+            var show = host.ShowAsync(Descriptor(),
+                PreparedVisualSearch.ForBrowserOperation(operation, null,
+                    revealAfter: new TaskCompletionSource().Task),
+                cancellation.Token);
+            await operation.Entered.WaitAsync(TimeSpan.FromSeconds(20));
+            cancellation.Cancel();
+
+            Assert.Equal(SearchBrowserShowStatus.Canceled, (await show).Status);
+            Assert.True(Assert.Single(views).IsClosed);
+            await host.StopAsync();
+        }
+    }
+
+    [Theory]
+    [Trait("Category", "Live")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Background_show_leaves_an_open_results_window_alone_until_reveal(bool submit)
+    {
+        if (!Enabled()) return;
+        var (host, _, views) = CreateHost();
+        await using (host)
+        {
+            Assert.Equal(SearchBrowserShowStatus.Shown, (await host.ShowAsync(Descriptor(),
+                PreparedVisualSearch.ForBrowserOperation(new ImmediateOperation(), null),
+                CancellationToken.None)).Status);
+            using var cancellation = new CancellationTokenSource();
+            var reveal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var operation = new CountingOperation();
+            var show = host.ShowAsync(Descriptor(),
+                PreparedVisualSearch.ForBrowserOperation(operation, null, revealAfter: reveal.Task),
+                cancellation.Token);
+            await Task.Delay(500);
+            Assert.Equal(0, operation.Calls);
+
+            if (submit) reveal.SetResult();
+            else cancellation.Cancel();
+
+            Assert.Equal(submit ? SearchBrowserShowStatus.Shown : SearchBrowserShowStatus.Canceled,
+                (await show).Status);
+            Assert.Equal(submit ? 1 : 0, operation.Calls);
+            Assert.False(Assert.Single(views).IsClosed);
+            await host.StopAsync();
+        }
+    }
+
+    private static bool ShowActivated(StaDispatcher dispatcher, SearchBrowserWindowView view)
+    {
+        var activated = false;
+        dispatcher.Send(() => activated = view.Window.ShowActivated);
+        return activated;
+    }
+
     private static bool Enabled() =>
         Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") == "1";
 
@@ -247,6 +336,22 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
 
         internal void Release() => _completion.TrySetResult(VisualSearchBrowserOperationStatus.Succeeded);
+    }
+
+    private sealed class CancelableOperation : IVisualSearchBrowserOperation
+    {
+        private readonly TaskCompletionSource _entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal Task Entered => _entered.Task;
+
+        public async Task<VisualSearchBrowserOperationStatus> ExecuteAsync(
+            IVisualSearchBrowserSession session, CancellationToken cancel)
+        {
+            _entered.TrySetResult();
+            try { await Task.Delay(Timeout.Infinite, cancel); }
+            catch (OperationCanceledException) { }
+            return VisualSearchBrowserOperationStatus.Canceled;
+        }
     }
 
     private sealed class CountingOperation : IVisualSearchBrowserOperation

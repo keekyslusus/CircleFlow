@@ -143,6 +143,12 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
             try
             {
                 cancel.ThrowIfCancellationRequested();
+                if (reveal is not null && _view is not null)
+                {
+                    // An open results window belongs to the user until they submit; its browser is already warm.
+                    await reveal.WaitAsync(cancel).ConfigureAwait(true);
+                    reveal = null;
+                }
                 await EnsureWindowAsync(anchor, descriptor, hidden: reveal is not null, cancel).ConfigureAwait(true);
                 cancel.ThrowIfCancellationRequested();
             }
@@ -290,7 +296,6 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         {
             var existingView = _view;
             existingView.SetProvider(descriptor);
-            if (hidden) return;
             existingView.MoveTo(anchor);
             await existingView.ShowAsync().ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();

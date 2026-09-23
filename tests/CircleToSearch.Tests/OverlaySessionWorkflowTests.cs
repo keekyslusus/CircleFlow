@@ -88,6 +88,33 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
+    public async Task Question_without_a_selection_uses_the_image_attached_while_typing()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new AskDraftStarted());
+        harness.Overlay.Enqueue(new AskImageAttached(NewSelection()));
+        harness.Overlay.Enqueue(new AskAboutSelection(null, "What is this?"));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal([7], await Assert.Single(harness.AskedImages));
+        Assert.Equal("What is this?", await Assert.Single(harness.AskedQuestions));
+        Assert.Equal(1, harness.AskCrops);
+    }
+
+    [Fact]
+    public async Task Question_without_any_image_fails_the_draft_instead_of_waiting_forever()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new AskAboutSelection(null, "What is this?"));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        var image = Assert.Single(harness.AskedImages);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => image);
+    }
+
+    [Fact]
     public async Task Canceled_ask_draft_closes_the_hidden_browser_and_keeps_the_overlay()
     {
         using var harness = new Harness();
@@ -941,6 +968,26 @@ public sealed class OverlaySessionWorkflowTests
                 TestUiStrings.English,
                 Log);
             var screenTranslation = new ScreenTranslationWorkflow(translationProvider ?? new FakeTranslationProvider(), Log);
+            var imageAsk = new ImageAskWorkflow(
+                (image, question) =>
+                {
+                    AskedImages.Add(image);
+                    AskedQuestions.Add(question);
+                    return new FakeBrowserOperation();
+                },
+                (_, _, _) =>
+                {
+                    AskCrops++;
+                    return [7];
+                },
+                new VisualSearchResultPresenter(
+                    AskHost,
+                    new UrlOpeningService(_ => true, Notifier, TestUiStrings.English, Log),
+                    Notifier,
+                    TestUiStrings.English,
+                    Log),
+                TestUiStrings.English,
+                Log);
             Workflow = new OverlaySessionWorkflow(
                 Factory,
                 visualSearch,
@@ -963,26 +1010,7 @@ public sealed class OverlaySessionWorkflowTests
                 Log,
                 textSearch,
                 saveImage,
-                new ImageAskWorkflow(
-                    (image, question) =>
-                    {
-                        AskedImages.Add(image);
-                        AskedQuestions.Add(question);
-                        return new FakeBrowserOperation();
-                    },
-                    (_, _, _) =>
-                    {
-                        AskCrops++;
-                        return [7];
-                    },
-                    new VisualSearchResultPresenter(
-                        AskHost,
-                        new UrlOpeningService(_ => true, Notifier, TestUiStrings.English, Log),
-                        Notifier,
-                        TestUiStrings.English,
-                        Log),
-                    TestUiStrings.English,
-                    Log));
+                (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation));
             AskHost.Revealed = () => CloseCallsWhenRevealed.Add(Overlay.CloseCalls);
         }
 

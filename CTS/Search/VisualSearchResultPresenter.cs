@@ -37,6 +37,13 @@ internal sealed class VisualSearchResultPresenter(
             return;
         }
 
+        if (prepared.RevealAfter is { } reveal)
+        {
+            // A search prepared in the background reports failure only once the user has submitted it.
+            try { await reveal.WaitAsync(cancel).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return; }
+        }
+
         var technicalFailure = shown.Status is SearchBrowserShowStatus.RuntimeUnavailable or
             SearchBrowserShowStatus.InitializationFailed or
             SearchBrowserShowStatus.NavigationFailed;

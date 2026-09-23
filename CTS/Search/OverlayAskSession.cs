@@ -37,7 +37,9 @@ internal sealed class OverlayAskSession(
     public async Task SubmitAsync(AskAboutSelection asked, Action onUploadStarted)
     {
         Start();
-        AttachImage(asked.Selection);
+        if (asked.Selection is { } selection) AttachImage(selection);
+        else if (!_image!.Task.IsCompleted)
+            _image.TrySetException(new InvalidOperationException("The question arrived without an attached image."));
         _question!.TrySetResult(asked.Question);
         onUploadStarted();
         await _pending!.ConfigureAwait(false);
@@ -53,7 +55,6 @@ internal sealed class OverlayAskSession(
 
     public async Task<OverlaySessionContinuation> CompletePendingAsync()
     {
-        // The draft ended before a question, e.g. the browser could not start; the presenter reported it.
         await DrainAsync().ConfigureAwait(false);
         return OverlaySessionContinuation.Continue;
     }

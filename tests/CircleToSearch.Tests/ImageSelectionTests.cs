@@ -115,8 +115,7 @@ public sealed class ImageSelectionTests
 
         var asked = Assert.Single(h.Commands.OfType<AskAboutSelection>());
         Assert.Equal("What is red?", asked.Question);
-        var bounds = asked.Selection.Bounds;
-        Assert.Equal(255, asked.Selection.FrozenFrame.GetPixel(bounds.X, bounds.Y).R);
+        Assert.Null(asked.Selection);
         Assert.False(h.Actions.Toolbar.IsOpen);
         Click(prompt.SendButton);
         Assert.Single(h.Commands.OfType<AskAboutSelection>());

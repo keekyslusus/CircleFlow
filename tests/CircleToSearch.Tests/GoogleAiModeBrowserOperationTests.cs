@@ -15,8 +15,8 @@ public sealed class GoogleAiModeBrowserOperationTests
     {
         var session = new FakeBrowserSession { CurrentUri = AiMode };
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
-        session.Messages.Enqueue("CTS:attached:1");
-        session.Messages.Enqueue("CTS:submitted");
+        session.Statuses.Enqueue("attached:1");
+        session.Statuses.Enqueue("submitted");
         var image = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
         var question = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         var fallback = new FakeFallback();
@@ -46,18 +46,18 @@ public sealed class GoogleAiModeBrowserOperationTests
     }
 
     [Theory]
-    [InlineData("CTS:paste-ignored", "CTS:submitted")]
-    [InlineData("CTS:input-missing", "CTS:submitted")]
-    [InlineData("CTS:attached", "CTS:send-timeout")]
-    [InlineData("CTS:attached", null)]
-    [InlineData(null, "CTS:submitted")]
+    [InlineData("paste-ignored", "paste-ignored", 2)]
+    [InlineData("input-missing", "submitted", 1)]
+    [InlineData("attached", "send-timeout", 2)]
+    [InlineData("attached", null, 2)]
+    [InlineData(null, "script-error", 2)]
     public async Task Unaccepted_step_falls_back_with_the_same_image_and_question(
-        string? attachReply, string? sendReply)
+        string? attachReply, string? secondReply, int expectedMessages)
     {
         var session = new FakeBrowserSession { CurrentUri = AiMode };
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
-        session.Messages.Enqueue(attachReply);
-        session.Messages.Enqueue(sendReply);
+        session.Statuses.Enqueue(attachReply);
+        session.Statuses.Enqueue(secondReply);
         var fallback = new FakeFallback { Result = VisualSearchBrowserOperationStatus.Failed };
 
         var result = await NewOperation(fallback).ExecuteAsync(session, CancellationToken.None);
@@ -66,7 +66,24 @@ public sealed class GoogleAiModeBrowserOperationTests
         var (image, question) = Assert.Single(fallback.Calls);
         Assert.Same(Jpeg, image);
         Assert.Equal("What is this?", question);
-        Assert.Equal(2, session.MessageCalls);
+        Assert.Equal(expectedMessages, session.MessageCalls);
+    }
+
+    [Fact]
+    public async Task Late_reply_to_an_earlier_request_is_not_taken_for_the_current_one()
+    {
+        var session = new FakeBrowserSession { CurrentUri = AiMode };
+        session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+        session.Messages.Enqueue("CTS:99:attached:1");
+        session.Messages.Enqueue("CTS:2:attached:1");
+        session.Messages.Enqueue("CTS:1:submitted");
+        var fallback = new FakeFallback { Result = VisualSearchBrowserOperationStatus.Failed };
+
+        var result = await NewOperation(fallback).ExecuteAsync(session, CancellationToken.None);
+
+        Assert.Equal(VisualSearchBrowserOperationStatus.Failed, result);
+        Assert.Equal(3, session.MessageCalls);
+        Assert.Single(fallback.Calls);
     }
 
     [Fact]
@@ -74,9 +91,9 @@ public sealed class GoogleAiModeBrowserOperationTests
     {
         var session = new FakeBrowserSession { CurrentUri = AiMode };
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
-        session.Messages.Enqueue("CTS:paste-ignored");
-        session.Messages.Enqueue("CTS:attached");
-        session.Messages.Enqueue("CTS:submitted");
+        session.Statuses.Enqueue("paste-ignored");
+        session.Statuses.Enqueue("attached");
+        session.Statuses.Enqueue("submitted");
         var fallback = new FakeFallback();
 
         var result = await NewOperation(fallback).ExecuteAsync(session, CancellationToken.None);
@@ -111,8 +128,8 @@ public sealed class GoogleAiModeBrowserOperationTests
     {
         var session = new FakeBrowserSession { CurrentUri = AiMode };
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
-        session.Messages.Enqueue("CTS:attached");
-        session.Messages.Enqueue(null);
+        session.Statuses.Enqueue("attached");
+        session.Statuses.Enqueue(null);
         session.OnMessage = () =>
         {
             if (session.MessageCalls == 2)
@@ -133,8 +150,8 @@ public sealed class GoogleAiModeBrowserOperationTests
         session.OnWait = () => session.CurrentUri = AiMode;
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
-        session.Messages.Enqueue("CTS:attached");
-        session.Messages.Enqueue("CTS:submitted");
+        session.Statuses.Enqueue("attached");
+        session.Statuses.Enqueue("submitted");
 
         var result = await NewOperation(new FakeFallback()).ExecuteAsync(session, CancellationToken.None);
 
@@ -146,7 +163,8 @@ public sealed class GoogleAiModeBrowserOperationTests
     public async Task Canceling_the_draft_before_the_question_does_not_start_the_fallback()
     {
         using var cancellation = new CancellationTokenSource();
-        var session = new FakeBrowserSession { CurrentUri = AiMode, Message = "CTS:attached" };
+        var session = new FakeBrowserSession { CurrentUri = AiMode };
+        session.Statuses.Enqueue("attached");
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
         var question = new TaskCompletionSource<string>();
         var fallback = new FakeFallback();
@@ -165,8 +183,8 @@ public sealed class GoogleAiModeBrowserOperationTests
     {
         var session = new FakeBrowserSession { CurrentUri = AiMode };
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
-        session.Messages.Enqueue("CTS:attached");
-        session.Messages.Enqueue("CTS:submitted");
+        session.Statuses.Enqueue("attached");
+        session.Statuses.Enqueue("submitted");
         var operation = NewOperation(new FakeFallback());
 
         await operation.ExecuteAsync(session, CancellationToken.None);

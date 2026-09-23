@@ -124,22 +124,14 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         ArgumentNullException.ThrowIfNull(lensResults);
         ArgumentException.ThrowIfNullOrWhiteSpace(token);
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
-        if (lensResults.Scheme != Uri.UriSchemeHttps ||
-            lensResults.Host is not ("google.com" or "www.google.com") ||
-            lensResults.AbsolutePath != "/search")
+        if (!GoogleSearchUrl.IsSearch(lensResults) ||
+            !GoogleSearchUrl.HasParameter(lensResults, "vsrid") ||
+            !GoogleSearchUrl.HasParameter(lensResults, "gsessionid"))
         {
             return null;
         }
 
-        var parameters = lensResults.Query.TrimStart('?')
-            .Split('&', StringSplitOptions.RemoveEmptyEntries)
-            .Select(part => (Name: part.Split('=', 2)[0], Raw: part))
-            .ToList();
-        if (!parameters.Any(parameter => parameter.Name == "vsrid") ||
-            !parameters.Any(parameter => parameter.Name == "gsessionid"))
-        {
-            return null;
-        }
+        var parameters = GoogleSearchUrl.Parameters(lensResults);
 
         // Parameters of the follow-up navigation Lens itself performs when a question is typed.
         var query = parameters
@@ -297,15 +289,9 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
 
     internal static bool IsGoogleLensResultsUrl(Uri? uri)
     {
-        if (uri is null || uri.Scheme != Uri.UriSchemeHttps) return false;
-        if (uri.Host == "lens.google.com")
+        if (uri is { Scheme: "https", Host: "lens.google.com" })
             return uri.AbsolutePath.StartsWith("/search", StringComparison.Ordinal);
-
-        if (uri.Host is not ("google.com" or "www.google.com") || uri.AbsolutePath != "/search")
-            return false;
-
-        return uri.Query.Split('&', StringSplitOptions.RemoveEmptyEntries)
-            .Any(part => part is "?udm=26" or "udm=26");
+        return GoogleSearchUrl.IsSearch(uri) && GoogleSearchUrl.HasParameter(uri!, "udm", "26");
     }
 
     private static void WriteAscii(Stream stream, string value)

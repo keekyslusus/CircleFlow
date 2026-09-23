@@ -167,7 +167,7 @@ public sealed class GoogleLensLiveSearchTests
                 string message, Func<string, bool> predicate, TimeSpan timeout, CancellationToken cancel)
             {
                 var reply = await inner.PostWebMessageAndWaitAsync(message, predicate, timeout, cancel);
-                if (reply?.StartsWith("CTS:attached", StringComparison.Ordinal) == true)
+                if (reply?.Contains(":attached", StringComparison.Ordinal) == true)
                 {
                     // A late duplicate would appear shortly after the acknowledged chip.
                     await Task.Delay(1500, cancel);

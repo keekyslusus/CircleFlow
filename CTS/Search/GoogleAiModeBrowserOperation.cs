@@ -7,14 +7,16 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
 {
     private static readonly Uri GoogleAiMode = new("https://www.google.com/search?udm=50");
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
-    private static readonly TimeSpan AttachTimeout = TimeSpan.FromSeconds(50);
-    private static readonly TimeSpan SubmitTimeout = TimeSpan.FromSeconds(30);
+    // Longer than the page script's own worst case, so a timeout means the page stopped answering.
+    private static readonly TimeSpan AttachTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan SubmitTimeout = TimeSpan.FromSeconds(40);
 
     private readonly Task<byte[]> _image;
     private readonly Task<string> _question;
     private readonly Func<byte[], string, IVisualSearchBrowserOperation> _createFallback;
     private readonly PluginLog _log;
     private int _started;
+    private int _nextRequestId;
 
     public GoogleAiModeBrowserOperation(
         Task<byte[]> image,
@@ -44,14 +46,17 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
             // The page loads while the user is still typing; the image and question arrive later.
             var pageReady = await TryOpenPageAsync(session, cancel).ConfigureAwait(true);
             jpeg = await _image.WaitAsync(cancel).ConfigureAwait(true);
-            var attached = pageReady && await TryAttachAsync(session, jpeg, cancel).ConfigureAwait(true);
+            var attach = pageReady ? await AttachAsync(session, jpeg, cancel).ConfigureAwait(true) : null;
             question = await _question.WaitAsync(cancel).ConfigureAwait(true);
-            if (!attached && pageReady)
+            // Another try helps only a page that was still starting or hidden behind a traffic check.
+            if (pageReady && !IsAttached(attach) && attach != "input-missing")
             {
-                // A traffic check stays hidden until the question reveals the browser; the user can solve it now.
-                attached = await GoogleTrafficCheck.WaitForUserAsync(session, cancel).ConfigureAwait(true) &&
-                           await TryAttachAsync(session, jpeg, cancel).ConfigureAwait(true);
+                // The revealed browser now lets the user solve a traffic check.
+                attach = await GoogleTrafficCheck.WaitForUserAsync(session, cancel).ConfigureAwait(true)
+                    ? await AttachAsync(session, jpeg, cancel).ConfigureAwait(true)
+                    : null;
             }
+            var attached = IsAttached(attach);
             submitted = attached && await TrySubmitAsync(session, question, cancel).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
@@ -81,50 +86,46 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
         return false;
     }
 
-    private Task<bool> TryAttachAsync(IVisualSearchBrowserSession session, byte[] jpeg, CancellationToken cancel) =>
-        TryBridgeAsync(session, new { type = "attach", image = Convert.ToBase64String(jpeg) },
-            "CTS:attached", AttachTimeout, cancel);
+    private Task<string?> AttachAsync(IVisualSearchBrowserSession session, byte[] jpeg, CancellationToken cancel) =>
+        RequestAsync(session, id => new { id, type = "attach", image = Convert.ToBase64String(jpeg) },
+            AttachTimeout, cancel);
+
+    private static bool IsAttached(string? status) =>
+        status is not null && (status == "attached" || status.StartsWith("attached:", StringComparison.Ordinal));
 
     private async Task<bool> TrySubmitAsync(IVisualSearchBrowserSession session, string question, CancellationToken cancel)
     {
-        if (await TryBridgeAsync(session, new { type = "send", question }, "CTS:submitted", SubmitTimeout, cancel)
-                .ConfigureAwait(true))
-        {
-            return true;
-        }
+        var status = await RequestAsync(session, id => new { id, type = "send", question }, SubmitTimeout, cancel)
+            .ConfigureAwait(true);
         // A full page load after sending drops the bridge before it can acknowledge.
-        return IsAiModeAnswer(session.CurrentUri);
+        return status == "submitted" || IsAiModeAnswer(session.CurrentUri);
     }
 
-    private async Task<bool> TryBridgeAsync(
+    // Returns the page's status for this request, or null when the page could not answer it.
+    private async Task<string?> RequestAsync(
         IVisualSearchBrowserSession session,
-        object message,
-        string expected,
+        Func<int, object> createMessage,
         TimeSpan timeout,
         CancellationToken cancel)
     {
-        if (GoogleTrafficCheck.IsShown(session.CurrentUri)) return false;
+        if (GoogleTrafficCheck.IsShown(session.CurrentUri)) return null;
+        // Replies carry the request id so a late answer to an earlier step is never taken for this one.
+        var id = Interlocked.Increment(ref _nextRequestId);
+        var prefix = $"CTS:{id}:";
         try
         {
             var installed = await session.ExecuteScriptAsync(AskBridgeScript, cancel).ConfigureAwait(true);
             if (!string.Equals(JsonSerializer.Deserialize<string>(installed), "ready", StringComparison.Ordinal))
-                return false;
-            var acknowledgement = await session.PostWebMessageAndWaitAsync(
-                    JsonSerializer.Serialize(message),
-                    reply => reply.StartsWith("CTS:", StringComparison.Ordinal),
+                return null;
+            var reply = await session.PostWebMessageAndWaitAsync(
+                    JsonSerializer.Serialize(createMessage(id)),
+                    message => message.StartsWith(prefix, StringComparison.Ordinal),
                     timeout,
                     cancel)
                 .ConfigureAwait(true);
-            if (acknowledgement is not null &&
-                (acknowledgement == expected || acknowledgement.StartsWith(expected + ":", StringComparison.Ordinal)))
-            {
-                _log.Info(nameof(GoogleAiModeBrowserOperation), $"Google AI Mode page replied {acknowledgement}");
-                return true;
-            }
-            _log.Warn(
-                nameof(GoogleAiModeBrowserOperation),
-                $"Google AI Mode page did not accept the step: {acknowledgement ?? "timeout"}");
-            return false;
+            var status = reply?[prefix.Length..];
+            _log.Info(nameof(GoogleAiModeBrowserOperation), $"Google AI Mode page replied {status ?? "nothing"}");
+            return status;
         }
         catch (OperationCanceledException)
         {
@@ -135,18 +136,14 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
             _log.Warn(
                 nameof(GoogleAiModeBrowserOperation),
                 $"Google AI Mode page script failed: {exception.GetType().Name}: {exception.Message}");
-            return false;
+            return null;
         }
     }
 
-    internal static bool IsAiModeAnswer(Uri? uri)
-    {
-        if (uri is not { Scheme: "https", Host: "google.com" or "www.google.com", AbsolutePath: "/search" })
-            return false;
-        var parameters = uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
-        return parameters.Contains("udm=50", StringComparer.Ordinal) &&
-               parameters.Any(parameter => parameter.StartsWith("vsrid=", StringComparison.Ordinal));
-    }
+    internal static bool IsAiModeAnswer(Uri? uri) =>
+        GoogleSearchUrl.IsSearch(uri) &&
+        GoogleSearchUrl.HasParameter(uri!, "udm", "50") &&
+        GoogleSearchUrl.HasParameter(uri!, "vsrid");
 
     internal const string AskBridgeScript = """
         (() => {
@@ -200,18 +197,28 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
             Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(input, question);
             input.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: question }));
             // Sending is ignored while the attached image is still uploading, so retry until accepted.
+            // Only an emptied or replaced field or an answer URL proves the page sent the question.
+            const sent = () =>
+              !input.isConnected || input.value.trim() === "" || /[?&]vsrid=/.test(location.search);
             for (let attempt = 0; attempt < 100; attempt++) {
-              if (!input.isConnected || input.value !== question) return "submitted";
+              if (sent()) return "submitted";
               visible('[data-xid="input-plate-send-button"]')?.click();
               await sleep(200);
             }
             return "send-timeout";
           };
+          // Overlapping attach requests share one paste loop instead of pasting the image twice.
+          let attaching = null;
           window.chrome.webview.addEventListener("message", async event => {
-            const reply = status => window.chrome.webview.postMessage(`CTS:${status}`);
+            let id = null;
+            const reply = status => window.chrome.webview.postMessage(`CTS:${id}:${status}`);
             try {
               const message = JSON.parse(event.data);
-              if (message.type === "attach") reply(await attach(message.image));
+              id = message.id;
+              if (message.type === "attach") {
+                attaching ??= attach(message.image).finally(() => { attaching = null; });
+                reply(await attaching);
+              }
               else if (message.type === "send") reply(await send(message.question));
             } catch (error) {
               reply("script-error");

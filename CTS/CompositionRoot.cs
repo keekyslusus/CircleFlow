@@ -319,7 +319,7 @@ public static class CompositionRoot
             log,
             textSearch,
             imageSave.SaveAsync,
-            imageAsk);
+            (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation));
         var coordinator = new SearchCoordinator(
             workflow,
             hideOwnWindows,

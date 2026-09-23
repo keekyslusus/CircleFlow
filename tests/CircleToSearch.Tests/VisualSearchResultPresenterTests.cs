@@ -119,6 +119,38 @@ public sealed class VisualSearchResultPresenterTests
     }
 
     [Fact]
+    public async Task Failure_of_a_background_search_is_reported_only_after_it_is_submitted()
+    {
+        var harness = new Harness(SearchBrowserShowStatus.ProviderOperationFailed);
+        var submitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var present = harness.PresentAsync(Routed("test-operation",
+            PreparedVisualSearch.ForBrowserOperation(new FakeOperation(), null, revealAfter: submitted.Task)));
+        await Task.Delay(50);
+        Assert.False(present.IsCompleted);
+        Assert.Empty(harness.Notifier.Errors);
+
+        submitted.SetResult();
+        await present.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Single(harness.Notifier.Errors);
+    }
+
+    [Fact]
+    public async Task Canceled_background_search_never_reports_its_failure()
+    {
+        var harness = new Harness(SearchBrowserShowStatus.ProviderOperationFailed);
+        using var cancellation = new CancellationTokenSource();
+
+        var present = harness.PresentAsync(Routed("test-operation",
+            PreparedVisualSearch.ForBrowserOperation(new FakeOperation(), null,
+                revealAfter: new TaskCompletionSource().Task)), cancellation.Token);
+        cancellation.Cancel();
+
+        await present.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Empty(harness.Notifier.Errors);
+    }
+
+    [Fact]
     public async Task Generic_presenter_accepts_third_url_and_operation_providers()
     {
         var harness = new Harness(SearchBrowserShowStatus.Shown);

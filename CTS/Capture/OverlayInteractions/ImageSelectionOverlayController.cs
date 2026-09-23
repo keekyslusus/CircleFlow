@@ -197,14 +197,14 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     {
         var question = _visual.AskPrompt.Input.Text.Trim();
         if (!CanAct || question.Length == 0) return;
-        var selection = _createSelection(Bounds!.Value);
+        var selection = _askImageAttached ? null : _createSelection(Bounds!.Value);
         IsCompleting = true;
         _askDraftStarted = false;
         _visual.Toolbar.Hide();
         try { _publish(new AskAboutSelection(selection, question)); }
         catch
         {
-            selection.Dispose();
+            selection?.Dispose();
             throw;
         }
     }

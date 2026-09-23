@@ -10,6 +10,8 @@ internal sealed class FakeBrowserSession : IVisualSearchBrowserSession
     public string ScriptResult { get; set; } = "\"ready\"";
     public string? Message { get; set; }
     public Queue<string?> Messages { get; } = new();
+    // Replies to requests that carry an id, answered as the page bridge would: CTS:<id>:<status>.
+    public Queue<string?> Statuses { get; } = new();
     public List<string> SentMessages { get; } = [];
     public string? SentMessage => SentMessages.LastOrDefault();
     public Action? OnPostNavigation { get; set; }
@@ -71,6 +73,16 @@ internal sealed class FakeBrowserSession : IVisualSearchBrowserSession
         MessageCalls++;
         SentMessages.Add(message);
         OnMessage?.Invoke();
-        return Task.FromResult(Messages.Count > 0 ? Messages.Dequeue() : Message);
+        var reply = Statuses.Count > 0 ? Tagged(message, Statuses.Dequeue())
+            : Messages.Count > 0 ? Messages.Dequeue()
+            : Message;
+        return Task.FromResult(reply is not null && predicate(reply) ? reply : null);
+    }
+
+    private static string? Tagged(string message, string? status)
+    {
+        if (status is null) return null;
+        using var request = System.Text.Json.JsonDocument.Parse(message);
+        return $"CTS:{request.RootElement.GetProperty("id").GetInt32()}:{status}";
     }
 }
