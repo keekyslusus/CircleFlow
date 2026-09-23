@@ -77,18 +77,12 @@ internal sealed class SettingsWindowView
             var initial = control.IsChecked;
             _restoreDefaults.Add(() => control.IsChecked = initial);
         }
-        foreach (var name in new[] { "AppLanguage", "Cleanup", "Provider", "OcrLanguage", "TargetLanguage" })
+        foreach (var name in new[] { "AppLanguage", "Provider", "Cleanup", "TextSearch", "OcrLanguage", "TargetLanguage" })
         {
             var control = Element<ComboBox>(name);
             _dropdowns.Add(new SettingsDropdownMotion(control));
             var initial = control.SelectedIndex;
             _restoreDefaults.Add(() => control.SelectedIndex = initial);
-        }
-        foreach (var name in new[] { "Maximum", "Padding", "Delay" })
-        {
-            var control = Element<TextBox>(name);
-            var initial = control.Text;
-            _restoreDefaults.Add(() => control.Text = initial);
         }
         SetShortcut(DefaultShortcut());
     }

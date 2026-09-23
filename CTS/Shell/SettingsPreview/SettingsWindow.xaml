@@ -300,33 +300,6 @@
                                             </ContentControl>
                                         </Grid>
                                     </Border>
-                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,17" MinHeight="77">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="21"/>
-                                                <ColumnDefinition Width="16"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Viewbox Width="21" Height="21" VerticalAlignment="Center">
-                                                <Canvas Width="24" Height="24">
-                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.RestoreOutlined}"/>
-                                                </Canvas>
-                                            </Viewbox>
-                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
-                                                <TextBlock Text="{Binding [cleanup]}" Style="{StaticResource RowTitle}"/>
-                                                <TextBlock Text="{Binding [cleanup_sub]}" Style="{StaticResource RowSubtitle}"/>
-                                            </StackPanel>
-                                            <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <ComboBox x:Name="Cleanup" SelectedIndex="0" Width="160" AutomationProperties.Name="{Binding [cleanup]}">
-                                                    <ComboBoxItem Content="{Binding [every_7]}"/>
-                                                    <ComboBoxItem Content="{Binding [every_14]}"/>
-                                                    <ComboBoxItem Content="{Binding [every_30]}"/>
-                                                    <ComboBoxItem Content="{Binding [never]}"/>
-                                                </ComboBox>
-                                            </ContentControl>
-                                        </Grid>
-                                    </Border>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -410,7 +383,7 @@
                         </StackPanel>
                         <StackPanel x:Name="Page_search" Visibility="Collapsed">
                             <TextBlock Text="{Binding [search_title]}" Style="{StaticResource PageTitle}"/>
-                            <TextBlock Text="{Binding [default_provider]}" Style="{StaticResource SectionTitle}" Margin="0,0,0,9"/>
+                            <TextBlock Text="{Binding [image_search]}" Style="{StaticResource SectionTitle}" Margin="0,0,0,9"/>
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
                                     <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,0,0,0" Padding="19,17" MinHeight="77">
@@ -439,9 +412,36 @@
                                             </ContentControl>
                                         </Grid>
                                     </Border>
+                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,17" MinHeight="77">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="21"/>
+                                                <ColumnDefinition Width="16"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Viewbox Width="21" Height="21" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.RestoreOutlined}"/>
+                                                </Canvas>
+                                            </Viewbox>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
+                                                <TextBlock Text="{Binding [cleanup]}" Style="{StaticResource RowTitle}"/>
+                                                <TextBlock Text="{Binding [cleanup_sub]}" Style="{StaticResource RowSubtitle}"/>
+                                            </StackPanel>
+                                            <ContentControl Grid.Column="3" VerticalAlignment="Center">
+                                                <ComboBox x:Name="Cleanup" SelectedIndex="0" Width="160" AutomationProperties.Name="{Binding [cleanup]}">
+                                                    <ComboBoxItem Content="{Binding [every_7]}"/>
+                                                    <ComboBoxItem Content="{Binding [every_14]}"/>
+                                                    <ComboBoxItem Content="{Binding [every_30]}"/>
+                                                    <ComboBoxItem Content="{Binding [never]}"/>
+                                                </ComboBox>
+                                            </ContentControl>
+                                        </Grid>
+                                    </Border>
                                 </StackPanel>
                             </Border>
-                            <TextBlock Text="{Binding [image_preparation]}" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Text="{Binding [text_search]}" Style="{StaticResource SectionTitle}"/>
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
                                     <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,0,0,0" Padding="19,17" MinHeight="77">
@@ -454,68 +454,23 @@
                                             </Grid.ColumnDefinitions>
                                             <Viewbox Width="21" Height="21" VerticalAlignment="Center">
                                                 <Canvas Width="24" Height="24">
-                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.ImageOutlined}"/>
+                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.LinkOutlined}"/>
                                                 </Canvas>
                                             </Viewbox>
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
-                                                <TextBlock Text="{Binding [maximum]}" Style="{StaticResource RowTitle}"/>
-                                                <TextBlock Text="{Binding [maximum_sub]}" Style="{StaticResource RowSubtitle}"/>
+                                                <TextBlock Text="{Binding [text_search_engine]}" Style="{StaticResource RowTitle}"/>
+                                                <TextBlock Text="{Binding [text_search_engine_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBox x:Name="Maximum" Text="1600" Width="100" AutomationProperties.Name="{Binding [maximum]}"/>
-                                                    <TextBlock Text="{Binding [px]}" Style="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </ContentControl>
-                                        </Grid>
-                                    </Border>
-                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,17" MinHeight="77">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="21"/>
-                                                <ColumnDefinition Width="16"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Viewbox Width="21" Height="21" VerticalAlignment="Center">
-                                                <Canvas Width="24" Height="24">
-                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.CircleSearchOutlined}"/>
-                                                </Canvas>
-                                            </Viewbox>
-                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
-                                                <TextBlock Text="{Binding [padding]}" Style="{StaticResource RowTitle}"/>
-                                                <TextBlock Text="{Binding [padding_sub]}" Style="{StaticResource RowSubtitle}"/>
-                                            </StackPanel>
-                                            <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBox x:Name="Padding" Text="8" Width="100" AutomationProperties.Name="{Binding [padding]}"/>
-                                                    <TextBlock Text="{Binding [px]}" Style="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </ContentControl>
-                                        </Grid>
-                                    </Border>
-                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,17" MinHeight="77">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="21"/>
-                                                <ColumnDefinition Width="16"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Viewbox Width="21" Height="21" VerticalAlignment="Center">
-                                                <Canvas Width="24" Height="24">
-                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.WindowOutlined}"/>
-                                                </Canvas>
-                                            </Viewbox>
-                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
-                                                <TextBlock Text="{Binding [delay]}" Style="{StaticResource RowTitle}"/>
-                                                <TextBlock Text="{Binding [delay_sub]}" Style="{StaticResource RowSubtitle}"/>
-                                            </StackPanel>
-                                            <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBox x:Name="Delay" Text="60" Width="100" AutomationProperties.Name="{Binding [delay]}"/>
-                                                    <TextBlock Text="{Binding [ms]}" Style="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                                                </StackPanel>
+                                                <ComboBox x:Name="TextSearch" SelectedIndex="0" Width="160" AutomationProperties.Name="{Binding [text_search_engine]}">
+                                                    <ComboBoxItem Content="{Binding [match_image_search]}"/>
+                                                    <ComboBoxItem Content="{Binding [engine_bing]}"/>
+                                                    <ComboBoxItem Content="{Binding [engine_duckduckgo]}"/>
+                                                    <ComboBoxItem Content="{Binding [engine_google]}"/>
+                                                    <ComboBoxItem Content="{Binding [engine_kagi]}"/>
+                                                    <ComboBoxItem Content="{Binding [engine_startpage]}"/>
+                                                    <ComboBoxItem Content="{Binding [engine_yandex]}"/>
+                                                </ComboBox>
                                             </ContentControl>
                                         </Grid>
                                     </Border>

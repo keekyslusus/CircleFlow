@@ -189,7 +189,7 @@ public sealed class SettingsPreviewTests
             window.Show();
             window.Top = 20;
             Pump();
-            foreach (var (name, page) in new[] { ("AppLanguage", "general"), ("Cleanup", "general"), ("OcrLanguage", "text"), ("TargetLanguage", "text") })
+            foreach (var (name, page) in new[] { ("AppLanguage", "general"), ("Cleanup", "search"), ("TextSearch", "search"), ("OcrLanguage", "text"), ("TargetLanguage", "text") })
             {
                 Find<RadioButton>(window, "Nav_" + page).IsChecked = true;
                 CompletePageTransition(window, time);
@@ -740,10 +740,10 @@ public sealed class SettingsPreviewTests
             Assert.Equal(pageWidth, Find<StackPanel>(window, "PageContent").ActualWidth);
             scroll.ScrollToBottom();
             Pump();
-            var cleanup = Find<ComboBox>(window, "Cleanup");
-            var cleanupTop = cleanup.TranslatePoint(new Point(), scroll).Y;
-            Assert.True(cleanupTop >= 0);
-            Assert.True(cleanupTop + cleanup.ActualHeight < viewport.ActualHeight);
+            var language = Find<ComboBox>(window, "AppLanguage");
+            var languageTop = language.TranslatePoint(new Point(), scroll).Y;
+            Assert.True(languageTop >= 0);
+            Assert.True(languageTop + language.ActualHeight < viewport.ActualHeight);
             if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
                 Capture(window, $"settings-{(light ? "light" : "dark")}-general-bottom.png");
 
@@ -775,9 +775,10 @@ public sealed class SettingsPreviewTests
             window.Show();
             var provider = Find<ComboBox>(window, "Provider");
             var launch = Find<CheckBox>(window, "Launch");
+            var textSearch = Find<ComboBox>(window, "TextSearch");
             provider.SelectedIndex = 2;
+            textSearch.SelectedIndex = 3;
             launch.IsChecked = false;
-            Find<TextBox>(window, "Maximum").Text = "2500";
             Find<RadioButton>(window, "Nav_search").IsChecked = true;
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
             Assert.Equal(2, provider.SelectedIndex);
@@ -795,7 +796,7 @@ public sealed class SettingsPreviewTests
             CompleteDialogTransition(window, time, open: false);
             Assert.True(launch.IsChecked);
             Assert.Equal(0, provider.SelectedIndex);
-            Assert.Equal("1600", Find<TextBox>(window, "Maximum").Text);
+            Assert.Equal(0, textSearch.SelectedIndex);
             Assert.True(Find<Grid>(window, "Workspace").IsEnabled);
 
             Find<RadioButton>(window, "Nav_hotkeys").IsChecked = true;
