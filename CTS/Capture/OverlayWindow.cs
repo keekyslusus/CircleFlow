@@ -350,6 +350,10 @@ public sealed class OverlayWindow : Window
         {
             _provider.SetOpen(false);
         }
+        else if (_imageSelection.CloseAskPrompt())
+        {
+            Keyboard.Focus(this);
+        }
         else if (_translation.HandleEscape())
         {
         }

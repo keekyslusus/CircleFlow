@@ -20,7 +20,8 @@ internal sealed class OverlaySessionWorkflow(
     UiStrings strings,
     PluginLog log,
     TextSearchWorkflow? textSearch = null,
-    Func<System.Windows.Media.Imaging.BitmapSource, Task>? saveImage = null) : ISearchSessionWorkflow
+    Func<System.Windows.Media.Imaging.BitmapSource, Task>? saveImage = null,
+    ImageAskWorkflow? imageAsk = null) : ISearchSessionWorkflow
 {
     public async Task RunAsync(SearchSessionOptions options, Action onUploadStarted, CancellationToken cancellationToken)
     {
@@ -109,6 +110,19 @@ internal sealed class OverlaySessionWorkflow(
                                 cancellationToken);
                             commandOwnershipTransferred = true;
                             await execution.ConfigureAwait(false);
+                            return;
+
+                        case AskAboutSelection asked when imageAsk is not null && !music.IsRunning:
+                            await overlay.CloseAsync().ConfigureAwait(false);
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var asking = imageAsk.ExecuteAsync(
+                                asked.Selection,
+                                asked.Question,
+                                onUploadStarted,
+                                options.MaxLongSidePx,
+                                cancellationToken);
+                            commandOwnershipTransferred = true;
+                            await asking.ConfigureAwait(false);
                             return;
 
                         case SearchSelectedText selectedText when textSearch is not null:

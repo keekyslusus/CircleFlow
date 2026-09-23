@@ -68,7 +68,7 @@ public sealed class ImageSelectionTests
     }
 
     [Fact]
-    public void Right_click_does_nothing_and_drag_keeps_frame_with_four_actions() => Run(() =>
+    public void Right_click_does_nothing_and_drag_keeps_frame_with_five_actions() => Run(() =>
     {
         using var h = new Harness();
         h.RightClick();
@@ -79,12 +79,75 @@ public sealed class ImageSelectionTests
         Assert.Empty(h.Commands);
         Assert.True(h.Actions.Toolbar.IsOpen);
         Assert.False(h.Window.VisualState.Selection.SelectionFrame.Data.IsEmpty());
-        Assert.Equal(new[] { "Search", "Copy", "Save", "Translate" },
-            new[] { h.Actions.SearchButton, h.Actions.CopyButton, h.Actions.SaveButton, h.Actions.TranslateButton }
-                .Select(button => button.Content));
+        Assert.Equal(new[] { "Search", "Copy", "Save", "Translate", "Ask" },
+            new[] { h.Actions.SearchButton, h.Actions.CopyButton, h.Actions.SaveButton, h.Actions.TranslateButton,
+                    h.Actions.AskButton }
+                .Select(AutomationProperties.GetName));
         h.RightClick();
         Assert.True(h.Actions.Toolbar.IsOpen);
         Assert.Empty(h.Commands);
+    });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Ask_submits_trimmed_question_with_visible_pixels(bool pressEnter) => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Translate();
+        Click(h.Actions.AskButton);
+        var prompt = h.Actions.AskPrompt;
+        Assert.True(h.Actions.Toolbar.IsPromptOpen);
+        Assert.Same(prompt.Root, h.Actions.Toolbar.Surface.Child);
+        Assert.False(prompt.SendButton.IsEnabled);
+
+        prompt.Input.Text = "  What is red?  ";
+        Assert.True(prompt.SendButton.IsEnabled);
+        if (pressEnter) h.Key(prompt.Input, Key.Enter, Keyboard.KeyDownEvent);
+        else Click(prompt.SendButton);
+
+        var asked = Assert.Single(h.Commands.OfType<AskAboutSelection>());
+        Assert.Equal("What is red?", asked.Question);
+        var bounds = asked.Selection.Bounds;
+        Assert.Equal(255, asked.Selection.FrozenFrame.GetPixel(bounds.X, bounds.Y).R);
+        Assert.False(h.Actions.Toolbar.IsOpen);
+        Click(prompt.SendButton);
+        Assert.Single(h.Commands.OfType<AskAboutSelection>());
+    });
+
+    [Fact]
+    public void Escape_returns_from_ask_prompt_to_actions_and_blank_question_is_ignored() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        Click(h.Actions.AskButton);
+        var prompt = h.Actions.AskPrompt;
+        prompt.Input.Text = "   ";
+        h.Key(prompt.Input, Key.Enter, Keyboard.KeyDownEvent);
+        Assert.Empty(h.Commands);
+
+        h.Escape();
+
+        Assert.False(h.Actions.Toolbar.IsPromptOpen);
+        Assert.True(h.Actions.Toolbar.IsOpen);
+        Assert.Equal(OverlayInteractionMode.Selecting, h.Window.Mode);
+        Assert.Empty(h.Commands);
+        h.Escape();
+        Assert.Single(h.Commands.OfType<CancelSession>());
+    });
+
+    [Fact]
+    public void New_selection_resets_ask_prompt() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        Click(h.Actions.AskButton);
+        h.Actions.AskPrompt.Input.Text = "draft";
+        h.Select(new Point(20, 20), new Point(45, 45));
+        Assert.False(h.Actions.Toolbar.IsPromptOpen);
+        Assert.Empty(h.Actions.AskPrompt.Input.Text);
+        Assert.True(h.Actions.Toolbar.IsOpen);
     });
 
     [Theory]
@@ -404,8 +467,11 @@ public sealed class ImageSelectionTests
             Window.UpdateLayout();
         }
 
-        internal void Escape() => Window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,
-            PresentationSource.FromVisual(Window)!, 0, Key.Escape) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
+        internal void Escape() => Key(Window, System.Windows.Input.Key.Escape, Keyboard.PreviewKeyDownEvent);
+
+        internal void Key(UIElement target, Key key, RoutedEvent routedEvent) =>
+            target.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(Window)!, 0, key)
+            { RoutedEvent = routedEvent });
 
         private void Raise(RoutedEvent routedEvent)
         {

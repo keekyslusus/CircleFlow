@@ -42,6 +42,24 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
+    public async Task Ask_closes_overlay_and_sends_question_to_google_regardless_of_selected_provider()
+    {
+        using var harness = new Harness(providerId: SearchProviderIds.YandexImages);
+        var selection = NewSelection();
+        harness.Overlay.Enqueue(new AskAboutSelection(selection, "What is this?"));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal("What is this?", Assert.Single(harness.AskedQuestions));
+        Assert.Equal(1, Assert.Single(harness.CloseCallsWhenAsked));
+        Assert.Equal(1, harness.UploadStartedCalls);
+        Assert.Equal(0, harness.Google.Calls);
+        Assert.Equal(0, harness.Yandex.Calls);
+        Assert.Throws<ObjectDisposedException>(() => selection.FrozenFrame);
+        Assert.Empty(harness.Errors);
+    }
+
+    [Fact]
     public async Task Visual_search_waits_until_selection_overlay_is_gone()
     {
         using var harness = new Harness();
@@ -894,8 +912,22 @@ public sealed class OverlaySessionWorkflowTests
                 TestUiStrings.English,
                 Log,
                 textSearch,
-                saveImage);
+                saveImage,
+                new ImageAskWorkflow(
+                    (_, question) =>
+                    {
+                        AskedQuestions.Add(question);
+                        CloseCallsWhenAsked.Add(Overlay.CloseCalls);
+                        return new FakeBrowserOperation();
+                    },
+                    (_, _, _) => [1],
+                    visualPresenter,
+                    TestUiStrings.English,
+                    Log));
         }
+
+        public List<string> AskedQuestions { get; } = [];
+        public List<int> CloseCallsWhenAsked { get; } = [];
 
         public OverlaySessionWorkflow Workflow { get; }
         public SettingsService Service { get; }
@@ -1108,6 +1140,14 @@ public sealed class OverlaySessionWorkflowTests
             return Task.FromResult(VisualSearchPreparationOutcome.Ready(
                 PreparedVisualSearch.ForUrl(new Uri("https://example.com/results"), null)));
         }
+    }
+
+    private sealed class FakeBrowserOperation : IVisualSearchBrowserOperation
+    {
+        public Task<VisualSearchBrowserOperationStatus> ExecuteAsync(
+            IVisualSearchBrowserSession session,
+            CancellationToken cancel)
+            => Task.FromResult(VisualSearchBrowserOperationStatus.Succeeded);
     }
 
     private sealed class FakeBrowserHost : ISearchBrowserHost

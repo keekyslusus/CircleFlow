@@ -103,6 +103,9 @@ internal static class PluginIcons
     public static Geometry ChevronRightOutlined { get; } = Group(
         Geometry.Parse("m9 5 7 7-7 7"));
 
+    public static Geometry ArrowUpOutlined { get; } = Group(
+        Geometry.Parse("M12 19V5m-6 6 6-6 6 6"));
+
     public static Geometry CheckOutlined { get; } = Group(
         Geometry.Parse("m5 12 4 4L19 6"));
 

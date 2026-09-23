@@ -11,16 +11,23 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
     private static readonly Uri GoogleLensUpload = new("https://lens.google.com/v3/upload");
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan AttachmentTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan ContinuationTokenTimeout = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan ContinuationTokenPollInterval = TimeSpan.FromMilliseconds(200);
+    private static readonly string[] AiModeReplacedParameters =
+        ["source", "q", "mq", "udm", "mstk", "aep", "ntc", "aioh", "csuir", "cs"];
 
     private readonly PluginLog _log;
+    private readonly string? _question;
     private byte[]? _jpeg;
     private int _started;
 
-    public GoogleLensBrowserOperation(byte[] jpeg, PluginLog log)
+    public GoogleLensBrowserOperation(byte[] jpeg, PluginLog log, string? question = null)
     {
         ArgumentNullException.ThrowIfNull(jpeg);
+        if (question is not null) ArgumentException.ThrowIfNullOrWhiteSpace(question);
         _jpeg = jpeg;
         _log = log ?? throw new ArgumentNullException(nameof(log));
+        _question = question;
     }
 
     public async Task<VisualSearchBrowserOperationStatus> ExecuteAsync(
@@ -36,26 +43,120 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         try
         {
             cancel.ThrowIfCancellationRequested();
-            if (await TryDirectUploadAsync(session, jpeg, cancel).ConfigureAwait(true))
-                return VisualSearchBrowserOperationStatus.Succeeded;
+            if (!await TryDirectUploadAsync(session, jpeg, cancel).ConfigureAwait(true))
+            {
+                cancel.ThrowIfCancellationRequested();
+                _log.Info(nameof(GoogleLensBrowserOperation), "falling back to Google Lens page upload");
+                var home = await session.NavigateAsync(GoogleLensHome, NavigationTimeout, cancel)
+                    .ConfigureAwait(true);
+                if (home.Status == BrowserNavigationStatus.Canceled)
+                    return VisualSearchBrowserOperationStatus.Canceled;
+                if (home.Status != BrowserNavigationStatus.Succeeded ||
+                    !await TryPageUploadAsync(session, jpeg, cancel).ConfigureAwait(true))
+                {
+                    return VisualSearchBrowserOperationStatus.Failed;
+                }
+            }
 
-            cancel.ThrowIfCancellationRequested();
-            _log.Info(nameof(GoogleLensBrowserOperation), "falling back to Google Lens page upload");
-            var home = await session.NavigateAsync(GoogleLensHome, NavigationTimeout, cancel)
-                .ConfigureAwait(true);
-            if (home.Status == BrowserNavigationStatus.Canceled)
-                return VisualSearchBrowserOperationStatus.Canceled;
-            if (home.Status != BrowserNavigationStatus.Succeeded)
-                return VisualSearchBrowserOperationStatus.Failed;
-
-            return await TryPageUploadAsync(session, jpeg, cancel).ConfigureAwait(true)
+            return _question is null
                 ? VisualSearchBrowserOperationStatus.Succeeded
-                : VisualSearchBrowserOperationStatus.Failed;
+                : await ContinueInAiModeAsync(session, _question, cancel).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
             return VisualSearchBrowserOperationStatus.Canceled;
         }
+    }
+
+    private async Task<VisualSearchBrowserOperationStatus> ContinueInAiModeAsync(
+        IVisualSearchBrowserSession session,
+        string question,
+        CancellationToken cancel)
+    {
+        var token = await WaitForContinuationTokenAsync(session, cancel).ConfigureAwait(true);
+        var lensResults = session.CurrentUri;
+        var target = token is null || lensResults is null ? null : CreateAiModeUri(lensResults, token, question);
+        if (target is null)
+        {
+            // Lens results still describe the image, so they remain more useful than an error.
+            _log.Warn(nameof(GoogleLensBrowserOperation), "AI Mode continuation is unavailable; keeping Lens results");
+            return VisualSearchBrowserOperationStatus.Succeeded;
+        }
+
+        var navigation = await session.NavigateAsync(target, NavigationTimeout, cancel).ConfigureAwait(true);
+        if (navigation.Status == BrowserNavigationStatus.Canceled)
+            throw new OperationCanceledException(cancel);
+        if (navigation.Status != BrowserNavigationStatus.Succeeded)
+        {
+            _log.Warn(
+                nameof(GoogleLensBrowserOperation),
+                $"Google AI Mode navigation failed: {navigation.Status} {navigation.Error}");
+            return VisualSearchBrowserOperationStatus.Failed;
+        }
+
+        _log.Info(nameof(GoogleLensBrowserOperation), "Google AI Mode opened with the attached image");
+        return VisualSearchBrowserOperationStatus.Succeeded;
+    }
+
+    private static async Task<string?> WaitForContinuationTokenAsync(
+        IVisualSearchBrowserSession session,
+        CancellationToken cancel)
+    {
+        // Lens renders the follow-up token only after its asynchronous image overview arrives.
+        var deadline = DateTime.UtcNow + ContinuationTokenTimeout;
+        while (true)
+        {
+            // The user may be solving Google's traffic check; the question should survive it.
+            if (IsGoogleTrafficCheck(session.CurrentUri))
+                deadline = DateTime.UtcNow + ContinuationTokenTimeout;
+            var result = await session.ExecuteScriptAsync(ContinuationTokenScript, cancel).ConfigureAwait(true);
+            var token = JsonSerializer.Deserialize<string?>(result);
+            if (!string.IsNullOrWhiteSpace(token)) return token;
+            if (DateTime.UtcNow >= deadline) return null;
+            await Task.Delay(ContinuationTokenPollInterval, cancel).ConfigureAwait(true);
+        }
+    }
+
+    internal static bool IsGoogleTrafficCheck(Uri? uri) =>
+        uri is { Scheme: "https", Host: "google.com" or "www.google.com" } &&
+        uri.AbsolutePath.StartsWith("/sorry/", StringComparison.Ordinal);
+
+    internal static Uri? CreateAiModeUri(Uri lensResults, string token, string question)
+    {
+        ArgumentNullException.ThrowIfNull(lensResults);
+        ArgumentException.ThrowIfNullOrWhiteSpace(token);
+        ArgumentException.ThrowIfNullOrWhiteSpace(question);
+        if (lensResults.Scheme != Uri.UriSchemeHttps ||
+            lensResults.Host is not ("google.com" or "www.google.com") ||
+            lensResults.AbsolutePath != "/search")
+        {
+            return null;
+        }
+
+        var parameters = lensResults.Query.TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => (Name: part.Split('=', 2)[0], Raw: part))
+            .ToList();
+        if (!parameters.Any(parameter => parameter.Name == "vsrid") ||
+            !parameters.Any(parameter => parameter.Name == "gsessionid"))
+        {
+            return null;
+        }
+
+        // Parameters of the follow-up navigation Lens itself performs when a question is typed.
+        var query = parameters
+            .Where(parameter => !AiModeReplacedParameters.Contains(parameter.Name, StringComparer.Ordinal))
+            .Select(parameter => parameter.Raw)
+            .Append("q=")
+            .Append($"mq={Uri.EscapeDataString(question)}")
+            .Append("udm=50")
+            .Append($"mstk={Uri.EscapeDataString(token)}")
+            .Append("aep=10")
+            .Append("ntc=1")
+            .Append("aioh=1")
+            .Append("csuir=1")
+            .Append("cs=0");
+        return new UriBuilder(lensResults) { Query = string.Join('&', query), Fragment = string.Empty }.Uri;
     }
 
     private async Task<bool> TryDirectUploadAsync(
@@ -208,6 +309,9 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         var bytes = Encoding.ASCII.GetBytes(value);
         stream.Write(bytes);
     }
+
+    internal const string ContinuationTokenScript =
+        "document.querySelector('[data-mstk]')?.getAttribute('data-mstk') ?? null";
 
     internal const string AttachmentBridgeScript = """
         (() => {
