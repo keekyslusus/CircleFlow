@@ -16,7 +16,9 @@
 
 ## Tests
 
-- While iterating, run the fast set: `dotnet test tests/CircleToSearch.Tests --filter "Category!=Slow"` (about 15 seconds).
-- Also run the slow tests of the feature you changed, e.g. `--filter "FullyQualifiedName~SettingsPreviewTests"`. Run the full suite once, before finishing the task, not after every edit.
+- While iterating, run the tests of the feature you changed, e.g. `--filter "FullyQualifiedName~SettingsPreviewTests"`, and the fast set: `dotnet test tests/CircleToSearch.Tests --filter "Category!=Slow"` (about 15 seconds).
+- Run the full suite once, before finishing the task, not after every edit. Do not run the fast set right before it: the full suite already includes it.
+- Add `--no-build` when the code has not changed since the last build, e.g. when rerunning or narrowing a filter.
+- If the full suite fails in tests unrelated to your change, rerun only those tests (`--no-build --filter`), not the full suite. If they pass alone, report them as flaky, with the failure message.
 - Mark a test class `[Trait("Category", "Slow")]` when its tests together take a second or more (real-time waits, WPF windows, child processes).
-- In UI tests, wait for a condition, not a fixed duration; to check an animation mid-way, seek its clock instead of sleeping.
+- In UI tests, wait for a condition, not a fixed duration. Drive WPF animations with `ManualAnimationClock` (`time.Advance`) instead of waiting on real time.

@@ -39,7 +39,7 @@ public sealed class TranslationMemoryProfilerTests
         using var profiler = new TranslationMemoryProfiler(directory);
         profiler.TrackProcesses([(Environment.ProcessId, "test-worker")]);
         profiler.Mark("webview_closed");
-        for (var attempt = 0; attempt < 40 && File.ReadAllLines(path).Length < 2; attempt++)
+        for (var attempt = 0; attempt < 40 && CountLinesWhileWriting(path) < 2; attempt++)
             await Task.Delay(100);
         profiler.Dispose();
         var lines = File.ReadAllLines(path);
@@ -48,5 +48,16 @@ public sealed class TranslationMemoryProfilerTests
         var worker = Assert.Single(first.RootElement.GetProperty("webview").EnumerateArray());
         Assert.Equal("test-worker", worker.GetProperty("Kind").GetString());
         Assert.Equal("running", worker.GetProperty("State").GetString());
+    }
+
+    // The profiler appends from its timer thread. File.ReadAllLines denies concurrent writers, so polling
+    // with it either throws or makes the profiler drop that sample.
+    private static int CountLinesWhileWriting(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        var count = 0;
+        while (reader.ReadLine() is not null) count++;
+        return count;
     }
 }
