@@ -76,9 +76,11 @@ public sealed class ControlRippleHost : IDisposable
         RemoveActiveRipple();
         var duration = _control.Tag is string ? CompactExpandDuration : DefaultExpandDuration;
         var foreground = ResolveForegroundColor(_control);
+        var surface = VisualSurface(_control);
         var adorner = new RippleAdorner(
             _control,
-            e.GetPosition(_control),
+            surface,
+            e.GetPosition(surface),
             PluginPalette.WithAlpha(foreground, 0.21),
             duration,
             ControlCornerRadius(_control));
@@ -128,6 +130,13 @@ public sealed class ControlRippleHost : IDisposable
             ? brush.Color
             : PluginPalette.OpaqueBlack;
 
+    // The pressed spring scales the template's ScaleHost, not the control, so the ripple follows that surface.
+    private static UIElement VisualSurface(Control control)
+    {
+        control.ApplyTemplate();
+        return control.Template?.FindName("ScaleHost", control) as UIElement ?? control;
+    }
+
     private static double ControlCornerRadius(Control control)
     {
         control.ApplyTemplate();
@@ -142,6 +151,7 @@ public sealed class ControlRippleHost : IDisposable
         private static readonly TimeSpan WaitBeforeFade = TimeSpan.FromMilliseconds(290);
         private static readonly KeySpline ExpandSpline = new(0, 0.49, 0, 1);
         private static readonly KeySpline FadeSpline = new(0.11, 0, 0.5, 0);
+        private readonly UIElement _surface;
         private readonly Canvas _layer;
         private readonly Ellipse _ellipse;
         private readonly GradientStop _solidStop;
@@ -152,16 +162,19 @@ public sealed class ControlRippleHost : IDisposable
         private DispatcherTimer? _releaseTimer;
         private DispatcherTimer? _fallbackTimer;
         private Action? _completed;
+        private Matrix? _placement;
         private bool _releaseRequested;
         private bool _finished;
 
         public RippleAdorner(
             UIElement adornedElement,
+            UIElement surface,
             Point origin,
             Color color,
             TimeSpan expandDuration,
             double cornerRadius) : base(adornedElement)
         {
+            _surface = surface;
             _expandDuration = expandDuration;
             _cornerRadius = cornerRadius;
             _visuals = new VisualCollection(this);
@@ -201,6 +214,7 @@ public sealed class ControlRippleHost : IDisposable
         {
             _completed = completed;
             _elapsed.Start();
+            CompositionTarget.Rendering += OnRendering;
             var scale = (ScaleTransform)_ellipse.RenderTransform;
             scale.BeginAnimation(
                 ScaleTransform.ScaleXProperty,
@@ -260,8 +274,38 @@ public sealed class ControlRippleHost : IDisposable
             completed?.Invoke();
         }
 
+        public override GeneralTransform GetDesiredTransform(GeneralTransform transform)
+        {
+            _placement = CurrentPlacement();
+            return _placement is { } placement ? new MatrixTransform(placement) : base.GetDesiredTransform(transform);
+        }
+
+        // The adorner layer re-places adorners only after layout, but FLIP offsets and the pressed
+        // spring are render transforms that never trigger layout. The layer asks for the transform
+        // only while arranging itself, so both must be invalidated.
+        private void OnRendering(object? sender, EventArgs e)
+        {
+            if (CurrentPlacement() == _placement) return;
+            InvalidateArrange();
+            (VisualTreeHelper.GetParent(this) as UIElement)?.InvalidateArrange();
+        }
+
+        private Matrix? CurrentPlacement()
+        {
+            if (VisualTreeHelper.GetParent(this) is not Visual layer) return null;
+            try
+            {
+                return _surface.TransformToVisual(layer) is Transform transform ? transform.Value : null;
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+        }
+
         private void StopTimers()
         {
+            CompositionTarget.Rendering -= OnRendering;
             _releaseTimer?.Stop();
             _releaseTimer = null;
             _fallbackTimer?.Stop();

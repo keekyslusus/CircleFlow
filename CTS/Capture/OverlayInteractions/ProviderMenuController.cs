@@ -14,6 +14,7 @@ internal sealed class ProviderMenuController : IDisposable
     private readonly bool _lightTheme;
     private readonly Func<bool> _canInteract;
     private readonly Action<string> _providerSelected;
+    private readonly Action<Action> _changeTrayLayout;
     private readonly List<Button> _menuItems = [];
     private bool _disposed;
 
@@ -25,7 +26,8 @@ internal sealed class ProviderMenuController : IDisposable
         UiStrings strings,
         bool lightTheme,
         Func<bool> canInteract,
-        Action<string> providerSelected)
+        Action<string> providerSelected,
+        Action<Action> changeTrayLayout)
     {
         _visual = visual;
         _coordinateRoot = coordinateRoot;
@@ -34,6 +36,7 @@ internal sealed class ProviderMenuController : IDisposable
         _lightTheme = lightTheme;
         _canInteract = canInteract;
         _providerSelected = providerSelected;
+        _changeTrayLayout = changeTrayLayout;
         SelectedProviderId = selectedProviderId;
 
         if (_visual is null) return;
@@ -82,12 +85,12 @@ internal sealed class ProviderMenuController : IDisposable
 
         SelectedProviderId = descriptor.Id;
         DetachMenuItemHandlers();
-        ProviderMenuVisualPresenter.UpdateProvider(
+        _changeTrayLayout(() => ProviderMenuVisualPresenter.UpdateProvider(
             _visual,
             _providers,
             SelectedProviderId,
             _strings,
-            _lightTheme);
+            _lightTheme));
         AttachMenuItemHandlers();
         SetOpen(false);
         _providerSelected(SelectedProviderId);

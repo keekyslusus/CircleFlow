@@ -605,6 +605,7 @@ public sealed class OverlayWindow : Window
                 _debug.SetOpen(false);
                 _toast.SettleForClosing();
                 _visual.Bottom.LayoutTransitions.Settle();
+                _visual.Bottom.TrayTransitions.Settle();
                 _translation.SetActionEnabled(false);
                 break;
         }
@@ -741,6 +742,7 @@ public sealed class OverlayWindow : Window
         UnqueueEntranceRipple();
         _controllers.Dispose();
         _visual.Bottom.LayoutTransitions.Dispose();
+        _visual.Bottom.TrayTransitions.Dispose();
         _visual.Effects.SceneRipples.Dispose();
     }
 
@@ -796,6 +798,7 @@ public sealed class OverlayWindow : Window
         _visual.Music.LoadingIndicator.Dispose();
         _visual.Music.Waveform.Dispose();
         _visual.Bottom.LayoutTransitions.Dispose();
+        _visual.Bottom.TrayTransitions.Dispose();
         _visual.Effects.SceneRipples.Dispose();
     }
 

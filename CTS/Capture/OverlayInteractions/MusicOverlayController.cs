@@ -13,7 +13,7 @@ internal sealed class MusicOverlayController : IDisposable
 {
     private readonly MusicOverlayVisual _visual;
     private readonly OverlayActivityPresenter _activityPresenter;
-    private readonly BottomOverlayLayoutTransitions _layoutTransitions;
+    private readonly StackLayoutTransitions _layoutTransitions;
     private readonly OverlayEffectsVisual _effects;
     private readonly FrameworkElement _root;
     private readonly UiStrings _strings;
@@ -49,7 +49,7 @@ internal sealed class MusicOverlayController : IDisposable
     internal MusicOverlayController(
         MusicOverlayVisual visual,
         OverlayActivityPresenter activityPresenter,
-        BottomOverlayLayoutTransitions layoutTransitions,
+        StackLayoutTransitions layoutTransitions,
         OverlayEffectsVisual effects,
         FrameworkElement root,
         UiStrings strings,

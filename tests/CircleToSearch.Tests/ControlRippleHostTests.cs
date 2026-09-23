@@ -2,6 +2,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using CircleToSearch.Capture;
 using CircleToSearch.Ui.Effects;
 using Xunit;
 
@@ -91,6 +94,63 @@ public sealed class ControlRippleHostTests
             });
             PumpUntil(() => layer.GetAdorners(button) is null);
             window.Close();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Active_ripple_follows_render_transforms_of_the_control_and_its_scale_host()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var time = ManualAnimationClock.Install();
+            var offset = new TranslateTransform();
+            var button = new Button { Width = 100, Height = 44, RenderTransform = offset };
+            OverlayVisualResources.ApplyButtonTemplate(
+                button, 22, Colors.White, Colors.Black, animationsEnabled: false);
+            var root = new AdornerDecorator { Child = button };
+            var window = new Window { Width = 300, Height = 200, Content = root };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                using var ripple = ControlRippleHost.AttachForTest(button);
+                button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent,
+                    Source = button,
+                });
+                window.UpdateLayout();
+                var adorner = Assert.Single(AdornerLayer.GetAdornerLayer(button)!.GetAdorners(button)!);
+                var scaleHost = Assert.IsAssignableFrom<UIElement>(button.Template.FindName("ScaleHost", button));
+                var farCorner = new Point(button.ActualWidth, button.ActualHeight);
+                void AssertAligned()
+                {
+                    Assert.Equal(
+                        scaleHost.TransformToVisual(root).Transform(new Point()),
+                        adorner.TransformToVisual(root).Transform(new Point()));
+                    Assert.Equal(
+                        scaleHost.TransformToVisual(root).Transform(farCorner),
+                        adorner.TransformToVisual(root).Transform(farCorner));
+                }
+
+                offset.BeginAnimation(
+                    TranslateTransform.XProperty,
+                    new DoubleAnimation(30, 0, TimeSpan.FromMilliseconds(200)));
+                time.Advance(96);
+                Assert.InRange(offset.X, 1, 29);
+                AssertAligned();
+
+                var scale = new ScaleTransform();
+                scaleHost.RenderTransform = scale;
+                time.Advance(16);
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, 0.9, TimeSpan.FromMilliseconds(80)));
+                scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, 0.9, TimeSpan.FromMilliseconds(80)));
+                time.Advance(96);
+                AssertAligned();
+            }
+            finally { window.Close(); }
         });
 
         Assert.Null(failure);

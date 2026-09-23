@@ -5,23 +5,27 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-public sealed class BottomOverlayLayoutTransitions : IDisposable
+public sealed class StackLayoutTransitions : IDisposable
 {
     private const double MinimumDeltaDips = 0.5;
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(200);
 
     private readonly FrameworkElement _root;
-    private readonly Panel _stack;
+    private readonly StackPanel _stack;
+    private readonly DependencyProperty _axis;
     private readonly Dictionary<FrameworkElement, TranslateTransform> _offsets = [];
     private readonly Dictionary<TranslateTransform, ActiveAnimation> _animations = [];
     private int _transactionDepth;
     private bool _transactionAnimationsEnabled;
     private bool _disposed;
 
-    internal BottomOverlayLayoutTransitions(FrameworkElement root, Panel stack)
+    internal StackLayoutTransitions(FrameworkElement root, StackPanel stack)
     {
         _root = root ?? throw new ArgumentNullException(nameof(root));
         _stack = stack ?? throw new ArgumentNullException(nameof(stack));
+        _axis = stack.Orientation == Orientation.Horizontal
+            ? TranslateTransform.XProperty
+            : TranslateTransform.YProperty;
         EnsureSlotOffsets();
     }
 
@@ -128,7 +132,8 @@ public sealed class BottomOverlayLayoutTransitions : IDisposable
             if (!_offsets.ContainsKey(slot) || !IsLayoutParticipant(slot)) continue;
             try
             {
-                positions[slot] = slot.TransformToAncestor(_root).Transform(new Point()).Y;
+                var position = slot.TransformToAncestor(_root).Transform(new Point());
+                positions[slot] = _axis == TranslateTransform.XProperty ? position.X : position.Y;
             }
             catch (InvalidOperationException)
             {
@@ -160,21 +165,21 @@ public sealed class BottomOverlayLayoutTransitions : IDisposable
         IReadOnlyDictionary<FrameworkElement, double> first,
         IReadOnlyDictionary<FrameworkElement, double> last)
     {
-        foreach (var (slot, firstY) in first)
+        foreach (var (slot, firstPosition) in first)
         {
-            if (!last.TryGetValue(slot, out var lastY) || !_offsets.TryGetValue(slot, out var offset))
+            if (!last.TryGetValue(slot, out var lastPosition) || !_offsets.TryGetValue(slot, out var offset))
                 continue;
-            var delta = firstY - lastY;
+            var delta = firstPosition - lastPosition;
             if (Math.Abs(delta) < MinimumDeltaDips) continue;
 
-            offset.Y = delta;
+            offset.SetValue(_axis, delta);
             var animation = OverlayVisualResources.Animate(delta, 0, Duration);
             EventHandler? completed = null;
             completed = (_, _) => CompleteAnimation(offset);
             animation.Completed += completed;
             _animations[offset] = new ActiveAnimation(animation, completed);
             offset.BeginAnimation(
-                TranslateTransform.YProperty,
+                _axis,
                 animation,
                 HandoffBehavior.SnapshotAndReplace);
         }
@@ -184,8 +189,7 @@ public sealed class BottomOverlayLayoutTransitions : IDisposable
     {
         if (!_animations.Remove(offset, out var active)) return;
         active.Animation.Completed -= active.Completed;
-        offset.BeginAnimation(TranslateTransform.YProperty, null);
-        offset.Y = 0;
+        ResetOffset(offset);
     }
 
     private void CancelAnimationsAndResetOffsets()
@@ -193,15 +197,19 @@ public sealed class BottomOverlayLayoutTransitions : IDisposable
         foreach (var (offset, active) in _animations)
         {
             active.Animation.Completed -= active.Completed;
-            offset.BeginAnimation(TranslateTransform.YProperty, null);
-            offset.Y = 0;
+            ResetOffset(offset);
         }
         _animations.Clear();
         foreach (var offset in _offsets.Values)
         {
-            offset.BeginAnimation(TranslateTransform.YProperty, null);
-            offset.Y = 0;
+            ResetOffset(offset);
         }
+    }
+
+    private void ResetOffset(TranslateTransform offset)
+    {
+        offset.BeginAnimation(_axis, null);
+        offset.SetValue(_axis, 0.0);
     }
 
     private sealed record ActiveAnimation(DoubleAnimation Animation, EventHandler Completed);

@@ -8,7 +8,7 @@ using Xunit;
 
 namespace CircleToSearch.Tests;
 
-public sealed class BottomOverlayLayoutTransitionsTests
+public sealed class StackLayoutTransitionsTests
 {
     [Fact]
     public void Appearance_applies_final_layout_and_moves_persistent_slot_from_its_old_position()
@@ -198,6 +198,61 @@ public sealed class BottomOverlayLayoutTransitionsTests
     }
 
     [Fact]
+    public void Horizontal_width_change_moves_recentered_neighbors_from_their_old_positions()
+    {
+        var failure = RunOnSta(time =>
+        {
+            using var fixture = new TrayFixture();
+            var oldLeftX = fixture.VisualX(fixture.Left);
+            var oldRightX = fixture.VisualX(fixture.Right);
+
+            fixture.Transitions.Apply(() => fixture.Middle.Width = 100, animationsEnabled: true);
+
+            Assert.Equal(oldLeftX - 20, fixture.LayoutX(fixture.Left), 3);
+            Assert.Equal(oldRightX + 20, fixture.LayoutX(fixture.Right), 3);
+            Assert.Equal(oldLeftX, fixture.VisualX(fixture.Left), 2);
+            Assert.Equal(oldRightX, fixture.VisualX(fixture.Right), 2);
+            Assert.Equal(0, fixture.Offset(fixture.Left).Y, 3);
+
+            time.Advance(260);
+
+            Assert.Equal(oldLeftX - 20, fixture.VisualX(fixture.Left), 2);
+            Assert.Equal(oldRightX + 20, fixture.VisualX(fixture.Right), 2);
+            AssertSettledX(fixture.Offset(fixture.Left));
+            AssertSettledX(fixture.Offset(fixture.Right));
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Horizontal_collapse_closes_the_gap_without_animating_the_collapsed_chip()
+    {
+        var failure = RunOnSta(time =>
+        {
+            using var fixture = new TrayFixture();
+            var oldLeftX = fixture.VisualX(fixture.Left);
+            var oldRightX = fixture.VisualX(fixture.Right);
+
+            fixture.Transitions.Apply(
+                () => fixture.Middle.Visibility = Visibility.Collapsed,
+                animationsEnabled: true);
+
+            Assert.Equal(oldLeftX, fixture.VisualX(fixture.Left), 2);
+            Assert.Equal(oldRightX, fixture.VisualX(fixture.Right), 2);
+            Assert.True(fixture.Offset(fixture.Right).HasAnimatedProperties);
+            AssertSettledX(fixture.Offset(fixture.Middle));
+
+            time.Advance(260);
+
+            Assert.Equal(fixture.VisualX(fixture.Left) + 40 + 8, fixture.VisualX(fixture.Right), 2);
+            AssertSettledX(fixture.Offset(fixture.Right));
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Disposal_detaches_pending_completion_and_releases_coordinator_and_window()
     {
         WeakReference? coordinatorReference = null;
@@ -218,6 +273,12 @@ public sealed class BottomOverlayLayoutTransitionsTests
     private static void AssertSettled(TranslateTransform offset)
     {
         Assert.Equal(0, offset.Y, 3);
+        Assert.False(offset.HasAnimatedProperties);
+    }
+
+    private static void AssertSettledX(TranslateTransform offset)
+    {
+        Assert.Equal(0, offset.X, 3);
         Assert.False(offset.HasAnimatedProperties);
     }
 
@@ -282,7 +343,7 @@ public sealed class BottomOverlayLayoutTransitionsTests
             Stack.Children.Add(ActionSlot);
             Root = new Grid();
             Root.Children.Add(Stack);
-            Transitions = new BottomOverlayLayoutTransitions(Root, Stack);
+            Transitions = new StackLayoutTransitions(Root, Stack);
             Window = new Window
             {
                 Width = 400,
@@ -302,7 +363,7 @@ public sealed class BottomOverlayLayoutTransitionsTests
         internal Grid ResultSlot { get; }
         internal Border ResultContent { get; }
         internal Grid ActionSlot { get; }
-        internal BottomOverlayLayoutTransitions Transitions { get; }
+        internal StackLayoutTransitions Transitions { get; }
 
         internal Grid AddSlot(double height, int index)
         {
@@ -333,5 +394,62 @@ public sealed class BottomOverlayLayoutTransitionsTests
             slot.Children.Add(content);
             return slot;
         }
+    }
+
+    private sealed class TrayFixture : IDisposable
+    {
+        internal TrayFixture()
+        {
+            Left = CreateChip(40, 0);
+            Middle = CreateChip(60, 8);
+            Right = CreateChip(40, 8);
+            var tray = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Bottom,
+            };
+            tray.Children.Add(Left);
+            tray.Children.Add(Middle);
+            tray.Children.Add(Right);
+            Root = new Grid();
+            Root.Children.Add(tray);
+            Transitions = new StackLayoutTransitions(Root, tray);
+            Window = new Window
+            {
+                Width = 400,
+                Height = 120,
+                WindowStyle = WindowStyle.None,
+                ShowInTaskbar = false,
+                Content = Root,
+            };
+            Window.Show();
+            Window.UpdateLayout();
+        }
+
+        internal Window Window { get; }
+        internal Grid Root { get; }
+        internal Border Left { get; }
+        internal Border Middle { get; }
+        internal Border Right { get; }
+        internal StackLayoutTransitions Transitions { get; }
+
+        internal TranslateTransform Offset(FrameworkElement chip) =>
+            Assert.IsType<TranslateTransform>(chip.RenderTransform);
+
+        internal double VisualX(FrameworkElement chip) =>
+            chip.TranslatePoint(new Point(), Root).X;
+
+        internal double LayoutX(FrameworkElement chip) => VisualX(chip) - Offset(chip).X;
+
+        public void Dispose()
+        {
+            Transitions.Dispose();
+            Window.Content = null;
+            Window.Close();
+        }
+
+        private static Border CreateChip(double width, double leftMargin) =>
+            new() { Width = width, Height = 44, Margin = new Thickness(leftMargin, 0, 0, 0) };
     }
 }

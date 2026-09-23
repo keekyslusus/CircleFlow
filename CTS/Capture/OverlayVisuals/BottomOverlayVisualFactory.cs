@@ -42,13 +42,16 @@ internal static class BottomOverlayVisualFactory
         root.Children.Add(stack);
         root.Children.Add(providerMenuLayer);
         Panel.SetZIndex(root, 2);
-        var layoutTransitions = new BottomOverlayLayoutTransitions(root, stack);
+        var layoutTransitions = new StackLayoutTransitions(root, stack);
+        // The tray recenters when its width changes, so chips are measured against the fixed root.
+        var trayTransitions = new StackLayoutTransitions(root, actions.Tray);
         return new BottomOverlayVisual(
             root,
             stack,
             resultSlot,
             actionSlot,
             providerMenuLayer,
-            layoutTransitions);
+            layoutTransitions,
+            trayTransitions);
     }
 }

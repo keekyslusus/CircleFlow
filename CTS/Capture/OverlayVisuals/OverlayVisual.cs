@@ -67,7 +67,8 @@ public sealed record BottomOverlayVisual(
     Grid ResultSlot,
     Grid ActionSlot,
     Canvas ProviderMenuLayer,
-    BottomOverlayLayoutTransitions LayoutTransitions);
+    StackLayoutTransitions LayoutTransitions,
+    StackLayoutTransitions TrayTransitions);
 
 internal sealed record ToastOverlayVisual(
     Grid Slot,

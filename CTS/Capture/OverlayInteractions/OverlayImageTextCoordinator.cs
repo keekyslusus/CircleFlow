@@ -27,6 +27,7 @@ internal sealed class OverlayImageTextCoordinator : IDisposable
     private readonly Func<DateTime> _now;
     private readonly Action<TimeSpan, Action>? _scheduleDelay;
     private readonly Action? _restoreActionTray;
+    private readonly Action<Action> _changeTrayLayout;
     private BitmapSource? _image;
     private string? _inputTag;
     private string? _effectiveTag;
@@ -46,7 +47,7 @@ internal sealed class OverlayImageTextCoordinator : IDisposable
         ToastOverlayController? toast = null, OverlayActivityPresenter? activityPresenter = null,
         OverlayEffectsVisual? effects = null, FrameworkElement? root = null, bool lightTheme = false,
         Func<DateTime>? now = null, Action<TimeSpan, Action>? scheduleDelay = null,
-        Action? restoreActionTray = null)
+        Action? restoreActionTray = null, Action<Action>? changeTrayLayout = null)
     {
         _pointer = pointer;
         _textSelection = textSelection;
@@ -64,6 +65,7 @@ internal sealed class OverlayImageTextCoordinator : IDisposable
         _now = now ?? (() => DateTime.UtcNow);
         _scheduleDelay = scheduleDelay;
         _restoreActionTray = restoreActionTray;
+        _changeTrayLayout = changeTrayLayout ?? (change => change());
         _effectiveTag = Resolve(initialInputTag);
         _requestedTag = initialInputTag;
         _timer = new DispatcherTimer(DispatcherPriority.Normal, root?.Dispatcher ?? Dispatcher.CurrentDispatcher);
@@ -116,8 +118,9 @@ internal sealed class OverlayImageTextCoordinator : IDisposable
         _effectiveTag = Resolve(_requestedTag);
         Invalidate();
         _switchFeedback = false;
-        if (_prompt is not null)
-            _prompt.Text = language is null ? _strings.SelectionPrompt : _strings.TranslatedTextPrompt;
+        if (_prompt is { } prompt)
+            _changeTrayLayout(() =>
+                prompt.Text = language is null ? _strings.SelectionPrompt : _strings.TranslatedTextPrompt);
         if (!_available) return;
         if (_effectiveTag is null) ShowUnavailable();
         else

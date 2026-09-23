@@ -423,6 +423,8 @@ public static class CompositionRoot
                     ProviderVisualCatalog.CreateSearchMark(providerId, visual.LightTheme));
             }
             UpdateSearchIcons(context.SelectedProviderId);
+            void ChangeTrayLayout(Action change) =>
+                context.Visual.Bottom.TrayTransitions.Apply(change, dependencies.AnimationsEnabled());
             var provider = Track(new ProviderMenuController(
                 context.Visual.Provider,
                 context.Visual.Bottom.Root,
@@ -435,7 +437,8 @@ public static class CompositionRoot
                 {
                     UpdateSearchIcons(providerId);
                     context.ProviderSelected(providerId);
-                }));
+                },
+                ChangeTrayLayout));
             var mapper = new OverlayCoordinateMapper(
                 context.Scale,
                 context.Overscan,
@@ -504,7 +507,8 @@ public static class CompositionRoot
                 context.Visual.Effects,
                 context.CoordinateRoot,
                 context.Visual.LightTheme,
-                restoreActionTray: actionTray.Restore));
+                restoreActionTray: actionTray.Restore,
+                changeTrayLayout: ChangeTrayLayout));
             var inputLanguage = Track(new KeyboardInputLanguageSource(
                 imageText.OnInputLanguageChanged,
                 tag =>
