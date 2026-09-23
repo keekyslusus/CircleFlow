@@ -65,8 +65,10 @@ public sealed class GoogleLensLiveSearchTests
             () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true),
             (content, anchor, lightTheme) => CompositionRoot.CreateSearchBrowserWindowView(
                 TestUiStrings.English, content, anchor, lightTheme));
-        var answer = new AnswerProbe(new GoogleLensBrowserOperation(
-            CreateShapesJpeg(), log, "What color is the circle? Answer with one word."));
+        const string question = "What color is the circle? Answer with one word.";
+        var jpeg = CreateShapesJpeg();
+        var fallback = new FallbackProbe(new GoogleLensBrowserOperation(jpeg, log, question));
+        var answer = new AnswerProbe(new GoogleAiModeBrowserOperation(jpeg, question, fallback, log));
 
         var shown = await host.ShowAsync(
             new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens"),
@@ -76,8 +78,22 @@ public sealed class GoogleLensLiveSearchTests
         Assert.Equal(SearchBrowserShowStatus.Shown, shown.Status);
         Assert.Contains("udm=50", answer.FinalUri?.Query, StringComparison.Ordinal);
         Assert.True(answer.Answered, "AI Mode did not show an answer naming the circle color.");
+        Assert.False(fallback.Used, "The AI Mode page did not accept the question; the Lens fallback answered.");
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_PREVIEW") == "1")
             await Task.Delay(TimeSpan.FromSeconds(45));
+    }
+
+    private sealed class FallbackProbe(IVisualSearchBrowserOperation inner) : IVisualSearchBrowserOperation
+    {
+        public bool Used { get; private set; }
+
+        public Task<VisualSearchBrowserOperationStatus> ExecuteAsync(
+            IVisualSearchBrowserSession session,
+            CancellationToken cancel)
+        {
+            Used = true;
+            return inner.ExecuteAsync(session, cancel);
+        }
     }
 
     private sealed class AnswerProbe(IVisualSearchBrowserOperation inner) : IVisualSearchBrowserOperation

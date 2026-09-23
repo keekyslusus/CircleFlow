@@ -11,7 +11,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Direct_upload_success_does_not_use_the_page_script()
     {
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             CurrentUri = new Uri("https://lens.google.com/search?p=abc"),
         };
@@ -29,7 +29,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Direct_upload_failure_uses_page_script_and_validates_result_url()
     {
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             CurrentUri = new Uri("https://www.google.com/search?udm=26&q=image"),
             Message = "CTS:submitted",
@@ -49,7 +49,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Both_upload_paths_failing_returns_failed()
     {
-        var session = new FakeSession();
+        var session = new FakeBrowserSession();
         session.Navigations.Enqueue(BrowserNavigationResult.Failed());
         session.Navigations.Enqueue(BrowserNavigationResult.Failed());
 
@@ -63,7 +63,7 @@ public sealed class GoogleLensBrowserOperationTests
     public async Task Cancellation_after_direct_upload_does_not_start_page_fallback()
     {
         using var cancellation = new CancellationTokenSource();
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             OnPostNavigation = cancellation.Cancel,
         };
@@ -79,7 +79,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Operation_can_only_run_once_and_releases_its_image()
     {
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             CurrentUri = new Uri("https://lens.google.com/search?p=abc"),
         };
@@ -96,7 +96,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Question_continues_lens_results_in_ai_mode_with_the_page_token()
     {
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             CurrentUri = new Uri(LensResults),
             ScriptResult = "\"token-1\"",
@@ -117,7 +117,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Question_keeps_lens_results_when_they_cannot_continue_in_ai_mode()
     {
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             CurrentUri = new Uri("https://lens.google.com/search?p=abc"),
             ScriptResult = "\"token-1\"",
@@ -134,7 +134,7 @@ public sealed class GoogleLensBrowserOperationTests
     [Fact]
     public async Task Failed_ai_mode_navigation_fails_the_operation()
     {
-        var session = new FakeSession
+        var session = new FakeBrowserSession
         {
             CurrentUri = new Uri(LensResults),
             ScriptResult = "\"token-1\"",
@@ -244,70 +244,5 @@ public sealed class GoogleLensBrowserOperationTests
         var directory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         return new PluginLog(directory);
-    }
-
-    private sealed class FakeSession : IVisualSearchBrowserSession
-    {
-        public Queue<BrowserNavigationResult> Navigations { get; } = new();
-        public List<string> Events { get; } = [];
-        public Uri? CurrentUri { get; set; }
-        public string ScriptResult { get; set; } = "\"ready\"";
-        public string? Message { get; set; }
-        public Action? OnPostNavigation { get; set; }
-        public int PostNavigations { get; private set; }
-        public int GetNavigations { get; private set; }
-        public int ScriptCalls { get; private set; }
-        public int MessageCalls { get; private set; }
-        public List<Uri> GetTargets { get; } = [];
-
-        public Task<BrowserNavigationResult> NavigateAsync(
-            Uri target,
-            TimeSpan timeout,
-            CancellationToken cancel)
-        {
-            Events.Add("GET");
-            GetNavigations++;
-            GetTargets.Add(target);
-            return Task.FromResult(Navigations.Dequeue());
-        }
-
-        public Task<BrowserNavigationResult> NavigatePostAsync(
-            Uri target,
-            Stream body,
-            string headers,
-            TimeSpan timeout,
-            CancellationToken cancel)
-        {
-            Events.Add("POST");
-            PostNavigations++;
-            OnPostNavigation?.Invoke();
-            return Task.FromResult(Navigations.Dequeue());
-        }
-
-        public Task<BrowserNavigationResult> WaitForNavigationAsync(
-            TimeSpan timeout,
-            CancellationToken cancel)
-        {
-            Events.Add("WAIT");
-            return Task.FromResult(Navigations.Dequeue());
-        }
-
-        public Task<string> ExecuteScriptAsync(string script, CancellationToken cancel)
-        {
-            Events.Add("SCRIPT");
-            ScriptCalls++;
-            return Task.FromResult(ScriptResult);
-        }
-
-        public Task<string?> PostWebMessageAndWaitAsync(
-            string message,
-            Func<string, bool> predicate,
-            TimeSpan timeout,
-            CancellationToken cancel)
-        {
-            Events.Add("MESSAGE");
-            MessageCalls++;
-            return Task.FromResult(Message);
-        }
     }
 }
