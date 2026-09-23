@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -8,6 +9,9 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using CircleToSearch.Search;
+using CircleToSearch.Settings;
+using CircleToSearch.Shell;
 using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
@@ -23,7 +27,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Dialog_and_scrim_animate_in_and_out_retarget_and_restore_focus_after_closing(bool light) => OnSta(time =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
+        var window = new TestSettingsWindow().CreateView(light).Window;
         try
         {
             window.Show();
@@ -116,7 +120,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Dropdowns_reveal_from_the_anchor_rotate_the_arrow_and_reset_on_close(bool light) => OnSta(time =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
+        var window = new TestSettingsWindow().CreateView(light).Window;
         try
         {
             Find<RadioButton>(window, "Nav_search").IsChecked = true;
@@ -218,7 +222,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Toggles_have_solid_capsules_and_animate_without_jumping_on_reversal(bool light) => OnSta(time =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
+        var window = new TestSettingsWindow().CreateView(light).Window;
         try
         {
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
@@ -306,7 +310,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Content_exits_down_then_enters_up_and_rapid_navigation_keeps_only_the_latest_page(bool light) => OnSta(time =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
+        var window = new TestSettingsWindow().CreateView(light).Window;
         try
         {
             var surface = Find<FrameworkElement>(window, "PageTransitionSurface");
@@ -391,7 +395,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Shared_ripples_follow_settings_controls_pages_and_dialogs(bool light) => OnSta(time =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
+        var window = new TestSettingsWindow().CreateView(light).Window;
         try
         {
             window.Show();
@@ -469,7 +473,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Sidebar_selection_slides_and_retargets_from_its_current_position(bool light) => OnSta(time =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
+        var window = new TestSettingsWindow().CreateView(light).Window;
         try
         {
             window.Show();
@@ -557,7 +561,7 @@ public sealed class SettingsPreviewTests
     [Fact]
     public void Wheel_scroll_moves_through_intermediate_positions_accumulates_and_reverses() => OnSta(time =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, true, new AppPaths().TrayIconPath).Window;
+        var window = new TestSettingsWindow().CreateView(true).Window;
         try
         {
             window.Width = 960;
@@ -621,7 +625,7 @@ public sealed class SettingsPreviewTests
     [Fact]
     public void Overscroll_springs_at_both_edges_and_resets_on_navigation_and_hide() => OnSta(time =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, true, new AppPaths().TrayIconPath).Window;
+        var window = new TestSettingsWindow().CreateView(true).Window;
         try
         {
             window.Width = 960;
@@ -705,7 +709,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void Scrolling_uses_the_full_viewport_and_overlay_fades_without_reserving_space(bool light) => OnSta(time =>
     {
-        var window = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath).Window;
+        var window = new TestSettingsWindow().CreateView(light).Window;
         try
         {
             window.Width = 960;
@@ -766,23 +770,75 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
-    public void Preview_edits_survive_navigation_and_reset_or_close_discards_them() => OnSta(time =>
+    public void Provider_and_shortcut_come_from_settings_save_changes_and_reload_on_activation() => OnSta(time =>
     {
-        var view = new SettingsWindowView(TestUiStrings.English, true, new AppPaths().TrayIconPath);
-        var window = view.Window;
+        var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings
+        {
+            SearchProviderId = SearchProviderIds.YandexImages,
+            HotkeyGesture = "Win+Shift+A",
+        }));
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var provider = Find<ComboBox>(window, "Provider");
+            Assert.Equal(["Google Lens", "Yandex Images", "trace.moe"],
+                provider.Items.OfType<ComboBoxItem>().Select(item => (string)item.Content));
+            Assert.Equal(SearchProviderIds.YandexImages, ((ComboBoxItem)provider.SelectedItem).Tag);
+            Assert.Equal(["Win", "Shift", "A"], ShortcutLabels(window, "ShortcutKeys"));
+            Assert.Equal(["Win", "Shift", "A"], ShortcutLabels(window, "HeroShortcutKeys"));
+
+            provider.SelectedIndex = 2;
+            Assert.Equal(SearchProviderIds.TraceMoe, harness.Settings.Snapshot.SearchProviderId);
+
+            harness.Settings.SetProvider(SearchProviderIds.GoogleLens);
+            harness.Settings.ChangeHotkey("Ctrl+Shift+K");
+            typeof(Window).GetMethod("OnActivated", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(window, [EventArgs.Empty]);
+            Assert.Equal(0, provider.SelectedIndex);
+            Assert.Equal(["Ctrl", "Shift", "K"], ShortcutLabels(window, "ShortcutKeys"));
+            Assert.Empty(harness.Notifier.Errors);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Failed_provider_save_restores_the_saved_selection() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow(TestSettings.Create(save: _ => throw new IOException("disk unavailable")));
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var provider = Find<ComboBox>(window, "Provider");
+            provider.SelectedIndex = 1;
+            Assert.Equal(0, provider.SelectedIndex);
+            Assert.Equal(SearchProviderIds.GoogleLens, harness.Settings.Snapshot.SearchProviderId);
+            Assert.Equal([TestUiStrings.English.StorageSaveFailed], harness.Notifier.Errors.Select(error => error.Message));
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Reset_restores_saved_settings_and_preview_controls_only_after_confirmation() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings
+        {
+            SearchProviderId = SearchProviderIds.YandexImages,
+            HotkeyGesture = "Ctrl+Shift+K",
+        }));
+        var window = harness.CreateView().Window;
         try
         {
             window.Show();
             var provider = Find<ComboBox>(window, "Provider");
             var launch = Find<CheckBox>(window, "Launch");
             var textSearch = Find<ComboBox>(window, "TextSearch");
-            provider.SelectedIndex = 2;
             textSearch.SelectedIndex = 3;
             launch.IsChecked = false;
             Find<CheckBox>(window, "ToolbarAsk").IsChecked = false;
             Find<RadioButton>(window, "Nav_search").IsChecked = true;
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
-            Assert.Equal(2, provider.SelectedIndex);
             Assert.False(launch.IsChecked);
 
             Find<RadioButton>(window, "Nav_about").IsChecked = true;
@@ -791,28 +847,55 @@ public sealed class SettingsPreviewTests
             Assert.False(Find<Grid>(window, "Workspace").IsEnabled);
             Click(window, "cancel");
             CompleteDialogTransition(window, time, open: false);
-            Assert.Equal(2, provider.SelectedIndex);
+            Assert.Equal(SearchProviderIds.YandexImages, harness.Settings.Snapshot.SearchProviderId);
+            Assert.Equal(3, textSearch.SelectedIndex);
+
             Click(window, "reset");
             Click(window, "confirm-reset");
             CompleteDialogTransition(window, time, open: false);
-            Assert.True(launch.IsChecked);
+            var defaults = new AppSettings();
+            Assert.Equal(defaults.SearchProviderId, harness.Settings.Snapshot.SearchProviderId);
+            Assert.Equal(defaults.HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
             Assert.Equal(0, provider.SelectedIndex);
+            Assert.Equal(["Ctrl", "Alt", "Space"], ShortcutLabels(window, "ShortcutKeys"));
+            Assert.True(launch.IsChecked);
             Assert.Equal(0, textSearch.SelectedIndex);
             Assert.True(Find<CheckBox>(window, "ToolbarAsk").IsChecked);
             Assert.True(Find<Grid>(window, "Workspace").IsEnabled);
+            Assert.Equal(TestUiStrings.English.SettingsResetDone, Find<TextBlock>(window, "StatusText").Text);
 
             Find<RadioButton>(window, "Nav_hotkeys").IsChecked = true;
             Click(window, "edit");
             Assert.False(Find<Button>(window, "SaveShortcut").IsEnabled);
             Click(window, "cancel");
             CompleteDialogTransition(window, time, open: false);
-            provider.SelectedIndex = 1;
+            launch.IsChecked = false;
         }
         finally { window.Close(); }
 
-        var fresh = new SettingsWindowView(TestUiStrings.English, true, new AppPaths().TrayIconPath).Window;
+        var fresh = harness.CreateView().Window;
+        Assert.True(Find<CheckBox>(fresh, "Launch").IsChecked);
         Assert.Equal(0, Find<ComboBox>(fresh, "Provider").SelectedIndex);
         fresh.Close();
+    });
+
+    [Fact]
+    public void About_actions_open_project_links_and_application_folders() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            foreach (var tag in new[] { "github", "feedback", "license", "donate", "folder", "logs" })
+                Click(window, tag);
+            Assert.Equal(
+                [ProjectSupport.RepositoryUrl, ProjectSupport.FeedbackUrl, ProjectSupport.LicenseUrl,
+                    ProjectSupport.ProjectUrl, harness.Paths.DataDirectory, harness.Paths.LogsDirectory],
+                harness.Opened);
+            Assert.Empty(harness.Notifier.Errors);
+        }
+        finally { window.Close(); }
     });
 
     [Theory]
@@ -820,7 +903,7 @@ public sealed class SettingsPreviewTests
     [InlineData(false)]
     public void All_pages_resolve_xaml_resources_and_render_at_default_and_minimum_size(bool light) => OnSta(time =>
     {
-        var view = new SettingsWindowView(TestUiStrings.English, light, new AppPaths().TrayIconPath);
+        var view = new TestSettingsWindow().CreateView(light);
         var window = view.Window;
         var bindingErrors = new StringWriter();
         using var listener = new TextWriterTraceListener(bindingErrors);
@@ -883,6 +966,10 @@ public sealed class SettingsPreviewTests
             window.Close();
         }
     });
+
+    private static string[] ShortcutLabels(Window window, string name) =>
+        Find<ItemsControl>(window, name).Items.Cast<object>()
+            .Select(item => (string)item.GetType().GetProperty("Label")!.GetValue(item)!).ToArray();
 
     private static T Find<T>(Window window, string name) where T : FrameworkElement => (T)window.FindName(name);
 

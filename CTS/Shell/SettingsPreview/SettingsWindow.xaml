@@ -509,11 +509,7 @@
                                                 <TextBlock Text="{Binding [provider_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <ComboBox x:Name="Provider" SelectedIndex="0" Width="160" AutomationProperties.Name="{Binding [provider]}">
-                                                    <ComboBoxItem Content="{Binding [google]}"/>
-                                                    <ComboBoxItem Content="{Binding [yandex]}"/>
-                                                    <ComboBoxItem Content="{Binding [trace]}"/>
-                                                </ComboBox>
+                                                <ComboBox x:Name="Provider" Width="160" AutomationProperties.Name="{Binding [provider]}"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>
@@ -716,7 +712,7 @@
                                     </Border>
                                     <TextBlock Text="{Binding [brand]}" FontSize="29" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,17,0,0">
-                                        <Button Tag="preview">
+                                        <Button Tag="github">
                                             <StackPanel Orientation="Horizontal">
                                                 <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                     <Canvas Width="24" Height="24">
@@ -727,7 +723,7 @@
                                                 <TextBlock Text="{Binding [github]}"/>
                                             </StackPanel>
                                         </Button>
-                                        <Button Tag="preview" Margin="9,0,0,0">
+                                        <Button Tag="feedback" Margin="9,0,0,0">
                                             <StackPanel Orientation="Horizontal">
                                                 <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                     <Canvas Width="24" Height="24">
@@ -794,7 +790,7 @@
                                                 <TextBlock Text="{Binding [license]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <Button Tag="preview">
+                                                <Button Tag="license">
                                                     <StackPanel Orientation="Horizontal">
                                                         <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                             <Canvas Width="24" Height="24">
@@ -847,7 +843,7 @@
                                                 <TextBlock Text="{Binding [support]}" Style="{StaticResource RowTitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <Button Tag="preview">
+                                                <Button Tag="donate">
                                                     <StackPanel Orientation="Horizontal">
                                                         <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                             <Canvas Width="24" Height="24">
@@ -885,7 +881,7 @@
                                                 </StackPanel>
                                                 <ContentControl Grid.Column="3" VerticalAlignment="Center">
                                                     <StackPanel Orientation="Horizontal">
-                                                        <Button Tag="preview">
+                                                        <Button Tag="folder">
                                                             <StackPanel Orientation="Horizontal">
                                                                 <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                                     <Canvas Width="24" Height="24">
@@ -896,7 +892,7 @@
                                                                 <TextBlock Text="{Binding [folder]}"/>
                                                             </StackPanel>
                                                         </Button>
-                                                        <Button Tag="preview" Margin="8,0,0,0">
+                                                        <Button Tag="logs" Margin="8,0,0,0">
                                                             <StackPanel Orientation="Horizontal">
                                                                 <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                                     <Canvas Width="24" Height="24">

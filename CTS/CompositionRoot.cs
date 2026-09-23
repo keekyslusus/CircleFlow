@@ -14,6 +14,7 @@ using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
 using CircleToSearch.Settings;
 using CircleToSearch.Shell;
+using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
 using CircleToSearch.TextRecognition;
@@ -106,8 +107,7 @@ public static class CompositionRoot
                 if (loaded.Recovered)
                     reportStartupMessage(strings.StorageRecovered, strings.PluginTitle, MessageBoxImage.Warning);
                 cancellation.ThrowIfCancellationRequested();
-                var settingsWindow = new SettingsWindowController(application.Dispatcher, strings, paths.TrayIconPath);
-                lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });
+                SettingsWindowController? settingsWindow = null;
                 var notifications = new NotificationPresenter(application.Dispatcher, strings, log);
                 lifetime.AddCleanup("close-notifications", () => { notifications.Dispose(); return Task.CompletedTask; });
                 var notifier = new PluginNotifier(notifications.ShowMessage, notifications.ShowMessageWithButton,
@@ -120,12 +120,17 @@ public static class CompositionRoot
                     () => application.Dispatcher.InvokeAsync(() =>
                     {
                         tray?.CloseMenu();
-                        settingsWindow.Hide();
+                        settingsWindow?.Hide();
                         notifications.CloseAll();
                     }).Task, log, rollback);
                 lifetime.AddStop("stop-runtime-triggers", () => _ = runtime.StopAsync());
                 cancellation.ThrowIfCancellationRequested();
                 var support = new ProjectSupport(urlOpening);
+                var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, support, urlOpening,
+                    paths, strings);
+                settingsWindow = new SettingsWindowController(application.Dispatcher,
+                    () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
+                lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });
                 tray = new TrayIcon(paths.TrayIconPath, strings, application.Dispatcher, log,
                     () => { activation.TryRequestOpen(); return Task.CompletedTask; },
                     () => { settingsWindow.Show(); return Task.CompletedTask; },
@@ -344,7 +349,7 @@ public static class CompositionRoot
             translationLifetime.StopAsync,
             visualSearchLifetime.StopAsync,
             log);
-        var runtime = rollback.TransferAllTo(new AppRuntime(coordinator, lifetime, settings));
+        var runtime = rollback.TransferAllTo(new AppRuntime(coordinator, lifetime, settings, providerSelection));
 
         hotkeyWindow.HotkeyPressed += () =>
         {

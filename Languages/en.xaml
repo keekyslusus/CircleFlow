@@ -190,9 +190,6 @@
     <system:String x:Key="app_settings_ignore_fullscreen_sub">Do not intercept shortcuts in games and fullscreen mode</system:String>
     <system:String x:Key="app_settings_shortcut_hint">Shortcut works while CircleFlow is running. Esc closes selection or cancels the current action.</system:String>
     <system:String x:Key="app_settings_image_search">Image search</system:String>
-    <system:String x:Key="app_settings_google">Google Lens</system:String>
-    <system:String x:Key="app_settings_yandex">Yandex Images</system:String>
-    <system:String x:Key="app_settings_trace">trace.moe</system:String>
     <system:String x:Key="app_settings_provider">Search provider</system:String>
     <system:String x:Key="app_settings_provider_sub">Can also be changed in the selection toolbar</system:String>
     <system:String x:Key="app_settings_text_search">Text search</system:String>
@@ -250,19 +247,22 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_new_shortcut">New keyboard shortcut</system:String>
     <system:String x:Key="app_settings_press_shortcut">Press a new shortcut</system:String>
     <system:String x:Key="app_settings_shortcut_instructions">Use Ctrl, Alt, or Shift with a letter, number, or Space. Esc cancels input.</system:String>
-    <system:String x:Key="app_settings_reset_title">Reset preview settings?</system:String>
-    <system:String x:Key="app_settings_reset_description">The controls in this window will return to the mockup defaults. Application settings remain unchanged.</system:String>
+    <system:String x:Key="app_settings_reset_title">Reset settings?</system:String>
+    <system:String x:Key="app_settings_reset_description">The search provider, the shortcut, and the other options in this window will return to their defaults.</system:String>
     <system:String x:Key="app_settings_cancel">Cancel</system:String>
     <system:String x:Key="app_settings_save">Save</system:String>
     <system:String x:Key="app_settings_preview_notice">Interface preview
-Changes are not saved.</system:String>
+Only the shortcut and search provider are saved.</system:String>
     <system:String x:Key="app_settings_ctrl">Ctrl</system:String>
     <system:String x:Key="app_settings_alt">Alt</system:String>
     <system:String x:Key="app_settings_shift">Shift</system:String>
     <system:String x:Key="app_settings_space">Space</system:String>
     <system:String x:Key="app_settings_preview_action">This action is not connected in the interface preview.</system:String>
-    <system:String x:Key="app_settings_preview_reset">Preview values restored. Application settings are unchanged.</system:String>
-    <system:String x:Key="app_settings_preview_shortcut">Shortcut updated in this window only.</system:String>
+    <system:String x:Key="app_settings_win">Win</system:String>
+    <system:String x:Key="app_settings_shortcut_saved">Shortcut saved.</system:String>
+    <system:String x:Key="app_settings_shortcut_unavailable">{0} is already used by another app. Choose a different shortcut.</system:String>
+    <system:String x:Key="app_settings_reset_done">Settings restored to defaults.</system:String>
+    <system:String x:Key="app_settings_open_folder_failed">Could not open the folder.</system:String>
     <system:String x:Key="app_settings_invalid_shortcut">Use Ctrl, Alt, or Shift with a letter, number, or Space.</system:String>
     <system:String x:Key="app_settings_plus">+</system:String>
     <system:String x:Key="plugin_circletosearch_ocr_language_changed">Text language: {0}</system:String>

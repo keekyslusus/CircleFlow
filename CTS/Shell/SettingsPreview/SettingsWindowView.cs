@@ -15,6 +15,7 @@ internal sealed class SettingsWindowView
 {
     private static readonly string[] Pages = ["general", "hotkeys", "search", "text", "music", "about"];
     private readonly UiStrings _strings;
+    private readonly SettingsWindowModel _model;
     private readonly List<Action> _restoreDefaults = [];
     private readonly List<SettingsDropdownMotion> _dropdowns = [];
     private readonly DispatcherTimer _statusTimer;
@@ -22,11 +23,13 @@ internal sealed class SettingsWindowView
     private readonly SettingsPageTransition _pageTransition;
     private readonly SettingsDialogMotion _dialogMotion;
     private IInputElement? _dialogOwner;
-    private string[]? _pendingShortcut;
+    private string? _pendingShortcut;
+    private bool _loadingSettings;
 
-    internal SettingsWindowView(UiStrings strings, bool lightTheme, string iconPath)
+    internal SettingsWindowView(UiStrings strings, bool lightTheme, string iconPath, SettingsWindowModel model)
     {
         _strings = strings;
+        _model = model;
         Window = (Window)Application.LoadComponent(new Uri(
             "/CircleFlow;component/CTS/Shell/SettingsPreview/SettingsWindow.xaml", UriKind.Relative));
         ApplyPalette(PluginPalette.Settings(lightTheme));
@@ -70,21 +73,29 @@ internal sealed class SettingsWindowView
         Window.PreviewKeyDown += OnPreviewKeyDown;
         Element<TextBox>("ShortcutInput").PreviewKeyDown += RecordShortcut;
 
-        // The preview owns only control values. No application settings or services enter this view.
+        var provider = Element<ComboBox>("Provider");
+        foreach (var descriptor in model.Providers)
+            provider.Items.Add(new ComboBoxItem { Content = descriptor.DisplayName, Tag = descriptor.Id });
+        provider.SelectionChanged += OnProviderChanged;
+        _dropdowns.Add(new SettingsDropdownMotion(provider));
+
+        // These controls have no application setting yet, so their values live only in this window.
         foreach (var name in new[] { "Launch", "ToolbarAsk", "ToolbarCopy", "ToolbarSave", "ToolbarTranslate", "IgnoreFullscreen" })
         {
             var control = Element<CheckBox>(name);
             var initial = control.IsChecked;
             _restoreDefaults.Add(() => control.IsChecked = initial);
         }
-        foreach (var name in new[] { "AppLanguage", "Provider", "Cleanup", "TextSearch", "OcrLanguage", "TargetLanguage" })
+        foreach (var name in new[] { "AppLanguage", "Cleanup", "TextSearch", "OcrLanguage", "TargetLanguage" })
         {
             var control = Element<ComboBox>(name);
             _dropdowns.Add(new SettingsDropdownMotion(control));
             var initial = control.SelectedIndex;
             _restoreDefaults.Add(() => control.SelectedIndex = initial);
         }
-        SetShortcut(DefaultShortcut());
+        LoadSettings();
+        // The provider can also change from the selection toolbar while this window stays open.
+        Window.Activated += (_, _) => LoadSettings();
     }
 
     internal Window Window { get; }
@@ -150,17 +161,25 @@ internal sealed class SettingsWindowView
             case "reset": OpenDialog(shortcut: false); break;
             case "cancel": CloseDialog(); break;
             case "save" when _pendingShortcut is not null:
-                SetShortcut(_pendingShortcut);
+                var saved = _model.ChangeHotkey(_pendingShortcut);
+                LoadSettings();
                 CloseDialog();
-                ShowStatus("preview_shortcut");
+                ShowStatus(saved);
                 break;
             case "confirm-reset":
                 foreach (var restore in _restoreDefaults) restore();
-                SetShortcut(DefaultShortcut());
+                var reset = _model.ResetToDefaults();
+                LoadSettings();
                 CloseDialog();
-                ShowStatus("preview_reset");
+                if (reset is not null) ShowStatus(reset);
                 break;
-            case "preview": ShowStatus("preview_action"); break;
+            case "github": _model.Project.OpenRepository(); break;
+            case "feedback": _model.Project.OpenFeedback(); break;
+            case "license": _model.Project.OpenLicense(); break;
+            case "donate": _model.Project.Open(); break;
+            case "folder": _model.OpenDataFolder(); break;
+            case "logs": _model.OpenLogsFolder(); break;
+            case "preview": ShowStatus(_strings.SettingsPreviewText("preview_action")); break;
         }
         e.Handled = true;
     }
@@ -213,40 +232,56 @@ internal sealed class SettingsWindowView
         e.Handled = true;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift) return;
-        var modifiers = Keyboard.Modifiers;
-        var validKey = key is >= Key.A and <= Key.Z or >= Key.D0 and <= Key.D9 or Key.Space;
-        var save = Element<Button>("SaveShortcut");
-        if (!validKey || modifiers == ModifierKeys.None || modifiers.HasFlag(ModifierKeys.Windows))
-        {
-            _pendingShortcut = null;
-            save.IsEnabled = false;
-            Element<TextBox>("ShortcutInput").Text = _strings.SettingsPreviewText("invalid_shortcut");
-            return;
-        }
-        var parts = new List<string>();
-        if (modifiers.HasFlag(ModifierKeys.Control)) parts.Add(_strings.SettingsPreviewText("ctrl"));
-        if (modifiers.HasFlag(ModifierKeys.Alt)) parts.Add(_strings.SettingsPreviewText("alt"));
-        if (modifiers.HasFlag(ModifierKeys.Shift)) parts.Add(_strings.SettingsPreviewText("shift"));
-        parts.Add(key == Key.Space ? _strings.SettingsPreviewText("space") :
-            key is >= Key.D0 and <= Key.D9 ? ((int)key - (int)Key.D0).ToString() : key.ToString());
-        _pendingShortcut = parts.ToArray();
-        Element<TextBox>("ShortcutInput").Text = string.Join(" + ", parts);
-        save.IsEnabled = true;
+        _pendingShortcut = ShortcutGesture(key, Keyboard.Modifiers);
+        Element<Button>("SaveShortcut").IsEnabled = _pendingShortcut is not null;
+        Element<TextBox>("ShortcutInput").Text = _pendingShortcut is null
+            ? _strings.SettingsShortcutInvalid
+            : string.Join(" + ", _pendingShortcut.Split('+').Select(ShortcutLabel));
     }
 
-    private string[] DefaultShortcut() =>
-        [_strings.SettingsPreviewText("ctrl"), _strings.SettingsPreviewText("alt"), _strings.SettingsPreviewText("space")];
-
-    private void SetShortcut(string[] parts)
+    internal static string? ShortcutGesture(Key key, ModifierKeys modifiers)
     {
-        var keys = parts.Select((label, index) => new ShortcutPart(label, index > 0)).ToArray();
+        var validKey = key is >= Key.A and <= Key.Z or >= Key.D0 and <= Key.D9 or Key.Space;
+        if (!validKey || modifiers == ModifierKeys.None || modifiers.HasFlag(ModifierKeys.Windows)) return null;
+        var parts = new List<string>();
+        if (modifiers.HasFlag(ModifierKeys.Control)) parts.Add("Ctrl");
+        if (modifiers.HasFlag(ModifierKeys.Alt)) parts.Add("Alt");
+        if (modifiers.HasFlag(ModifierKeys.Shift)) parts.Add("Shift");
+        parts.Add(key is >= Key.D0 and <= Key.D9 ? ((int)key - (int)Key.D0).ToString() : key.ToString());
+        return string.Join('+', parts);
+    }
+
+    private void LoadSettings()
+    {
+        var provider = Element<ComboBox>("Provider");
+        _loadingSettings = true;
+        try
+        {
+            provider.SelectedItem = provider.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(item => Equals(item.Tag, _model.ProviderId));
+        }
+        finally { _loadingSettings = false; }
+        var keys = _model.HotkeyGesture.Split('+')
+            .Select((token, index) => new ShortcutPart(ShortcutLabel(token), index > 0)).ToArray();
         Element<ItemsControl>("ShortcutKeys").ItemsSource = keys;
         Element<ItemsControl>("HeroShortcutKeys").ItemsSource = keys;
     }
 
-    private void ShowStatus(string key)
+    private void OnProviderChanged(object sender, SelectionChangedEventArgs e)
     {
-        Element<TextBlock>("StatusText").Text = _strings.SettingsPreviewText(key);
+        if (_loadingSettings || Element<ComboBox>("Provider").SelectedItem is not ComboBoxItem { Tag: string id }) return;
+        if (!_model.SelectProvider(id)) LoadSettings();
+    }
+
+    private string ShortcutLabel(string token) => token switch
+    {
+        "Ctrl" or "Alt" or "Shift" or "Space" or "Win" => _strings.SettingsPreviewText(token.ToLowerInvariant()),
+        _ => token,
+    };
+
+    private void ShowStatus(string text)
+    {
+        Element<TextBlock>("StatusText").Text = text;
         Element<Border>("StatusBanner").Visibility = Visibility.Visible;
         _statusTimer.Stop();
         _statusTimer.Start();

@@ -1,10 +1,9 @@
 using System.Windows;
 using System.Windows.Threading;
-using CircleToSearch.Ui;
 
 namespace CircleToSearch.Shell;
 
-internal sealed class SettingsWindowController(Dispatcher dispatcher, UiStrings strings, string iconPath) : IDisposable
+internal sealed class SettingsWindowController(Dispatcher dispatcher, Func<Window> createWindow) : IDisposable
 {
     private Window? _window;
     private bool _disposed;
@@ -16,7 +15,7 @@ internal sealed class SettingsWindowController(Dispatcher dispatcher, UiStrings 
         if (_disposed) return;
         if (_window is null)
         {
-            var window = new SettingsPreview.SettingsWindowView(strings, SystemTheme.IsLight(), iconPath).Window;
+            var window = createWindow();
             window.Closed += (_, _) => { if (ReferenceEquals(_window, window)) _window = null; };
             _window = window;
         }

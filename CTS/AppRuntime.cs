@@ -10,15 +10,18 @@ public sealed class AppRuntime : IAsyncDisposable
     private readonly object _gate = new();
     private Task? _stop;
 
-    internal AppRuntime(SearchCoordinator coordinator, PluginRuntimeLifetime lifetime, SettingsService settings)
+    internal AppRuntime(SearchCoordinator coordinator, PluginRuntimeLifetime lifetime, SettingsService settings,
+        ProviderSelectionStore providers)
     {
         _coordinator = coordinator;
         _lifetime = lifetime;
         Settings = settings;
+        Providers = providers;
     }
 
     public Task OpenAsync() => _coordinator.OpenAsync();
     public SettingsService Settings { get; }
+    internal ProviderSelectionStore Providers { get; }
 
     internal void RequestStop() => _coordinator.RequestStop();
 

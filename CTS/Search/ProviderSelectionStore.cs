@@ -15,16 +15,15 @@ internal sealed class ProviderSelectionStore(
     public SearchProviderDescriptor GetEffectiveSelection() =>
         providerRouter.GetEffectiveDescriptor(settings.Snapshot.SearchProviderId);
 
-    public void Save(string requestedProviderId)
+    public bool Save(string requestedProviderId)
     {
         var selected = providerRouter.GetEffectiveDescriptor(requestedProviderId);
         if (settings.SetProvider(selected.Id).Success)
         {
             log.Info(nameof(ProviderSelectionStore), $"visual search provider changed to '{selected.Id}'");
+            return true;
         }
-        else
-        {
-            notifier.ShowError(strings.PluginTitle, strings.StorageSaveFailed);
-        }
+        notifier.ShowError(strings.PluginTitle, strings.StorageSaveFailed);
+        return false;
     }
 }
