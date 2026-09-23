@@ -40,11 +40,17 @@ internal sealed class OverlaySessionWorkflow(
         OverlayMusicSession? music = null;
         OverlayTranslationSession? translation = null;
         OverlayTraceSession? trace = null;
+        OverlayAskSession? ask = null;
         Task<IOverlayCommand>? commandTask = null;
         try
         {
             music = createMusicSession(overlay, cancellationToken);
             operations.Add(music);
+            if (imageAsk is not null)
+            {
+                ask = new OverlayAskSession(imageAsk, options.MaxLongSidePx, cancellationToken);
+                operations.Add(ask);
+            }
             translation = createTranslationSession?.Invoke(overlay, cancellationToken);
             if (translation is not null) operations.Add(translation);
             trace = createTraceSession(overlay, options.MaxLongSidePx, cancellationToken);
@@ -112,15 +118,23 @@ internal sealed class OverlaySessionWorkflow(
                             await execution.ConfigureAwait(false);
                             return;
 
-                        case AskAboutSelection asked when imageAsk is not null && !music.IsRunning:
+                        case AskDraftStarted when ask is not null && !music.IsRunning:
+                            ask.Start();
+                            break;
+
+                        case AskImageAttached attached when ask is not null:
+                            commandOwnershipTransferred = true;
+                            ask.AttachImage(attached.Selection);
+                            break;
+
+                        case AskDraftCanceled when ask is not null:
+                            await ask.CancelAsync().ConfigureAwait(false);
+                            break;
+
+                        case AskAboutSelection asked when ask is not null && !music.IsRunning:
                             await overlay.CloseAsync().ConfigureAwait(false);
                             cancellationToken.ThrowIfCancellationRequested();
-                            var asking = imageAsk.ExecuteAsync(
-                                asked.Selection,
-                                asked.Question,
-                                onUploadStarted,
-                                options.MaxLongSidePx,
-                                cancellationToken);
+                            var asking = ask.SubmitAsync(asked, onUploadStarted);
                             commandOwnershipTransferred = true;
                             await asking.ConfigureAwait(false);
                             return;

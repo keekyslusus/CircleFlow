@@ -115,6 +115,23 @@ public sealed class GoogleLensBrowserOperationTests
     }
 
     [Fact]
+    public async Task Direct_upload_waits_for_the_user_to_pass_the_traffic_check()
+    {
+        var session = new FakeBrowserSession
+        {
+            CurrentUri = new Uri("https://www.google.com/sorry/index?continue=results"),
+        };
+        session.OnWait = () => session.CurrentUri = new Uri(LensResults);
+        session.Navigations.Enqueue(BrowserNavigationResult.Failed("Unknown"));
+        session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+
+        var result = await NewOperation().ExecuteAsync(session, CancellationToken.None);
+
+        Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, result);
+        Assert.Equal(["POST", "WAIT"], session.Events);
+    }
+
+    [Fact]
     public async Task Question_keeps_lens_results_when_they_cannot_continue_in_ai_mode()
     {
         var session = new FakeBrowserSession
@@ -176,7 +193,7 @@ public sealed class GoogleLensBrowserOperationTests
     [InlineData("https://www.google.com/search?q=sorry", false)]
     [InlineData("https://example.com/sorry/index", false)]
     public void Traffic_check_is_recognized_only_on_google(string url, bool expected)
-        => Assert.Equal(expected, GoogleLensBrowserOperation.IsGoogleTrafficCheck(new Uri(url)));
+        => Assert.Equal(expected, GoogleTrafficCheck.IsShown(new Uri(url)));
 
     [Theory]
     [InlineData("https://lens.google.com/search?vsrid=a&gsessionid=b")]

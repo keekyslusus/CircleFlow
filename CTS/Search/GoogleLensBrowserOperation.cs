@@ -106,9 +106,11 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         var deadline = DateTime.UtcNow + ContinuationTokenTimeout;
         while (true)
         {
-            // The user may be solving Google's traffic check; the question should survive it.
-            if (IsGoogleTrafficCheck(session.CurrentUri))
+            if (GoogleTrafficCheck.IsShown(session.CurrentUri))
+            {
+                if (!await GoogleTrafficCheck.WaitForUserAsync(session, cancel).ConfigureAwait(true)) return null;
                 deadline = DateTime.UtcNow + ContinuationTokenTimeout;
+            }
             var result = await session.ExecuteScriptAsync(ContinuationTokenScript, cancel).ConfigureAwait(true);
             var token = JsonSerializer.Deserialize<string?>(result);
             if (!string.IsNullOrWhiteSpace(token)) return token;
@@ -116,10 +118,6 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
             await Task.Delay(ContinuationTokenPollInterval, cancel).ConfigureAwait(true);
         }
     }
-
-    internal static bool IsGoogleTrafficCheck(Uri? uri) =>
-        uri is { Scheme: "https", Host: "google.com" or "www.google.com" } &&
-        uri.AbsolutePath.StartsWith("/sorry/", StringComparison.Ordinal);
 
     internal static Uri? CreateAiModeUri(Uri lensResults, string token, string question)
     {
@@ -177,7 +175,13 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
                 .ConfigureAwait(true);
             if (navigation.Status == BrowserNavigationStatus.Canceled)
                 throw new OperationCanceledException(cancel);
-            if (navigation.Status != BrowserNavigationStatus.Succeeded)
+            if (GoogleTrafficCheck.IsShown(session.CurrentUri))
+            {
+                // Google blocks the results redirect with a check page that continues to them once solved.
+                _log.Info(nameof(GoogleLensBrowserOperation), "waiting for the user to pass Google's traffic check");
+                if (!await GoogleTrafficCheck.WaitForUserAsync(session, cancel).ConfigureAwait(true)) return false;
+            }
+            else if (navigation.Status != BrowserNavigationStatus.Succeeded)
             {
                 _log.Warn(
                     nameof(GoogleLensBrowserOperation),

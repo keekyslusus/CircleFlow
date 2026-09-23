@@ -9,7 +9,9 @@ internal sealed class FakeBrowserSession : IVisualSearchBrowserSession
     public Uri? CurrentUri { get; set; }
     public string ScriptResult { get; set; } = "\"ready\"";
     public string? Message { get; set; }
-    public string? SentMessage { get; private set; }
+    public Queue<string?> Messages { get; } = new();
+    public List<string> SentMessages { get; } = [];
+    public string? SentMessage => SentMessages.LastOrDefault();
     public Action? OnPostNavigation { get; set; }
     public Action? OnWait { get; set; }
     public Action? OnMessage { get; set; }
@@ -67,8 +69,8 @@ internal sealed class FakeBrowserSession : IVisualSearchBrowserSession
     {
         Events.Add("MESSAGE");
         MessageCalls++;
-        SentMessage = message;
+        SentMessages.Add(message);
         OnMessage?.Invoke();
-        return Task.FromResult(Message);
+        return Task.FromResult(Messages.Count > 0 ? Messages.Dequeue() : Message);
     }
 }

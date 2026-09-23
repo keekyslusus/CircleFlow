@@ -46,9 +46,13 @@ public sealed class PreparedVisualSearch
             externalFallbackUrl);
     }
 
+    // Lets the browser load hidden and appear only once this completes.
+    internal Task? RevealAfter { get; private init; }
+
     public static PreparedVisualSearch ForBrowserOperation(
         IVisualSearchBrowserOperation operation,
-        Uri? externalFallbackUrl)
+        Uri? externalFallbackUrl,
+        Task? revealAfter = null)
     {
         ArgumentNullException.ThrowIfNull(operation);
         RequireAbsoluteIfPresent(externalFallbackUrl, nameof(externalFallbackUrl));
@@ -56,7 +60,7 @@ public sealed class PreparedVisualSearch
             PreparedVisualSearchKind.BrowserOperation,
             null,
             operation,
-            externalFallbackUrl);
+            externalFallbackUrl) { RevealAfter = revealAfter };
     }
 
     internal Uri RequireResultsUrl()

@@ -52,12 +52,24 @@ public sealed record AskAboutSelection : IOverlayCommand
     public string Question { get; }
 }
 
+public sealed record AskDraftStarted : IOverlayCommand;
+public sealed record AskDraftCanceled : IOverlayCommand;
+
+public sealed record AskImageAttached : IOverlayCommand
+{
+    public AskImageAttached(SelectionOutcome selection) =>
+        Selection = selection ?? throw new ArgumentNullException(nameof(selection));
+
+    public SelectionOutcome Selection { get; }
+}
+
 internal static class OverlayCommandOwnership
 {
     public static void DisposePayload(IOverlayCommand command)
     {
         if (command is VisualSelection visual) visual.Selection.Dispose();
         else if (command is AskAboutSelection ask) ask.Selection.Dispose();
+        else if (command is AskImageAttached attached) attached.Selection.Dispose();
     }
 }
 

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -26,6 +27,8 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     private readonly UiStrings _strings;
     private readonly DispatcherTimer _copyTimer;
     private readonly List<IDisposable> _ripples;
+    private bool _askDraftStarted;
+    private bool _askImageAttached;
     private bool _disposed;
 
     internal ImageSelectionOverlayController(ImageSelectionVisual visual, FrameworkElement root,
@@ -56,6 +59,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         visual.AskButton.Click += OnAsk;
         visual.AskPrompt.SendButton.Click += OnSend;
         visual.AskPrompt.Input.KeyDown += OnPromptKeyDown;
+        visual.AskPrompt.Input.TextChanged += OnPromptTextChanged;
         _ripples = [.. OverlayVisualResources.AttachControlRipples(visual.Toolbar.Layer),
             ControlRippleHost.Attach(visual.AskPrompt.SendButton)];
     }
@@ -95,15 +99,23 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         _copyTimer.Stop();
         IsCompleting = false;
         _visual.Toolbar.Hide();
-        _visual.Toolbar.SetPromptOpen(false);
-        _visual.AskPrompt.Input.Clear();
+        ResetAskPrompt();
     }
 
     internal bool CloseAskPrompt()
     {
         if (_disposed || !_visual.Toolbar.IsPromptOpen) return false;
-        _visual.Toolbar.SetPromptOpen(false);
+        ResetAskPrompt();
         return true;
+    }
+
+    private void ResetAskPrompt()
+    {
+        if (_askDraftStarted && !_disposed) _publish(new AskDraftCanceled());
+        _askDraftStarted = false;
+        _askImageAttached = false;
+        _visual.Toolbar.SetPromptOpen(false);
+        _visual.AskPrompt.Input.Clear();
     }
 
     private bool CanAct => !_disposed && !IsCompleting && Bounds is not null && _visual.Toolbar.IsOpen;
@@ -149,7 +161,23 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     {
         if (!CanAct) return;
         _visual.Toolbar.SetPromptOpen(true);
+        // Warming the browser now hides its startup behind typing; the image waits for the first character.
+        _askDraftStarted = true;
+        _publish(new AskDraftStarted());
         e.Handled = true;
+    }
+
+    private void OnPromptTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!_askDraftStarted || _askImageAttached || _visual.AskPrompt.Input.Text.Length == 0 || !CanAct) return;
+        var selection = _createSelection(Bounds!.Value);
+        _askImageAttached = true;
+        try { _publish(new AskImageAttached(selection)); }
+        catch
+        {
+            selection.Dispose();
+            throw;
+        }
     }
 
     private void OnSend(object sender, RoutedEventArgs e)
@@ -171,6 +199,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         if (!CanAct || question.Length == 0) return;
         var selection = _createSelection(Bounds!.Value);
         IsCompleting = true;
+        _askDraftStarted = false;
         _visual.Toolbar.Hide();
         try { _publish(new AskAboutSelection(selection, question)); }
         catch
@@ -200,6 +229,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         _visual.AskButton.Click -= OnAsk;
         _visual.AskPrompt.SendButton.Click -= OnSend;
         _visual.AskPrompt.Input.KeyDown -= OnPromptKeyDown;
+        _visual.AskPrompt.Input.TextChanged -= OnPromptTextChanged;
         foreach (var ripple in _ripples) ripple.Dispose();
     }
 }

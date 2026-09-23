@@ -96,13 +96,19 @@ public sealed class ImageSelectionTests
         using var h = new Harness();
         h.Select();
         h.Translate();
+        var before = h.Commands.Count;
         Click(h.Actions.AskButton);
         var prompt = h.Actions.AskPrompt;
         Assert.True(h.Actions.Toolbar.IsPromptOpen);
         Assert.Same(prompt.Root, h.Actions.Toolbar.Surface.Child);
         Assert.False(prompt.SendButton.IsEnabled);
+        Assert.IsType<AskDraftStarted>(Assert.Single(h.Commands.Skip(before)));
 
+        prompt.Input.Text = " ";
         prompt.Input.Text = "  What is red?  ";
+        var attached = Assert.Single(h.Commands.OfType<AskImageAttached>());
+        Assert.Equal(255, attached.Selection.FrozenFrame.GetPixel(attached.Selection.Bounds.X,
+            attached.Selection.Bounds.Y).R);
         Assert.True(prompt.SendButton.IsEnabled);
         if (pressEnter) h.Key(prompt.Input, Key.Enter, Keyboard.KeyDownEvent);
         else Click(prompt.SendButton);
@@ -114,6 +120,7 @@ public sealed class ImageSelectionTests
         Assert.False(h.Actions.Toolbar.IsOpen);
         Click(prompt.SendButton);
         Assert.Single(h.Commands.OfType<AskAboutSelection>());
+        Assert.Empty(h.Commands.OfType<AskDraftCanceled>());
     });
 
     [Fact]
@@ -125,16 +132,34 @@ public sealed class ImageSelectionTests
         var prompt = h.Actions.AskPrompt;
         prompt.Input.Text = "   ";
         h.Key(prompt.Input, Key.Enter, Keyboard.KeyDownEvent);
-        Assert.Empty(h.Commands);
+        Assert.Empty(h.Commands.OfType<AskAboutSelection>());
 
         h.Escape();
 
         Assert.False(h.Actions.Toolbar.IsPromptOpen);
+        Assert.Empty(prompt.Input.Text);
         Assert.True(h.Actions.Toolbar.IsOpen);
         Assert.Equal(OverlayInteractionMode.Selecting, h.Window.Mode);
-        Assert.Empty(h.Commands);
+        Assert.Equal([typeof(AskDraftStarted), typeof(AskImageAttached), typeof(AskDraftCanceled)],
+            h.Commands.Select(command => command.GetType()));
         h.Escape();
         Assert.Single(h.Commands.OfType<CancelSession>());
+    });
+
+    [Fact]
+    public void Ask_without_typing_never_attaches_the_image() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        Click(h.Actions.AskButton);
+        h.Select(new Point(20, 20), new Point(45, 45));
+        Assert.Equal([typeof(AskDraftStarted), typeof(AskDraftCanceled)],
+            h.Commands.Select(command => command.GetType()));
+        Click(h.Actions.AskButton);
+        h.Actions.AskPrompt.Input.Text = "a";
+        h.Window.CloseFromSession();
+        Assert.Single(h.Commands.OfType<AskImageAttached>());
+        Assert.Equal(2, h.Commands.OfType<AskDraftCanceled>().Count());
     });
 
     [Fact]

@@ -8,48 +8,83 @@ namespace CircleToSearch.Tests;
 public sealed class GoogleAiModeBrowserOperationTests
 {
     private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x01];
+    private static readonly Uri AiMode = new("https://www.google.com/search?udm=50");
 
     [Fact]
-    public async Task Submits_image_and_question_through_the_ai_mode_page()
+    public async Task Loads_page_before_the_image_and_sends_the_question_last()
     {
-        var session = new FakeBrowserSession
-        {
-            CurrentUri = new Uri("https://www.google.com/search?udm=50"),
-            Message = "CTS:submitted",
-        };
+        var session = new FakeBrowserSession { CurrentUri = AiMode };
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
-        var fallback = new FakeOperation();
+        session.Messages.Enqueue("CTS:attached:1");
+        session.Messages.Enqueue("CTS:submitted");
+        var image = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var question = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fallback = new FakeFallback();
 
-        var result = await NewOperation(fallback, "Кто это? + & #").ExecuteAsync(session, CancellationToken.None);
+        var execution = new GoogleAiModeBrowserOperation(image.Task, question.Task, fallback.Create, NewLog())
+            .ExecuteAsync(session, CancellationToken.None);
+        await WaitUntilAsync(() => session.Events.Count == 1);
+        Assert.Equal(["GET"], session.Events);
+        Assert.Equal(AiMode, Assert.Single(session.GetTargets));
 
-        Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, result);
-        Assert.Equal(["GET", "SCRIPT", "MESSAGE"], session.Events);
-        Assert.Equal("https://www.google.com/search?udm=50", Assert.Single(session.GetTargets).AbsoluteUri);
-        using var message = JsonDocument.Parse(session.SentMessage!);
-        Assert.Equal(Convert.ToBase64String(Jpeg), message.RootElement.GetProperty("image").GetString());
-        Assert.Equal("Кто это? + & #", message.RootElement.GetProperty("question").GetString());
-        Assert.Equal(0, fallback.Calls);
+        image.SetResult(Jpeg);
+        await WaitUntilAsync(() => session.MessageCalls == 1);
+        Assert.False(execution.IsCompleted);
+        using (var attach = JsonDocument.Parse(session.SentMessages[0]))
+        {
+            Assert.Equal("attach", attach.RootElement.GetProperty("type").GetString());
+            Assert.Equal(Convert.ToBase64String(Jpeg), attach.RootElement.GetProperty("image").GetString());
+        }
+
+        question.SetResult("Кто это? + & #");
+        Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, await execution.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal(["GET", "SCRIPT", "MESSAGE", "SCRIPT", "MESSAGE"], session.Events);
+        using var send = JsonDocument.Parse(session.SentMessages[1]);
+        Assert.Equal("send", send.RootElement.GetProperty("type").GetString());
+        Assert.Equal("Кто это? + & #", send.RootElement.GetProperty("question").GetString());
+        Assert.Empty(fallback.Calls);
     }
 
     [Theory]
-    [InlineData("CTS:send-timeout")]
-    [InlineData("CTS:input-missing")]
-    [InlineData("CTS:paste-ignored")]
-    [InlineData(null)]
-    public async Task Unaccepted_question_falls_back_to_the_lens_continuation(string? acknowledgement)
+    [InlineData("CTS:paste-ignored", "CTS:submitted")]
+    [InlineData("CTS:input-missing", "CTS:submitted")]
+    [InlineData("CTS:attached", "CTS:send-timeout")]
+    [InlineData("CTS:attached", null)]
+    [InlineData(null, "CTS:submitted")]
+    public async Task Unaccepted_step_falls_back_with_the_same_image_and_question(
+        string? attachReply, string? sendReply)
     {
-        var session = new FakeBrowserSession
-        {
-            CurrentUri = new Uri("https://www.google.com/search?udm=50"),
-            Message = acknowledgement,
-        };
+        var session = new FakeBrowserSession { CurrentUri = AiMode };
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
-        var fallback = new FakeOperation { Result = VisualSearchBrowserOperationStatus.Failed };
+        session.Messages.Enqueue(attachReply);
+        session.Messages.Enqueue(sendReply);
+        var fallback = new FakeFallback { Result = VisualSearchBrowserOperationStatus.Failed };
 
         var result = await NewOperation(fallback).ExecuteAsync(session, CancellationToken.None);
 
         Assert.Equal(VisualSearchBrowserOperationStatus.Failed, result);
-        Assert.Equal(1, fallback.Calls);
+        var (image, question) = Assert.Single(fallback.Calls);
+        Assert.Same(Jpeg, image);
+        Assert.Equal("What is this?", question);
+        Assert.Equal(2, session.MessageCalls);
+    }
+
+    [Fact]
+    public async Task Image_the_page_ignored_while_loading_is_attached_again_after_the_question()
+    {
+        var session = new FakeBrowserSession { CurrentUri = AiMode };
+        session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+        session.Messages.Enqueue("CTS:paste-ignored");
+        session.Messages.Enqueue("CTS:attached");
+        session.Messages.Enqueue("CTS:submitted");
+        var fallback = new FakeFallback();
+
+        var result = await NewOperation(fallback).ExecuteAsync(session, CancellationToken.None);
+
+        Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, result);
+        Assert.Equal(["attach", "attach", "send"], session.SentMessages.Select(message =>
+            JsonDocument.Parse(message).RootElement.GetProperty("type").GetString()));
+        Assert.Empty(fallback.Calls);
     }
 
     [Fact]
@@ -57,20 +92,16 @@ public sealed class GoogleAiModeBrowserOperationTests
     {
         var failedNavigation = new FakeBrowserSession();
         failedNavigation.Navigations.Enqueue(BrowserNavigationResult.Failed("ConnectionReset"));
-        var failedBridge = new FakeBrowserSession
-        {
-            CurrentUri = new Uri("https://www.google.com/search?udm=50"),
-            ScriptResult = "null",
-        };
+        var failedBridge = new FakeBrowserSession { CurrentUri = AiMode, ScriptResult = "null" };
         failedBridge.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
 
         foreach (var session in new[] { failedNavigation, failedBridge })
         {
-            var fallback = new FakeOperation();
+            var fallback = new FakeFallback();
             Assert.Equal(
                 VisualSearchBrowserOperationStatus.Succeeded,
                 await NewOperation(fallback).ExecuteAsync(session, CancellationToken.None));
-            Assert.Equal(1, fallback.Calls);
+            Assert.Single(fallback.Calls);
             Assert.Equal(0, session.MessageCalls);
         }
     }
@@ -78,59 +109,65 @@ public sealed class GoogleAiModeBrowserOperationTests
     [Fact]
     public async Task Lost_acknowledgement_after_reaching_the_answer_does_not_ask_twice()
     {
-        var session = new FakeBrowserSession
-        {
-            CurrentUri = new Uri("https://www.google.com/search?udm=50"),
-            Message = null,
-        };
-        session.OnMessage = () => session.CurrentUri = new Uri("https://www.google.com/search?udm=50&q=x&vsrid=abc");
+        var session = new FakeBrowserSession { CurrentUri = AiMode };
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
-        var fallback = new FakeOperation();
+        session.Messages.Enqueue("CTS:attached");
+        session.Messages.Enqueue(null);
+        session.OnMessage = () =>
+        {
+            if (session.MessageCalls == 2)
+                session.CurrentUri = new Uri("https://www.google.com/search?udm=50&q=x&vsrid=abc");
+        };
+        var fallback = new FakeFallback();
 
         var result = await NewOperation(fallback).ExecuteAsync(session, CancellationToken.None);
 
         Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, result);
-        Assert.Equal(0, fallback.Calls);
+        Assert.Empty(fallback.Calls);
     }
 
     [Fact]
-    public async Task Waits_for_the_user_to_pass_the_traffic_check_before_asking()
+    public async Task Traffic_check_waits_for_the_revealed_user_before_attaching()
     {
-        var session = new FakeBrowserSession
-        {
-            CurrentUri = new Uri("https://www.google.com/sorry/index?continue=x"),
-            Message = "CTS:submitted",
-        };
-        session.OnWait = () => session.CurrentUri = new Uri("https://www.google.com/search?udm=50");
+        var session = new FakeBrowserSession { CurrentUri = new Uri("https://www.google.com/sorry/index?continue=x") };
+        session.OnWait = () => session.CurrentUri = AiMode;
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+        session.Messages.Enqueue("CTS:attached");
+        session.Messages.Enqueue("CTS:submitted");
 
-        var result = await NewOperation(new FakeOperation()).ExecuteAsync(session, CancellationToken.None);
+        var result = await NewOperation(new FakeFallback()).ExecuteAsync(session, CancellationToken.None);
 
         Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, result);
-        Assert.Equal(["GET", "WAIT", "SCRIPT", "MESSAGE"], session.Events);
+        Assert.Equal(["GET", "WAIT", "SCRIPT", "MESSAGE", "SCRIPT", "MESSAGE"], session.Events);
     }
 
     [Fact]
-    public async Task Cancellation_does_not_start_the_fallback()
+    public async Task Canceling_the_draft_before_the_question_does_not_start_the_fallback()
     {
         using var cancellation = new CancellationTokenSource();
-        var session = new FakeBrowserSession();
-        session.Navigations.Enqueue(BrowserNavigationResult.Canceled());
-        var fallback = new FakeOperation();
+        var session = new FakeBrowserSession { CurrentUri = AiMode, Message = "CTS:attached" };
+        session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+        var question = new TaskCompletionSource<string>();
+        var fallback = new FakeFallback();
 
-        var result = await NewOperation(fallback).ExecuteAsync(session, cancellation.Token);
+        var execution = new GoogleAiModeBrowserOperation(Task.FromResult(Jpeg), question.Task, fallback.Create, NewLog())
+            .ExecuteAsync(session, cancellation.Token);
+        await WaitUntilAsync(() => session.MessageCalls == 1);
+        cancellation.Cancel();
 
-        Assert.Equal(VisualSearchBrowserOperationStatus.Canceled, result);
-        Assert.Equal(0, fallback.Calls);
+        Assert.Equal(VisualSearchBrowserOperationStatus.Canceled, await execution.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Empty(fallback.Calls);
     }
 
     [Fact]
     public async Task Operation_can_only_run_once()
     {
-        var session = new FakeBrowserSession { Message = "CTS:submitted" };
+        var session = new FakeBrowserSession { CurrentUri = AiMode };
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
-        var operation = NewOperation(new FakeOperation());
+        session.Messages.Enqueue("CTS:attached");
+        session.Messages.Enqueue("CTS:submitted");
+        var operation = NewOperation(new FakeFallback());
 
         await operation.ExecuteAsync(session, CancellationToken.None);
 
@@ -147,8 +184,14 @@ public sealed class GoogleAiModeBrowserOperationTests
     public void Ai_mode_answer_requires_an_attached_image(string url, bool expected)
         => Assert.Equal(expected, GoogleAiModeBrowserOperation.IsAiModeAnswer(new Uri(url)));
 
-    private static GoogleAiModeBrowserOperation NewOperation(FakeOperation fallback, string question = "What is this?")
-        => new(Jpeg, question, fallback, NewLog());
+    private static GoogleAiModeBrowserOperation NewOperation(FakeFallback fallback) =>
+        new(Task.FromResult(Jpeg), Task.FromResult("What is this?"), fallback.Create, NewLog());
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        for (var attempt = 0; attempt < 200 && !condition(); attempt++) await Task.Delay(10);
+        Assert.True(condition());
+    }
 
     private static PluginLog NewLog()
     {
@@ -157,17 +200,20 @@ public sealed class GoogleAiModeBrowserOperationTests
         return new PluginLog(directory);
     }
 
-    private sealed class FakeOperation : IVisualSearchBrowserOperation
+    private sealed class FakeFallback : IVisualSearchBrowserOperation
     {
-        public int Calls { get; private set; }
+        public List<(byte[] Image, string Question)> Calls { get; } = [];
         public VisualSearchBrowserOperationStatus Result { get; init; } = VisualSearchBrowserOperationStatus.Succeeded;
+
+        public IVisualSearchBrowserOperation Create(byte[] image, string question)
+        {
+            Calls.Add((image, question));
+            return this;
+        }
 
         public Task<VisualSearchBrowserOperationStatus> ExecuteAsync(
             IVisualSearchBrowserSession session,
             CancellationToken cancel)
-        {
-            Calls++;
-            return Task.FromResult(Result);
-        }
+            => Task.FromResult(Result);
     }
 }

@@ -50,13 +50,63 @@ public sealed class OverlaySessionWorkflowTests
 
         await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
 
-        Assert.Equal("What is this?", Assert.Single(harness.AskedQuestions));
-        Assert.Equal(1, Assert.Single(harness.CloseCallsWhenAsked));
+        Assert.Equal("What is this?", await Assert.Single(harness.AskedQuestions));
+        Assert.Equal([7], await Assert.Single(harness.AskedImages));
+        Assert.Equal(1, Assert.Single(harness.CloseCallsWhenRevealed));
         Assert.Equal(1, harness.UploadStartedCalls);
         Assert.Equal(0, harness.Google.Calls);
         Assert.Equal(0, harness.Yandex.Calls);
         Assert.Throws<ObjectDisposedException>(() => selection.FrozenFrame);
         Assert.Empty(harness.Errors);
+    }
+
+    [Fact]
+    public async Task Ask_draft_warms_one_browser_and_uses_the_image_attached_while_typing()
+    {
+        using var harness = new Harness();
+        var typed = NewSelection();
+        var submitted = NewSelection();
+        harness.Overlay.Enqueue(new AskDraftStarted());
+        harness.Overlay.Enqueue(new AskImageAttached(typed));
+
+        var run = harness.RunAsync();
+        await WaitUntilAsync(() => harness.AskCrops == 1);
+        var question = Assert.Single(harness.AskedQuestions);
+        Assert.Equal([7], await Assert.Single(harness.AskedImages));
+        Assert.False(question.IsCompleted);
+        Assert.Equal(0, harness.Overlay.CloseCalls);
+        Assert.Empty(harness.CloseCallsWhenRevealed);
+
+        harness.Overlay.Enqueue(new AskAboutSelection(submitted, "What is this?"));
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal("What is this?", await question);
+        Assert.Equal(1, harness.AskCrops);
+        Assert.Equal(1, Assert.Single(harness.CloseCallsWhenRevealed));
+        Assert.Throws<ObjectDisposedException>(() => typed.FrozenFrame);
+        Assert.Throws<ObjectDisposedException>(() => submitted.FrozenFrame);
+    }
+
+    [Fact]
+    public async Task Canceled_ask_draft_closes_the_hidden_browser_and_keeps_the_overlay()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new AskDraftStarted());
+        harness.Overlay.Enqueue(new AskDraftCanceled());
+
+        var run = harness.RunAsync();
+        await WaitUntilAsync(() => harness.AskHost.CanceledCalls == 1);
+        Assert.False(run.IsCompleted);
+        Assert.Equal(0, harness.Overlay.CloseCalls);
+        harness.Overlay.Enqueue(new AskDraftStarted());
+        harness.Overlay.Enqueue(new CancelSession());
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(2, harness.AskedQuestions.Count);
+        Assert.All(harness.AskedQuestions, question => Assert.False(question.IsCompleted));
+        Assert.Equal(2, harness.AskHost.CanceledCalls);
+        Assert.Equal(0, harness.AskCrops);
+        Assert.Equal(0, harness.UploadStartedCalls);
     }
 
     [Fact]
@@ -914,20 +964,33 @@ public sealed class OverlaySessionWorkflowTests
                 textSearch,
                 saveImage,
                 new ImageAskWorkflow(
-                    (_, question) =>
+                    (image, question) =>
                     {
+                        AskedImages.Add(image);
                         AskedQuestions.Add(question);
-                        CloseCallsWhenAsked.Add(Overlay.CloseCalls);
                         return new FakeBrowserOperation();
                     },
-                    (_, _, _) => [1],
-                    visualPresenter,
+                    (_, _, _) =>
+                    {
+                        AskCrops++;
+                        return [7];
+                    },
+                    new VisualSearchResultPresenter(
+                        AskHost,
+                        new UrlOpeningService(_ => true, Notifier, TestUiStrings.English, Log),
+                        Notifier,
+                        TestUiStrings.English,
+                        Log),
                     TestUiStrings.English,
                     Log));
+            AskHost.Revealed = () => CloseCallsWhenRevealed.Add(Overlay.CloseCalls);
         }
 
-        public List<string> AskedQuestions { get; } = [];
-        public List<int> CloseCallsWhenAsked { get; } = [];
+        public FakeBrowserHost AskHost { get; } = new();
+        public List<Task<byte[]>> AskedImages { get; } = [];
+        public List<Task<string>> AskedQuestions { get; } = [];
+        public List<int> CloseCallsWhenRevealed { get; } = [];
+        public int AskCrops { get; private set; }
 
         public OverlaySessionWorkflow Workflow { get; }
         public SettingsService Service { get; }
@@ -1152,11 +1215,32 @@ public sealed class OverlaySessionWorkflowTests
 
     private sealed class FakeBrowserHost : ISearchBrowserHost
     {
-        public Task<SearchBrowserShowResult> ShowAsync(
+        public Action? Revealed { get; set; }
+        public int CanceledCalls { get; private set; }
+
+        public async Task<SearchBrowserShowResult> ShowAsync(
             SearchProviderDescriptor descriptor,
             PreparedVisualSearch preparedSearch,
             CancellationToken cancel)
-            => Task.FromResult(new SearchBrowserShowResult(SearchBrowserShowStatus.Shown));
+        {
+            if (preparedSearch.RevealAfter is { } reveal)
+            {
+                try { await reveal.WaitAsync(cancel); }
+                catch (OperationCanceledException)
+                {
+                    CanceledCalls++;
+                    return new SearchBrowserShowResult(SearchBrowserShowStatus.Canceled);
+                }
+                Revealed?.Invoke();
+            }
+            return new SearchBrowserShowResult(SearchBrowserShowStatus.Shown);
+        }
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        for (var attempt = 0; attempt < 200 && !condition(); attempt++) await Task.Delay(10);
+        Assert.True(condition());
     }
 
     private sealed class FakeTranslationProvider : IImageTranslationProvider

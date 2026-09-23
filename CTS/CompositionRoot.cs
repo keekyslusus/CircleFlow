@@ -212,8 +212,8 @@ public static class CompositionRoot
             strings,
             log);
         var imageAsk = new ImageAskWorkflow(
-            (jpeg, question) => new GoogleAiModeBrowserOperation(
-                jpeg, question, new GoogleLensBrowserOperation(jpeg, log, question), log),
+            (image, question) => new GoogleAiModeBrowserOperation(
+                image, question, (jpeg, asked) => new GoogleLensBrowserOperation(jpeg, log, asked), log),
             ImageCropper.EncodeJpeg,
             visualSearchPresenter,
             strings,
