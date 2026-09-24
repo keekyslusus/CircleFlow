@@ -66,7 +66,9 @@ public sealed class FloatingToolbarTests
                 visual.Toolbar.Show(new Rect(100, 100, 100, 40), new Size(640, 240));
                 time.Advance(260);
                 window.UpdateLayout();
-                Assert.All(buttons, button => Assert.Equal(new Thickness(16, 0, 16, 0), button.Padding));
+                Assert.Equal(new Thickness(12, 0, 16, 0), visual.SearchButton.Padding);
+                Assert.Equal(new Thickness(12, 0, 16, 0), visual.AskButton.Padding);
+                Assert.All(buttons[1..], button => Assert.Equal(new Thickness(16, 0, 16, 0), button.Padding));
                 Assert.Equal(44, visual.Toolbar.Surface.ActualHeight);
             }
             finally { window.Close(); }
@@ -141,6 +143,7 @@ public sealed class FloatingToolbarTests
                     Assert.Equal(44, toolbar.Surface.ActualHeight);
                     var bounds = search.TransformToAncestor(toolbar.Surface).TransformBounds(new Rect(search.RenderSize));
                     Assert.Equal(bounds.Top, toolbar.Surface.ActualHeight - bounds.Bottom, 6);
+                    Assert.True(search.Padding.Left < search.Padding.Right);
                     var row = Assert.IsType<StackPanel>(search.Content);
                     Assert.Same(icon, Assert.IsType<ContentControl>(row.Children[0]).Content);
                     Assert.Equal(TestUiStrings.English.TextSearch, Assert.IsType<TextBlock>(row.Children[1]).Text);
@@ -160,6 +163,7 @@ public sealed class FloatingToolbarTests
                 window.UpdateLayout();
                 Assert.Equal(initialWidth, toolbar.Surface.ActualWidth);
                 Assert.Equal(TestUiStrings.English.TextSearch, search.Content);
+                Assert.Equal(search.Padding.Left, search.Padding.Right);
             }
             finally { window.Close(); }
         });

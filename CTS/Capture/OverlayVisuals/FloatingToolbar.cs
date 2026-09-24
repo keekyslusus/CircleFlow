@@ -14,9 +14,12 @@ public sealed class FloatingToolbar
 {
     private const double ActionPadding = 16;
     private const double CompactActionPadding = 4;
+    // A round icon edge reads as farther from the pill edge than a text stem at the same distance.
+    private const double IconSidePaddingReduction = 4;
     private const double PromptWidth = 380;
     private const double DisabledSendOpacity = 0.38;
     private readonly WrapPanel _actions;
+    private readonly HashSet<Button> _iconActions = [];
     private FloatingToolbarPrompt? _prompt;
     private readonly FloatingToolbarPalette _palette;
     private readonly Func<bool> _animationsEnabled;
@@ -137,7 +140,6 @@ public sealed class FloatingToolbar
             Foreground = OverlayVisualResources.Frozen(_palette.Text),
             Background = OverlayVisualResources.Frozen(_palette.Surface),
             BorderThickness = new Thickness(),
-            Padding = new Thickness(ActionPadding, 0, ActionPadding, 0),
             MinHeight = 36,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
@@ -156,9 +158,14 @@ public sealed class FloatingToolbar
     {
         if (!_actions.Children.Contains(button))
             throw new ArgumentException("The action does not belong to this toolbar.", nameof(button));
-        if (icon is null) button.Content = label;
+        if (icon is null)
+        {
+            button.Content = label;
+            _iconActions.Remove(button);
+        }
         else
         {
+            _iconActions.Add(button);
             var row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -177,7 +184,16 @@ public sealed class FloatingToolbar
             button.Content = row;
         }
         AutomationProperties.SetName(button, label);
+        button.Padding = ActionPaddingFor(button, ActionPadding);
         if (IsOpen) UpdatePlacement();
+    }
+
+    private Thickness ActionPaddingFor(Button button, double side)
+    {
+        var leading = _iconActions.Contains(button)
+            ? Math.Max(CompactActionPadding, side - IconSidePaddingReduction)
+            : side;
+        return new Thickness(leading, 0, side, 0);
     }
 
     internal void Show(Rect anchorDips, Size viewportDips)
@@ -218,14 +234,14 @@ public sealed class FloatingToolbar
             return;
         }
         var buttons = _actions.Children.OfType<Button>().ToArray();
-        foreach (var button in buttons) button.Padding = new Thickness(ActionPadding, 0, ActionPadding, 0);
+        foreach (var button in buttons) button.Padding = ActionPaddingFor(button, ActionPadding);
         Surface.MaxWidth = double.PositiveInfinity;
         Surface.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var overflow = Surface.DesiredSize.Width - width;
         if (overflow > 0 && buttons.Length > 0)
         {
             var padding = Math.Max(CompactActionPadding, ActionPadding - overflow / (2 * buttons.Length));
-            foreach (var button in buttons) button.Padding = new Thickness(padding, 0, padding, 0);
+            foreach (var button in buttons) button.Padding = ActionPaddingFor(button, padding);
         }
         Surface.MaxWidth = Math.Max(0, width);
         Surface.Measure(new Size(Surface.MaxWidth, double.PositiveInfinity));
