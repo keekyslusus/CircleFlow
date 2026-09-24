@@ -12,6 +12,7 @@
     <system:String x:Key="plugin_circletosearch_image_ask_placeholder">Ask about this image</system:String>
     <system:String x:Key="plugin_circletosearch_image_ask_send">Send</system:String>
     <system:String x:Key="app_tray_open">Open</system:String>
+    <system:String x:Key="app_tray_open_hotkey">Open ({0})</system:String>
     <system:String x:Key="app_tray_settings">Settings</system:String>
     <system:String x:Key="app_tray_support">Support the project</system:String>
     <system:String x:Key="app_tray_exit">Exit</system:String>

@@ -61,7 +61,7 @@ public sealed class ShutdownWatchdogTests
                 using var instance = SingleInstanceCoordinator.TryAcquire("Local\\CircleFlow.WatchdogTests." + Guid.NewGuid().ToString("N"));
                 instance!.StartListening(() => true, _ => { });
                 using var tray = new TrayIcon(new AppPaths(AppContext.BaseDirectory).TrayIconPath, TestUiStrings.English,
-                    app.Dispatcher, log, () => Task.CompletedTask, () => Task.CompletedTask, () => Task.CompletedTask, lifetime.RequestExitAsync);
+                    app.Dispatcher, log, () => Task.CompletedTask, () => null, () => Task.CompletedTask, () => Task.CompletedTask, lifetime.RequestExitAsync);
                 watchdog.AddEmergencyCleanup(() =>
                 {
                     instance.AbortListening();

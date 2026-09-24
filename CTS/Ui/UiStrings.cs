@@ -22,6 +22,7 @@ public sealed class UiStrings
     public string TraceEpisode => Get("plugin_circletosearch_trace_episode");
     public string PluginTitle => Get("plugin_circletosearch_plugin_name");
     public string TrayOpen => Get("app_tray_open");
+    public string TrayOpenWithHotkey(string gesture) => Get("app_tray_open_hotkey", gesture);
     public string TraySettings => Get("app_tray_settings");
     public string TraySupport => Get("app_tray_support");
     public string TrayExit => Get("app_tray_exit");

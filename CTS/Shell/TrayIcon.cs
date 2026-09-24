@@ -24,18 +24,23 @@ internal sealed class TrayIcon : IDisposable
     private readonly uint _taskbarCreated;
     private readonly DispatcherTimer _retry;
     private readonly Func<Task> _open;
+    private readonly Func<string?> _openHotkey;
+    private readonly UiStrings _strings;
+    private readonly MenuItem _openItem;
     private NotifyIconData _data;
     private bool _added;
     private bool _disposed;
     private int _removedForShutdown;
 
     public TrayIcon(string iconPath, UiStrings strings, Dispatcher dispatcher, PluginLog log,
-        Func<Task> open, Func<Task> settings, Func<Task> support, Func<Task> exit)
+        Func<Task> open, Func<string?> openHotkey, Func<Task> settings, Func<Task> support, Func<Task> exit)
     {
         dispatcher.VerifyAccess();
         _dispatcher = dispatcher;
         _log = log;
         _open = open;
+        _openHotkey = openHotkey;
+        _strings = strings;
         _taskbarCreated = TrayNativeMethods.RegisterWindowMessageW("TaskbarCreated");
         if (_taskbarCreated == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
         _iconPath = iconPath;
@@ -52,7 +57,7 @@ internal sealed class TrayIcon : IDisposable
             _source.AddHook(WindowProc);
             _iconWindow = _source.Handle;
             Menu = TrayMenuView.Create();
-            AddItem(strings.TrayOpen, open);
+            _openItem = AddItem(strings.TrayOpen, open);
             AddItem(strings.TraySettings, settings);
             AddItem(strings.TraySupport, support);
             AddItem(strings.TrayExit, exit);
@@ -103,11 +108,12 @@ internal sealed class TrayIcon : IDisposable
         TrayNativeMethods.DestroyIcon(previous);
     }
 
-    private void AddItem(string text, Func<Task> command)
+    private MenuItem AddItem(string text, Func<Task> command)
     {
         var item = new MenuItem { Header = text };
         item.Click += (_, _) => QueueCommand(command);
         Menu.Items.Add(item);
+        return item;
     }
 
     private void QueueCommand(Func<Task> command)
@@ -177,10 +183,15 @@ internal sealed class TrayIcon : IDisposable
     private void ShowMenu()
     {
         TrayMenuView.ApplyTheme(Menu, SystemTheme.IsLight());
+        _openItem.Header = OpenHeader();
         TrayNativeMethods.SetForegroundWindow(_source.Handle);
         Menu.IsOpen = true;
         Menu.Focus();
     }
+
+    // The hotkey can change in settings or fail to register, so the label is refreshed on every open.
+    private string OpenHeader() =>
+        _openHotkey() is { Length: > 0 } hotkey ? _strings.TrayOpenWithHotkey(hotkey) : _strings.TrayOpen;
 
     public void CloseMenu()
     {

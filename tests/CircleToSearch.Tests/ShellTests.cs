@@ -86,7 +86,7 @@ public sealed class ShellTests
     {
         var opens = 0;
         using var tray = new TrayIcon(new AppPaths(AppContext.BaseDirectory).TrayIconPath, TestUiStrings.English,
-            Dispatcher.CurrentDispatcher, CreateLog(), () => { opens++; return Task.CompletedTask; },
+            Dispatcher.CurrentDispatcher, CreateLog(), () => { opens++; return Task.CompletedTask; }, () => null,
             () => Task.CompletedTask, () => Task.CompletedTask, () => Task.CompletedTask);
         Assert.True(tray.IsAdded);
         var removal = new Thread(tray.RemoveForShutdown) { IsBackground = true };
@@ -109,7 +109,7 @@ public sealed class ShellTests
     public void Tray_icon_uses_the_small_icon_size_for_the_current_dpi_and_follows_dpi_changes() => OnSta(() =>
     {
         using var tray = new TrayIcon(new AppPaths(AppContext.BaseDirectory).TrayIconPath, TestUiStrings.English,
-            Dispatcher.CurrentDispatcher, CreateLog(), () => Task.CompletedTask,
+            Dispatcher.CurrentDispatcher, CreateLog(), () => Task.CompletedTask, () => null,
             () => Task.CompletedTask, () => Task.CompletedTask, () => Task.CompletedTask);
         Assert.Equal(TrayNativeMethods.GetSystemMetricsForDpi(49, TrayNativeMethods.GetDpiForSystem()), tray.IconSize);
         // Windows refuses to post WM_DPICHANGED because lParam carries a pointer to the suggested rectangle.
@@ -196,8 +196,10 @@ public sealed class ShellTests
             calls[index]++;
             return index == 2 ? Task.FromException(new InvalidOperationException("failed command")) : Task.CompletedTask;
         }
+        string? hotkey = null;
         using var tray = new TrayIcon(new AppPaths(AppContext.BaseDirectory).TrayIconPath, TestUiStrings.English,
-            Dispatcher.CurrentDispatcher, CreateLog(), () => Command(0), () => Command(1), () => Command(2), () => Command(3));
+            Dispatcher.CurrentDispatcher, CreateLog(), () => Command(0), () => hotkey,
+            () => Command(1), () => Command(2), () => Command(3));
         Assert.Equal(new[] { "Open", "Settings", "Support the project", "Exit" },
             tray.Menu.Items.Cast<MenuItem>().Select(item => (string)item.Header));
         Assert.True(tray.IsAdded);
@@ -211,12 +213,20 @@ public sealed class ShellTests
         foreach (MenuItem item in tray.Menu.Items) item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         Pump();
         Assert.Equal(new[] { 2, 1, 1, 1 }, calls);
+        hotkey = "Ctrl+Alt+Space";
         SendTrayEvent(tray, 0x7B);
         Pump();
         Assert.True(tray.Menu.IsOpen);
+        Assert.Equal("Open (Ctrl+Alt+Space)", ((MenuItem)tray.Menu.Items[0]).Header);
         TrayNativeMethods.PostMessageW(tray.WindowHandle, 0x1C, IntPtr.Zero, IntPtr.Zero);
         Pump();
         Assert.False(tray.Menu.IsOpen);
+        hotkey = null;
+        SendTrayEvent(tray, 0x7B);
+        Pump();
+        Assert.Equal("Open", ((MenuItem)tray.Menu.Items[0]).Header);
+        tray.CloseMenu();
+        Pump();
 
         // Simulate Explorer dropping this registration before broadcasting TaskbarCreated.
         var data = new NotifyIconData { Size = (uint)Marshal.SizeOf<NotifyIconData>(), Window = tray.WindowHandle, Id = 1,

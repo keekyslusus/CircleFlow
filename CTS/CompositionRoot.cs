@@ -135,6 +135,7 @@ public static class CompositionRoot
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });
                 tray = new TrayIcon(paths.TrayIconPath, strings, application.Dispatcher, log,
                     () => { activation.TryRequestOpen(); return Task.CompletedTask; },
+                    () => runtime.Settings.HotkeyStatus is { IsActive: true } hotkey ? hotkey.Gesture : null,
                     () => { settingsWindow.Show(); return Task.CompletedTask; },
                     () => { support.Open(); return Task.CompletedTask; },
                     lifetime.RequestExitAsync);
