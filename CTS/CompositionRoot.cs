@@ -358,7 +358,13 @@ public static class CompositionRoot
             try
             {
                 // Registration waits on this dispatcher; reading settings here could deadlock its lock.
-                _ = Task.Run(coordinator.StartFromHotkeyAsync);
+                _ = Task.Run(() =>
+                {
+                    if (!settings.Snapshot.IgnoreHotkeyInFullscreen || !FullscreenAppDetector.IsForegroundFullscreenApp())
+                        return coordinator.StartFromHotkeyAsync();
+                    log.Info(nameof(CompositionRoot), "hotkey ignored in a fullscreen app");
+                    return Task.CompletedTask;
+                });
             }
             catch (Exception exception)
             {

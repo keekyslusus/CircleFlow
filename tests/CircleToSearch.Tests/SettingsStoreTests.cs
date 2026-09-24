@@ -21,7 +21,7 @@ public sealed class SettingsStoreTests
         {
             SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "kagi", HotkeyGesture = "Win+Ctrl+Shift+F7",
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
-            OcrLanguageTag = "ru-RU", ImageTranslationPrivacyConsentAccepted = true,
+            OcrLanguageTag = "ru-RU", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
         };
         store.Save(updated);
         Assert.Equal(updated, new SettingsStore(paths).Load().Settings);
@@ -92,11 +92,12 @@ public sealed class SettingsStoreTests
         var backup = new AppSettings { PaddingPx = 19 };
         File.WriteAllText(paths.SettingsBackupFilePath, JsonSerializer.Serialize(backup));
         File.WriteAllText(paths.SettingsFilePath,
-            """{"PaddingPx":"wrong","MaxLongSidePx":999999999999999,"OcrLanguageTag":null,"ImageTranslationPrivacyConsentAccepted":"true","SearchProviderId":"yandex-images","TranslationTargetLanguageTag":"ja-JP"}""");
+            """{"PaddingPx":"wrong","MaxLongSidePx":999999999999999,"OcrLanguageTag":null,"ImageTranslationPrivacyConsentAccepted":"true","SearchProviderId":"yandex-images","TranslationTargetLanguageTag":"ja-JP","IgnoreHotkeyInFullscreen":"no"}""");
         var result = store.Load();
         Assert.False(result.Recovered);
-        Assert.Equal(4, result.ResetFields.Count);
+        Assert.Equal(5, result.ResetFields.Count);
         Assert.Equal(new AppSettings { SearchProviderId = SearchProviderIds.YandexImages }, result.Settings);
+        Assert.True(result.Settings.IgnoreHotkeyInFullscreen);
         Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
         Assert.DoesNotContain("TranslationTargetLanguageTag", File.ReadAllText(paths.SettingsFilePath));
         Assert.Equal(backup, Read(paths.SettingsBackupFilePath));

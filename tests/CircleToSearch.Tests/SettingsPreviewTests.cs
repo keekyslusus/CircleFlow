@@ -885,6 +885,11 @@ public sealed class SettingsPreviewTests
             ocrLanguage.SelectedIndex = 1;
             Assert.Equal(0, ocrLanguage.SelectedIndex);
             Assert.Equal(string.Empty, harness.Settings.Snapshot.OcrLanguageTag);
+
+            var ignoreFullscreen = Find<CheckBox>(window, "IgnoreFullscreen");
+            ignoreFullscreen.IsChecked = false;
+            Assert.True(ignoreFullscreen.IsChecked);
+            Assert.True(harness.Settings.Snapshot.IgnoreHotkeyInFullscreen);
         }
         finally { window.Close(); }
     });
@@ -897,6 +902,7 @@ public sealed class SettingsPreviewTests
             SearchProviderId = SearchProviderIds.YandexImages,
             TextSearchEngineId = "bing",
             OcrLanguageTag = "de-DE",
+            IgnoreHotkeyInFullscreen = false,
             HotkeyGesture = "Ctrl+Shift+K",
         }));
         var window = harness.CreateView().Window;
@@ -931,6 +937,8 @@ public sealed class SettingsPreviewTests
             Assert.Equal(defaults.SearchProviderId, harness.Settings.Snapshot.SearchProviderId);
             Assert.Equal(defaults.TextSearchEngineId, harness.Settings.Snapshot.TextSearchEngineId);
             Assert.Equal(defaults.OcrLanguageTag, harness.Settings.Snapshot.OcrLanguageTag);
+            Assert.True(harness.Settings.Snapshot.IgnoreHotkeyInFullscreen);
+            Assert.True(Find<CheckBox>(window, "IgnoreFullscreen").IsChecked);
             Assert.Equal(0, Find<ComboBox>(window, "OcrLanguage").SelectedIndex);
             Assert.Equal(defaults.HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
             Assert.Equal(0, provider.SelectedIndex);
@@ -971,6 +979,29 @@ public sealed class SettingsPreviewTests
     {
         var window = new TestSettingsWindow(culture: CultureInfo.GetCultureInfo("de-AT")).CreateView().Window;
         try { Assert.Equal(new Windows.Globalization.Language("de").DisplayName, Find<TextBlock>(window, "TranslationLanguage").Text); }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Ignore_in_fullscreen_comes_from_settings_saves_changes_and_reloads_on_activation() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings { IgnoreHotkeyInFullscreen = false }));
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var ignoreFullscreen = Find<CheckBox>(window, "IgnoreFullscreen");
+            Assert.False(ignoreFullscreen.IsChecked);
+            ignoreFullscreen.IsChecked = true;
+            Assert.True(harness.Settings.Snapshot.IgnoreHotkeyInFullscreen);
+            ignoreFullscreen.IsChecked = false;
+            Assert.False(harness.Settings.Snapshot.IgnoreHotkeyInFullscreen);
+
+            harness.Settings.SetIgnoreHotkeyInFullscreen(true).ThrowIfFailed("test update failed");
+            Activate(window);
+            Assert.True(ignoreFullscreen.IsChecked);
+            Assert.Empty(harness.Notifier.Errors);
+        }
         finally { window.Close(); }
     });
 

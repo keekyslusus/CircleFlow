@@ -93,9 +93,12 @@ internal sealed class SettingsWindowView
         ocrLanguage.SelectionChanged += OnOcrLanguageChanged;
         _dropdowns.Add(new SettingsDropdownMotion(ocrLanguage));
         Element<TextBlock>("TranslationLanguage").Text = model.TranslationLanguageName;
+        var ignoreFullscreen = Element<CheckBox>("IgnoreFullscreen");
+        ignoreFullscreen.Checked += OnIgnoreFullscreenChanged;
+        ignoreFullscreen.Unchecked += OnIgnoreFullscreenChanged;
 
         // These controls have no application setting yet, so their values live only in this window.
-        foreach (var name in new[] { "Launch", "ToolbarAsk", "ToolbarCopy", "ToolbarSave", "ToolbarTranslate", "IgnoreFullscreen" })
+        foreach (var name in new[] { "Launch", "ToolbarAsk", "ToolbarCopy", "ToolbarSave", "ToolbarTranslate" })
         {
             var control = Element<CheckBox>(name);
             var initial = control.IsChecked;
@@ -276,6 +279,7 @@ internal sealed class SettingsWindowView
             Select(Element<ComboBox>("TextSearch"), _model.TextSearchEngineId);
             if (_model.RefreshOcrLanguages()) PopulateOcrLanguages();
             Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
+            Element<CheckBox>("IgnoreFullscreen").IsChecked = _model.IgnoreHotkeyInFullscreen;
         }
         finally { _loadingSettings = false; }
         var keys = _model.HotkeyGesture.Split('+')
@@ -315,6 +319,14 @@ internal sealed class SettingsWindowView
     {
         if (_loadingSettings || Element<ComboBox>("OcrLanguage").SelectedItem is not ComboBoxItem { Tag: string tag }) return;
         if (_model.SelectOcrLanguage(tag)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnIgnoreFullscreenChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        if (_model.SelectIgnoreHotkeyInFullscreen(Element<CheckBox>("IgnoreFullscreen").IsChecked == true)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
     }

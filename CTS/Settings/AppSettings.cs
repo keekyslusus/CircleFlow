@@ -10,6 +10,8 @@ public sealed record AppSettings
 
     public string HotkeyGesture { get; init; } = "Ctrl+Alt+Space";
 
+    public bool IgnoreHotkeyInFullscreen { get; init; } = true;
+
     public int MaxLongSidePx { get; init; } = 1600;
 
     public int PaddingPx { get; init; } = 8;

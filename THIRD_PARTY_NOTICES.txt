@@ -24,6 +24,18 @@ The complete GPL version 3 license text is distributed in the root LICENSE file.
 
 Shazam is an Apple service. CircleFlow is not affiliated with or endorsed by Apple or Shazam.
 
+Flow Launcher
+-------------
+
+The fullscreen window detection in CTS/Trigger/FullscreenAppDetector.cs is adapted and
+ported from Flow Launcher:
+https://github.com/Flow-Launcher/Flow.Launcher
+
+Copyright (c) 2019 Flow-Launcher. Copyright (c) 2015 Wox.
+Licensed under the MIT License. The port was created on 2026-09-24 and has been
+subsequently modified for CircleFlow. The complete license text is distributed in
+THIRD_PARTY_LICENSES/MIT.txt.
+
 Material Color Utilities
 ------------------------
 
@@ -51,8 +63,6 @@ Bundled .NET dependencies
 
 CircleFlow binary distributions include the following third-party dependencies:
 
-- Flow.Launcher.Plugin 5.3.1 (MIT)
-- JetBrains.Annotations 2025.2.2 (MIT)
 - MathNet.Numerics 5.0.0 (MIT)
 - NAudio 3.0.1 and its component assemblies (MIT)
 - System.Numerics.Tensors 9.0.0 (MIT)

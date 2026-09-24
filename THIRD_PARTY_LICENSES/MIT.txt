@@ -1,5 +1,9 @@
-MIT-licensed bundled components
-===============================
+MIT-licensed components
+=======================
+
+Flow Launcher (adapted source in CTS/Trigger/FullscreenAppDetector.cs)
+Copyright (c) 2019 Flow-Launcher
+Copyright (c) 2015 Wox
 
 MathNet.Numerics 5.0.0
 Copyright (c) 2002-2022 Math.NET

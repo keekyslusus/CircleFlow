@@ -187,7 +187,7 @@
     <system:String x:Key="app_settings_open_selection_sub">Select an area to search, copy text, or translate</system:String>
     <system:String x:Key="app_settings_behavior">Behavior</system:String>
     <system:String x:Key="app_settings_ignore_fullscreen">Ignore in fullscreen apps</system:String>
-    <system:String x:Key="app_settings_ignore_fullscreen_sub">Do not intercept shortcuts in games and fullscreen mode</system:String>
+    <system:String x:Key="app_settings_ignore_fullscreen_sub">Games and other fullscreen apps. Browsers and video players are not affected</system:String>
     <system:String x:Key="app_settings_shortcut_hint">Shortcut works while CircleFlow is running. Esc closes selection or cancels the current action.</system:String>
     <system:String x:Key="app_settings_image_search">Image search</system:String>
     <system:String x:Key="app_settings_provider">Search provider</system:String>
@@ -255,7 +255,7 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_cancel">Cancel</system:String>
     <system:String x:Key="app_settings_save">Save</system:String>
     <system:String x:Key="app_settings_preview_notice">Interface preview
-Only the shortcut, search, and recognition language settings are saved.</system:String>
+Only shortcut, search, and recognition language settings are saved.</system:String>
     <system:String x:Key="app_settings_ctrl">Ctrl</system:String>
     <system:String x:Key="app_settings_alt">Alt</system:String>
     <system:String x:Key="app_settings_shift">Shift</system:String>

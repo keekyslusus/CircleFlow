@@ -31,6 +31,7 @@ internal sealed class SettingsWindowModel(
     public string OcrLanguageTag => ocrLanguages.Resolve(settings.Snapshot.OcrLanguageTag)?.Tag ?? string.Empty;
     public string TranslationLanguageName => TranslationTargetLanguage.DisplayName(culture);
     public string HotkeyGesture => settings.Snapshot.HotkeyGesture;
+    public bool IgnoreHotkeyInFullscreen => settings.Snapshot.IgnoreHotkeyInFullscreen;
     public ProjectSupport Project => project;
     public string? WebViewRuntimeVersion => webViewRuntimeVersion();
     public string? AudioOutputName => audioOutputName();
@@ -42,6 +43,8 @@ internal sealed class SettingsWindowModel(
     public bool SelectOcrLanguage(string languageTag) =>
         settings.Apply(new SettingsEdits { OcrLanguageTag = languageTag }).Success;
 
+    public bool SelectIgnoreHotkeyInFullscreen(bool ignore) => settings.SetIgnoreHotkeyInFullscreen(ignore).Success;
+
     public string ChangeHotkey(string gesture) =>
         Describe(settings.ChangeHotkey(gesture), gesture, strings.SettingsShortcutSaved);
 
@@ -52,6 +55,7 @@ internal sealed class SettingsWindowModel(
         if (!providers.Save(defaults.SearchProviderId)) return null;
         if (!SelectTextSearchEngine(defaults.TextSearchEngineId)) return strings.StorageSaveFailed;
         if (!SelectOcrLanguage(defaults.OcrLanguageTag)) return strings.StorageSaveFailed;
+        if (!SelectIgnoreHotkeyInFullscreen(defaults.IgnoreHotkeyInFullscreen)) return strings.StorageSaveFailed;
         return Describe(settings.ChangeHotkey(defaults.HotkeyGesture), defaults.HotkeyGesture, strings.SettingsResetDone);
     }
 

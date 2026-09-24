@@ -72,24 +72,27 @@ internal sealed class SettingsStore(AppPaths paths)
             invalid.Add(field);
             return fallback;
         }
-        var defaults = new AppSettings();
-        var consent = false;
-        if (root.TryGetProperty(nameof(AppSettings.ImageTranslationPrivacyConsentAccepted), out var value))
+        bool Flag(string field, bool fallback)
         {
-            if (value.ValueKind is JsonValueKind.True or JsonValueKind.False) consent = value.GetBoolean();
-            else invalid.Add(nameof(AppSettings.ImageTranslationPrivacyConsentAccepted));
+            if (!root.TryGetProperty(field, out var value)) return fallback;
+            if (value.ValueKind is JsonValueKind.True or JsonValueKind.False) return value.GetBoolean();
+            invalid.Add(field);
+            return fallback;
         }
+        var defaults = new AppSettings();
         var settings = defaults with
         {
             SearchProviderId = Text(nameof(AppSettings.SearchProviderId), defaults.SearchProviderId),
             TextSearchEngineId = Text(nameof(AppSettings.TextSearchEngineId), defaults.TextSearchEngineId),
             HotkeyGesture = Text(nameof(AppSettings.HotkeyGesture), defaults.HotkeyGesture),
+            IgnoreHotkeyInFullscreen = Flag(nameof(AppSettings.IgnoreHotkeyInFullscreen), defaults.IgnoreHotkeyInFullscreen),
             MaxLongSidePx = Number(nameof(AppSettings.MaxLongSidePx), defaults.MaxLongSidePx),
             PaddingPx = Number(nameof(AppSettings.PaddingPx), defaults.PaddingPx),
             HideDelayMilliseconds = Number(nameof(AppSettings.HideDelayMilliseconds), defaults.HideDelayMilliseconds),
             LassoMinDiagonalPx = Number(nameof(AppSettings.LassoMinDiagonalPx), defaults.LassoMinDiagonalPx),
             OcrLanguageTag = Text(nameof(AppSettings.OcrLanguageTag), defaults.OcrLanguageTag),
-            ImageTranslationPrivacyConsentAccepted = consent,
+            ImageTranslationPrivacyConsentAccepted = Flag(nameof(AppSettings.ImageTranslationPrivacyConsentAccepted),
+                defaults.ImageTranslationPrivacyConsentAccepted),
         };
         invalidFields = invalid.AsReadOnly();
         return settings;

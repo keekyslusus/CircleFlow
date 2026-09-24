@@ -88,6 +88,21 @@ internal static class NativeMethods
     public static extern uint GetWindowThreadProcessId(IntPtr hwnd, IntPtr processId);
 
     [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetDesktopWindow();
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetShellWindow();
+
+    [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll")]
     public static extern IntPtr GetKeyboardLayout(uint threadId);
 
     [DllImport("user32.dll")]
