@@ -126,8 +126,8 @@ public static class CompositionRoot
                 lifetime.AddStop("stop-runtime-triggers", () => _ = runtime.StopAsync());
                 cancellation.ThrowIfCancellationRequested();
                 var support = new ProjectSupport(urlOpening);
-                var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, support, urlOpening,
-                    paths, strings, WebViewEnvironmentFactory.RuntimeVersion);
+                var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
+                    support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion);
                 settingsWindow = new SettingsWindowController(application.Dispatcher,
                     () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });
@@ -350,7 +350,7 @@ public static class CompositionRoot
             translationLifetime.StopAsync,
             visualSearchLifetime.StopAsync,
             log);
-        var runtime = rollback.TransferAllTo(new AppRuntime(coordinator, lifetime, settings, providerSelection));
+        var runtime = rollback.TransferAllTo(new AppRuntime(coordinator, lifetime, settings, providerSelection, ocrLanguages));
 
         hotkeyWindow.HotkeyPressed += () =>
         {
@@ -505,7 +505,7 @@ public static class CompositionRoot
                 ocr,
                 context.Visual.Actions.Prompt,
                 context.Strings,
-                context.InputLanguage.Tag ?? context.OcrLanguageTag,
+                context.OcrLanguageTag ?? context.InputLanguage.Tag,
                 frameSource,
                 dependencies.OcrLanguages,
                 toast,
@@ -628,11 +628,12 @@ public static class CompositionRoot
 
     private static bool OpenResultsUrl(string url)
     {
+        // Null only means the target was handed to an already running process, e.g. ms-settings: URIs.
         using var process = Process.Start(new ProcessStartInfo
         {
             UseShellExecute = true,
             FileName = url,
         });
-        return process is not null;
+        return true;
     }
 }

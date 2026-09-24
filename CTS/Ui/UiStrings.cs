@@ -32,6 +32,7 @@ public sealed class UiStrings
     public string SettingsShortcutUnavailable(string gesture) => Get("app_settings_shortcut_unavailable", gesture);
     public string SettingsResetDone => Get("app_settings_reset_done");
     public string SettingsOpenFolderFailed => Get("app_settings_open_folder_failed");
+    public string SettingsOpenLanguageSettingsFailed => Get("app_settings_open_language_settings_failed");
     public string SettingsRuntimeMissing => Get("app_settings_runtime_missing");
     public string StartupFailed => Get("app_startup_failed");
     public string StartupLanguageFailed => Get("app_startup_language_failed");

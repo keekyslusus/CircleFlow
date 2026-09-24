@@ -88,6 +88,10 @@ internal sealed class SettingsWindowView
             textSearch.Items.Add(new ComboBoxItem { Content = strings.SettingsPreviewText("engine_" + engine.Id), Tag = engine.Id });
         textSearch.SelectionChanged += OnTextSearchChanged;
         _dropdowns.Add(new SettingsDropdownMotion(textSearch));
+        var ocrLanguage = Element<ComboBox>("OcrLanguage");
+        PopulateOcrLanguages();
+        ocrLanguage.SelectionChanged += OnOcrLanguageChanged;
+        _dropdowns.Add(new SettingsDropdownMotion(ocrLanguage));
 
         // These controls have no application setting yet, so their values live only in this window.
         foreach (var name in new[] { "Launch", "ToolbarAsk", "ToolbarCopy", "ToolbarSave", "ToolbarTranslate", "IgnoreFullscreen" })
@@ -96,7 +100,7 @@ internal sealed class SettingsWindowView
             var initial = control.IsChecked;
             _restoreDefaults.Add(() => control.IsChecked = initial);
         }
-        foreach (var name in new[] { "AppLanguage", "Cleanup", "OcrLanguage", "TargetLanguage" })
+        foreach (var name in new[] { "AppLanguage", "Cleanup", "TargetLanguage" })
         {
             var control = Element<ComboBox>(name);
             _dropdowns.Add(new SettingsDropdownMotion(control));
@@ -189,6 +193,7 @@ internal sealed class SettingsWindowView
             case "donate": _model.Project.Open(); break;
             case "folder": _model.OpenDataFolder(); break;
             case "logs": _model.OpenLogsFolder(); break;
+            case "ocr-languages": _model.OpenOcrLanguageSettings(); break;
             case "preview": ShowStatus(_strings.SettingsPreviewText("preview_action")); break;
         }
         e.Handled = true;
@@ -268,6 +273,8 @@ internal sealed class SettingsWindowView
         {
             Select(Element<ComboBox>("Provider"), _model.ProviderId);
             Select(Element<ComboBox>("TextSearch"), _model.TextSearchEngineId);
+            if (_model.RefreshOcrLanguages()) PopulateOcrLanguages();
+            Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
         }
         finally { _loadingSettings = false; }
         var keys = _model.HotkeyGesture.Split('+')
@@ -284,6 +291,26 @@ internal sealed class SettingsWindowView
     {
         if (_loadingSettings || Element<ComboBox>("TextSearch").SelectedItem is not ComboBoxItem { Tag: string id }) return;
         if (_model.SelectTextSearchEngine(id)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void PopulateOcrLanguages()
+    {
+        var comboBox = Element<ComboBox>("OcrLanguage");
+        comboBox.Items.Clear();
+        comboBox.Items.Add(new ComboBoxItem { Content = _strings.SettingsPreviewText("match_keyboard"), Tag = string.Empty });
+        foreach (var language in _model.OcrLanguages)
+            comboBox.Items.Add(new ComboBoxItem { Content = language.DisplayName, Tag = language.Tag });
+        comboBox.IsEnabled = _model.OcrLanguages.Count != 0;
+        Element<TextBlock>("OcrLanguageSubtitle").Text =
+            _strings.SettingsPreviewText(comboBox.IsEnabled ? "ocr_language_sub" : "ocr_language_none");
+    }
+
+    private void OnOcrLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings || Element<ComboBox>("OcrLanguage").SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        if (_model.SelectOcrLanguage(tag)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
     }

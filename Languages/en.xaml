@@ -205,6 +205,9 @@
     <system:String x:Key="app_settings_languages">Languages</system:String>
     <system:String x:Key="app_settings_ocr_language">Recognition language</system:String>
     <system:String x:Key="app_settings_ocr_language_sub">Used to extract text from screen</system:String>
+    <system:String x:Key="app_settings_ocr_language_none">No recognition languages are installed in Windows</system:String>
+    <system:String x:Key="app_settings_match_keyboard">Keyboard layout</system:String>
+    <system:String x:Key="app_settings_add_ocr_languages">Add recognition languages in Windows Settings</system:String>
     <system:String x:Key="app_settings_target_language">Translate to</system:String>
     <system:String x:Key="app_settings_target_language_sub">Target language for translation</system:String>
     <system:String x:Key="app_settings_translation_info">What is sent for translation</system:String>
@@ -252,7 +255,7 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_cancel">Cancel</system:String>
     <system:String x:Key="app_settings_save">Save</system:String>
     <system:String x:Key="app_settings_preview_notice">Interface preview
-Only the shortcut, search provider, and search engine are saved.</system:String>
+Only the shortcut, search, and recognition language settings are saved.</system:String>
     <system:String x:Key="app_settings_ctrl">Ctrl</system:String>
     <system:String x:Key="app_settings_alt">Alt</system:String>
     <system:String x:Key="app_settings_shift">Shift</system:String>
@@ -262,6 +265,7 @@ Only the shortcut, search provider, and search engine are saved.</system:String>
     <system:String x:Key="app_settings_shortcut_saved">Shortcut saved.</system:String>
     <system:String x:Key="app_settings_shortcut_unavailable">{0} is already used by another app. Choose a different shortcut.</system:String>
     <system:String x:Key="app_settings_reset_done">Settings restored to defaults.</system:String>
+    <system:String x:Key="app_settings_open_language_settings_failed">Could not open Windows language settings.</system:String>
     <system:String x:Key="app_settings_open_folder_failed">Could not open the folder.</system:String>
     <system:String x:Key="app_settings_invalid_shortcut">Use Ctrl, Alt, or Shift with a letter, number, or Space.</system:String>
     <system:String x:Key="app_settings_plus">+</system:String>

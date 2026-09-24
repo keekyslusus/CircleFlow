@@ -23,4 +23,20 @@ public sealed class OcrLanguageCatalogResolutionTests
         Assert.Null(catalog.Resolve("ru-RU"));
         Assert.Null(new OcrLanguageCatalog([]).Resolve("en-US"));
     }
+
+    [Fact]
+    public void Refresh_replaces_the_list_only_when_installed_languages_change()
+    {
+        IReadOnlyList<OcrLanguageOption> installed = [new("en-US", "English")];
+        var catalog = new OcrLanguageCatalog(() => installed);
+        var before = catalog.AvailableLanguages;
+        Assert.False(catalog.Refresh());
+        Assert.Same(before, catalog.AvailableLanguages);
+
+        installed = [new("en-US", "English"), new("ja-JP", "Japanese")];
+        Assert.Null(catalog.Resolve("ja-JP"));
+        Assert.True(catalog.Refresh());
+        Assert.Equal("ja-JP", catalog.Resolve("ja-JP")?.Tag);
+        Assert.Single(before);
+    }
 }

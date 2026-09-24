@@ -18,7 +18,7 @@ public sealed record SearchSessionOptions(
     internal static SearchSessionOptions From(AppSettings settings, OcrLanguageCatalog languages, CultureInfo culture,
         KeyboardLanguageSnapshot inputLanguage = default) =>
         new(settings.HideDelayMilliseconds, settings.PaddingPx, settings.LassoMinDiagonalPx, settings.MaxLongSidePx,
-            languages.Resolve(inputLanguage.Tag)?.Tag,
+            languages.Resolve(settings.OcrLanguageTag)?.Tag ?? languages.Resolve(inputLanguage.Tag)?.Tag,
             string.IsNullOrWhiteSpace(settings.TranslationTargetLanguageTag)
                 ? string.IsNullOrWhiteSpace(culture.Name) ? "en" : culture.Name
                 : settings.TranslationTargetLanguageTag,

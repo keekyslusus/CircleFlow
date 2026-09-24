@@ -48,28 +48,30 @@ public sealed class SearchSessionOptionsTests
     }
 
     [Fact]
-    public void Empty_translation_language_uses_system_culture_and_saved_ocr_language_is_ignored()
+    public void Empty_translation_language_uses_system_culture_and_missing_ocr_pack_falls_back_to_keyboard()
     {
         var languages = new OcrLanguageCatalog([new("en-US", "English")]);
         var settings = new AppSettings { OcrLanguageTag = "ru-RU" };
         var options = SearchSessionOptions.From(settings, languages, CultureInfo.GetCultureInfo("fr-CA"));
         Assert.Null(options.OcrLanguageTag);
         Assert.Equal("fr-CA", options.TranslationTargetLanguageTag);
-        Assert.Equal("ru-RU", settings.OcrLanguageTag);
+        Assert.Equal("en-US", SearchSessionOptions.From(settings, languages, CultureInfo.GetCultureInfo("fr-CA"),
+            new KeyboardLanguageSnapshot(0x0409, "en-US")).OcrLanguageTag);
         Assert.Equal("en", SearchSessionOptions.From(settings, languages, CultureInfo.InvariantCulture).TranslationTargetLanguageTag);
     }
 
     [Fact]
-    public void Captured_input_language_overrides_saved_ocr_preference()
+    public void Saved_ocr_language_overrides_captured_input_language()
     {
         var languages = new OcrLanguageCatalog([new("en-US", "English"), new("ru-RU", "Russian")]);
         var settings = new AppSettings { OcrLanguageTag = "en-US", TranslationTargetLanguageTag = "fr-FR" };
         var captured = new KeyboardLanguageSnapshot(0x0419, "ru-RU");
         var options = SearchSessionOptions.From(settings, languages, CultureInfo.GetCultureInfo("en-US"), captured);
-        Assert.Equal("ru-RU", options.OcrLanguageTag);
+        Assert.Equal("en-US", options.OcrLanguageTag);
         Assert.Equal(captured, options.InputLanguage);
         Assert.Equal("fr-FR", options.TranslationTargetLanguageTag);
-        Assert.Null(SearchSessionOptions.From(settings, languages, CultureInfo.GetCultureInfo("en-US")).OcrLanguageTag);
+        Assert.Equal("ru-RU", SearchSessionOptions.From(settings with { OcrLanguageTag = "" }, languages,
+            CultureInfo.GetCultureInfo("en-US"), captured).OcrLanguageTag);
     }
 
     private sealed class RecordingWorkflow : ISearchSessionWorkflow

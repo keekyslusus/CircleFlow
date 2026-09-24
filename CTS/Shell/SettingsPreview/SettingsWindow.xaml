@@ -590,16 +590,19 @@
                                             </Viewbox>
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
                                                 <TextBlock Text="{Binding [ocr_language]}" Style="{StaticResource RowTitle}"/>
-                                                <TextBlock Text="{Binding [ocr_language_sub]}" Style="{StaticResource RowSubtitle}"/>
+                                                <TextBlock x:Name="OcrLanguageSubtitle" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <ComboBox x:Name="OcrLanguage" SelectedIndex="0" Width="160" AutomationProperties.Name="{Binding [ocr_language]}">
-                                                    <ComboBoxItem Content="{Binding [match_system]}"/>
-                                                    <ComboBoxItem Content="{Binding [english]}"/>
-                                                    <ComboBoxItem Content="{Binding [russian]}"/>
-                                                    <ComboBoxItem Content="{Binding [german]}"/>
-                                                    <ComboBoxItem Content="{Binding [kazakh]}"/>
-                                                </ComboBox>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Tag="ocr-languages" Margin="0,0,8,0" Width="33" Padding="5" ToolTip="{Binding [add_ocr_languages]}" AutomationProperties.Name="{Binding [add_ocr_languages]}">
+                                                        <Viewbox Width="20" Height="20">
+                                                            <Canvas Width="24" Height="24">
+                                                                <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.DownloadOutlined}"/>
+                                                            </Canvas>
+                                                        </Viewbox>
+                                                    </Button>
+                                                    <ComboBox x:Name="OcrLanguage" Width="160" AutomationProperties.Name="{Binding [ocr_language]}"/>
+                                                </StackPanel>
                                             </ContentControl>
                                         </Grid>
                                     </Border>

@@ -13,6 +13,7 @@ using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Shell;
 using CircleToSearch.Shell.SettingsPreview;
+using CircleToSearch.TextRecognition;
 using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
 using Xunit;
@@ -812,6 +813,54 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
+    public void Recognition_language_lists_installed_packs_saves_them_and_refreshes_on_activation() => OnSta(time =>
+    {
+        IReadOnlyList<OcrLanguageOption> installed = [new("de-DE", "German"), new("en-US", "English")];
+        var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings { OcrLanguageTag = "en-US" }),
+            ocrLanguages: new OcrLanguageCatalog(() => installed));
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var ocrLanguage = Find<ComboBox>(window, "OcrLanguage");
+            Assert.Equal(["Keyboard layout", "German", "English"],
+                ocrLanguage.Items.OfType<ComboBoxItem>().Select(item => (string)item.Content));
+            Assert.Equal(2, ocrLanguage.SelectedIndex);
+            Assert.True(ocrLanguage.IsEnabled);
+            Assert.Equal("Used to extract text from screen", Find<TextBlock>(window, "OcrLanguageSubtitle").Text);
+
+            ocrLanguage.SelectedIndex = 1;
+            Assert.Equal("de-DE", harness.Settings.Snapshot.OcrLanguageTag);
+            ocrLanguage.SelectedIndex = 0;
+            Assert.Equal(string.Empty, harness.Settings.Snapshot.OcrLanguageTag);
+
+            Click(window, "ocr-languages");
+            Assert.Equal(["ms-settings:regionlanguage"], harness.Opened);
+
+            installed = [new("en-US", "English"), new("ja-JP", "Japanese")];
+            harness.Settings.Apply(new SettingsEdits { OcrLanguageTag = "ja-JP" }).ThrowIfFailed("test update failed");
+            Activate(window);
+            Assert.Equal(["Keyboard layout", "English", "Japanese"],
+                ocrLanguage.Items.OfType<ComboBoxItem>().Select(item => (string)item.Content));
+            Assert.Equal(2, ocrLanguage.SelectedIndex);
+
+            installed = [new("en-US", "English")];
+            Activate(window);
+            Assert.Equal(0, ocrLanguage.SelectedIndex);
+            Assert.Equal("ja-JP", harness.Settings.Snapshot.OcrLanguageTag);
+
+            installed = [];
+            Activate(window);
+            Assert.False(ocrLanguage.IsEnabled);
+            Assert.Equal(0, ocrLanguage.SelectedIndex);
+            Assert.Equal("No recognition languages are installed in Windows",
+                Find<TextBlock>(window, "OcrLanguageSubtitle").Text);
+            Assert.Empty(harness.Notifier.Errors);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
     public void Failed_saves_restore_the_saved_selection() => OnSta(time =>
     {
         var harness = new TestSettingsWindow(TestSettings.Create(save: _ => throw new IOException("disk unavailable")));
@@ -830,6 +879,11 @@ public sealed class SettingsPreviewTests
             Assert.Equal(0, textSearch.SelectedIndex);
             Assert.Equal(TextSearchEngines.MatchImageSearch, harness.Settings.Snapshot.TextSearchEngineId);
             Assert.Equal(TestUiStrings.English.StorageSaveFailed, Find<TextBlock>(window, "StatusText").Text);
+
+            var ocrLanguage = Find<ComboBox>(window, "OcrLanguage");
+            ocrLanguage.SelectedIndex = 1;
+            Assert.Equal(0, ocrLanguage.SelectedIndex);
+            Assert.Equal(string.Empty, harness.Settings.Snapshot.OcrLanguageTag);
         }
         finally { window.Close(); }
     });
@@ -841,6 +895,7 @@ public sealed class SettingsPreviewTests
         {
             SearchProviderId = SearchProviderIds.YandexImages,
             TextSearchEngineId = "bing",
+            OcrLanguageTag = "de-DE",
             HotkeyGesture = "Ctrl+Shift+K",
         }));
         var window = harness.CreateView().Window;
@@ -874,6 +929,8 @@ public sealed class SettingsPreviewTests
             var defaults = new AppSettings();
             Assert.Equal(defaults.SearchProviderId, harness.Settings.Snapshot.SearchProviderId);
             Assert.Equal(defaults.TextSearchEngineId, harness.Settings.Snapshot.TextSearchEngineId);
+            Assert.Equal(defaults.OcrLanguageTag, harness.Settings.Snapshot.OcrLanguageTag);
+            Assert.Equal(0, Find<ComboBox>(window, "OcrLanguage").SelectedIndex);
             Assert.Equal(defaults.HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
             Assert.Equal(0, provider.SelectedIndex);
             Assert.Equal(["Ctrl", "Alt", "Space"], ShortcutLabels(window, "ShortcutKeys"));
@@ -1001,6 +1058,10 @@ public sealed class SettingsPreviewTests
             .Select(item => (string)item.GetType().GetProperty("Label")!.GetValue(item)!).ToArray();
 
     private static T Find<T>(Window window, string name) where T : FrameworkElement => (T)window.FindName(name);
+
+    private static void Activate(Window window) =>
+        typeof(Window).GetMethod("OnActivated", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(window, [EventArgs.Empty]);
 
     private static void Click(Window window, string tag)
     {

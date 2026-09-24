@@ -2,13 +2,14 @@ using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Shell;
 using CircleToSearch.Shell.SettingsPreview;
+using CircleToSearch.TextRecognition;
 
 namespace CircleToSearch.Tests;
 
 internal sealed class TestSettingsWindow
 {
     public TestSettingsWindow(SettingsService? settings = null, bool openSucceeds = true,
-        string? webViewRuntimeVersion = "140.0.3485.54")
+        string? webViewRuntimeVersion = "140.0.3485.54", OcrLanguageCatalog? ocrLanguages = null)
     {
         var log = new PluginLog(Path.Combine(TestOutputPaths.TempDirectory, "settings-window-" + Guid.NewGuid().ToString("N")));
         Settings = settings ?? TestSettings.Create();
@@ -23,12 +24,14 @@ internal sealed class TestSettingsWindow
         var providers = new ProviderSelectionStore(router, Settings, Notifier, TestUiStrings.English, log);
         var urlOpening = new UrlOpeningService(
             target => { Opened.Add(target); return openSucceeds; }, Notifier, TestUiStrings.English, log);
-        Model = new SettingsWindowModel(Settings, providers, new ProjectSupport(urlOpening), urlOpening, Paths,
-            TestUiStrings.English, () => webViewRuntimeVersion);
+        OcrLanguages = ocrLanguages ?? new OcrLanguageCatalog([new("de-DE", "German"), new("en-US", "English")]);
+        Model = new SettingsWindowModel(Settings, providers, OcrLanguages, new ProjectSupport(urlOpening), urlOpening,
+            Paths, TestUiStrings.English, () => webViewRuntimeVersion);
     }
 
     public SettingsService Settings { get; }
     public SettingsWindowModel Model { get; }
+    public OcrLanguageCatalog OcrLanguages { get; }
     public AppPaths Paths { get; } = new();
     public TestPluginNotifier Notifier { get; } = new();
     public List<string> Opened { get; } = [];
