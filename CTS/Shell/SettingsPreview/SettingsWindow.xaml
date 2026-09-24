@@ -323,7 +323,7 @@
                                                 <TextBlock Text="{Binding [toolbar_ask_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <CheckBox x:Name="ToolbarAsk" Style="{StaticResource Toggle}" IsChecked="True" AutomationProperties.Name="{Binding [toolbar_ask]}"/>
+                                                <CheckBox x:Name="ToolbarAsk" Style="{StaticResource Toggle}" AutomationProperties.Name="{Binding [toolbar_ask]}"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>
@@ -345,7 +345,7 @@
                                                 <TextBlock Text="{Binding [toolbar_copy_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <CheckBox x:Name="ToolbarCopy" Style="{StaticResource Toggle}" IsChecked="True" AutomationProperties.Name="{Binding [toolbar_copy]}"/>
+                                                <CheckBox x:Name="ToolbarCopy" Style="{StaticResource Toggle}" AutomationProperties.Name="{Binding [toolbar_copy]}"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>
@@ -367,7 +367,7 @@
                                                 <TextBlock Text="{Binding [toolbar_save_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <CheckBox x:Name="ToolbarSave" Style="{StaticResource Toggle}" IsChecked="True" AutomationProperties.Name="{Binding [toolbar_save]}"/>
+                                                <CheckBox x:Name="ToolbarSave" Style="{StaticResource Toggle}" AutomationProperties.Name="{Binding [toolbar_save]}"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>
@@ -389,7 +389,7 @@
                                                 <TextBlock Text="{Binding [toolbar_translate_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <CheckBox x:Name="ToolbarTranslate" Style="{StaticResource Toggle}" IsChecked="True" AutomationProperties.Name="{Binding [toolbar_translate]}"/>
+                                                <CheckBox x:Name="ToolbarTranslate" Style="{StaticResource Toggle}" AutomationProperties.Name="{Binding [toolbar_translate]}"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>

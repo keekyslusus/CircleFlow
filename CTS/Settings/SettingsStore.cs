@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using CircleToSearch.Capture;
 
 namespace CircleToSearch.Settings;
 
@@ -79,6 +80,14 @@ internal sealed class SettingsStore(AppPaths paths)
             invalid.Add(field);
             return fallback;
         }
+        SelectionToolbarAction Actions(string field, SelectionToolbarAction fallback)
+        {
+            if (!root.TryGetProperty(field, out var value)) return fallback;
+            if (value.ValueKind == JsonValueKind.String && Enum.TryParse<SelectionToolbarAction>(value.GetString(), out var actions))
+                return actions;
+            invalid.Add(field);
+            return fallback;
+        }
         var defaults = new AppSettings();
         var settings = defaults with
         {
@@ -86,6 +95,7 @@ internal sealed class SettingsStore(AppPaths paths)
             TextSearchEngineId = Text(nameof(AppSettings.TextSearchEngineId), defaults.TextSearchEngineId),
             HotkeyGesture = Text(nameof(AppSettings.HotkeyGesture), defaults.HotkeyGesture),
             IgnoreHotkeyInFullscreen = Flag(nameof(AppSettings.IgnoreHotkeyInFullscreen), defaults.IgnoreHotkeyInFullscreen),
+            HiddenToolbarActions = Actions(nameof(AppSettings.HiddenToolbarActions), defaults.HiddenToolbarActions),
             MaxLongSidePx = Number(nameof(AppSettings.MaxLongSidePx), defaults.MaxLongSidePx),
             PaddingPx = Number(nameof(AppSettings.PaddingPx), defaults.PaddingPx),
             HideDelayMilliseconds = Number(nameof(AppSettings.HideDelayMilliseconds), defaults.HideDelayMilliseconds),

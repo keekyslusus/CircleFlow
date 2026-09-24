@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using CircleToSearch.Capture;
 using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
@@ -15,6 +16,11 @@ namespace CircleToSearch.Shell.SettingsPreview;
 internal sealed class SettingsWindowView
 {
     private static readonly string[] Pages = ["general", "hotkeys", "search", "text", "music", "about"];
+    private static readonly (string Name, SelectionToolbarAction Action)[] ToolbarActions =
+    [
+        ("ToolbarAsk", SelectionToolbarAction.Ask), ("ToolbarCopy", SelectionToolbarAction.Copy),
+        ("ToolbarSave", SelectionToolbarAction.Save), ("ToolbarTranslate", SelectionToolbarAction.Translate),
+    ];
     private readonly UiStrings _strings;
     private readonly SettingsWindowModel _model;
     private readonly List<Action> _restoreDefaults = [];
@@ -98,13 +104,18 @@ internal sealed class SettingsWindowView
         ignoreFullscreen.Checked += OnIgnoreFullscreenChanged;
         ignoreFullscreen.Unchecked += OnIgnoreFullscreenChanged;
 
-        // These controls have no application setting yet, so their values live only in this window.
-        foreach (var name in new[] { "Launch", "ToolbarAsk", "ToolbarCopy", "ToolbarSave", "ToolbarTranslate" })
+        foreach (var (name, action) in ToolbarActions)
         {
-            var control = Element<CheckBox>(name);
-            var initial = control.IsChecked;
-            _restoreDefaults.Add(() => control.IsChecked = initial);
+            var toggle = Element<CheckBox>(name);
+            toggle.Tag = action;
+            toggle.Checked += OnToolbarActionChanged;
+            toggle.Unchecked += OnToolbarActionChanged;
         }
+
+        // These controls have no application setting yet, so their values live only in this window.
+        var launch = Element<CheckBox>("Launch");
+        var launchInitial = launch.IsChecked;
+        _restoreDefaults.Add(() => launch.IsChecked = launchInitial);
         foreach (var name in new[] { "AppLanguage", "Cleanup" })
         {
             var control = Element<ComboBox>(name);
@@ -281,6 +292,8 @@ internal sealed class SettingsWindowView
             if (_model.RefreshOcrLanguages()) PopulateOcrLanguages();
             Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
             Element<CheckBox>("IgnoreFullscreen").IsChecked = _model.IgnoreHotkeyInFullscreen;
+            foreach (var (name, action) in ToolbarActions)
+                Element<CheckBox>(name).IsChecked = _model.IsToolbarActionShown(action);
         }
         finally { _loadingSettings = false; }
         var keys = _model.HotkeyGesture.Split('+')
@@ -328,6 +341,14 @@ internal sealed class SettingsWindowView
     {
         if (_loadingSettings) return;
         if (_model.SelectIgnoreHotkeyInFullscreen(Element<CheckBox>("IgnoreFullscreen").IsChecked == true)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnToolbarActionChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings || sender is not CheckBox { Tag: SelectionToolbarAction action } toggle) return;
+        if (_model.ShowToolbarAction(action, toggle.IsChecked == true)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
     }

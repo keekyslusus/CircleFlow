@@ -89,6 +89,18 @@ public sealed class ImageSelectionTests
         Assert.Empty(h.Commands);
     });
 
+    [Fact]
+    public void Hidden_actions_are_left_out_of_the_toolbar_and_search_stays() => Run(() =>
+    {
+        using var h = new Harness(hiddenActions: SelectionToolbarAction.Ask | SelectionToolbarAction.Save);
+        h.Select();
+        Assert.True(h.Actions.Toolbar.IsOpen);
+        Assert.Equal(new[] { Visibility.Visible, Visibility.Visible, Visibility.Collapsed, Visibility.Visible, Visibility.Collapsed },
+            new[] { h.Actions.SearchButton, h.Actions.CopyButton, h.Actions.SaveButton, h.Actions.TranslateButton,
+                    h.Actions.AskButton }
+                .Select(button => button.Visibility));
+    });
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -446,14 +458,16 @@ public sealed class ImageSelectionTests
         internal ScreenTranslationRequested? Request;
 
         internal Harness(string provider = SearchProviderIds.GoogleLens, bool copyFails = false,
-            double scale = 1, bool overscan = false, bool consent = true)
+            double scale = 1, bool overscan = false, bool consent = true,
+            SelectionToolbarAction hiddenActions = SelectionToolbarAction.None)
         {
             Consent = consent;
             using (var graphics = System.Drawing.Graphics.FromImage(_frame)) graphics.Clear(System.Drawing.Color.Black);
             var monitor = new GdiRectangle(0, 0, 640, 400);
             Window = new OverlayWindow(_frame, monitor, monitor, scale,
                 new OverlayLaunchOptions(new OverlayOptions(0, 12), TestUiStrings.English,
-                    [new(provider, provider)], provider), Commands.Add,
+                    [new(provider, provider)], provider, new SearchSessionOptions(HiddenToolbarActions: hiddenActions)),
+                Commands.Add,
                 TestOverlayControllers.CreateFactory(animationsEnabled: () => false, pointerPosition: _ => _point,
                     translationConsentAccepted: () => Consent,
                     setImageClipboard: image =>

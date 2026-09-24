@@ -569,7 +569,8 @@ public static class CompositionRoot
                 context.SelectionCompleted,
                 publishCommand,
                 context.CloseRequested ?? (() => publishCommand(new CancelSession())),
-                context.Strings));
+                context.Strings,
+                context.HiddenToolbarActions));
             var music = Track(new MusicOverlayController(
                 context.Visual.Music,
                 activityPresenter,

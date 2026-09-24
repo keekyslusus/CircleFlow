@@ -3,6 +3,7 @@ using System.Security.Principal;
 using System.Text.Json;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
+using CircleToSearch.Capture;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -22,6 +23,7 @@ public sealed class SettingsStoreTests
             SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "kagi", HotkeyGesture = "Win+Ctrl+Shift+F7",
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
             OcrLanguageTag = "ru-RU", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
+            HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save,
         };
         store.Save(updated);
         Assert.Equal(updated, new SettingsStore(paths).Load().Settings);
@@ -86,18 +88,32 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
+    public void Hidden_toolbar_actions_are_stored_by_name_and_unknown_bits_are_reset()
+    {
+        var (paths, store) = Create();
+        store.Save(new AppSettings { HiddenToolbarActions = SelectionToolbarAction.Copy | SelectionToolbarAction.Translate });
+        Assert.Contains("\"HiddenToolbarActions\": \"Copy, Translate\"", File.ReadAllText(paths.SettingsFilePath));
+
+        File.WriteAllText(paths.SettingsFilePath, """{"HiddenToolbarActions":"17"}""");
+        var result = store.Load();
+        Assert.Equal([nameof(AppSettings.HiddenToolbarActions)], result.ResetFields);
+        Assert.Equal(SelectionToolbarAction.Ask, result.Settings.HiddenToolbarActions);
+    }
+
+    [Fact]
     public void Invalid_JSON_field_types_reset_only_the_affected_values()
     {
         var (paths, store) = Create();
         var backup = new AppSettings { PaddingPx = 19 };
         File.WriteAllText(paths.SettingsBackupFilePath, JsonSerializer.Serialize(backup));
         File.WriteAllText(paths.SettingsFilePath,
-            """{"PaddingPx":"wrong","MaxLongSidePx":999999999999999,"OcrLanguageTag":null,"ImageTranslationPrivacyConsentAccepted":"true","SearchProviderId":"yandex-images","TranslationTargetLanguageTag":"ja-JP","IgnoreHotkeyInFullscreen":"no"}""");
+            """{"PaddingPx":"wrong","MaxLongSidePx":999999999999999,"OcrLanguageTag":null,"ImageTranslationPrivacyConsentAccepted":"true","SearchProviderId":"yandex-images","TranslationTargetLanguageTag":"ja-JP","IgnoreHotkeyInFullscreen":"no","HiddenToolbarActions":"Ask, Share"}""");
         var result = store.Load();
         Assert.False(result.Recovered);
-        Assert.Equal(5, result.ResetFields.Count);
+        Assert.Equal(6, result.ResetFields.Count);
         Assert.Equal(new AppSettings { SearchProviderId = SearchProviderIds.YandexImages }, result.Settings);
         Assert.True(result.Settings.IgnoreHotkeyInFullscreen);
+        Assert.Equal(SelectionToolbarAction.None, result.Settings.HiddenToolbarActions);
         Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
         Assert.DoesNotContain("TranslationTargetLanguageTag", File.ReadAllText(paths.SettingsFilePath));
         Assert.Equal(backup, Read(paths.SettingsBackupFilePath));

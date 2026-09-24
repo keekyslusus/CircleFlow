@@ -39,4 +39,5 @@ internal sealed record OverlayControllerContext(
     KeyboardLanguageSnapshot InputLanguage = default,
     Action? CloseRequested = null,
     Action? SelectionDrawn = null,
-    string TextSearchEngineId = TextSearchEngines.MatchImageSearch);
+    string TextSearchEngineId = TextSearchEngines.MatchImageSearch,
+    SelectionToolbarAction HiddenToolbarActions = SelectionToolbarAction.None);

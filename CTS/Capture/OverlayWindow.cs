@@ -99,7 +99,8 @@ public sealed class OverlayWindow : Window
         string? ocrLanguageTag = null,
         string translationTargetLanguageTag = "en",
         KeyboardLanguageSnapshot inputLanguage = default,
-        string textSearchEngineId = TextSearchEngines.MatchImageSearch)
+        string textSearchEngineId = TextSearchEngines.MatchImageSearch,
+        SelectionToolbarAction hiddenToolbarActions = SelectionToolbarAction.None)
     {
         _frame = frame;
         _exitFade = exitFade;
@@ -168,7 +169,8 @@ public sealed class OverlayWindow : Window
                 inputLanguage,
                 () => CancelInternal(),
                 OnSelectionDrawn,
-                textSearchEngineId));
+                textSearchEngineId,
+                hiddenToolbarActions));
         }
         catch
         {
@@ -232,7 +234,8 @@ public sealed class OverlayWindow : Window
             options.SessionOptions.OcrLanguageTag,
             options.SessionOptions.TranslationTargetLanguageTag,
             options.SessionOptions.InputLanguage,
-            options.SessionOptions.TextSearchEngineId)
+            options.SessionOptions.TextSearchEngineId,
+            options.SessionOptions.HiddenToolbarActions)
     {
     }
 

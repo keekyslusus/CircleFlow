@@ -35,7 +35,8 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         OverlayCoordinateMapper mapper, SelectionOverlayController selection,
         ScreenTranslationOverlayController translation, ClipboardCopyService clipboard,
         Func<BitmapSource> visibleImage, Func<GdiRectangle, SelectionOutcome> createSelection,
-        Action<GdiRectangle> search, Action<IOverlayCommand> publish, Action close, UiStrings strings)
+        Action<GdiRectangle> search, Action<IOverlayCommand> publish, Action close, UiStrings strings,
+        SelectionToolbarAction hiddenActions = SelectionToolbarAction.None)
     {
         _visual = visual;
         _root = root;
@@ -52,6 +53,12 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         _copyTimer = new DispatcherTimer(DispatcherPriority.Normal, root.Dispatcher)
         { Interval = CopyFeedbackDuration };
         _copyTimer.Tick += OnCopyFeedbackCompleted;
+        foreach (var (action, button) in new[]
+        {
+            (SelectionToolbarAction.Ask, visual.AskButton), (SelectionToolbarAction.Copy, visual.CopyButton),
+            (SelectionToolbarAction.Save, visual.SaveButton), (SelectionToolbarAction.Translate, visual.TranslateButton),
+        })
+            button.Visibility = hiddenActions.HasFlag(action) ? Visibility.Collapsed : Visibility.Visible;
         visual.SearchButton.Click += OnSearch;
         visual.CopyButton.Click += OnCopy;
         visual.SaveButton.Click += OnSave;

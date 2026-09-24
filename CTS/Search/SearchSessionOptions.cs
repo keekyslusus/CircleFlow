@@ -1,4 +1,5 @@
 using System.Globalization;
+using CircleToSearch.Capture;
 using CircleToSearch.Settings;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Interop;
@@ -14,7 +15,8 @@ public sealed record SearchSessionOptions(
     string? OcrLanguageTag = null,
     string TranslationTargetLanguageTag = "en",
     KeyboardLanguageSnapshot InputLanguage = default,
-    string TextSearchEngineId = TextSearchEngines.MatchImageSearch)
+    string TextSearchEngineId = TextSearchEngines.MatchImageSearch,
+    SelectionToolbarAction HiddenToolbarActions = SelectionToolbarAction.None)
 {
     internal static SearchSessionOptions From(AppSettings settings, OcrLanguageCatalog languages, CultureInfo culture,
         KeyboardLanguageSnapshot inputLanguage = default) =>
@@ -22,5 +24,6 @@ public sealed record SearchSessionOptions(
             languages.Resolve(settings.OcrLanguageTag)?.Tag ?? languages.Resolve(inputLanguage.Tag)?.Tag,
             TranslationTargetLanguage.From(culture),
             inputLanguage,
-            settings.TextSearchEngineId);
+            settings.TextSearchEngineId,
+            settings.HiddenToolbarActions);
 }

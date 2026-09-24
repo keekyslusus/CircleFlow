@@ -1,3 +1,4 @@
+using CircleToSearch.Capture;
 using CircleToSearch.Trigger;
 
 namespace CircleToSearch.Settings;
@@ -72,6 +73,11 @@ public sealed class SettingsService
     public SettingsChangeResult SetIgnoreHotkeyInFullscreen(bool ignore)
     {
         lock (_gate) return Commit(_current with { IgnoreHotkeyInFullscreen = ignore });
+    }
+
+    public SettingsChangeResult SetHiddenToolbarActions(SelectionToolbarAction hidden)
+    {
+        lock (_gate) return Commit(_current with { HiddenToolbarActions = hidden });
     }
 
     public SettingsChangeResult SetTranslationConsent(bool accepted)

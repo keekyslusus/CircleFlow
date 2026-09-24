@@ -1,5 +1,6 @@
 namespace CircleToSearch.Settings;
 
+using CircleToSearch.Capture;
 using CircleToSearch.Search;
 
 public sealed record AppSettings
@@ -11,6 +12,8 @@ public sealed record AppSettings
     public string HotkeyGesture { get; init; } = "Ctrl+Alt+Space";
 
     public bool IgnoreHotkeyInFullscreen { get; init; } = true;
+
+    public SelectionToolbarAction HiddenToolbarActions { get; init; }
 
     public int MaxLongSidePx { get; init; } = 1600;
 

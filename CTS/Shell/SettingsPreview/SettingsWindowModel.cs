@@ -1,4 +1,5 @@
 using System.Globalization;
+using CircleToSearch.Capture;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.TextRecognition;
@@ -45,6 +46,15 @@ internal sealed class SettingsWindowModel(
 
     public bool SelectIgnoreHotkeyInFullscreen(bool ignore) => settings.SetIgnoreHotkeyInFullscreen(ignore).Success;
 
+    public bool IsToolbarActionShown(SelectionToolbarAction action) =>
+        !settings.Snapshot.HiddenToolbarActions.HasFlag(action);
+
+    public bool ShowToolbarAction(SelectionToolbarAction action, bool shown)
+    {
+        var hidden = settings.Snapshot.HiddenToolbarActions;
+        return settings.SetHiddenToolbarActions(shown ? hidden & ~action : hidden | action).Success;
+    }
+
     public string ChangeHotkey(string gesture) =>
         Describe(settings.ChangeHotkey(gesture), gesture, strings.SettingsShortcutSaved);
 
@@ -56,6 +66,7 @@ internal sealed class SettingsWindowModel(
         if (!SelectTextSearchEngine(defaults.TextSearchEngineId)) return strings.StorageSaveFailed;
         if (!SelectOcrLanguage(defaults.OcrLanguageTag)) return strings.StorageSaveFailed;
         if (!SelectIgnoreHotkeyInFullscreen(defaults.IgnoreHotkeyInFullscreen)) return strings.StorageSaveFailed;
+        if (!settings.SetHiddenToolbarActions(defaults.HiddenToolbarActions).Success) return strings.StorageSaveFailed;
         return Describe(settings.ChangeHotkey(defaults.HotkeyGesture), defaults.HotkeyGesture, strings.SettingsResetDone);
     }
 

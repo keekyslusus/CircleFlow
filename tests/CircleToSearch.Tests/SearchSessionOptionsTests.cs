@@ -3,6 +3,7 @@ using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Interop;
+using CircleToSearch.Capture;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -46,6 +47,12 @@ public sealed class SearchSessionOptionsTests
         Assert.Equal(2, reads);
         Assert.NotEqual(workflow.Options[0], workflow.Options[1]);
     }
+
+    [Fact]
+    public void Hidden_toolbar_actions_come_from_settings() =>
+        Assert.Equal(SelectionToolbarAction.Ask | SelectionToolbarAction.Save, SearchSessionOptions.From(
+            new AppSettings { HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save },
+            new OcrLanguageCatalog([]), CultureInfo.InvariantCulture).HiddenToolbarActions);
 
     [Fact]
     public void Translation_uses_system_culture_and_missing_ocr_pack_falls_back_to_keyboard()

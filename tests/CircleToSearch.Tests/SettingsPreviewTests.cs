@@ -17,6 +17,7 @@ using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
+using CircleToSearch.Capture;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -890,6 +891,11 @@ public sealed class SettingsPreviewTests
             ignoreFullscreen.IsChecked = false;
             Assert.True(ignoreFullscreen.IsChecked);
             Assert.True(harness.Settings.Snapshot.IgnoreHotkeyInFullscreen);
+
+            var ask = Find<CheckBox>(window, "ToolbarAsk");
+            ask.IsChecked = false;
+            Assert.True(ask.IsChecked);
+            Assert.Equal(SelectionToolbarAction.None, harness.Settings.Snapshot.HiddenToolbarActions);
         }
         finally { window.Close(); }
     });
@@ -946,6 +952,7 @@ public sealed class SettingsPreviewTests
             Assert.True(launch.IsChecked);
             Assert.Equal(0, textSearch.SelectedIndex);
             Assert.True(Find<CheckBox>(window, "ToolbarAsk").IsChecked);
+            Assert.Equal(SelectionToolbarAction.None, harness.Settings.Snapshot.HiddenToolbarActions);
             Assert.True(Find<Grid>(window, "Workspace").IsEnabled);
             Assert.Equal(TestUiStrings.English.SettingsResetDone, Find<TextBlock>(window, "StatusText").Text);
 
@@ -979,6 +986,35 @@ public sealed class SettingsPreviewTests
     {
         var window = new TestSettingsWindow(culture: CultureInfo.GetCultureInfo("de-AT")).CreateView().Window;
         try { Assert.Equal(new Windows.Globalization.Language("de").DisplayName, Find<TextBlock>(window, "TranslationLanguage").Text); }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Toolbar_toggles_come_from_settings_save_changes_and_reload_on_activation() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings
+        {
+            HiddenToolbarActions = SelectionToolbarAction.Copy,
+        }));
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            bool?[] Toggles() => [.. new[] { "ToolbarAsk", "ToolbarCopy", "ToolbarSave", "ToolbarTranslate" }
+                .Select(name => Find<CheckBox>(window, name).IsChecked)];
+            Assert.Equal([true, false, true, true], Toggles());
+
+            Find<CheckBox>(window, "ToolbarAsk").IsChecked = false;
+            Find<CheckBox>(window, "ToolbarTranslate").IsChecked = false;
+            Find<CheckBox>(window, "ToolbarCopy").IsChecked = true;
+            Assert.Equal(SelectionToolbarAction.Ask | SelectionToolbarAction.Translate,
+                harness.Settings.Snapshot.HiddenToolbarActions);
+
+            harness.Settings.SetHiddenToolbarActions(SelectionToolbarAction.Save).ThrowIfFailed("test update failed");
+            Activate(window);
+            Assert.Equal([true, true, false, true], Toggles());
+            Assert.Empty(harness.Notifier.Errors);
+        }
         finally { window.Close(); }
     });
 
