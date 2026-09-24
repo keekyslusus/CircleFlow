@@ -1,6 +1,8 @@
+using System.Globalization;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.TextRecognition;
+using CircleToSearch.Translation;
 using CircleToSearch.Ui;
 
 namespace CircleToSearch.Shell.SettingsPreview;
@@ -9,6 +11,7 @@ internal sealed class SettingsWindowModel(
     SettingsService settings,
     ProviderSelectionStore providers,
     OcrLanguageCatalog ocrLanguages,
+    CultureInfo culture,
     ProjectSupport project,
     UrlOpeningService urlOpening,
     AppPaths paths,
@@ -25,6 +28,7 @@ internal sealed class SettingsWindowModel(
     public bool RefreshOcrLanguages() => ocrLanguages.Refresh();
     // A saved language whose pack was removed falls back to the keyboard layout at runtime, so show that.
     public string OcrLanguageTag => ocrLanguages.Resolve(settings.Snapshot.OcrLanguageTag)?.Tag ?? string.Empty;
+    public string TranslationLanguageName => TranslationTargetLanguage.DisplayName(culture);
     public string HotkeyGesture => settings.Snapshot.HotkeyGesture;
     public ProjectSupport Project => project;
     public string? WebViewRuntimeVersion => webViewRuntimeVersion();

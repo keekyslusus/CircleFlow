@@ -15,7 +15,7 @@ public sealed class SearchSessionOptionsTests
         var service = TestSettings.Create(new AppSettings
         {
             HideDelayMilliseconds = 0, PaddingPx = 12, LassoMinDiagonalPx = 14, MaxLongSidePx = 1700,
-            OcrLanguageTag = "en-US", TranslationTargetLanguageTag = "ru-RU", TextSearchEngineId = "kagi",
+            OcrLanguageTag = "en-US", TextSearchEngineId = "kagi",
         });
         var languages = new OcrLanguageCatalog([new("en-US", "English"), new("ja-JP", "Japanese")]);
         var inputTag = "en-US";
@@ -30,7 +30,7 @@ public sealed class SearchSessionOptionsTests
             () => { inputTag = "ja-JP"; service.Apply(new SettingsEdits
             {
                 HideDelayMilliseconds = 1, PaddingPx = 22, LassoMinDiagonalPx = 24, MaxLongSidePx = 2700,
-                OcrLanguageTag = "ja-JP", TranslationTargetLanguageTag = "de-DE",
+                OcrLanguageTag = "ja-JP",
             }).ThrowIfFailed("test update failed"); return Task.CompletedTask; },
             () => { reads++; return SearchSessionOptions.From(service.Snapshot, languages, CultureInfo.GetCultureInfo("fr-FR"),
                 new KeyboardLanguageSnapshot(0, inputTag)); },
@@ -48,7 +48,7 @@ public sealed class SearchSessionOptionsTests
     }
 
     [Fact]
-    public void Empty_translation_language_uses_system_culture_and_missing_ocr_pack_falls_back_to_keyboard()
+    public void Translation_uses_system_culture_and_missing_ocr_pack_falls_back_to_keyboard()
     {
         var languages = new OcrLanguageCatalog([new("en-US", "English")]);
         var settings = new AppSettings { OcrLanguageTag = "ru-RU" };
@@ -64,12 +64,11 @@ public sealed class SearchSessionOptionsTests
     public void Saved_ocr_language_overrides_captured_input_language()
     {
         var languages = new OcrLanguageCatalog([new("en-US", "English"), new("ru-RU", "Russian")]);
-        var settings = new AppSettings { OcrLanguageTag = "en-US", TranslationTargetLanguageTag = "fr-FR" };
+        var settings = new AppSettings { OcrLanguageTag = "en-US" };
         var captured = new KeyboardLanguageSnapshot(0x0419, "ru-RU");
         var options = SearchSessionOptions.From(settings, languages, CultureInfo.GetCultureInfo("en-US"), captured);
         Assert.Equal("en-US", options.OcrLanguageTag);
         Assert.Equal(captured, options.InputLanguage);
-        Assert.Equal("fr-FR", options.TranslationTargetLanguageTag);
         Assert.Equal("ru-RU", SearchSessionOptions.From(settings with { OcrLanguageTag = "" }, languages,
             CultureInfo.GetCultureInfo("en-US"), captured).OcrLanguageTag);
     }

@@ -9,7 +9,6 @@ public sealed record SettingsEdits
     public int? HideDelayMilliseconds { get; init; }
     public int? LassoMinDiagonalPx { get; init; }
     public string? OcrLanguageTag { get; init; }
-    public string? TranslationTargetLanguageTag { get; init; }
 }
 
 public enum SettingsChangeStatus { Success, Invalid, SaveFailed, HotkeyUnavailable, HotkeyRollbackFailed }
@@ -57,7 +56,6 @@ public sealed class SettingsService
             HideDelayMilliseconds = edits.HideDelayMilliseconds ?? _current.HideDelayMilliseconds,
             LassoMinDiagonalPx = edits.LassoMinDiagonalPx ?? _current.LassoMinDiagonalPx,
             OcrLanguageTag = edits.OcrLanguageTag ?? _current.OcrLanguageTag,
-            TranslationTargetLanguageTag = edits.TranslationTargetLanguageTag ?? _current.TranslationTargetLanguageTag,
         });
     }
 

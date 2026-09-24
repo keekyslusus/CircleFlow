@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -194,7 +195,7 @@ public sealed class SettingsPreviewTests
             window.Show();
             window.Top = 20;
             Pump();
-            foreach (var (name, page) in new[] { ("AppLanguage", "general"), ("Cleanup", "search"), ("TextSearch", "search"), ("OcrLanguage", "text"), ("TargetLanguage", "text") })
+            foreach (var (name, page) in new[] { ("AppLanguage", "general"), ("Cleanup", "search"), ("TextSearch", "search"), ("OcrLanguage", "text") })
             {
                 Find<RadioButton>(window, "Nav_" + page).IsChecked = true;
                 CompletePageTransition(window, time);
@@ -962,6 +963,14 @@ public sealed class SettingsPreviewTests
     {
         var window = new TestSettingsWindow(webViewRuntimeVersion: version).CreateView().Window;
         try { Assert.Equal(expected, Find<TextBlock>(window, "RuntimeVersion").Text); }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Translation_language_shows_the_system_language_without_a_region() => OnSta(time =>
+    {
+        var window = new TestSettingsWindow(culture: CultureInfo.GetCultureInfo("de-AT")).CreateView().Window;
+        try { Assert.Equal(new Windows.Globalization.Language("de").DisplayName, Find<TextBlock>(window, "TranslationLanguage").Text); }
         finally { window.Close(); }
     });
 

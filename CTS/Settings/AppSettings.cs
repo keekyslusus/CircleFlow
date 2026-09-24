@@ -20,6 +20,5 @@ public sealed record AppSettings
 
     public string OcrLanguageTag { get; init; } = string.Empty;
 
-    public string TranslationTargetLanguageTag { get; init; } = string.Empty;
     public bool ImageTranslationPrivacyConsentAccepted { get; init; }
 }

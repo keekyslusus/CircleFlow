@@ -134,10 +134,10 @@ public sealed class GoogleImageTranslationTests
                 pointerPosition: _ => pointer, ocrRecognizer: recognizer);
             var service = TestSettings.Create(new CircleToSearch.Settings.AppSettings
             {
-                PaddingPx = 0, LassoMinDiagonalPx = 10, OcrLanguageTag = "en-US", TranslationTargetLanguageTag = "ru-RU",
+                PaddingPx = 0, LassoMinDiagonalPx = 10, OcrLanguageTag = "en-US",
             });
             var session = CircleToSearch.Search.SearchSessionOptions.From(service.Snapshot,
-                new OcrLanguageCatalog([new("en-US", "English")]), System.Globalization.CultureInfo.InvariantCulture,
+                new OcrLanguageCatalog([new("en-US", "English")]), System.Globalization.CultureInfo.GetCultureInfo("ru-RU"),
                 new CircleToSearch.Interop.KeyboardLanguageSnapshot(0, "en-US"));
             var launch = new OverlayLaunchOptions(new OverlayOptions(0, 10), TestUiStrings.English,
                 [new(CircleToSearch.Search.SearchProviderIds.GoogleLens, "Google Lens")], CircleToSearch.Search.SearchProviderIds.GoogleLens, session);
@@ -146,7 +146,7 @@ public sealed class GoogleImageTranslationTests
                 factory, allowsTransparency: false, overscan: false, clickThroughOnCancel: false);
             Assert.Empty(recognizer.Languages);
             Assert.True(service.Apply(new CircleToSearch.Settings.SettingsEdits
-                { OcrLanguageTag = "ja-JP", TranslationTargetLanguageTag = "ja-JP" }).Success);
+                { OcrLanguageTag = "ja-JP" }).Success);
             try
             {
                 var visual = window.VisualState;

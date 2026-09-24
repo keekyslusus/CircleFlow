@@ -982,7 +982,7 @@ public sealed class OverlaySessionWorkflowTests
         var run = harness.RunAsync();
         var originalLaunch = harness.Factory.Options!;
         Assert.True(harness.Service.Apply(new SettingsEdits { MaxLongSidePx = 256, PaddingPx = 18,
-            LassoMinDiagonalPx = 30, TranslationTargetLanguageTag = "ja-JP" }).Success);
+            LassoMinDiagonalPx = 30 }).Success);
         first.Enqueue(new VisualSelection(NewSelection(), provider));
         await run.WaitAsync(TimeSpan.FromSeconds(2));
         Assert.Equal(new[] { 1600 }, harness.CropLimits);
@@ -993,7 +993,6 @@ public sealed class OverlaySessionWorkflowTests
         Assert.Equal(new[] { 1600, 256 }, harness.CropLimits);
         Assert.Equal(18, harness.Factory.Options!.CaptureOptions.PaddingPx);
         Assert.Equal(30, harness.Factory.Options.CaptureOptions.MinDiagonalPx);
-        Assert.Equal("ja-JP", harness.Factory.Options.SessionOptions.TranslationTargetLanguageTag);
     }
 
     private sealed class Harness : IDisposable

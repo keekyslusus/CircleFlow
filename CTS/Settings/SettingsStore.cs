@@ -89,7 +89,6 @@ internal sealed class SettingsStore(AppPaths paths)
             HideDelayMilliseconds = Number(nameof(AppSettings.HideDelayMilliseconds), defaults.HideDelayMilliseconds),
             LassoMinDiagonalPx = Number(nameof(AppSettings.LassoMinDiagonalPx), defaults.LassoMinDiagonalPx),
             OcrLanguageTag = Text(nameof(AppSettings.OcrLanguageTag), defaults.OcrLanguageTag),
-            TranslationTargetLanguageTag = Text(nameof(AppSettings.TranslationTargetLanguageTag), defaults.TranslationTargetLanguageTag),
             ImageTranslationPrivacyConsentAccepted = consent,
         };
         invalidFields = invalid.AsReadOnly();

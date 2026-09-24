@@ -2,6 +2,7 @@ using System.Globalization;
 using CircleToSearch.Settings;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Interop;
+using CircleToSearch.Translation;
 
 namespace CircleToSearch.Search;
 
@@ -19,9 +20,7 @@ public sealed record SearchSessionOptions(
         KeyboardLanguageSnapshot inputLanguage = default) =>
         new(settings.HideDelayMilliseconds, settings.PaddingPx, settings.LassoMinDiagonalPx, settings.MaxLongSidePx,
             languages.Resolve(settings.OcrLanguageTag)?.Tag ?? languages.Resolve(inputLanguage.Tag)?.Tag,
-            string.IsNullOrWhiteSpace(settings.TranslationTargetLanguageTag)
-                ? string.IsNullOrWhiteSpace(culture.Name) ? "en" : culture.Name
-                : settings.TranslationTargetLanguageTag,
+            TranslationTargetLanguage.From(culture),
             inputLanguage,
             settings.TextSearchEngineId);
 }

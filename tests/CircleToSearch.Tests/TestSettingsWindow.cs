@@ -1,3 +1,4 @@
+using System.Globalization;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Shell;
@@ -9,7 +10,8 @@ namespace CircleToSearch.Tests;
 internal sealed class TestSettingsWindow
 {
     public TestSettingsWindow(SettingsService? settings = null, bool openSucceeds = true,
-        string? webViewRuntimeVersion = "140.0.3485.54", OcrLanguageCatalog? ocrLanguages = null)
+        string? webViewRuntimeVersion = "140.0.3485.54", OcrLanguageCatalog? ocrLanguages = null,
+        CultureInfo? culture = null)
     {
         var log = new PluginLog(Path.Combine(TestOutputPaths.TempDirectory, "settings-window-" + Guid.NewGuid().ToString("N")));
         Settings = settings ?? TestSettings.Create();
@@ -25,8 +27,8 @@ internal sealed class TestSettingsWindow
         var urlOpening = new UrlOpeningService(
             target => { Opened.Add(target); return openSucceeds; }, Notifier, TestUiStrings.English, log);
         OcrLanguages = ocrLanguages ?? new OcrLanguageCatalog([new("de-DE", "German"), new("en-US", "English")]);
-        Model = new SettingsWindowModel(Settings, providers, OcrLanguages, new ProjectSupport(urlOpening), urlOpening,
-            Paths, TestUiStrings.English, () => webViewRuntimeVersion);
+        Model = new SettingsWindowModel(Settings, providers, OcrLanguages, culture ?? CultureInfo.GetCultureInfo("en-US"),
+            new ProjectSupport(urlOpening), urlOpening, Paths, TestUiStrings.English, () => webViewRuntimeVersion);
     }
 
     public SettingsService Settings { get; }

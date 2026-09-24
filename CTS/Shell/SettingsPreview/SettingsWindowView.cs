@@ -92,6 +92,7 @@ internal sealed class SettingsWindowView
         PopulateOcrLanguages();
         ocrLanguage.SelectionChanged += OnOcrLanguageChanged;
         _dropdowns.Add(new SettingsDropdownMotion(ocrLanguage));
+        Element<TextBlock>("TranslationLanguage").Text = model.TranslationLanguageName;
 
         // These controls have no application setting yet, so their values live only in this window.
         foreach (var name in new[] { "Launch", "ToolbarAsk", "ToolbarCopy", "ToolbarSave", "ToolbarTranslate", "IgnoreFullscreen" })
@@ -100,7 +101,7 @@ internal sealed class SettingsWindowView
             var initial = control.IsChecked;
             _restoreDefaults.Add(() => control.IsChecked = initial);
         }
-        foreach (var name in new[] { "AppLanguage", "Cleanup", "TargetLanguage" })
+        foreach (var name in new[] { "AppLanguage", "Cleanup" })
         {
             var control = Element<ComboBox>(name);
             _dropdowns.Add(new SettingsDropdownMotion(control));

@@ -209,7 +209,7 @@
     <system:String x:Key="app_settings_match_keyboard">Keyboard layout</system:String>
     <system:String x:Key="app_settings_add_ocr_languages">Add recognition languages in Windows Settings</system:String>
     <system:String x:Key="app_settings_target_language">Translate to</system:String>
-    <system:String x:Key="app_settings_target_language_sub">Target language for translation</system:String>
+    <system:String x:Key="app_settings_target_language_sub">Matches your Windows display language</system:String>
     <system:String x:Key="app_settings_translation_info">What is sent for translation</system:String>
     <system:String x:Key="app_settings_translation_info_text">Google Translate receives the full captured screen, including visible personal information.</system:String>
     <system:String x:Key="app_settings_audio_source">Audio source</system:String>

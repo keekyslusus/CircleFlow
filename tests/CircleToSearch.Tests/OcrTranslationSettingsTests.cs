@@ -13,14 +13,12 @@ public sealed class OcrTranslationSettingsTests
         var settings = new AppSettings
         {
             OcrLanguageTag = "ru-RU",
-            TranslationTargetLanguageTag = "en-US",
             ImageTranslationPrivacyConsentAccepted = true,
         };
 
         var restored = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
 
         Assert.Equal("ru-RU", restored.OcrLanguageTag);
-        Assert.Equal("en-US", restored.TranslationTargetLanguageTag);
         Assert.True(restored.ImageTranslationPrivacyConsentAccepted);
     }
 

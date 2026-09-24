@@ -21,7 +21,7 @@ public sealed class SettingsStoreTests
         {
             SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "kagi", HotkeyGesture = "Win+Ctrl+Shift+F7",
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
-            OcrLanguageTag = "ru-RU", TranslationTargetLanguageTag = "ja-JP", ImageTranslationPrivacyConsentAccepted = true,
+            OcrLanguageTag = "ru-RU", ImageTranslationPrivacyConsentAccepted = true,
         };
         store.Save(updated);
         Assert.Equal(updated, new SettingsStore(paths).Load().Settings);
@@ -75,12 +75,12 @@ public sealed class SettingsStoreTests
         {
             MaxLongSidePx = 1, PaddingPx = -1, HideDelayMilliseconds = 2001, LassoMinDiagonalPx = 0,
             SearchProviderId = "unknown", TextSearchEngineId = "yandex", HotkeyGesture = "Ctrl++A", OcrLanguageTag = "not a language",
-            TranslationTargetLanguageTag = " en-us ", ImageTranslationPrivacyConsentAccepted = true,
+            ImageTranslationPrivacyConsentAccepted = true,
         }));
         var result = store.Load();
         Assert.False(result.Recovered);
         Assert.Equal(8, result.ResetFields.Count);
-        Assert.Equal(new AppSettings { TranslationTargetLanguageTag = "en-US", ImageTranslationPrivacyConsentAccepted = true }, result.Settings);
+        Assert.Equal(new AppSettings { ImageTranslationPrivacyConsentAccepted = true }, result.Settings);
         Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
         Assert.Empty(store.Load().ResetFields);
     }
@@ -96,8 +96,9 @@ public sealed class SettingsStoreTests
         var result = store.Load();
         Assert.False(result.Recovered);
         Assert.Equal(4, result.ResetFields.Count);
-        Assert.Equal(new AppSettings { SearchProviderId = SearchProviderIds.YandexImages, TranslationTargetLanguageTag = "ja-JP" }, result.Settings);
+        Assert.Equal(new AppSettings { SearchProviderId = SearchProviderIds.YandexImages }, result.Settings);
         Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
+        Assert.DoesNotContain("TranslationTargetLanguageTag", File.ReadAllText(paths.SettingsFilePath));
         Assert.Equal(backup, Read(paths.SettingsBackupFilePath));
     }
 
