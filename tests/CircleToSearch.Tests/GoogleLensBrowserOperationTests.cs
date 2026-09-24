@@ -256,11 +256,11 @@ public sealed class GoogleLensBrowserOperationTests
         const string boundary = "----CircleToSearchTestBoundary";
         byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0xFF, 0x0D, 0x0A];
 
-        using var body = GoogleLensBrowserOperation.CreateLensUploadBody(jpeg, boundary);
+        using var body = GoogleLensBrowserOperation.CreateLensUploadBody(jpeg, "49fcd3483430.jpg", boundary);
 
         var prefix = Encoding.ASCII.GetBytes(
             $"--{boundary}\r\n" +
-            "Content-Disposition: form-data; name=\"encoded_image\"; filename=\"circle-to-search.jpg\"\r\n" +
+            "Content-Disposition: form-data; name=\"encoded_image\"; filename=\"49fcd3483430.jpg\"\r\n" +
             "Content-Type: image/jpeg\r\n\r\n");
         var suffix = Encoding.ASCII.GetBytes($"\r\n--{boundary}--\r\n");
         Assert.Equal(prefix.Concat(jpeg).Concat(suffix), body.ToArray());
@@ -276,7 +276,7 @@ public sealed class GoogleLensBrowserOperationTests
     public void Direct_upload_rejects_a_boundary_with_line_breaks(string boundary)
     {
         Assert.Throws<ArgumentException>(() =>
-            GoogleLensBrowserOperation.CreateLensUploadBody([1, 2, 3], boundary));
+            GoogleLensBrowserOperation.CreateLensUploadBody([1, 2, 3], "a.jpg", boundary));
     }
 
     private const string LensResults =

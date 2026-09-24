@@ -105,6 +105,30 @@ public sealed class GoogleAiModeBrowserOperationTests
     }
 
     [Fact]
+    public async Task Repeated_attach_reuses_one_random_file_name_that_changes_per_operation()
+    {
+        async Task<string?[]> AttachNamesAsync()
+        {
+            var session = new FakeBrowserSession { CurrentUri = AiMode };
+            session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
+            session.Statuses.Enqueue("paste-ignored");
+            session.Statuses.Enqueue("attached");
+            session.Statuses.Enqueue("submitted");
+            await NewOperation(new FakeFallback()).ExecuteAsync(session, CancellationToken.None);
+            return session.SentMessages.Take(2)
+                .Select(message => JsonDocument.Parse(message).RootElement.GetProperty("name").GetString())
+                .ToArray();
+        }
+
+        var first = await AttachNamesAsync();
+        var second = await AttachNamesAsync();
+
+        Assert.Matches(@"^[0-9a-f]{12}\.jpg$", first[0]);
+        Assert.Equal(first[0], first[1]);
+        Assert.NotEqual(first[0], second[0]);
+    }
+
+    [Fact]
     public async Task Failed_page_navigation_or_bridge_install_falls_back()
     {
         var failedNavigation = new FakeBrowserSession();

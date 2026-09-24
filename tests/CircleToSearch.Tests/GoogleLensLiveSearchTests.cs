@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Text.Json;
 using CircleToSearch.Capture;
 using CircleToSearch.Interop;
 using CircleToSearch.Search;
@@ -206,9 +207,6 @@ public sealed class GoogleLensLiveSearchTests
         private sealed class CountingSession(IVisualSearchBrowserSession inner, List<int> counts)
             : IVisualSearchBrowserSession
         {
-            private const string CountScript =
-                "[...document.querySelectorAll('[title=\"circle-to-search.jpg\"]')].filter(e => e.offsetParent).length";
-
             public Uri? CurrentUri => inner.CurrentUri;
 
             public Task<BrowserNavigationResult> NavigateAsync(Uri target, TimeSpan timeout, CancellationToken cancel)
@@ -232,7 +230,9 @@ public sealed class GoogleLensLiveSearchTests
                 {
                     // A late duplicate would appear shortly after the acknowledged chip.
                     await Task.Delay(1500, cancel);
-                    counts.Add(int.Parse(await inner.ExecuteScriptAsync(CountScript, cancel)));
+                    var name = JsonDocument.Parse(message).RootElement.GetProperty("name").GetString();
+                    var countScript = $"[...document.querySelectorAll('[title=\"{name}\"]')].filter(e => e.offsetParent).length";
+                    counts.Add(int.Parse(await inner.ExecuteScriptAsync(countScript, cancel)));
                 }
                 return reply;
             }

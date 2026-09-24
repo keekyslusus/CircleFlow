@@ -15,6 +15,8 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
     private readonly Task<string> _question;
     private readonly Func<byte[], string, IVisualSearchBrowserOperation> _createFallback;
     private readonly PluginLog _log;
+    // One name per image: the page finds an earlier paste of it by name and so does not paste it twice.
+    private readonly string _fileName = ImageUploadName.Create();
     private int _started;
     private int _nextRequestId;
 
@@ -87,7 +89,7 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
     }
 
     private Task<string?> AttachAsync(IVisualSearchBrowserSession session, byte[] jpeg, CancellationToken cancel) =>
-        RequestAsync(session, id => new { id, type = "attach", image = Convert.ToBase64String(jpeg) },
+        RequestAsync(session, id => new { id, type = "attach", image = Convert.ToBase64String(jpeg), name = _fileName },
             AttachTimeout, cancel);
 
     private static bool IsAttached(string? status) =>
@@ -164,7 +166,7 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
             }
             return null;
           };
-          const attach = async image => {
+          const attach = async (image, name) => {
             const input = await findInput();
             if (!input) return "input-missing";
             const binary = atob(image);
@@ -172,9 +174,9 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
             for (let index = 0; index < binary.length; index++) {
               bytes[index] = binary.charCodeAt(index);
             }
-            const file = new File([bytes], "circle-to-search.jpg", { type: "image/jpeg" });
+            const file = new File([bytes], name, { type: "image/jpeg" });
             // The page shows each attachment as a chip titled with its file name, possibly before it is visible.
-            const hasChip = () => document.querySelector('[title="circle-to-search.jpg"]') !== null;
+            const hasChip = () => document.querySelector(`[title="${CSS.escape(name)}"]`) !== null;
             for (let wait = 0; wait < 100 && document.readyState !== "complete"; wait++) await sleep(100);
             // Pasting again duplicates the image, so repeat only when the page shows no sign of taking it.
             for (let pastes = 0; pastes < 6; pastes++) {
@@ -216,7 +218,7 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
               const message = JSON.parse(event.data);
               id = message.id;
               if (message.type === "attach") {
-                attaching ??= attach(message.image).finally(() => { attaching = null; });
+                attaching ??= attach(message.image, message.name).finally(() => { attaching = null; });
                 reply(await attaching);
               }
               else if (message.type === "send") reply(await send(message.question));

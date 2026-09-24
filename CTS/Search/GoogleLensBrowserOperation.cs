@@ -50,7 +50,8 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
             // A prewarmed browser starts this before the selection is finished.
             var jpeg = await image.WaitAsync(cancel).ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
-            if (!await TryDirectUploadAsync(session, jpeg, cancel).ConfigureAwait(true))
+            var fileName = ImageUploadName.Create();
+            if (!await TryDirectUploadAsync(session, jpeg, fileName, cancel).ConfigureAwait(true))
             {
                 cancel.ThrowIfCancellationRequested();
                 _log.Info(nameof(GoogleLensBrowserOperation), "falling back to Google Lens page upload");
@@ -59,7 +60,7 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
                 if (home.Status == BrowserNavigationStatus.Canceled)
                     return VisualSearchBrowserOperationStatus.Canceled;
                 if (home.Status != BrowserNavigationStatus.Succeeded ||
-                    !await TryPageUploadAsync(session, jpeg, cancel).ConfigureAwait(true))
+                    !await TryPageUploadAsync(session, jpeg, fileName, cancel).ConfigureAwait(true))
                 {
                     return VisualSearchBrowserOperationStatus.Failed;
                 }
@@ -159,12 +160,13 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
     private async Task<bool> TryDirectUploadAsync(
         IVisualSearchBrowserSession session,
         byte[] jpeg,
+        string fileName,
         CancellationToken cancel)
     {
         try
         {
             var boundary = $"----CircleToSearch{Guid.NewGuid():N}";
-            using var body = CreateLensUploadBody(jpeg, boundary);
+            using var body = CreateLensUploadBody(jpeg, fileName, boundary);
             var navigation = await session.NavigatePostAsync(
                     GoogleLensUpload,
                     body,
@@ -215,6 +217,7 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
     private async Task<bool> TryPageUploadAsync(
         IVisualSearchBrowserSession session,
         byte[] jpeg,
+        string fileName,
         CancellationToken cancel)
     {
         var installed = await session.ExecuteScriptAsync(AttachmentBridgeScript, cancel)
@@ -229,7 +232,7 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         try
         {
             var acknowledgement = await session.PostWebMessageAndWaitAsync(
-                    Convert.ToBase64String(jpeg),
+                    JsonSerializer.Serialize(new { image = Convert.ToBase64String(jpeg), name = fileName }),
                     message => message.StartsWith("CTS:", StringComparison.Ordinal),
                     AttachmentTimeout,
                     cancel)
@@ -269,9 +272,10 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         }
     }
 
-    internal static MemoryStream CreateLensUploadBody(byte[] jpeg, string boundary)
+    internal static MemoryStream CreateLensUploadBody(byte[] jpeg, string fileName, string boundary)
     {
         ArgumentNullException.ThrowIfNull(jpeg);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
         ArgumentException.ThrowIfNullOrWhiteSpace(boundary);
         if (boundary.Contains('\r', StringComparison.Ordinal) ||
             boundary.Contains('\n', StringComparison.Ordinal))
@@ -283,7 +287,7 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         WriteAscii(
             stream,
             $"--{boundary}\r\n" +
-            "Content-Disposition: form-data; name=\"encoded_image\"; filename=\"circle-to-search.jpg\"\r\n" +
+            $"Content-Disposition: form-data; name=\"encoded_image\"; filename=\"{fileName}\"\r\n" +
             "Content-Type: image/jpeg\r\n\r\n");
         stream.Write(jpeg);
         WriteAscii(stream, $"\r\n--{boundary}--\r\n");
@@ -326,14 +330,14 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
               }
               if (!dropArea) return reply("drop-area-missing");
 
-              const binary = atob(event.data);
+              const { image, name } = JSON.parse(event.data);
+              const binary = atob(image);
               const bytes = new Uint8Array(binary.length);
               for (let index = 0; index < binary.length; index++) {
                 bytes[index] = binary.charCodeAt(index);
               }
-              const fileName = "circle-to-search.jpg";
               const transfer = new DataTransfer();
-              transfer.items.add(new File([bytes], fileName, { type: "image/jpeg" }));
+              transfer.items.add(new File([bytes], name, { type: "image/jpeg" }));
 
               for (const type of ["dragenter", "dragover", "drop"]) {
                 dropArea.dispatchEvent(new DragEvent(type, {
