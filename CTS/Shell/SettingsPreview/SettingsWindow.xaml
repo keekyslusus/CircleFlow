@@ -662,8 +662,8 @@
                                                 <TextBlock Text="{Binding [system_audio_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="5" Padding="9,4">
-                                                    <TextBlock Text="{Binding [automatic]}" Style="{StaticResource Muted}"/>
+                                                <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="5" Padding="9,4" MaxWidth="240">
+                                                    <TextBlock x:Name="AudioOutput" Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/>
                                                 </Border>
                                             </ContentControl>
                                         </Grid>

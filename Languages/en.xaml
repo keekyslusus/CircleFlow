@@ -213,12 +213,12 @@
     <system:String x:Key="app_settings_translation_info">What is sent for translation</system:String>
     <system:String x:Key="app_settings_translation_info_text">Google Translate receives the full captured screen, including visible personal information.</system:String>
     <system:String x:Key="app_settings_audio_source">Audio source</system:String>
-    <system:String x:Key="app_settings_automatic">Automatic</system:String>
+    <system:String x:Key="app_settings_audio_output_missing">No output device</system:String>
     <system:String x:Key="app_settings_system_audio">Windows system audio</system:String>
     <system:String x:Key="app_settings_system_audio_sub">Current default output device</system:String>
     <system:String x:Key="app_settings_music_hint">CircleFlow captures sound played by your computer. The microphone is not used for recognition.</system:String>
-    <system:String x:Key="app_settings_recognition_info">Recognition result</system:String>
-    <system:String x:Key="app_settings_recognition_info_text">Track title, artist, and album artwork will appear in a separate card.</system:String>
+    <system:String x:Key="app_settings_recognition_info">What is sent for recognition</system:String>
+    <system:String x:Key="app_settings_recognition_info_text">Shazam receives a short audio fingerprint of the sound playing on your computer. The recording itself and your location are not sent.</system:String>
     <system:String x:Key="app_settings_github">Project on GitHub</system:String>
     <system:String x:Key="app_settings_feedback">Feedback</system:String>
     <system:String x:Key="app_settings_details">Details</system:String>

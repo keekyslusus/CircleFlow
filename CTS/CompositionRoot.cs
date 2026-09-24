@@ -127,7 +127,8 @@ public static class CompositionRoot
                 cancellation.ThrowIfCancellationRequested();
                 var support = new ProjectSupport(urlOpening);
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
-                    CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion);
+                    CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
+                    AudioOutputDevice.DefaultName);
                 settingsWindow = new SettingsWindowController(application.Dispatcher,
                     () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });

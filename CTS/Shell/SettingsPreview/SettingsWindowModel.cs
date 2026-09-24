@@ -16,7 +16,8 @@ internal sealed class SettingsWindowModel(
     UrlOpeningService urlOpening,
     AppPaths paths,
     UiStrings strings,
-    Func<string?> webViewRuntimeVersion)
+    Func<string?> webViewRuntimeVersion,
+    Func<string?> audioOutputName)
 {
     private const string OcrLanguageSettingsUri = "ms-settings:regionlanguage";
 
@@ -32,6 +33,7 @@ internal sealed class SettingsWindowModel(
     public string HotkeyGesture => settings.Snapshot.HotkeyGesture;
     public ProjectSupport Project => project;
     public string? WebViewRuntimeVersion => webViewRuntimeVersion();
+    public string? AudioOutputName => audioOutputName();
 
     public bool SelectProvider(string providerId) => providers.Save(providerId);
 

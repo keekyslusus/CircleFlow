@@ -109,7 +109,7 @@ internal sealed class SettingsWindowView
             _restoreDefaults.Add(() => control.SelectedIndex = initial);
         }
         LoadSettings();
-        // The provider can also change from the selection toolbar while this window stays open.
+        // The provider can change from the selection toolbar and the audio output from Windows while this window stays open.
         Window.Activated += (_, _) => LoadSettings();
     }
 
@@ -283,6 +283,9 @@ internal sealed class SettingsWindowView
         Element<ItemsControl>("ShortcutKeys").ItemsSource = keys;
         Element<ItemsControl>("HeroShortcutKeys").ItemsSource = keys;
         Element<TextBlock>("RuntimeVersion").Text = _model.WebViewRuntimeVersion ?? _strings.SettingsRuntimeMissing;
+        var audioOutput = Element<TextBlock>("AudioOutput");
+        audioOutput.Text = _model.AudioOutputName ?? _strings.SettingsPreviewText("audio_output_missing");
+        audioOutput.ToolTip = audioOutput.Text;
     }
 
     private static void Select(ComboBox comboBox, string id) =>

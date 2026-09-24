@@ -975,6 +975,29 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
+    public void Music_shows_the_default_output_device_and_refreshes_on_activation() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var output = Find<TextBlock>(window, "AudioOutput");
+            Assert.Equal("Speakers (Test Audio)", output.Text);
+            Assert.Equal("Speakers (Test Audio)", output.ToolTip);
+
+            harness.AudioOutputName = "Headphones (USB Audio)";
+            Activate(window);
+            Assert.Equal("Headphones (USB Audio)", output.Text);
+
+            harness.AudioOutputName = null;
+            Activate(window);
+            Assert.Equal("No output device", output.Text);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
     public void About_actions_open_project_links_and_application_folders() => OnSta(time =>
     {
         var harness = new TestSettingsWindow();
