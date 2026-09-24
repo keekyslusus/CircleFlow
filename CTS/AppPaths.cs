@@ -31,9 +31,10 @@ internal sealed class AppPaths
     public string SettingsFilePath => Path.Combine(DataDirectory, "settings.json");
     public string SettingsBackupFilePath => Path.Combine(DataDirectory, "settings.json.bak");
     public string LogsDirectory => Path.Combine(DataDirectory, "Logs");
-    public string SearchProfileDirectory => Path.Combine(DataDirectory, "Profiles", "Search");
-    public string ImageTranslationProfileDirectory => Path.Combine(DataDirectory, "Profiles", "ImageTranslation");
-    public string TraceVideoProfileDirectory => Path.Combine(DataDirectory, "Profiles", "TraceVideo");
+    public string ProfilesDirectory => Path.Combine(DataDirectory, "Profiles");
+    public string SearchProfileDirectory => Path.Combine(ProfilesDirectory, "Search");
+    public string ImageTranslationProfileDirectory => Path.Combine(ProfilesDirectory, "ImageTranslation");
+    public string TraceVideoProfileDirectory => Path.Combine(ProfilesDirectory, "TraceVideo");
     public string TempDirectory => Path.Combine(DataDirectory, "Temp");
 
     public bool IsInsideData(string path)

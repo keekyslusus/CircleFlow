@@ -33,6 +33,7 @@ internal sealed class SettingsWindowModel(
     public string TranslationLanguageName => TranslationTargetLanguage.DisplayName(culture);
     public string HotkeyGesture => settings.Snapshot.HotkeyGesture;
     public bool IgnoreHotkeyInFullscreen => settings.Snapshot.IgnoreHotkeyInFullscreen;
+    public int BrowserDataCleanupDays => settings.Snapshot.BrowserDataCleanupDays;
     public ProjectSupport Project => project;
     public string? WebViewRuntimeVersion => webViewRuntimeVersion();
     public string? AudioOutputName => audioOutputName();
@@ -45,6 +46,8 @@ internal sealed class SettingsWindowModel(
         settings.Apply(new SettingsEdits { OcrLanguageTag = languageTag }).Success;
 
     public bool SelectIgnoreHotkeyInFullscreen(bool ignore) => settings.SetIgnoreHotkeyInFullscreen(ignore).Success;
+
+    public bool SelectBrowserDataCleanup(int days) => settings.SetBrowserDataCleanupDays(days).Success;
 
     public bool IsToolbarActionShown(SelectionToolbarAction action) =>
         !settings.Snapshot.HiddenToolbarActions.HasFlag(action);
@@ -67,6 +70,7 @@ internal sealed class SettingsWindowModel(
         if (!SelectOcrLanguage(defaults.OcrLanguageTag)) return strings.StorageSaveFailed;
         if (!SelectIgnoreHotkeyInFullscreen(defaults.IgnoreHotkeyInFullscreen)) return strings.StorageSaveFailed;
         if (!settings.SetHiddenToolbarActions(defaults.HiddenToolbarActions).Success) return strings.StorageSaveFailed;
+        if (!SelectBrowserDataCleanup(defaults.BrowserDataCleanupDays)) return strings.StorageSaveFailed;
         return Describe(settings.ChangeHotkey(defaults.HotkeyGesture), defaults.HotkeyGesture, strings.SettingsResetDone);
     }
 

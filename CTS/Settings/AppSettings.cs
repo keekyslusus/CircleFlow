@@ -15,6 +15,8 @@ public sealed record AppSettings
 
     public SelectionToolbarAction HiddenToolbarActions { get; init; }
 
+    public int BrowserDataCleanupDays { get; init; } = 28;
+
     public int MaxLongSidePx { get; init; } = 1600;
 
     public int PaddingPx { get; init; } = 8;

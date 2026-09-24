@@ -94,6 +94,12 @@ internal sealed class SettingsWindowView
             textSearch.Items.Add(new ComboBoxItem { Content = strings.SettingsPreviewText("engine_" + engine.Id), Tag = engine.Id });
         textSearch.SelectionChanged += OnTextSearchChanged;
         _dropdowns.Add(new SettingsDropdownMotion(textSearch));
+        var cleanup = Element<ComboBox>("Cleanup");
+        foreach (var days in BrowserDataCleanup.IntervalDays)
+            cleanup.Items.Add(new ComboBoxItem { Content = strings.SettingsPreviewText("every_" + days), Tag = days });
+        cleanup.Items.Add(new ComboBoxItem { Content = strings.SettingsPreviewText("never"), Tag = BrowserDataCleanup.Never });
+        cleanup.SelectionChanged += OnCleanupChanged;
+        _dropdowns.Add(new SettingsDropdownMotion(cleanup));
         var ocrLanguage = Element<ComboBox>("OcrLanguage");
         PopulateOcrLanguages();
         ocrLanguage.SelectionChanged += OnOcrLanguageChanged;
@@ -116,13 +122,10 @@ internal sealed class SettingsWindowView
         var launch = Element<CheckBox>("Launch");
         var launchInitial = launch.IsChecked;
         _restoreDefaults.Add(() => launch.IsChecked = launchInitial);
-        foreach (var name in new[] { "AppLanguage", "Cleanup" })
-        {
-            var control = Element<ComboBox>(name);
-            _dropdowns.Add(new SettingsDropdownMotion(control));
-            var initial = control.SelectedIndex;
-            _restoreDefaults.Add(() => control.SelectedIndex = initial);
-        }
+        var appLanguage = Element<ComboBox>("AppLanguage");
+        _dropdowns.Add(new SettingsDropdownMotion(appLanguage));
+        var appLanguageInitial = appLanguage.SelectedIndex;
+        _restoreDefaults.Add(() => appLanguage.SelectedIndex = appLanguageInitial);
         LoadSettings();
         // The provider can change from the selection toolbar and the audio output from Windows while this window stays open.
         Window.Activated += (_, _) => LoadSettings();
@@ -292,6 +295,9 @@ internal sealed class SettingsWindowView
             if (_model.RefreshOcrLanguages()) PopulateOcrLanguages();
             Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
             Element<CheckBox>("IgnoreFullscreen").IsChecked = _model.IgnoreHotkeyInFullscreen;
+            var cleanup = Element<ComboBox>("Cleanup");
+            cleanup.SelectedItem = cleanup.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(item => Equals(item.Tag, _model.BrowserDataCleanupDays));
             foreach (var (name, action) in ToolbarActions)
                 Element<CheckBox>(name).IsChecked = _model.IsToolbarActionShown(action);
         }
@@ -341,6 +347,14 @@ internal sealed class SettingsWindowView
     {
         if (_loadingSettings) return;
         if (_model.SelectIgnoreHotkeyInFullscreen(Element<CheckBox>("IgnoreFullscreen").IsChecked == true)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnCleanupChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings || Element<ComboBox>("Cleanup").SelectedItem is not ComboBoxItem { Tag: int days }) return;
+        if (_model.SelectBrowserDataCleanup(days)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
     }

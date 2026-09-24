@@ -96,6 +96,7 @@ internal sealed class SettingsStore(AppPaths paths)
             HotkeyGesture = Text(nameof(AppSettings.HotkeyGesture), defaults.HotkeyGesture),
             IgnoreHotkeyInFullscreen = Flag(nameof(AppSettings.IgnoreHotkeyInFullscreen), defaults.IgnoreHotkeyInFullscreen),
             HiddenToolbarActions = Actions(nameof(AppSettings.HiddenToolbarActions), defaults.HiddenToolbarActions),
+            BrowserDataCleanupDays = Number(nameof(AppSettings.BrowserDataCleanupDays), defaults.BrowserDataCleanupDays),
             MaxLongSidePx = Number(nameof(AppSettings.MaxLongSidePx), defaults.MaxLongSidePx),
             PaddingPx = Number(nameof(AppSettings.PaddingPx), defaults.PaddingPx),
             HideDelayMilliseconds = Number(nameof(AppSettings.HideDelayMilliseconds), defaults.HideDelayMilliseconds),

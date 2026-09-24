@@ -106,6 +106,7 @@ public static class CompositionRoot
                     log.Warn(nameof(CompositionRoot), $"settings reset to defaults: {string.Join(", ", loaded.ResetFields)}");
                 if (loaded.Recovered)
                     reportStartupMessage(strings.StorageRecovered, strings.PluginTitle, MessageBoxImage.Warning);
+                _ = new BrowserDataCleanup(paths, log).Run(loaded.Settings.BrowserDataCleanupDays);
                 cancellation.ThrowIfCancellationRequested();
                 SettingsWindowController? settingsWindow = null;
                 var notifications = new NotificationPresenter(application.Dispatcher, strings, log);

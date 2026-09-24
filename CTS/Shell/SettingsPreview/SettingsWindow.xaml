@@ -300,6 +300,28 @@
                                             </ContentControl>
                                         </Grid>
                                     </Border>
+                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,17" MinHeight="77">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="21"/>
+                                                <ColumnDefinition Width="16"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Viewbox Width="21" Height="21" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.RestoreOutlined}"/>
+                                                </Canvas>
+                                            </Viewbox>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
+                                                <TextBlock Text="{Binding [cleanup]}" Style="{StaticResource RowTitle}"/>
+                                                <TextBlock Text="{Binding [cleanup_sub]}" Style="{StaticResource RowSubtitle}"/>
+                                            </StackPanel>
+                                            <ContentControl Grid.Column="3" VerticalAlignment="Center">
+                                                <ComboBox x:Name="Cleanup" Width="160" AutomationProperties.Name="{Binding [cleanup]}"/>
+                                            </ContentControl>
+                                        </Grid>
+                                    </Border>
                                 </StackPanel>
                             </Border>
                             <TextBlock Text="{Binding [selection_toolbar]}" Style="{StaticResource SectionTitle}"/>
@@ -510,33 +532,6 @@
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
                                                 <ComboBox x:Name="Provider" Width="160" AutomationProperties.Name="{Binding [provider]}"/>
-                                            </ContentControl>
-                                        </Grid>
-                                    </Border>
-                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,17" MinHeight="77">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="21"/>
-                                                <ColumnDefinition Width="16"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Viewbox Width="21" Height="21" VerticalAlignment="Center">
-                                                <Canvas Width="24" Height="24">
-                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.RestoreOutlined}"/>
-                                                </Canvas>
-                                            </Viewbox>
-                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
-                                                <TextBlock Text="{Binding [cleanup]}" Style="{StaticResource RowTitle}"/>
-                                                <TextBlock Text="{Binding [cleanup_sub]}" Style="{StaticResource RowSubtitle}"/>
-                                            </StackPanel>
-                                            <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <ComboBox x:Name="Cleanup" SelectedIndex="0" Width="160" AutomationProperties.Name="{Binding [cleanup]}">
-                                                    <ComboBoxItem Content="{Binding [every_7]}"/>
-                                                    <ComboBoxItem Content="{Binding [every_14]}"/>
-                                                    <ComboBoxItem Content="{Binding [every_30]}"/>
-                                                    <ComboBoxItem Content="{Binding [never]}"/>
-                                                </ComboBox>
                                             </ContentControl>
                                         </Grid>
                                     </Border>

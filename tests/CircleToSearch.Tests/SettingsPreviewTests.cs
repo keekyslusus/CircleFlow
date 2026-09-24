@@ -196,7 +196,7 @@ public sealed class SettingsPreviewTests
             window.Show();
             window.Top = 20;
             Pump();
-            foreach (var (name, page) in new[] { ("AppLanguage", "general"), ("Cleanup", "search"), ("TextSearch", "search"), ("OcrLanguage", "text") })
+            foreach (var (name, page) in new[] { ("AppLanguage", "general"), ("Cleanup", "general"), ("TextSearch", "search"), ("OcrLanguage", "text") })
             {
                 Find<RadioButton>(window, "Nav_" + page).IsChecked = true;
                 CompletePageTransition(window, time);
@@ -909,6 +909,7 @@ public sealed class SettingsPreviewTests
             TextSearchEngineId = "bing",
             OcrLanguageTag = "de-DE",
             IgnoreHotkeyInFullscreen = false,
+            BrowserDataCleanupDays = 0,
             HotkeyGesture = "Ctrl+Shift+K",
         }));
         var window = harness.CreateView().Window;
@@ -945,6 +946,8 @@ public sealed class SettingsPreviewTests
             Assert.Equal(defaults.OcrLanguageTag, harness.Settings.Snapshot.OcrLanguageTag);
             Assert.True(harness.Settings.Snapshot.IgnoreHotkeyInFullscreen);
             Assert.True(Find<CheckBox>(window, "IgnoreFullscreen").IsChecked);
+            Assert.Equal(28, harness.Settings.Snapshot.BrowserDataCleanupDays);
+            Assert.Equal(0, Find<ComboBox>(window, "Cleanup").SelectedIndex);
             Assert.Equal(0, Find<ComboBox>(window, "OcrLanguage").SelectedIndex);
             Assert.Equal(defaults.HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
             Assert.Equal(0, provider.SelectedIndex);
@@ -986,6 +989,26 @@ public sealed class SettingsPreviewTests
     {
         var window = new TestSettingsWindow(culture: CultureInfo.GetCultureInfo("de-AT")).CreateView().Window;
         try { Assert.Equal(new Windows.Globalization.Language("de").DisplayName, Find<TextBlock>(window, "TranslationLanguage").Text); }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Browser_data_cleanup_comes_from_settings_and_saves_changes() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings { BrowserDataCleanupDays = 56 }));
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var cleanup = Find<ComboBox>(window, "Cleanup");
+            Assert.Equal(["Every 28 days", "Every 56 days", "Never"],
+                cleanup.Items.OfType<ComboBoxItem>().Select(item => (string)item.Content));
+            Assert.Equal(1, cleanup.SelectedIndex);
+            cleanup.SelectedIndex = 2;
+            Assert.Equal(0, harness.Settings.Snapshot.BrowserDataCleanupDays);
+            cleanup.SelectedIndex = 0;
+            Assert.Equal(28, harness.Settings.Snapshot.BrowserDataCleanupDays);
+        }
         finally { window.Close(); }
     });
 

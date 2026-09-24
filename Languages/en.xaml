@@ -165,12 +165,11 @@
     <system:String x:Key="app_settings_german">German</system:String>
     <system:String x:Key="app_settings_kazakh">Kazakh</system:String>
     <system:String x:Key="app_settings_app_language">App language</system:String>
-    <system:String x:Key="app_settings_every_7">Every 7 days</system:String>
-    <system:String x:Key="app_settings_every_14">Every 14 days</system:String>
-    <system:String x:Key="app_settings_every_30">Every 30 days</system:String>
+    <system:String x:Key="app_settings_every_28">Every 28 days</system:String>
+    <system:String x:Key="app_settings_every_56">Every 56 days</system:String>
     <system:String x:Key="app_settings_never">Never</system:String>
-    <system:String x:Key="app_settings_cleanup">Clear search browser data</system:String>
-    <system:String x:Key="app_settings_cleanup_sub">Cookies and cache of the built-in results window</system:String>
+    <system:String x:Key="app_settings_cleanup">Clear browser data</system:String>
+    <system:String x:Key="app_settings_cleanup_sub">Cookies and cache of built-in browser windows</system:String>
     <system:String x:Key="app_settings_selection_toolbar">Selection toolbar</system:String>
     <system:String x:Key="app_settings_toolbar_ask">Ask</system:String>
     <system:String x:Key="app_settings_toolbar_ask_sub">Ask Gemini about the selected area</system:String>
@@ -255,7 +254,7 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_cancel">Cancel</system:String>
     <system:String x:Key="app_settings_save">Save</system:String>
     <system:String x:Key="app_settings_preview_notice">Interface preview
-Run at Windows startup, app language, and browser data cleanup are not saved yet.</system:String>
+Run at Windows startup and app language are not saved yet.</system:String>
     <system:String x:Key="app_settings_ctrl">Ctrl</system:String>
     <system:String x:Key="app_settings_alt">Alt</system:String>
     <system:String x:Key="app_settings_shift">Shift</system:String>

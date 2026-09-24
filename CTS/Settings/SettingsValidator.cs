@@ -1,5 +1,6 @@
 using System.Globalization;
 using CircleToSearch.Capture;
+using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.Trigger;
 
@@ -40,6 +41,11 @@ internal static class SettingsValidator
         };
         if (engine is null) invalid.Add(nameof(AppSettings.TextSearchEngineId));
         if ((settings.HiddenToolbarActions & ~SelectionToolbarAction.All) != 0) invalid.Add(nameof(AppSettings.HiddenToolbarActions));
+        var cleanupDays = settings.BrowserDataCleanupDays == BrowserDataCleanup.Never
+            || BrowserDataCleanup.IntervalDays.Contains(settings.BrowserDataCleanupDays)
+            ? settings.BrowserDataCleanupDays
+            : (int?)null;
+        if (cleanupDays is null) invalid.Add(nameof(AppSettings.BrowserDataCleanupDays));
         var gesture = defaults.HotkeyGesture;
         if (HotkeyGestureParser.TryParse(settings.HotkeyGesture, out var modifiers, out var key))
             gesture = HotkeyGestureParser.Format(modifiers, key);
@@ -50,6 +56,7 @@ internal static class SettingsValidator
             TextSearchEngineId = engine ?? defaults.TextSearchEngineId,
             HotkeyGesture = gesture,
             HiddenToolbarActions = settings.HiddenToolbarActions & SelectionToolbarAction.All,
+            BrowserDataCleanupDays = cleanupDays ?? defaults.BrowserDataCleanupDays,
             MaxLongSidePx = Range(settings.MaxLongSidePx, 256, 8000, defaults.MaxLongSidePx, nameof(AppSettings.MaxLongSidePx)),
             PaddingPx = Range(settings.PaddingPx, 0, 100, defaults.PaddingPx, nameof(AppSettings.PaddingPx)),
             HideDelayMilliseconds = Range(settings.HideDelayMilliseconds, 0, 2000, defaults.HideDelayMilliseconds, nameof(AppSettings.HideDelayMilliseconds)),

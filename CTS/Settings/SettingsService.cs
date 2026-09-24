@@ -80,6 +80,11 @@ public sealed class SettingsService
         lock (_gate) return Commit(_current with { HiddenToolbarActions = hidden });
     }
 
+    public SettingsChangeResult SetBrowserDataCleanupDays(int days)
+    {
+        lock (_gate) return Commit(_current with { BrowserDataCleanupDays = days });
+    }
+
     public SettingsChangeResult SetTranslationConsent(bool accepted)
     {
         lock (_gate) return Commit(_current with { ImageTranslationPrivacyConsentAccepted = accepted });
