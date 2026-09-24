@@ -24,7 +24,6 @@ internal sealed class AppPaths
             : directory.FullName;
     }
     public string LanguagesDirectory => Path.Combine(RootDirectory, "Languages");
-    public string AppIconPath => Path.Combine(RootDirectory, "Images", "app.png");
     public string TrayIconPath => Path.Combine(RootDirectory, "Images", "app.ico");
     public string ExtensionArchivePath => Path.Combine(RootDirectory, "Extensions", "uBlockOriginLite.zip");
     public string DataDirectory => Path.Combine(RootDirectory, "Data");

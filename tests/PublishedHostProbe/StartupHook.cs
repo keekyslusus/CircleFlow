@@ -69,7 +69,7 @@ internal static class StartupHook
         foreach (var property in typeof(UiStrings).GetProperties().Where(property => property.PropertyType == typeof(string)))
             Require(!string.IsNullOrWhiteSpace((string?)property.GetValue(strings)), "Missing published string: " + property.Name);
         Require(strings.TrayOpen == "Open", "Published English fallback did not resolve.");
-        Require(File.Exists(paths.AppIconPath) && File.Exists(paths.TrayIconPath), "Missing icons.");
+        Require(File.Exists(paths.TrayIconPath), "Missing icon.");
         Require(File.Exists(Path.Combine(paths.RootDirectory, "LICENSE")), "Missing license.");
         Require(File.Exists(Path.Combine(paths.RootDirectory, "THIRD_PARTY_NOTICES.txt")), "Missing third-party notices.");
         using (var icon = new System.Drawing.Icon(paths.TrayIconPath)) Require(icon.Width > 0, "Invalid ICO.");

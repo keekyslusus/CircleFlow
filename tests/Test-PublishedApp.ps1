@@ -36,7 +36,7 @@ try {
     }
     $required = @('CircleFlow.exe', 'deps/CircleFlow.dll', 'deps/CircleFlow.runtimeconfig.json', 'deps/CircleFlow.deps.json',
         'deps/WinRT.Runtime.dll', 'deps/coreclr.dll', 'deps/System.Private.CoreLib.dll', 'deps/hostfxr.dll', 'deps/hostpolicy.dll',
-        'Languages/en.xaml', 'Images/app.png', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip',
+        'Languages/en.xaml', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip',
         'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.LICENSE.txt',
         'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.NOTICE.txt', 'THIRD_PARTY_LICENSES/System.Numerics.Tensors.NOTICE.txt')
     foreach ($asset in $required) {
@@ -49,8 +49,13 @@ try {
 }
 finally { $archive.Dispose() }
 [IO.Compression.ZipFile]::ExtractToDirectory($archivePath, $unpacked)
-foreach ($asset in @('Languages/en.xaml', 'Images/app.png', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip', 'LICENSE', 'THIRD_PARTY_NOTICES.txt')) {
-    if ((Get-FileHash -LiteralPath (Join-Path $workspace $asset)).Hash -ne
+$assetSources = [ordered]@{
+    'Languages/en.xaml' = 'Languages/en.xaml'; 'Images/app.ico' = 'CTS/app.ico'
+    'Extensions/uBlockOriginLite.zip' = 'Extensions/uBlockOriginLite.zip'; 'LICENSE' = 'LICENSE'
+    'THIRD_PARTY_NOTICES.txt' = 'THIRD_PARTY_NOTICES.txt'
+}
+foreach ($asset in $assetSources.Keys) {
+    if ((Get-FileHash -LiteralPath (Join-Path $workspace $assetSources[$asset])).Hash -ne
         (Get-FileHash -LiteralPath (Join-Path $appDirectory $asset)).Hash) { throw "Published asset differs from source: $asset" }
 }
 $runtimeConfig = Get-Content -LiteralPath (Join-Path $appDirectory 'deps/CircleFlow.runtimeconfig.json') -Raw | ConvertFrom-Json

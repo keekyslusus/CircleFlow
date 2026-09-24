@@ -67,7 +67,7 @@ internal static class PluginIcons
 
     public static Geometry CircleSearchOutlined { get; } = Group(
         Geometry.Parse("M9 3H6a3 3 0 0 0-3 3v3m12-6h3a3 3 0 0 1 3 3v3M3 15v3a3 3 0 0 0 3 3h3m6 0h3a3 3 0 0 0 3-3v-3"),
-        new EllipseGeometry(new Point(12, 12), 4, 4));
+        Geometry.Parse("M6.86 14.8C6.34 13.8 6.16 12.67 6.32 11.61C6.48 10.55 6.98 9.56 7.72 8.81C8.45 8.05 9.42 7.53 10.43 7.3C11.44 7.08 12.5 7.16 13.43 7.5C14.35 7.84 15.14 8.44 15.68 9.17C16.21 9.91 16.49 10.78 16.49 11.63C16.49 12.48 16.21 13.3 15.73 13.96C15.24 14.62 14.56 15.12 13.81 15.4C13.06 15.67 12.24 15.71 11.51 15.54C10.77 15.38 10.11 15 9.64 14.5C9.16 14 8.87 13.39 8.79 12.76C8.7 12.14 8.83 11.52 9.11 11.01"));
 
     public static Geometry HomeOutlined { get; } = Group(
         Geometry.Parse("m3 10 9-7 9 7v10H3Z"),

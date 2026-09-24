@@ -106,6 +106,21 @@ public sealed class ShellTests
     });
 
     [Fact]
+    public void Tray_icon_uses_the_small_icon_size_for_the_current_dpi_and_follows_dpi_changes() => OnSta(() =>
+    {
+        using var tray = new TrayIcon(new AppPaths(AppContext.BaseDirectory).TrayIconPath, TestUiStrings.English,
+            Dispatcher.CurrentDispatcher, CreateLog(), () => Task.CompletedTask,
+            () => Task.CompletedTask, () => Task.CompletedTask, () => Task.CompletedTask);
+        Assert.Equal(TrayNativeMethods.GetSystemMetricsForDpi(49, TrayNativeMethods.GetDpiForSystem()), tray.IconSize);
+        // Windows refuses to post WM_DPICHANGED because lParam carries a pointer to the suggested rectangle.
+        var suggested = Marshal.AllocHGlobal(16);
+        try { SendMessageW(tray.WindowHandle, 0x02E0, new IntPtr((144 << 16) | 144), suggested); }
+        finally { Marshal.FreeHGlobal(suggested); }
+        Assert.Equal(TrayNativeMethods.GetSystemMetricsForDpi(49, 144), tray.IconSize);
+        Assert.True(tray.IsAdded);
+    });
+
+    [Fact]
     public void Settings_preview_is_lazy_and_reused_until_closed() => OnSta(() =>
     {
         var harness = new TestSettingsWindow();
@@ -231,6 +246,9 @@ public sealed class ShellTests
         Assert.Equal("https://ko-fi.com/keekys", target);
         Assert.Equal(success ? 0 : 1, notifier.Errors.Count);
     }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessageW(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 
     private static void SendTrayEvent(TrayIcon tray, int notification) =>
         TrayNativeMethods.PostMessageW(tray.WindowHandle, TrayIcon.CallbackMessage, IntPtr.Zero, new IntPtr((1 << 16) | notification));

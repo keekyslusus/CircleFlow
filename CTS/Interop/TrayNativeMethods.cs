@@ -39,6 +39,12 @@ internal static class TrayNativeMethods
     internal static extern bool DestroyIcon(IntPtr icon);
 
     [DllImport("user32.dll")]
+    internal static extern uint GetDpiForSystem();
+
+    [DllImport("user32.dll")]
+    internal static extern int GetSystemMetricsForDpi(int index, uint dpi);
+
+    [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool SetForegroundWindow(IntPtr window);
 

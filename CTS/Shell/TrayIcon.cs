@@ -15,8 +15,11 @@ internal sealed class TrayIcon : IDisposable
     private const uint IconId = 1;
     private readonly Dispatcher _dispatcher;
     private readonly PluginLog _log;
+    private const int DpiChangedMessage = 0x02E0;
+    private const int SmallIconWidthMetric = 49;
     private readonly HwndSource _source;
-    private readonly IntPtr _icon;
+    private readonly string _iconPath;
+    private IntPtr _icon;
     private readonly IntPtr _iconWindow;
     private readonly uint _taskbarCreated;
     private readonly DispatcherTimer _retry;
@@ -35,7 +38,8 @@ internal sealed class TrayIcon : IDisposable
         _open = open;
         _taskbarCreated = TrayNativeMethods.RegisterWindowMessageW("TaskbarCreated");
         if (_taskbarCreated == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
-        _icon = TrayNativeMethods.LoadImageW(IntPtr.Zero, iconPath, 1, 32, 32, 0x10);
+        _iconPath = iconPath;
+        _icon = LoadIcon(TrayNativeMethods.GetDpiForSystem());
         if (_icon == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
         try
         {
@@ -77,6 +81,27 @@ internal sealed class TrayIcon : IDisposable
     internal IntPtr WindowHandle => _source.Handle;
     internal bool IsAdded => _added;
     internal uint TaskbarCreatedMessage => _taskbarCreated;
+    internal int IconSize { get; private set; }
+
+    // Loading the exact small-icon size lets Windows pick the matching ICO frame instead of downscaling 32px.
+    private IntPtr LoadIcon(uint dpi)
+    {
+        var size = TrayNativeMethods.GetSystemMetricsForDpi(SmallIconWidthMetric, dpi);
+        var icon = TrayNativeMethods.LoadImageW(IntPtr.Zero, _iconPath, 1, size, size, 0x10);
+        if (icon != IntPtr.Zero) IconSize = size;
+        return icon;
+    }
+
+    private void ReloadIcon(uint dpi)
+    {
+        var icon = LoadIcon(dpi);
+        if (icon == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+        var previous = _icon;
+        _icon = icon;
+        _data.Icon = icon;
+        if (_added) TrayNativeMethods.Shell_NotifyIconW(1, ref _data);
+        TrayNativeMethods.DestroyIcon(previous);
+    }
 
     private void AddItem(string text, Func<Task> command)
     {
@@ -138,6 +163,12 @@ internal sealed class TrayIcon : IDisposable
                 else if (notification == 0x7B) ShowMenu();
             }
             else if (message == 0x1C && wParam == IntPtr.Zero) CloseMenu();
+            else if (message == DpiChangedMessage)
+            {
+                // The hidden window has no visual content, so WPF must not resize it to the suggested rectangle.
+                handled = true;
+                ReloadIcon((uint)(wParam.ToInt64() & 0xFFFF));
+            }
         }
         catch (Exception exception) { _log.SafeError(nameof(TrayIcon), "tray-window-message", exception); }
         return IntPtr.Zero;

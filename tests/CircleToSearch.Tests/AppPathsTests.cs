@@ -40,7 +40,7 @@ public sealed class AppPathsTests
             paths.SearchProfileDirectory, paths.ImageTranslationProfileDirectory,
             paths.TraceVideoProfileDirectory, paths.TempDirectory,
         }, path => Assert.True(Path.IsPathFullyQualified(path) && paths.IsInsideData(path)));
-        Assert.False(paths.IsInsideData(paths.AppIconPath));
+        Assert.False(paths.IsInsideData(paths.TrayIconPath));
         Assert.False(paths.IsInsideData(paths.ExtensionArchivePath));
         Assert.False(paths.IsInsideData(paths.LanguagesDirectory));
     }

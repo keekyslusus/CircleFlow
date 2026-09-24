@@ -54,7 +54,7 @@ try {
     $required = @('CircleFlow.exe', 'deps/CircleFlow.dll', 'deps/CircleFlow.deps.json', 'deps/CircleFlow.runtimeconfig.json',
         'deps/coreclr.dll', 'deps/hostfxr.dll', 'deps/hostpolicy.dll', 'deps/System.Private.CoreLib.dll', 'deps/PresentationFramework.dll',
         'deps/WinRT.Runtime.dll', 'deps/Microsoft.Windows.SDK.NET.dll', 'deps/Microsoft.Web.WebView2.Core.dll',
-        'deps/Microsoft.Web.WebView2.Wpf.dll', 'Languages/en.xaml', 'Images/app.png', 'Images/app.ico',
+        'deps/Microsoft.Web.WebView2.Wpf.dll', 'Languages/en.xaml', 'Images/app.ico',
         'Extensions/uBlockOriginLite.zip', 'LICENSE', 'THIRD_PARTY_NOTICES.txt',
         'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.LICENSE.txt', 'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.NOTICE.txt',
         'THIRD_PARTY_LICENSES/System.Numerics.Tensors.NOTICE.txt')
