@@ -23,6 +23,7 @@ internal sealed class AppPaths
             ? parent.FullName
             : directory.FullName;
     }
+    public string ExecutablePath => Path.Combine(RootDirectory, "CircleFlow.exe");
     public string LanguagesDirectory => Path.Combine(RootDirectory, "Languages");
     public string TrayIconPath => Path.Combine(RootDirectory, "Images", "app.ico");
     public string ExtensionArchivePath => Path.Combine(RootDirectory, "Extensions", "uBlockOriginLite.zip");

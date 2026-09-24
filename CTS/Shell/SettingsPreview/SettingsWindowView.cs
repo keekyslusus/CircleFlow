@@ -109,6 +109,9 @@ internal sealed class SettingsWindowView
         var ignoreFullscreen = Element<CheckBox>("IgnoreFullscreen");
         ignoreFullscreen.Checked += OnIgnoreFullscreenChanged;
         ignoreFullscreen.Unchecked += OnIgnoreFullscreenChanged;
+        var launch = Element<CheckBox>("Launch");
+        launch.Checked += OnLaunchChanged;
+        launch.Unchecked += OnLaunchChanged;
 
         foreach (var (name, action) in ToolbarActions)
         {
@@ -118,16 +121,13 @@ internal sealed class SettingsWindowView
             toggle.Unchecked += OnToolbarActionChanged;
         }
 
-        // These controls have no application setting yet, so their values live only in this window.
-        var launch = Element<CheckBox>("Launch");
-        var launchInitial = launch.IsChecked;
-        _restoreDefaults.Add(() => launch.IsChecked = launchInitial);
+        // The app language has no application setting yet, so its value lives only in this window.
         var appLanguage = Element<ComboBox>("AppLanguage");
         _dropdowns.Add(new SettingsDropdownMotion(appLanguage));
         var appLanguageInitial = appLanguage.SelectedIndex;
         _restoreDefaults.Add(() => appLanguage.SelectedIndex = appLanguageInitial);
         LoadSettings();
-        // The provider can change from the selection toolbar and the audio output from Windows while this window stays open.
+        // The provider can change from the selection toolbar, and the audio output and startup entry from Windows, while this window stays open.
         Window.Activated += (_, _) => LoadSettings();
     }
 
@@ -295,6 +295,7 @@ internal sealed class SettingsWindowView
             if (_model.RefreshOcrLanguages()) PopulateOcrLanguages();
             Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
             Element<CheckBox>("IgnoreFullscreen").IsChecked = _model.IgnoreHotkeyInFullscreen;
+            Element<CheckBox>("Launch").IsChecked = _model.LaunchAtStartup;
             var cleanup = Element<ComboBox>("Cleanup");
             cleanup.SelectedItem = cleanup.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(item => Equals(item.Tag, _model.BrowserDataCleanupDays));
@@ -349,6 +350,14 @@ internal sealed class SettingsWindowView
         if (_model.SelectIgnoreHotkeyInFullscreen(Element<CheckBox>("IgnoreFullscreen").IsChecked == true)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnLaunchChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        if (_model.SelectLaunchAtStartup(Element<CheckBox>("Launch").IsChecked == true)) return;
+        LoadSettings();
+        ShowStatus(_strings.SettingsPreviewText("launch_failed"));
     }
 
     private void OnCleanupChanged(object sender, SelectionChangedEventArgs e)

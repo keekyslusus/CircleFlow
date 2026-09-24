@@ -160,6 +160,7 @@
     <system:String x:Key="app_settings_application">Application Settings</system:String>
     <system:String x:Key="app_settings_launch">Run at Windows startup</system:String>
     <system:String x:Key="app_settings_launch_sub">Ready to use after sign-in</system:String>
+    <system:String x:Key="app_settings_launch_failed">Could not change Windows startup.</system:String>
     <system:String x:Key="app_settings_match_system">Match system</system:String>
     <system:String x:Key="app_settings_english">English</system:String>
     <system:String x:Key="app_settings_russian">Russian</system:String>
@@ -251,11 +252,11 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_press_shortcut">Press a new shortcut</system:String>
     <system:String x:Key="app_settings_shortcut_instructions">Use Ctrl, Alt, or Shift with a letter, number, or Space. Esc cancels input.</system:String>
     <system:String x:Key="app_settings_reset_title">Reset settings?</system:String>
-    <system:String x:Key="app_settings_reset_description">The search provider, the search engine, the shortcut, and the other options in this window will return to their defaults.</system:String>
+    <system:String x:Key="app_settings_reset_description">The search provider, the search engine, the shortcut, and the other options in this window will return to their defaults. Run at Windows startup stays as it is.</system:String>
     <system:String x:Key="app_settings_cancel">Cancel</system:String>
     <system:String x:Key="app_settings_save">Save</system:String>
     <system:String x:Key="app_settings_preview_notice">Interface preview
-Run at Windows startup and app language are not saved yet.</system:String>
+App language is not saved yet.</system:String>
     <system:String x:Key="app_settings_ctrl">Ctrl</system:String>
     <system:String x:Key="app_settings_alt">Alt</system:String>
     <system:String x:Key="app_settings_shift">Shift</system:String>

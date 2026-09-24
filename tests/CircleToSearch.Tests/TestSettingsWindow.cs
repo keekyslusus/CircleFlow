@@ -11,7 +11,7 @@ internal sealed class TestSettingsWindow
 {
     public TestSettingsWindow(SettingsService? settings = null, bool openSucceeds = true,
         string? webViewRuntimeVersion = "140.0.3485.54", OcrLanguageCatalog? ocrLanguages = null,
-        CultureInfo? culture = null, string? audioOutputName = "Speakers (Test Audio)")
+        CultureInfo? culture = null, string? audioOutputName = "Speakers (Test Audio)", bool launchAtStartup = true)
     {
         var log = new PluginLog(Path.Combine(TestOutputPaths.TempDirectory, "settings-window-" + Guid.NewGuid().ToString("N")));
         Settings = settings ?? TestSettings.Create();
@@ -26,16 +26,19 @@ internal sealed class TestSettingsWindow
         var providers = new ProviderSelectionStore(router, Settings, Notifier, TestUiStrings.English, log);
         var urlOpening = new UrlOpeningService(
             target => { Opened.Add(target); return openSucceeds; }, Notifier, TestUiStrings.English, log);
+        Startup = new TestStartupRegistry(Paths.ExecutablePath, log);
+        Startup.Registration.TrySet(launchAtStartup);
         OcrLanguages = ocrLanguages ?? new OcrLanguageCatalog([new("de-DE", "German"), new("en-US", "English")]);
         Model = new SettingsWindowModel(Settings, providers, OcrLanguages, culture ?? CultureInfo.GetCultureInfo("en-US"),
             new ProjectSupport(urlOpening), urlOpening, Paths, TestUiStrings.English, () => webViewRuntimeVersion,
-            () => AudioOutputName);
+            () => AudioOutputName, Startup.Registration);
         AudioOutputName = audioOutputName;
     }
 
     public SettingsService Settings { get; }
     public SettingsWindowModel Model { get; }
     public OcrLanguageCatalog OcrLanguages { get; }
+    public TestStartupRegistry Startup { get; }
     public string? AudioOutputName { get; set; }
     public AppPaths Paths { get; } = new();
     public TestPluginNotifier Notifier { get; } = new();

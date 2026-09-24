@@ -269,7 +269,7 @@
                                                 <TextBlock Text="{Binding [launch_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <CheckBox x:Name="Launch" Style="{StaticResource Toggle}" IsChecked="True" AutomationProperties.Name="{Binding [launch]}"/>
+                                                <CheckBox x:Name="Launch" Style="{StaticResource Toggle}" AutomationProperties.Name="{Binding [launch]}"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>

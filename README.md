@@ -11,7 +11,9 @@ Browser features require the [Microsoft Edge WebView2 Evergreen Runtime](https:/
 
 Settings, logs, browser profiles and application temporary files are stored under `Data` beside `CircleFlow.exe`. The folder must be writable.
 
-Exit CircleFlow before moving or replacing its files. Keep `Data` when updating; do not delete the bundled runtime DLLs. A future installer may use `%LocalAppData%\Programs\CircleFlow`; the current release is a portable ZIP with no installer, automatic startup or updater.
+Exit CircleFlow before moving or replacing its files. Keep `Data` when updating; do not delete the bundled runtime DLLs. A future installer may use `%LocalAppData%\Programs\CircleFlow`; the current release is a portable ZIP with no installer or updater.
+
+**Run at Windows startup** in Settings adds a `CircleFlow` value to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` that points to this copy of `CircleFlow.exe`; it is off until you turn it on. Turn it off before moving or deleting the folder, or the entry is left behind. Disabling CircleFlow in Task Manager's Startup apps is shown as off in Settings.
 
 Normal shutdown waits for cleanup. If shutdown remains stuck for 10 seconds, CircleFlow attempts to remove its tray icon and close its activation channel, then terminates its own process with an error code. Diagnostic logs are in `Data\Logs`.
 

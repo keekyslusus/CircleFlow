@@ -18,7 +18,8 @@ internal sealed class SettingsWindowModel(
     AppPaths paths,
     UiStrings strings,
     Func<string?> webViewRuntimeVersion,
-    Func<string?> audioOutputName)
+    Func<string?> audioOutputName,
+    WindowsStartupRegistration startup)
 {
     private const string OcrLanguageSettingsUri = "ms-settings:regionlanguage";
 
@@ -34,6 +35,7 @@ internal sealed class SettingsWindowModel(
     public string HotkeyGesture => settings.Snapshot.HotkeyGesture;
     public bool IgnoreHotkeyInFullscreen => settings.Snapshot.IgnoreHotkeyInFullscreen;
     public int BrowserDataCleanupDays => settings.Snapshot.BrowserDataCleanupDays;
+    public bool LaunchAtStartup => startup.IsEnabled;
     public ProjectSupport Project => project;
     public string? WebViewRuntimeVersion => webViewRuntimeVersion();
     public string? AudioOutputName => audioOutputName();
@@ -48,6 +50,8 @@ internal sealed class SettingsWindowModel(
     public bool SelectIgnoreHotkeyInFullscreen(bool ignore) => settings.SetIgnoreHotkeyInFullscreen(ignore).Success;
 
     public bool SelectBrowserDataCleanup(int days) => settings.SetBrowserDataCleanupDays(days).Success;
+
+    public bool SelectLaunchAtStartup(bool enabled) => startup.TrySet(enabled);
 
     public bool IsToolbarActionShown(SelectionToolbarAction action) =>
         !settings.Snapshot.HiddenToolbarActions.HasFlag(action);

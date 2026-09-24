@@ -45,11 +45,13 @@ public static class CompositionRoot
         OcrLanguageCatalog? OcrLanguages = null,
         Action<BitmapSource>? SetImageClipboard = null);
 
-    public static int Run() => Run(new AppPaths(),
-        (message, title, icon) => MessageBox.Show(message, title, MessageBoxButton.OK, icon));
+    public static int Run(string[] args) => Run(new AppPaths(),
+        (message, title, icon) => MessageBox.Show(message, title, MessageBoxButton.OK, icon),
+        autostart: args.Contains(WindowsStartupRegistration.AutostartArgument, StringComparer.OrdinalIgnoreCase));
 
     internal static int Run(AppPaths paths, Action<string, string, MessageBoxImage> reportStartupMessage,
-        string? instanceName = null, CancellationToken startupCancellation = default, TimeSpan? activationTimeout = null)
+        string? instanceName = null, CancellationToken startupCancellation = default, TimeSpan? activationTimeout = null,
+        bool autostart = false)
     {
         var application = CreateApplication();
         UiStrings strings;
@@ -68,12 +70,15 @@ public static class CompositionRoot
 
         try
         {
-            var launch = SingleInstanceCoordinator.AcquireOrActivate(
-                instanceName ?? SingleInstanceCoordinator.CurrentSessionName, activationTimeout);
+            instanceName ??= SingleInstanceCoordinator.CurrentSessionName;
+            // A sign-in launch must not open a capture in an instance the user has already started.
+            var launch = autostart
+                ? new InstanceLaunchResult(SingleInstanceCoordinator.TryAcquire(instanceName), Activated: false)
+                : SingleInstanceCoordinator.AcquireOrActivate(instanceName, activationTimeout);
             using var instance = launch.Instance;
             if (instance is null)
             {
-                if (launch.Activated) return 0;
+                if (launch.Activated || autostart) return 0;
                 reportStartupMessage(strings.ActivationFailed, strings.PluginTitle, MessageBoxImage.Error);
                 return 1;
             }
@@ -129,7 +134,7 @@ public static class CompositionRoot
                 var support = new ProjectSupport(urlOpening);
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
                     CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
-                    AudioOutputDevice.DefaultName);
+                    AudioOutputDevice.DefaultName, new WindowsStartupRegistration(paths.ExecutablePath, log));
                 settingsWindow = new SettingsWindowController(application.Dispatcher,
                     () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });

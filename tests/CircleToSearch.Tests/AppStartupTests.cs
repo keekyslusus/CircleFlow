@@ -84,6 +84,24 @@ public sealed class AppStartupTests
     }
 
     [Fact]
+    public async Task A_sign_in_launch_exits_quietly_without_opening_a_capture_in_the_running_instance()
+    {
+        if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
+        var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "autostart-instance-" + Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(paths.LanguagesDirectory);
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        var name = "Local\\CircleFlow.StartupTests." + Guid.NewGuid().ToString("N");
+        using var owner = Shell.SingleInstanceCoordinator.TryAcquire(name);
+        var opens = 0;
+        owner!.StartListening(() => { Interlocked.Increment(ref opens); return true; }, exception => Assert.Fail(exception.ToString()));
+        var result = RunOnSta(paths, name, autostart: true);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Null(result.Message);
+        Assert.Equal(0, opens);
+        Assert.False(Directory.Exists(paths.DataDirectory));
+    }
+
+    [Fact]
     public async Task Recovered_settings_produce_one_startup_notice_and_keep_the_valid_backup()
     {
         if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
@@ -140,7 +158,7 @@ public sealed class AppStartupTests
     }
 
     private static (int ExitCode, string? Message, string? Title, MessageBoxImage Icon) RunOnSta(
-        AppPaths paths, string instanceName, TimeSpan? activationTimeout = null)
+        AppPaths paths, string instanceName, TimeSpan? activationTimeout = null, bool autostart = false)
     {
         var exitCode = -1;
         string? message = null, title = null;
@@ -154,7 +172,7 @@ public sealed class AppStartupTests
                 {
                     Assert.Null(message);
                     (message, title, icon) = (text, caption, image);
-                }, instanceName, activationTimeout: activationTimeout);
+                }, instanceName, activationTimeout: activationTimeout, autostart: autostart);
             }
             catch (Exception exception) { failure = exception; }
         }) { IsBackground = true };

@@ -952,7 +952,8 @@ public sealed class SettingsPreviewTests
             Assert.Equal(defaults.HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
             Assert.Equal(0, provider.SelectedIndex);
             Assert.Equal(["Ctrl", "Alt", "Space"], ShortcutLabels(window, "ShortcutKeys"));
-            Assert.True(launch.IsChecked);
+            Assert.False(launch.IsChecked);
+            Assert.False(harness.Startup.Registration.IsEnabled);
             Assert.Equal(0, textSearch.SelectedIndex);
             Assert.True(Find<CheckBox>(window, "ToolbarAsk").IsChecked);
             Assert.Equal(SelectionToolbarAction.None, harness.Settings.Snapshot.HiddenToolbarActions);
@@ -964,12 +965,11 @@ public sealed class SettingsPreviewTests
             Assert.False(Find<Button>(window, "SaveShortcut").IsEnabled);
             Click(window, "cancel");
             CompleteDialogTransition(window, time, open: false);
-            launch.IsChecked = false;
         }
         finally { window.Close(); }
 
         var fresh = harness.CreateView().Window;
-        Assert.True(Find<CheckBox>(fresh, "Launch").IsChecked);
+        Assert.False(Find<CheckBox>(fresh, "Launch").IsChecked);
         Assert.Equal(0, Find<ComboBox>(fresh, "Provider").SelectedIndex);
         fresh.Close();
     });
@@ -1062,6 +1062,44 @@ public sealed class SettingsPreviewTests
             Assert.Empty(harness.Notifier.Errors);
         }
         finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Launch_toggle_comes_from_the_startup_entry_saves_changes_and_reloads_on_activation() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow(launchAtStartup: false);
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var launch = Find<CheckBox>(window, "Launch");
+            Assert.False(launch.IsChecked);
+            launch.IsChecked = true;
+            Assert.True(harness.Startup.Registration.IsEnabled);
+            launch.IsChecked = false;
+            Assert.Null(harness.Startup.RunValue);
+
+            launch.IsChecked = true;
+            harness.Startup.SetTaskManagerState(enabled: false);
+            Activate(window);
+            Assert.False(launch.IsChecked);
+            Assert.NotNull(harness.Startup.RunValue);
+            launch.IsChecked = true;
+            Assert.True(harness.Startup.Registration.IsEnabled);
+
+            harness.Startup.RunValue = null;
+            Activate(window);
+            Assert.False(launch.IsChecked);
+            using (harness.Startup.DenyWrites())
+                launch.IsChecked = true;
+            Assert.False(launch.IsChecked);
+            Assert.Equal(TestUiStrings.English.SettingsPreviewText("launch_failed"), Find<TextBlock>(window, "StatusText").Text);
+        }
+        finally
+        {
+            window.Close();
+            harness.Startup.Dispose();
+        }
     });
 
     [Fact]
