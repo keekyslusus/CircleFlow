@@ -34,6 +34,7 @@ public sealed class UiStrings
     public string SettingsOpenFolderFailed => Get("app_settings_open_folder_failed");
     public string SettingsOpenLanguageSettingsFailed => Get("app_settings_open_language_settings_failed");
     public string SettingsRuntimeMissing => Get("app_settings_runtime_missing");
+    public string SettingsVersion(string version) => Get("app_settings_version_value", version);
     public string StartupFailed => Get("app_startup_failed");
     public string StartupLanguageFailed => Get("app_startup_language_failed");
     public string StartupDataFailed(string path) => Get("app_startup_data_failed", path);

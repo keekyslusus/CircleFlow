@@ -93,6 +93,7 @@ internal sealed class SettingsWindowView
         ocrLanguage.SelectionChanged += OnOcrLanguageChanged;
         _dropdowns.Add(new SettingsDropdownMotion(ocrLanguage));
         Element<TextBlock>("TranslationLanguage").Text = model.TranslationLanguageName;
+        Element<TextBlock>("AppVersion").Text = strings.SettingsVersion(ProjectSupport.Version);
         var ignoreFullscreen = Element<CheckBox>("IgnoreFullscreen");
         ignoreFullscreen.Checked += OnIgnoreFullscreenChanged;
         ignoreFullscreen.Unchecked += OnIgnoreFullscreenChanged;

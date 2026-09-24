@@ -1029,6 +1029,16 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
+    public void About_shows_the_version_from_the_project_file() => OnSta(time =>
+    {
+        var project = System.Xml.Linq.XDocument.Load(Path.Combine(TestOutputPaths.RepoDirectory, "CircleFlow.csproj"));
+        var version = Assert.Single(project.Descendants("Version")).Value;
+        var window = new TestSettingsWindow().CreateView().Window;
+        try { Assert.Equal("v" + version, Find<TextBlock>(window, "AppVersion").Text); }
+        finally { window.Close(); }
+    });
+
+    [Fact]
     public void About_actions_open_project_links_and_application_folders() => OnSta(time =>
     {
         var harness = new TestSettingsWindow();

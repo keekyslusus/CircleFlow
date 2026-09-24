@@ -223,7 +223,7 @@
     <system:String x:Key="app_settings_feedback">Feedback</system:String>
     <system:String x:Key="app_settings_details">Details</system:String>
     <system:String x:Key="app_settings_check_updates">Check for updates</system:String>
-    <system:String x:Key="app_settings_version_value">v0.5.1</system:String>
+    <system:String x:Key="app_settings_version_value">v{0}</system:String>
     <system:String x:Key="app_settings_version_value_sub">Version</system:String>
     <system:String x:Key="app_settings_license">GPL-3.0-or-later</system:String>
     <system:String x:Key="app_settings_open_source">Open source</system:String>
