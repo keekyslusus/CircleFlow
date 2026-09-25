@@ -30,4 +30,6 @@ public sealed record AppSettings
     public string AppLanguageTag { get; init; } = string.Empty;
 
     public bool ImageTranslationPrivacyConsentAccepted { get; init; }
+
+    public bool OnboardingCompleted { get; init; }
 }

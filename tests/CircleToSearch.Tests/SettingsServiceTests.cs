@@ -42,6 +42,20 @@ public sealed class SettingsServiceTests
     }
 
     [Fact]
+    public void Completed_onboarding_is_saved_and_a_failed_save_keeps_it_pending()
+    {
+        var saves = new List<AppSettings>();
+        var service = TestSettings.Create(save: saves.Add);
+        Assert.True(service.CompleteOnboarding().Success);
+        Assert.True(service.Snapshot.OnboardingCompleted);
+        Assert.True(Assert.Single(saves).OnboardingCompleted);
+
+        var failing = TestSettings.Create(save: _ => throw new IOException("disk failure"));
+        Assert.Equal(SettingsChangeStatus.SaveFailed, failing.CompleteOnboarding().Status);
+        Assert.False(failing.Snapshot.OnboardingCompleted);
+    }
+
+    [Fact]
     public void Hotkey_is_registered_before_save_and_committed_only_after_save()
     {
         var native = new TestHotkeyRegistration();

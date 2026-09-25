@@ -28,6 +28,8 @@ public sealed class UiStrings
     public string TrayExit => Get("app_tray_exit");
     public string SettingsWindowTitle => Get("app_settings_window_title");
     internal string SettingsPreviewText(string key) => Get("app_settings_" + key);
+    internal string OnboardingText(string key) => Get("app_onboarding_" + key);
+    internal string OnboardingStep(int step, int count) => Get("app_onboarding_step", step, count);
     public string SettingsShortcutSaved => Get("app_settings_shortcut_saved");
     public string SettingsShortcutInvalid => Get("app_settings_invalid_shortcut");
     public string SettingsShortcutUnavailable(string gesture) => Get("app_settings_shortcut_unavailable", gesture);

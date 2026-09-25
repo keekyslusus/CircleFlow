@@ -19,6 +19,7 @@ using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
 using CircleToSearch.Capture;
 using Xunit;
+using static CircleToSearch.Tests.WpfUi;
 
 namespace CircleToSearch.Tests;
 
@@ -155,7 +156,7 @@ public sealed class SettingsPreviewTests
             if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
             {
                 Capture(window, $"settings-{(light ? "light" : "dark")}-dropdown-arrow.png");
-                CaptureVisual(surface, $"settings-{(light ? "light" : "dark")}-dropdown-menu.png");
+                SavePng(surface, $"settings-{(light ? "light" : "dark")}-dropdown-menu.png");
             }
             combo.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(combo), 0, Key.Escape)
             {
@@ -1282,6 +1283,49 @@ public sealed class SettingsPreviewTests
         }
     });
 
+    [Fact]
+    public void Three_clicks_on_the_version_reveal_developer_settings_that_open_onboarding() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView(light: false).Window;
+        try
+        {
+            window.Show();
+            Find<RadioButton>(window, "Nav_about").IsChecked = true;
+            CompletePageTransition(window, time);
+            var developer = Find<RadioButton>(window, "Nav_developer");
+            var version = Find<TextBlock>(window, "AppVersion");
+            foreach (var clicks in new[] { 1, 2 })
+            {
+                ClickText(version, clicks);
+                Assert.Equal(Visibility.Collapsed, developer.Visibility);
+            }
+            ClickText(version, 3);
+            Assert.Equal(Visibility.Visible, developer.Visibility);
+            Assert.Equal(TestUiStrings.English.SettingsPreviewText("developer_unlocked"), Find<TextBlock>(window, "StatusText").Text);
+
+            developer.IsChecked = true;
+            CompletePageTransition(window, time);
+            Assert.True(Find<FrameworkElement>(window, "Page_developer").IsVisible);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1") Capture(window, "settings-dark-developer.png");
+            Click(window, "show-onboarding");
+            Assert.Equal(1, harness.OnboardingRequests);
+        }
+        finally { window.Close(); }
+
+        var reopened = harness.CreateView(light: false).Window;
+        try { Assert.Equal(Visibility.Visible, Find<RadioButton>(reopened, "Nav_developer").Visibility); }
+        finally { reopened.Close(); }
+        Assert.Equal(Visibility.Collapsed, Find<RadioButton>(new TestSettingsWindow().CreateView().Window, "Nav_developer").Visibility);
+    });
+
+    private static void ClickText(TextBlock text, int clickCount)
+    {
+        var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent };
+        typeof(MouseButtonEventArgs).GetProperty(nameof(MouseButtonEventArgs.ClickCount))!.SetValue(args, clickCount);
+        text.RaiseEvent(args);
+    }
+
     private static string[] ShortcutLabels(Window window, string name) =>
         Find<ItemsControl>(window, name).Items.Cast<object>()
             .Select(item => (string)item.GetType().GetProperty("Label")!.GetValue(item)!).ToArray();
@@ -1298,49 +1342,11 @@ public sealed class SettingsPreviewTests
         button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, button));
     }
 
-    private static IEnumerable<DependencyObject> LogicalChildren(DependencyObject root)
-    {
-        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
-        {
-            yield return child;
-            foreach (var nested in LogicalChildren(child)) yield return nested;
-        }
-    }
-
-    private static IEnumerable<DependencyObject> VisualChildren(DependencyObject root)
-    {
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-        {
-            var child = VisualTreeHelper.GetChild(root, i);
-            yield return child;
-            foreach (var nested in VisualChildren(child)) yield return nested;
-        }
-    }
-
     private static void Capture(Window window, string filename)
     {
         var root = (FrameworkElement)window.Content;
-        CaptureVisual(root, filename);
+        SavePng(root, filename);
     }
-
-    private static void CaptureVisual(FrameworkElement root, string filename)
-    {
-        var bitmap = Render(root);
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
-        Directory.CreateDirectory(TestOutputPaths.TempDirectory);
-        using var stream = File.Create(Path.Combine(TestOutputPaths.TempDirectory, filename));
-        encoder.Save(stream);
-    }
-
-    private static RenderTargetBitmap Render(FrameworkElement root)
-    {
-        var bitmap = new RenderTargetBitmap((int)root.ActualWidth, (int)root.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(root);
-        return bitmap;
-    }
-
-    private static void Pump() => Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
 
     private static void CompletePageTransition(Window window, ManualAnimationClock time)
     {
@@ -1359,22 +1365,4 @@ public sealed class SettingsPreviewTests
             "The dialog transition did not finish.");
     }
 
-    private static void OnSta(Action<ManualAnimationClock> action)
-    {
-        Exception? error = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                using var time = ManualAnimationClock.Install();
-                action(time);
-            }
-            catch (Exception exception) { error = exception; }
-            finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(40)));
-        if (error is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error).Throw();
-    }
 }

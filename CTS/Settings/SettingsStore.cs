@@ -30,7 +30,8 @@ internal sealed class SettingsStore(AppPaths paths)
                 var corrupt = Path.Combine(paths.DataDirectory,
                     $"settings.corrupt-{DateTime.UtcNow:yyyyMMddTHHmmssfffffff}-{Guid.NewGuid():N}.json");
                 File.Copy(paths.SettingsFilePath, corrupt, overwrite: false);
-                settings = new AppSettings();
+                // A settings file existed, so this is not a first run even when nothing could be recovered.
+                settings = new AppSettings { OnboardingCompleted = true };
                 if (File.Exists(paths.SettingsBackupFilePath))
                     try { settings = Read(paths.SettingsBackupFilePath, out invalidTypes); }
                     catch (JsonException) { }
@@ -105,6 +106,8 @@ internal sealed class SettingsStore(AppPaths paths)
             AppLanguageTag = Text(nameof(AppSettings.AppLanguageTag), defaults.AppLanguageTag),
             ImageTranslationPrivacyConsentAccepted = Flag(nameof(AppSettings.ImageTranslationPrivacyConsentAccepted),
                 defaults.ImageTranslationPrivacyConsentAccepted),
+            // A file saved before onboarding existed belongs to someone who already uses the app.
+            OnboardingCompleted = Flag(nameof(AppSettings.OnboardingCompleted), fallback: true),
         };
         invalidFields = invalid.AsReadOnly();
         return settings;

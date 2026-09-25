@@ -124,7 +124,7 @@ public sealed class ShellTests
     public void Settings_preview_is_lazy_and_reused_until_closed() => OnSta(() =>
     {
         var harness = new TestSettingsWindow();
-        using var settings = new SettingsWindowController(Dispatcher.CurrentDispatcher, () => harness.CreateView().Window);
+        using var settings = new SingleWindowController(Dispatcher.CurrentDispatcher, () => harness.CreateView().Window);
         Assert.Null(settings.CurrentWindow);
         settings.Show();
         var first = settings.CurrentWindow!;

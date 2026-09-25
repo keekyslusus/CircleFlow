@@ -77,6 +77,33 @@ internal static class PluginPalette
             Scrim: WithAlpha(OpaqueBlack, 0.35));
     }
 
+    internal static OnboardingPalette Onboarding(bool lightTheme)
+    {
+        var theme = For(lightTheme);
+        var text = theme.StateCard.Text;
+        return new OnboardingPalette(
+            KeycapBorder: WithAlpha(text, 0.16),
+            InactiveStep: WithAlpha(text, 0.25),
+            OnAccent: lightTheme ? Colors.White : Color.FromRgb(0x38, 0x1E, 0x72),
+            ToolbarSurface: theme.FloatingToolbar.Surface,
+            ToolbarText: theme.FloatingToolbar.Text,
+            ToolbarBorder: theme.FloatingToolbar.Border,
+            ChipSurface: theme.SelectionChip.Surface,
+            ChipText: theme.SelectionChip.Label,
+            ChipBorder: theme.SelectionChip.NeutralOutline,
+            TextHighlight: theme.TextInteraction.Selection);
+    }
+
+    internal static TwinDrillEggPalette TwinDrillEgg { get; } = new(
+        Backdrop: Color.FromRgb(0x3A, 0x31, 0x42),
+        Hair: Color.FromRgb(0xC8, 0x35, 0x4E),
+        HairOutline: Color.FromRgb(0xA6, 0x2A, 0x42),
+        Bangs: Color.FromRgb(0xD6, 0x3A, 0x55),
+        Skin: Color.FromRgb(0xF6, 0xDC, 0xCF),
+        Clothes: Color.FromRgb(0x26, 0x25, 0x2B),
+        Ribbon: Color.FromRgb(0xF1, 0xF3, 0xF4),
+        RibbonOutline: Color.FromRgb(0xC4, 0xC7, 0xC5));
+
     internal static Color TraceCardHover(bool lightTheme) => Composite(For(lightTheme).MusicOverlay.Surface,
         lightTheme ? LightDockHoverOverlay : DarkDockHoverOverlay);
 
@@ -93,6 +120,17 @@ internal static class PluginPalette
     public static Color EntranceParticle { get; } = Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF);
     public static Color ListeningText { get; } = Color.FromRgb(0xF4, 0xF5, 0xF8);
     public static Color SceneRippleAudio { get; } = Color.FromRgb(0xC5, 0x9B, 0xFF);
+
+    // The sample screens show some other app, so they keep the same colors in both themes.
+    internal static OnboardingScreenPalette OnboardingScreen { get; } = new(
+        Surface: Color.FromRgb(0x0F, 0x0F, 0x12),
+        Border: Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF),
+        Heading: Color.FromArgb(0x59, 0xFF, 0xFF, 0xFF),
+        Line: Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF),
+        Text: Color.FromArgb(0xEB, 0xE8, 0xEA, 0xED),
+        Selection: Colors.White,
+        Dim: SelectionDim,
+        Shadow: OpaqueBlack);
 
     public static IReadOnlyList<Color> SearchBrowserLoadingDots { get; } = Array.AsReadOnly(
         new[]
@@ -280,6 +318,17 @@ internal sealed record SettingsPalette(
     Color Paper, Color Surface, Color Card, Color Sidebar, Color ScrollbarThumb,
     Color Text, Color Muted, Color Accent, Color Line, Color Hover, Color Selected,
     Color Wash, Color HeroStart, Color HeroEnd, Color AccentLine, Color Scrim);
+
+internal sealed record OnboardingPalette(
+    Color KeycapBorder, Color InactiveStep, Color OnAccent,
+    Color ToolbarSurface, Color ToolbarText, Color ToolbarBorder,
+    Color ChipSurface, Color ChipText, Color ChipBorder, Color TextHighlight);
+
+internal sealed record OnboardingScreenPalette(
+    Color Surface, Color Border, Color Heading, Color Line, Color Text, Color Selection, Color Dim, Color Shadow);
+
+internal sealed record TwinDrillEggPalette(
+    Color Backdrop, Color Hair, Color HairOutline, Color Bangs, Color Skin, Color Clothes, Color Ribbon, Color RibbonOutline);
 
 internal sealed record PluginThemePalette(
     Color WindowSurface,

@@ -14,6 +14,7 @@ using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
 using CircleToSearch.Settings;
 using CircleToSearch.Shell;
+using CircleToSearch.Shell.Onboarding;
 using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
@@ -120,7 +121,8 @@ public static class CompositionRoot
                     reportStartupMessage(strings.StorageRecovered, strings.PluginTitle, MessageBoxImage.Warning);
                 _ = new BrowserDataCleanup(paths, log).Run(loaded.Settings.BrowserDataCleanupDays);
                 cancellation.ThrowIfCancellationRequested();
-                SettingsWindowController? settingsWindow = null;
+                SingleWindowController? settingsWindow = null;
+                OnboardingWindowController? onboarding = null;
                 var notifications = new NotificationPresenter(application.Dispatcher, strings, log);
                 lifetime.AddCleanup("close-notifications", () => { notifications.Dispose(); return Task.CompletedTask; });
                 var notifier = new PluginNotifier(notifications.ShowMessage, notifications.ShowMessageWithButton,
@@ -134,15 +136,21 @@ public static class CompositionRoot
                     {
                         tray?.CloseMenu();
                         settingsWindow?.Hide();
+                        onboarding?.Close();
                         notifications.CloseAll();
                     }).Task, log, rollback);
                 lifetime.AddStop("stop-runtime-triggers", () => _ = runtime.StopAsync());
                 cancellation.ThrowIfCancellationRequested();
                 var support = new ProjectSupport(urlOpening);
+                var startup = new WindowsStartupRegistration(paths.ExecutablePath, log);
+                var onboardingModel = new OnboardingModel(runtime.Settings, startup, strings);
+                onboarding = new OnboardingWindowController(application.Dispatcher, onboardingModel,
+                    () => new OnboardingWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, onboardingModel).Window);
+                lifetime.AddCleanup("close-onboarding", () => { onboarding.Dispose(); return Task.CompletedTask; });
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
                     language, CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
-                    AudioOutputDevice.DefaultName, new WindowsStartupRegistration(paths.ExecutablePath, log));
-                settingsWindow = new SettingsWindowController(application.Dispatcher,
+                    AudioOutputDevice.DefaultName, startup, onboarding.Show);
+                settingsWindow = new SingleWindowController(application.Dispatcher,
                     () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });
                 tray = new TrayIcon(paths.TrayIconPath, strings, application.Dispatcher, log,
@@ -156,6 +164,7 @@ public static class CompositionRoot
                 watchdog.AddEmergencyCleanup(tray.RemoveForShutdown);
                 cancellation.ThrowIfCancellationRequested();
                 activation.SetReady(runtime.OpenAsync);
+                onboarding.ShowIfNeeded();
             }, startupCancellation);
             if (lifetime.StartupFailure is not null)
                 reportStartupMessage(startupMessage, strings.PluginTitle, MessageBoxImage.Error);

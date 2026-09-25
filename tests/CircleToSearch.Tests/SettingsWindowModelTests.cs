@@ -1,6 +1,6 @@
 using System.Windows.Input;
 using CircleToSearch.Search;
-using CircleToSearch.Shell.SettingsPreview;
+using CircleToSearch.Shell;
 using CircleToSearch.Trigger;
 using Xunit;
 
@@ -18,7 +18,7 @@ public sealed class SettingsWindowModelTests
     public void Recorded_shortcuts_use_the_gesture_format_the_hotkey_parser_accepts(
         Key key, ModifierKeys modifiers, string? expected)
     {
-        var gesture = SettingsWindowView.ShortcutGesture(key, modifiers);
+        var gesture = ShortcutText.Gesture(key, modifiers);
 
         Assert.Equal(expected, gesture);
         if (gesture is not null) Assert.True(HotkeyGestureParser.TryParse(gesture, out _, out _));

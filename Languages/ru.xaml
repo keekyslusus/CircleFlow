@@ -24,4 +24,26 @@
     <system:String x:Key="plugin_circletosearch_selection_hint_search">поиск</system:String>
     <system:String x:Key="plugin_circletosearch_selection_hint_actions">действия</system:String>
     <system:String x:Key="plugin_circletosearch_selection_hint_search_over_text">поиск поверх текста</system:String>
+    <system:String x:Key="app_onboarding_window_title">Добро пожаловать в CircleFlow</system:String>
+    <system:String x:Key="app_onboarding_change_shortcut">Изменить сочетание</system:String>
+    <system:String x:Key="app_onboarding_press_shortcut">Нажмите новое сочетание</system:String>
+    <system:String x:Key="app_onboarding_cancel">Отмена</system:String>
+    <system:String x:Key="app_onboarding_step1_title">Поиск из любого приложения</system:String>
+    <system:String x:Key="app_onboarding_step1_text">Нажмите сочетание - экран замрёт, и вы сможете обвести что угодно. Сочетание можно изменить в любой момент.</system:String>
+    <system:String x:Key="app_onboarding_left_click_hint">Левая кнопка - поиск</system:String>
+    <system:String x:Key="app_onboarding_right_click_hint">Правая кнопка - действия</system:String>
+    <system:String x:Key="app_onboarding_step2_title">Левая кнопка ищет, правая - действует</system:String>
+    <system:String x:Key="app_onboarding_step2_text">Обведите что-нибудь левой кнопкой, чтобы найти это. Правой кнопкой можно спросить ИИ, скопировать, сохранить или перевести.</system:String>
+    <system:String x:Key="app_onboarding_sample_line">Лучшие кофейни</system:String>
+    <system:String x:Key="app_onboarding_sample_prefix">в центре -</system:String>
+    <system:String x:Key="app_onboarding_sample_selected">полный обзор</system:String>
+    <system:String x:Key="app_onboarding_alt_hint">обвести поверх текста</system:String>
+    <system:String x:Key="app_onboarding_step3_title">Выделяйте текст на экране как в документе</system:String>
+    <system:String x:Key="app_onboarding_step3_text">Проведите по тексту, чтобы скопировать его или найти, даже на картинках и в видео.</system:String>
+    <system:String x:Key="app_onboarding_launch">Запускать с Windows</system:String>
+    <system:String x:Key="app_onboarding_skip">Пропустить</system:String>
+    <system:String x:Key="app_onboarding_back">Назад</system:String>
+    <system:String x:Key="app_onboarding_next">Далее</system:String>
+    <system:String x:Key="app_onboarding_step">Шаг {0} из {1}</system:String>
+    <system:String x:Key="app_onboarding_try">Попробовать</system:String>
 </ResourceDictionary>

@@ -84,6 +84,16 @@
                                     <ContentControl Content="{Binding [about]}" Style="{StaticResource NavigationLabel}"/>
                                 </StackPanel>
                             </RadioButton>
+                            <RadioButton x:Name="Nav_developer" AutomationProperties.Name="{Binding [developer]}" Tag="developer" GroupName="Pages" Style="{StaticResource NavigationItem}" IsChecked="False" Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal">
+                                    <Viewbox Width="20" Height="20" VerticalAlignment="Center">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.MaintenanceOutlined}"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                    <ContentControl Content="{Binding [developer]}" Style="{StaticResource NavigationLabel}"/>
+                                </StackPanel>
+                            </RadioButton>
                         </StackPanel>
                     </Grid>
                 </DockPanel>
@@ -906,6 +916,38 @@
                             <Border Style="{StaticResource Information}" Margin="0">
                                 <StackPanel>
                                     <TextBlock Text="{Binding [services_text]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                        <StackPanel x:Name="Page_developer" Visibility="Collapsed">
+                            <TextBlock Text="{Binding [developer_title]}" Style="{StaticResource PageTitle}"/>
+                            <TextBlock Text="{Binding [developer_onboarding]}" Style="{StaticResource SectionTitle}" Margin="0,0,0,9"/>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,0,0,0" Padding="19,17" MinHeight="77">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="21"/>
+                                                <ColumnDefinition Width="16"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Viewbox Width="21" Height="21" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.CircleSearchOutlined}"/>
+                                                </Canvas>
+                                            </Viewbox>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
+                                                <TextBlock Text="{Binding [show_onboarding]}" Style="{StaticResource RowTitle}"/>
+                                                <TextBlock Text="{Binding [show_onboarding_sub]}" Style="{StaticResource RowSubtitle}"/>
+                                            </StackPanel>
+                                            <ContentControl Grid.Column="3" VerticalAlignment="Center">
+                                                <Button Tag="show-onboarding">
+                                                    <TextBlock Text="{Binding [show]}"/>
+                                                </Button>
+                                            </ContentControl>
+                                        </Grid>
+                                    </Border>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

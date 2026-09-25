@@ -38,7 +38,7 @@ internal sealed class TestSettingsWindow
         Strings = new UiStrings(language.Get);
         Model = new SettingsWindowModel(Settings, providers, OcrLanguages, language, culture ?? CultureInfo.GetCultureInfo("en-US"),
             new ProjectSupport(urlOpening), urlOpening, Paths, Strings, () => webViewRuntimeVersion,
-            () => AudioOutputName, Startup.Registration);
+            () => AudioOutputName, Startup.Registration, () => OnboardingRequests++);
         AudioOutputName = audioOutputName;
     }
 
@@ -51,6 +51,7 @@ internal sealed class TestSettingsWindow
     public AppPaths Paths { get; } = new();
     public TestPluginNotifier Notifier { get; } = new();
     public List<string> Opened { get; } = [];
+    public int OnboardingRequests { get; private set; }
 
     public SettingsWindowView CreateView(bool light = true) =>
         new(Strings, light, Paths.TrayIconPath, Model);

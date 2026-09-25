@@ -2,9 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Interop;
@@ -15,7 +13,7 @@ namespace CircleToSearch.Shell.SettingsPreview;
 
 internal sealed class SettingsWindowView
 {
-    private static readonly string[] Pages = ["general", "hotkeys", "search", "text", "music", "about"];
+    private static readonly string[] Pages = ["general", "hotkeys", "search", "text", "music", "about", "developer"];
     private static readonly (string Name, SelectionToolbarAction Action)[] ToolbarActions =
     [
         ("ToolbarAsk", SelectionToolbarAction.Ask), ("ToolbarCopy", SelectionToolbarAction.Copy),
@@ -38,15 +36,8 @@ internal sealed class SettingsWindowView
         _model = model;
         Window = (Window)Application.LoadComponent(new Uri(
             "/CircleFlow;component/CTS/Shell/SettingsPreview/SettingsWindow.xaml", UriKind.Relative));
-        ApplyPalette(PluginPalette.Settings(lightTheme));
-        Window.Icon = BitmapFrame.Create(new Uri(iconPath),
-            BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
-        Window.SourceInitialized += (_, _) =>
-        {
-            var darkMode = lightTheme ? 0 : 1;
-            NativeMethods.DwmSetWindowAttribute(new WindowInteropHelper(Window).Handle,
-                NativeMethods.DwmwaUseImmersiveDarkMode, ref darkMode, sizeof(int));
-        };
+        SettingsWindowTheme.Apply(Window, lightTheme, iconPath);
+        ApplyScrollbarMetrics();
         _statusTimer = new DispatcherTimer(DispatcherPriority.Background, Window.Dispatcher)
         {
             Interval = TimeSpan.FromSeconds(3),
@@ -76,6 +67,8 @@ internal sealed class SettingsWindowView
         Window.AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavigationChecked));
         Window.PreviewKeyDown += OnPreviewKeyDown;
         Element<TextBox>("ShortcutInput").PreviewKeyDown += RecordShortcut;
+        Element<TextBlock>("AppVersion").MouseLeftButtonDown += OnVersionClicked;
+        if (model.DeveloperSettingsUnlocked) Element<RadioButton>("Nav_developer").Visibility = Visibility.Visible;
 
         var provider = Element<ComboBox>("Provider");
         foreach (var descriptor in model.Providers)
@@ -131,27 +124,8 @@ internal sealed class SettingsWindowView
 
     private T Element<T>(string name) where T : FrameworkElement => (T)Window.FindName(name);
 
-    private void ApplyPalette(SettingsPalette palette)
+    private void ApplyScrollbarMetrics()
     {
-        (string Key, Color Color)[] colors =
-        [
-            ("Paper", palette.Paper), ("Surface", palette.Surface), ("Card", palette.Card),
-            ("Sidebar", palette.Sidebar), ("Text", palette.Text),
-            ("ScrollbarThumb", palette.ScrollbarThumb),
-            ("Muted", palette.Muted), ("Accent", palette.Accent), ("Line", palette.Line),
-            ("Hover", palette.Hover), ("Selected", palette.Selected), ("Wash", palette.Wash),
-            ("HeroStart", palette.HeroStart), ("HeroEnd", palette.HeroEnd),
-            ("AccentLine", palette.AccentLine), ("Scrim", palette.Scrim),
-            ("Transparent", PluginPalette.Transparent),
-        ];
-        foreach (var (key, color) in colors)
-        {
-            var brush = new SolidColorBrush(color);
-            brush.Freeze();
-            Window.Resources["Settings" + key] = brush;
-        }
-        Window.Resources["SettingsHeroStartColor"] = palette.HeroStart;
-        Window.Resources["SettingsHeroEndColor"] = palette.HeroEnd;
         Window.Resources["SettingsScrollTrackWidth"] = (double)OverlayScrollbarPolicy.TrackWidthPixels;
         Window.Resources["SettingsScrollThumbWidth"] = (double)OverlayScrollbarPolicy.ThumbWidthPixels;
         Window.Resources["SettingsScrollMinThumbHeight"] = (double)OverlayScrollbarPolicy.MinimumThumbHeightPixels;
@@ -209,8 +183,18 @@ internal sealed class SettingsWindowView
             case "logs": _model.OpenLogsFolder(); break;
             case "ocr-languages": _model.OpenOcrLanguageSettings(); break;
             case "preview": ShowStatus(_strings.SettingsPreviewText("preview_action")); break;
+            case "show-onboarding": _model.ShowOnboarding(); break;
         }
         e.Handled = true;
+    }
+
+    // Like Android's build number: three quick clicks on the version reveal the developer page.
+    private void OnVersionClicked(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 3) return;
+        _model.UnlockDeveloperSettings();
+        Element<RadioButton>("Nav_developer").Visibility = Visibility.Visible;
+        ShowStatus(_strings.SettingsPreviewText("developer_unlocked"));
     }
 
     private void OpenDialog(bool shortcut)
@@ -257,27 +241,15 @@ internal sealed class SettingsWindowView
     private void RecordShortcut(object sender, KeyEventArgs e)
     {
         if (!_dialogMotion.IsOpen) return;
-        if (e.Key is Key.Tab or Key.Escape) return;
+        if (e.Key is Key.Tab or Key.Escape || ShortcutText.ClosesWindow(e)) return;
         e.Handled = true;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
-        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift) return;
-        _pendingShortcut = ShortcutGesture(key, Keyboard.Modifiers);
+        if (ShortcutText.IsModifier(key)) return;
+        _pendingShortcut = ShortcutText.Gesture(key, Keyboard.Modifiers);
         Element<Button>("SaveShortcut").IsEnabled = _pendingShortcut is not null;
         Element<TextBox>("ShortcutInput").Text = _pendingShortcut is null
             ? _strings.SettingsShortcutInvalid
-            : string.Join(" + ", _pendingShortcut.Split('+').Select(ShortcutLabel));
-    }
-
-    internal static string? ShortcutGesture(Key key, ModifierKeys modifiers)
-    {
-        var validKey = key is >= Key.A and <= Key.Z or >= Key.D0 and <= Key.D9 or Key.Space;
-        if (!validKey || modifiers == ModifierKeys.None || modifiers.HasFlag(ModifierKeys.Windows)) return null;
-        var parts = new List<string>();
-        if (modifiers.HasFlag(ModifierKeys.Control)) parts.Add("Ctrl");
-        if (modifiers.HasFlag(ModifierKeys.Alt)) parts.Add("Alt");
-        if (modifiers.HasFlag(ModifierKeys.Shift)) parts.Add("Shift");
-        parts.Add(key is >= Key.D0 and <= Key.D9 ? ((int)key - (int)Key.D0).ToString() : key.ToString());
-        return string.Join('+', parts);
+            : string.Join(" + ", ShortcutText.Labels(_pendingShortcut, _strings));
     }
 
     private void LoadSettings()
@@ -299,8 +271,8 @@ internal sealed class SettingsWindowView
                 Element<CheckBox>(name).IsChecked = _model.IsToolbarActionShown(action);
         }
         finally { _loadingSettings = false; }
-        var keys = _model.HotkeyGesture.Split('+')
-            .Select((token, index) => new ShortcutPart(ShortcutLabel(token), index > 0)).ToArray();
+        var keys = ShortcutText.Labels(_model.HotkeyGesture, _strings)
+            .Select((label, index) => new ShortcutPart(label, index > 0)).ToArray();
         Element<ItemsControl>("ShortcutKeys").ItemsSource = keys;
         Element<ItemsControl>("HeroShortcutKeys").ItemsSource = keys;
         Element<TextBlock>("RuntimeVersion").Text = _model.WebViewRuntimeVersion ?? _strings.SettingsRuntimeMissing;
@@ -435,12 +407,6 @@ internal sealed class SettingsWindowView
         if (_loadingSettings || Element<ComboBox>("Provider").SelectedItem is not ComboBoxItem { Tag: string id }) return;
         if (!_model.SelectProvider(id)) LoadSettings();
     }
-
-    private string ShortcutLabel(string token) => token switch
-    {
-        "Ctrl" or "Alt" or "Shift" or "Space" or "Win" => _strings.SettingsPreviewText(token.ToLowerInvariant()),
-        _ => token,
-    };
 
     private void ShowStatus(string text)
     {

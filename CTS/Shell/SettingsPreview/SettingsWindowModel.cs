@@ -20,7 +20,8 @@ internal sealed class SettingsWindowModel(
     UiStrings strings,
     Func<string?> webViewRuntimeVersion,
     Func<string?> audioOutputName,
-    WindowsStartupRegistration startup)
+    WindowsStartupRegistration startup,
+    Action showOnboarding)
 {
     private const string OcrLanguageSettingsUri = "ms-settings:regionlanguage";
 
@@ -42,6 +43,12 @@ internal sealed class SettingsWindowModel(
     public ProjectSupport Project => project;
     public string? WebViewRuntimeVersion => webViewRuntimeVersion();
     public string? AudioOutputName => audioOutputName();
+    // Kept for this run only, so developer tools never stay visible after a restart.
+    public bool DeveloperSettingsUnlocked { get; private set; }
+
+    public void UnlockDeveloperSettings() => DeveloperSettingsUnlocked = true;
+
+    public void ShowOnboarding() => showOnboarding();
 
     public bool SelectProvider(string providerId) => providers.Save(providerId);
 
@@ -73,7 +80,7 @@ internal sealed class SettingsWindowModel(
     }
 
     public string ChangeHotkey(string gesture) =>
-        Describe(settings.ChangeHotkey(gesture), gesture, strings.SettingsShortcutSaved);
+        ShortcutText.ChangeMessage(settings.ChangeHotkey(gesture), gesture, strings.SettingsShortcutSaved, strings);
 
     // Null means ProviderSelectionStore has already reported the failure.
     public string? ResetToDefaults()
@@ -86,7 +93,8 @@ internal sealed class SettingsWindowModel(
         if (!SelectIgnoreHotkeyInFullscreen(defaults.IgnoreHotkeyInFullscreen)) return strings.StorageSaveFailed;
         if (!settings.SetHiddenToolbarActions(defaults.HiddenToolbarActions).Success) return strings.StorageSaveFailed;
         if (!SelectBrowserDataCleanup(defaults.BrowserDataCleanupDays)) return strings.StorageSaveFailed;
-        return Describe(settings.ChangeHotkey(defaults.HotkeyGesture), defaults.HotkeyGesture, strings.SettingsResetDone);
+        return ShortcutText.ChangeMessage(settings.ChangeHotkey(defaults.HotkeyGesture), defaults.HotkeyGesture,
+            strings.SettingsResetDone, strings);
     }
 
     public void OpenDataFolder() => urlOpening.TryOpen(paths.DataDirectory, strings.SettingsOpenFolderFailed);
@@ -95,13 +103,4 @@ internal sealed class SettingsWindowModel(
 
     public void OpenOcrLanguageSettings() =>
         urlOpening.TryOpen(OcrLanguageSettingsUri, strings.SettingsOpenLanguageSettingsFailed);
-
-    private string Describe(SettingsChangeResult result, string gesture, string success) => result.Status switch
-    {
-        SettingsChangeStatus.Success => success,
-        SettingsChangeStatus.Invalid => strings.SettingsShortcutInvalid,
-        SettingsChangeStatus.HotkeyUnavailable => strings.SettingsShortcutUnavailable(gesture),
-        SettingsChangeStatus.HotkeyRollbackFailed => strings.HotkeyRollbackFailed,
-        _ => strings.StorageSaveFailed,
-    };
 }

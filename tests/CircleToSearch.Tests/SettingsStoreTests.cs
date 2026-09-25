@@ -23,7 +23,7 @@ public sealed class SettingsStoreTests
             SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "kagi", HotkeyGesture = "Win+Ctrl+Shift+F7",
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
             OcrLanguageTag = "ru-RU", AppLanguageTag = "ru", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
-            HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save, BrowserDataCleanupDays = 0,
+            HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save, BrowserDataCleanupDays = 0, OnboardingCompleted = true,
         };
         store.Save(updated);
         Assert.Equal(updated, new SettingsStore(paths).Load().Settings);
@@ -39,7 +39,7 @@ public sealed class SettingsStoreTests
     public void Corrupt_main_is_preserved_and_replaced_by_backup_or_defaults_once(bool hasBackup)
     {
         var (paths, store) = Create();
-        var expected = new AppSettings();
+        var expected = new AppSettings { OnboardingCompleted = true };
         if (hasBackup)
         {
             expected = expected with { PaddingPx = 23, ImageTranslationPrivacyConsentAccepted = true };
@@ -64,7 +64,7 @@ public sealed class SettingsStoreTests
         var (paths, store) = Create();
         File.WriteAllText(paths.SettingsFilePath, "null");
         File.WriteAllText(paths.SettingsBackupFilePath, "invalid backup");
-        Assert.Equal(new AppSettings(), store.Load().Settings);
+        Assert.Equal(new AppSettings { OnboardingCompleted = true }, store.Load().Settings);
         Assert.Equal("null", File.ReadAllText(Assert.Single(Directory.GetFiles(paths.DataDirectory, "settings.corrupt-*.json"))));
         Assert.Equal("invalid backup", File.ReadAllText(paths.SettingsBackupFilePath));
     }
@@ -111,12 +111,25 @@ public sealed class SettingsStoreTests
         var result = store.Load();
         Assert.False(result.Recovered);
         Assert.Equal(6, result.ResetFields.Count);
-        Assert.Equal(new AppSettings { SearchProviderId = SearchProviderIds.YandexImages }, result.Settings);
+        Assert.Equal(new AppSettings { SearchProviderId = SearchProviderIds.YandexImages, OnboardingCompleted = true }, result.Settings);
         Assert.True(result.Settings.IgnoreHotkeyInFullscreen);
         Assert.Equal(SelectionToolbarAction.None, result.Settings.HiddenToolbarActions);
         Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
         Assert.DoesNotContain("TranslationTargetLanguageTag", File.ReadAllText(paths.SettingsFilePath));
         Assert.Equal(backup, Read(paths.SettingsBackupFilePath));
+    }
+
+    [Fact]
+    public void Onboarding_is_pending_only_for_a_new_file_not_for_one_saved_before_onboarding_existed()
+    {
+        var (paths, store) = Create();
+        Assert.False(store.Load().Settings.OnboardingCompleted);
+        Assert.False(new SettingsStore(paths).Load().Settings.OnboardingCompleted);
+
+        File.WriteAllText(paths.SettingsFilePath, """{"HotkeyGesture":"Ctrl+Alt+K"}""");
+        var upgraded = store.Load();
+        Assert.True(upgraded.Settings.OnboardingCompleted);
+        Assert.Empty(upgraded.ResetFields);
     }
 
     [Fact]

@@ -95,6 +95,11 @@ public sealed class SettingsService
         lock (_gate) return Commit(_current with { ImageTranslationPrivacyConsentAccepted = accepted });
     }
 
+    public SettingsChangeResult CompleteOnboarding()
+    {
+        lock (_gate) return Commit(_current with { OnboardingCompleted = true });
+    }
+
     public SettingsChangeResult InitializeHotkey()
     {
         lock (_gate) return Result(AttemptHotkey(_current.HotkeyGesture).Success

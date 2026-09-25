@@ -3,7 +3,7 @@ using System.Windows.Threading;
 
 namespace CircleToSearch.Shell;
 
-internal sealed class SettingsWindowController(Dispatcher dispatcher, Func<Window> createWindow) : IDisposable
+internal sealed class SingleWindowController(Dispatcher dispatcher, Func<Window> createWindow) : IDisposable
 {
     private Window? _window;
     private bool _disposed;
