@@ -12,14 +12,20 @@ public sealed record FloatingToolbarPrompt(Grid Root, TextBox Input, Button Send
 
 public sealed class FloatingToolbar
 {
-    private const double ActionPadding = 16;
+    private const double ActionPadding = 12;
     private const double CompactActionPadding = 4;
     // A round icon edge reads as farther from the pill edge than a text stem at the same distance.
-    private const double IconSidePaddingReduction = 4;
+    private const double IconSidePaddingReduction = 2;
+    private const double ActionHeight = 32;
+    private const double ActionRadius = 16;
+    private const double SurfacePadding = 4;
+    private const double SurfaceBorder = 1;
     private const double PromptWidth = 380;
     private const double DisabledSendOpacity = 0.38;
     private readonly WrapPanel _actions;
-    private readonly HashSet<Button> _iconActions = [];
+    // Only actions with an icon get a separate label, so a label change keeps the icon.
+    private readonly Dictionary<Button, TextBlock> _iconLabels = [];
+    private readonly List<FrameworkElement> _dividers = [];
     private FloatingToolbarPrompt? _prompt;
     private readonly FloatingToolbarPalette _palette;
     private readonly Func<bool> _animationsEnabled;
@@ -36,9 +42,12 @@ public sealed class FloatingToolbar
         {
             Child = _actions,
             Background = OverlayVisualResources.Frozen(palette.Surface),
-            CornerRadius = new CornerRadius(24),
-            MinHeight = 44,
-            Padding = new Thickness(6, 4, 6, 4),
+            BorderBrush = OverlayVisualResources.Frozen(palette.Border),
+            BorderThickness = new Thickness(SurfaceBorder),
+            CornerRadius = new CornerRadius(ActionHeight / 2 + SurfacePadding + SurfaceBorder),
+            MinHeight = ActionHeight + 2 * (SurfacePadding + SurfaceBorder),
+            Padding = new Thickness(SurfacePadding),
+            Effect = OverlayVisualResources.DockShadow(4, palette.ShadowOpacity),
             Visibility = Visibility.Collapsed,
             IsHitTestVisible = false,
             IsEnabled = false,
@@ -68,7 +77,7 @@ public sealed class FloatingToolbar
             VerticalContentAlignment = VerticalAlignment.Center,
             FontFamily = OverlayVisualResources.Font,
             FontSize = 14,
-            MinHeight = 36,
+            MinHeight = ActionHeight,
             MaxLength = 1000,
             FocusVisualStyle = null,
         };
@@ -88,8 +97,8 @@ public sealed class FloatingToolbar
         var send = new Button
         {
             Content = OutlinedIcon(PluginIcons.ArrowUpOutlined),
-            Width = 36,
-            Height = 36,
+            Width = ActionHeight,
+            Height = ActionHeight,
             Margin = new Thickness(4, 0, 0, 0),
             Foreground = text,
             Background = OverlayVisualResources.Frozen(_palette.Surface),
@@ -99,7 +108,7 @@ public sealed class FloatingToolbar
             IsEnabled = false,
             Opacity = DisabledSendOpacity,
         };
-        OverlayVisualResources.ApplyButtonTemplate(send, 18, _palette.ButtonHover, _palette.Text);
+        OverlayVisualResources.ApplyButtonTemplate(send, ActionRadius, _palette.ButtonHover, _palette.Text);
         AutomationProperties.SetName(send, sendLabel);
         input.TextChanged += (_, _) =>
         {
@@ -132,6 +141,8 @@ public sealed class FloatingToolbar
         _prompt.Input.CaretIndex = _prompt.Input.Text.Length;
     }
 
+    internal Button AddAction(string label, Geometry icon) => AddAction(label, OutlinedIcon(icon));
+
     internal Button AddAction(string label, FrameworkElement? icon = null)
     {
         var button = new Button
@@ -140,18 +151,45 @@ public sealed class FloatingToolbar
             Foreground = OverlayVisualResources.Frozen(_palette.Text),
             Background = OverlayVisualResources.Frozen(_palette.Surface),
             BorderThickness = new Thickness(),
-            MinHeight = 36,
+            MinHeight = ActionHeight,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
             Cursor = Cursors.Hand,
             FontFamily = OverlayVisualResources.Font,
-            FontSize = 14,
+            FontSize = 13,
+            FontWeight = FontWeights.Medium,
         };
-        OverlayVisualResources.ApplyButtonTemplate(button, 20, _palette.ButtonHover, _palette.Text);
+        OverlayVisualResources.ApplyButtonTemplate(button, ActionRadius, _palette.ButtonHover, _palette.Text);
         AutomationProperties.SetName(button, label);
         _actions.Children.Add(button);
         SetActionContent(button, label, icon);
         return button;
+    }
+
+    // Separates the search with the selected provider from the actions on the selection itself.
+    internal void AddDivider()
+    {
+        var divider = new Border
+        {
+            Width = 1,
+            Height = 18,
+            Margin = new Thickness(2, 0, 2, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = OverlayVisualResources.Frozen(_palette.Divider),
+            IsHitTestVisible = false,
+        };
+        _dividers.Add(divider);
+        _actions.Children.Add(divider);
+    }
+
+    internal void SetActionLabel(Button button, string label)
+    {
+        if (!_actions.Children.Contains(button))
+            throw new ArgumentException("The action does not belong to this toolbar.", nameof(button));
+        if (_iconLabels.TryGetValue(button, out var text)) text.Text = label;
+        else button.Content = label;
+        AutomationProperties.SetName(button, label);
+        if (IsOpen) UpdatePlacement();
     }
 
     internal void SetActionContent(Button button, string label, FrameworkElement? icon = null)
@@ -161,11 +199,12 @@ public sealed class FloatingToolbar
         if (icon is null)
         {
             button.Content = label;
-            _iconActions.Remove(button);
+            _iconLabels.Remove(button);
         }
         else
         {
-            _iconActions.Add(button);
+            var text = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center };
+            _iconLabels[button] = text;
             var row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -176,11 +215,11 @@ public sealed class FloatingToolbar
             {
                 Content = icon,
                 // Label glyphs sit about 1px below the center of their line box, so a centered icon looks raised.
-                Margin = new Thickness(0, 1, 7, -1),
+                Margin = new Thickness(0, 1, 6, -1),
                 VerticalAlignment = VerticalAlignment.Center,
                 Focusable = false,
             });
-            row.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
+            row.Children.Add(text);
             button.Content = row;
         }
         AutomationProperties.SetName(button, label);
@@ -190,7 +229,7 @@ public sealed class FloatingToolbar
 
     private Thickness ActionPaddingFor(Button button, double side)
     {
-        var leading = _iconActions.Contains(button)
+        var leading = _iconLabels.ContainsKey(button)
             ? Math.Max(CompactActionPadding, side - IconSidePaddingReduction)
             : side;
         return new Thickness(leading, 0, side, 0);
@@ -217,11 +256,27 @@ public sealed class FloatingToolbar
 
     private void UpdatePlacement()
     {
+        UpdateDividers();
         MeasureWithin(_viewport.Width);
         var placement = FloatingToolbarLayout.Place(_anchor, Surface.DesiredSize, _viewport);
         Canvas.SetLeft(Surface, placement.X);
         Canvas.SetTop(Surface, placement.Y);
     }
+
+    // Hidden actions can leave a divider with nothing on one side of it.
+    private void UpdateDividers()
+    {
+        var children = _actions.Children.OfType<FrameworkElement>().ToArray();
+        foreach (var divider in _dividers)
+        {
+            var index = Array.IndexOf(children, divider);
+            var visible = children[..index].Any(IsVisibleAction) && children[(index + 1)..].Any(IsVisibleAction);
+            divider.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private static bool IsVisibleAction(FrameworkElement element) =>
+        element is Button { Visibility: Visibility.Visible };
 
     private void MeasureWithin(double width)
     {

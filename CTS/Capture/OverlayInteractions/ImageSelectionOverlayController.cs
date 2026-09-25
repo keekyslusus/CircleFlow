@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
@@ -92,9 +91,8 @@ internal sealed class ImageSelectionOverlayController : IDisposable
             return;
         }
         _selection.ShowSelectionFrame(bounds, hold: false);
-        var label = _translation.IsTranslationShown ? _strings.ShowOriginal : _strings.Translate;
-        _visual.TranslateButton.Content = label;
-        AutomationProperties.SetName(_visual.TranslateButton, label);
+        _visual.Toolbar.SetActionLabel(_visual.TranslateButton,
+            _translation.IsTranslationShown ? _strings.ShowOriginal : _strings.Translate);
         _visual.Toolbar.Show(_mapper.ToDips(bounds), new Size(_root.ActualWidth, _root.ActualHeight));
         _visual.Toolbar.Surface.IsEnabled = !IsCompleting;
     }

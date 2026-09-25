@@ -164,7 +164,7 @@ public sealed class ImageSelectionTests
         using var h = new Harness();
         h.Select();
         Click(h.Actions.AskButton);
-        h.Select(new Point(20, 20), new Point(45, 45));
+        h.Select(new Point(20, 200), new Point(45, 225));
         Assert.Equal([typeof(AskDraftStarted), typeof(AskDraftCanceled)],
             h.Commands.Select(command => command.GetType()));
         Click(h.Actions.AskButton);
@@ -181,7 +181,7 @@ public sealed class ImageSelectionTests
         h.Select();
         Click(h.Actions.AskButton);
         h.Actions.AskPrompt.Input.Text = "draft";
-        h.Select(new Point(20, 20), new Point(45, 45));
+        h.Select(new Point(20, 200), new Point(45, 225));
         Assert.False(h.Actions.Toolbar.IsPromptOpen);
         Assert.Empty(h.Actions.AskPrompt.Input.Text);
         Assert.True(h.Actions.Toolbar.IsOpen);
@@ -281,12 +281,12 @@ public sealed class ImageSelectionTests
         Assert.Equal(255, Pixel(displayed, x, y)[2]);
         Assert.Equal(0, Pixel(displayed, x - 1, y)[2]);
         Assert.Equal(0, Pixel(displayed, 639, 399)[2]);
-        Assert.Equal(TestUiStrings.English.ShowOriginal, h.Actions.TranslateButton.Content);
+        Assert.Equal(TestUiStrings.English.ShowOriginal, AutomationProperties.GetName(h.Actions.TranslateButton));
         Assert.True(h.Actions.Toolbar.IsOpen);
         Assert.False(h.Window.VisualState.Selection.SelectionFrame.Data.IsEmpty());
-        h.Select(new Point(20, 20), new Point(45, 45));
+        h.Select(new Point(20, 200), new Point(45, 225));
         Assert.Equal(OverlayInteractionMode.Selecting, h.Window.Mode);
-        Assert.Equal(TestUiStrings.English.Translate, h.Actions.TranslateButton.Content);
+        Assert.Equal(TestUiStrings.English.Translate, AutomationProperties.GetName(h.Actions.TranslateButton));
         Click(h.Actions.TranslateButton);
         var second = h.Commands.OfType<ScreenTranslationRequested>().Last();
         Assert.NotEqual(request.RequestId, second.RequestId);
