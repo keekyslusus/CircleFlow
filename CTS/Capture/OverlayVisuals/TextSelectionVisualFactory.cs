@@ -9,7 +9,7 @@ internal static class TextSelectionVisualFactory
     {
         var toolbar = new FloatingToolbar(PluginPalette.For(lightTheme).FloatingToolbar);
         var search = toolbar.AddAction(strings.TextSearch);
-        var copy = toolbar.AddAction(strings.TextCopy);
+        var copy = toolbar.AddAction(strings.TextCopy, PluginIcons.CopyOutlined);
         return new TextSelectionVisual(
             new Canvas { IsHitTestVisible = false },
             toolbar,

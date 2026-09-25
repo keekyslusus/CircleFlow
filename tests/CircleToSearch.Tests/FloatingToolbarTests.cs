@@ -36,7 +36,7 @@ public sealed class FloatingToolbarTests
                 Button[] buttons = [visual.SearchButton, visual.CopyButton, visual.SaveButton, visual.TranslateButton];
                 foreach (var label in new[] { TestUiStrings.English.Translate, TestUiStrings.English.ShowOriginal })
                 {
-                    visual.TranslateButton.Content = label;
+                    visual.Toolbar.SetActionLabel(visual.TranslateButton, label);
                     visual.Toolbar.Show(new Rect(width - 100, 180, 100, 40), new Size(width, 240));
                     time.Advance(260);
                     window.UpdateLayout();
@@ -66,10 +66,9 @@ public sealed class FloatingToolbarTests
                 visual.Toolbar.Show(new Rect(100, 100, 100, 40), new Size(640, 240));
                 time.Advance(260);
                 window.UpdateLayout();
-                Assert.Equal(new Thickness(12, 0, 16, 0), visual.SearchButton.Padding);
-                Assert.Equal(new Thickness(12, 0, 16, 0), visual.AskButton.Padding);
-                Assert.All(buttons[1..], button => Assert.Equal(new Thickness(16, 0, 16, 0), button.Padding));
-                Assert.Equal(44, visual.Toolbar.Surface.ActualHeight);
+                Assert.All([.. buttons, visual.AskButton],
+                    button => Assert.Equal(new Thickness(10, 0, 12, 0), button.Padding));
+                Assert.Equal(42, visual.Toolbar.Surface.ActualHeight);
             }
             finally { window.Close(); }
         });
@@ -100,7 +99,7 @@ public sealed class FloatingToolbarTests
                 Assert.InRange(left, 0, width);
                 Assert.InRange(left + visual.Toolbar.Surface.ActualWidth, 0, width + 0.01);
                 Assert.InRange(visual.Toolbar.Surface.ActualWidth, Math.Min(380, width - 12), width);
-                Assert.Equal(44, visual.Toolbar.Surface.ActualHeight);
+                Assert.Equal(42, visual.Toolbar.Surface.ActualHeight);
                 var send = visual.AskPrompt.SendButton;
                 var bounds = send.TransformToAncestor(visual.Toolbar.Layer).TransformBounds(new Rect(send.RenderSize));
                 Assert.InRange(bounds.Right, 0, width + 0.01);
@@ -140,7 +139,7 @@ public sealed class FloatingToolbarTests
                     Assert.True(toolbar.IsOpen);
                     Assert.True(toolbar.Surface.ActualWidth > initialWidth);
                     Assert.InRange(Canvas.GetLeft(toolbar.Surface) + toolbar.Surface.ActualWidth, 0, 320);
-                    Assert.Equal(44, toolbar.Surface.ActualHeight);
+                    Assert.Equal(42, toolbar.Surface.ActualHeight);
                     var bounds = search.TransformToAncestor(toolbar.Surface).TransformBounds(new Rect(search.RenderSize));
                     Assert.Equal(bounds.Top, toolbar.Surface.ActualHeight - bounds.Bottom, 6);
                     Assert.True(search.Padding.Left < search.Padding.Right);
@@ -166,6 +165,53 @@ public sealed class FloatingToolbarTests
                 Assert.Equal(search.Padding.Left, search.Padding.Right);
             }
             finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void Divider_collapses_when_no_visible_action_remains_on_one_side()
+    {
+        RunOnSta(_ =>
+        {
+            var toolbar = new FloatingToolbar(PluginPalette.For(false).FloatingToolbar, () => false);
+            var search = toolbar.AddAction(TestUiStrings.English.TextSearch);
+            toolbar.AddDivider();
+            var copy = toolbar.AddAction(TestUiStrings.English.TextCopy, PluginIcons.CopyOutlined);
+            var save = toolbar.AddAction(TestUiStrings.English.ImageSave, PluginIcons.DownloadOutlined);
+            var divider = Assert.IsType<WrapPanel>(toolbar.Surface.Child).Children.OfType<Border>().Single();
+            var anchor = new Rect(100, 100, 40, 20);
+            var viewport = new Size(400, 200);
+
+            toolbar.Show(anchor, viewport);
+            Assert.Equal(Visibility.Visible, divider.Visibility);
+            copy.Visibility = Visibility.Collapsed;
+            toolbar.Show(anchor, viewport);
+            Assert.Equal(Visibility.Visible, divider.Visibility);
+            save.Visibility = Visibility.Collapsed;
+            toolbar.Show(anchor, viewport);
+            Assert.Equal(Visibility.Collapsed, divider.Visibility);
+            save.Visibility = Visibility.Visible;
+            search.Visibility = Visibility.Collapsed;
+            toolbar.Show(anchor, viewport);
+            Assert.Equal(Visibility.Collapsed, divider.Visibility);
+        });
+    }
+
+    [Fact]
+    public void Changing_an_action_label_keeps_its_icon()
+    {
+        RunOnSta(_ =>
+        {
+            var toolbar = new FloatingToolbar(PluginPalette.For(false).FloatingToolbar, () => false);
+            var translate = toolbar.AddAction(TestUiStrings.English.Translate, PluginIcons.TranslateOutlined);
+            var icon = Assert.IsType<ContentControl>(Assert.IsType<StackPanel>(translate.Content).Children[0]).Content;
+
+            toolbar.SetActionLabel(translate, TestUiStrings.English.ShowOriginal);
+
+            var row = Assert.IsType<StackPanel>(translate.Content);
+            Assert.Same(icon, Assert.IsType<ContentControl>(row.Children[0]).Content);
+            Assert.Equal(TestUiStrings.English.ShowOriginal, Assert.IsType<TextBlock>(row.Children[1]).Text);
+            Assert.Equal(TestUiStrings.English.ShowOriginal, System.Windows.Automation.AutomationProperties.GetName(translate));
         });
     }
 

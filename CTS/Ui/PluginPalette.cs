@@ -6,10 +6,6 @@ internal static class PluginPalette
 {
     internal static Color AniListBlue { get; } = Color.FromRgb(0x02, 0xA9, 0xFF);
     internal static Color AniListWhite { get; } = Color.FromRgb(0xFE, 0xFE, 0xFE);
-    internal static Color GeminiBlue { get; } = Color.FromRgb(0x31, 0x86, 0xFF);
-    internal static Color GeminiRed { get; } = Color.FromRgb(0xFA, 0x43, 0x40);
-    internal static Color GeminiYellow { get; } = Color.FromRgb(0xF6, 0xC0, 0x13);
-    internal static Color GeminiGreen { get; } = Color.FromRgb(0x14, 0xBB, 0x69);
     internal static Color BingTeal { get; } = Color.FromRgb(0x00, 0xCA, 0xCC);
     internal static Color BingBlue { get; } = Color.FromRgb(0x04, 0x8F, 0xCE);
     internal static Color BingSky { get; } = Color.FromRgb(0x00, 0xBB, 0xEC);
@@ -176,7 +172,10 @@ internal static class PluginPalette
         FloatingToolbar: new FloatingToolbarPalette(
             Surface: Color.FromRgb(0x21, 0x1F, 0x26),
             Text: Color.FromRgb(0xE6, 0xE1, 0xE5),
-            ButtonHover: Color.FromRgb(0x4A, 0x44, 0x58)),
+            ButtonHover: Color.FromRgb(0x4A, 0x44, 0x58),
+            Border: Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF),
+            Divider: Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF),
+            ShadowOpacity: 0.35),
         Translation: new TranslationPalette(
             Surface: DarkDockSurface,
             Text: Color.FromRgb(0xF1, 0xF3, 0xF4),
@@ -250,7 +249,10 @@ internal static class PluginPalette
         FloatingToolbar: new FloatingToolbarPalette(
             Surface: Color.FromRgb(0xF3, 0xF3, 0xFA),
             Text: Color.FromRgb(0x1C, 0x1B, 0x1F),
-            ButtonHover: Color.FromRgb(0xE8, 0xDE, 0xF8)),
+            ButtonHover: Color.FromRgb(0xE8, 0xDE, 0xF8),
+            Border: Color.FromArgb(0x1A, 0x20, 0x21, 0x24),
+            Divider: Color.FromArgb(0x1F, 0x20, 0x21, 0x24),
+            ShadowOpacity: 0.14),
         Translation: new TranslationPalette(
             Surface: LightDockSurface,
             Text: Color.FromRgb(0x3C, 0x40, 0x43),
@@ -300,7 +302,10 @@ internal sealed record TextInteractionPalette(
 internal sealed record FloatingToolbarPalette(
     Color Surface,
     Color Text,
-    Color ButtonHover);
+    Color ButtonHover,
+    Color Border,
+    Color Divider,
+    double ShadowOpacity);
 
 internal sealed record TranslationPalette(
     Color Surface,
