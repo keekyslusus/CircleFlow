@@ -46,7 +46,16 @@ public sealed record ActionTrayVisual(
     TranslateTransform Lift)
 {
     public TextBlock? Prompt { get; init; }
+    public SelectionHintVisual? Hint { get; init; }
 }
+
+public sealed record SelectionHintVisual(
+    StackPanel Content,
+    StackPanel Keys,
+    TextBlock Action,
+    Brush KeycapBackground,
+    Brush KeycapBorder,
+    Brush KeycapText);
 
 public sealed record TextSelectionVisual(
     Canvas HighlightLayer,

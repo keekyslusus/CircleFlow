@@ -19,7 +19,7 @@ internal static class ActionTrayVisualFactory
         TranslationActionVisual translation)
     {
         var lift = new TranslateTransform();
-        var (chip, prompt) = CreateChip(palette, strings);
+        var (chip, prompt, hint) = CreateChip(palette, strings);
         var tray = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -32,10 +32,10 @@ internal static class ActionTrayVisualFactory
         tray.Children.Add(translation.Button);
         tray.Children.Add(music.Button);
 
-        return new ActionTrayVisual(tray, chip, lift) { Prompt = prompt };
+        return new ActionTrayVisual(tray, chip, lift) { Prompt = prompt, Hint = hint };
     }
 
-    private static (Border Chip, TextBlock Prompt) CreateChip(SelectionChipPalette palette, UiStrings strings)
+    private static (Border Chip, TextBlock Prompt, SelectionHintVisual Hint) CreateChip(SelectionChipPalette palette, UiStrings strings)
     {
         var icon = new Path
         {
@@ -64,39 +64,32 @@ internal static class ActionTrayVisualFactory
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(10, 0, 10, 0),
         };
-        var keycap = new Border
+        var hintKeys = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var hintAction = new TextBlock
         {
-            Background = OverlayVisualResources.Frozen(palette.KeycapBackground),
-            BorderBrush = OverlayVisualResources.Frozen(palette.KeycapBorder),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(7, 6, 7, 6),
-            VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock
-            {
-                Text = strings.CancelKeyName,
-                FontFamily = OverlayVisualResources.Font,
-                FontSize = 11,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = OverlayVisualResources.Frozen(palette.KeycapText),
-            },
-        };
-        var hint = new TextBlock
-        {
-            Text = strings.CancelAction,
             FontFamily = OverlayVisualResources.Font,
             FontSize = 12,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 0, 0),
             Foreground = OverlayVisualResources.Frozen(palette.Hint),
         };
+        var hintContent = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        hintContent.Children.Add(hintKeys);
+        hintContent.Children.Add(hintAction);
+        var hint = new SelectionHintVisual(
+            hintContent,
+            hintKeys,
+            hintAction,
+            OverlayVisualResources.Frozen(palette.KeycapBackground),
+            OverlayVisualResources.Frozen(palette.KeycapBorder),
+            OverlayVisualResources.Frozen(palette.KeycapText));
+        SelectionHintVisualPresenter.Show(hint, SelectionHint.EscapeCancel, strings, animate: false);
 
         var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         row.Children.Add(icon);
         row.Children.Add(label);
         row.Children.Add(divider);
-        row.Children.Add(keycap);
-        row.Children.Add(hint);
+        row.Children.Add(hintContent);
 
         var background = OverlayVisualResources.Frozen(palette.Surface);
         var outline = ChipOutlineBrush(palette);
@@ -139,7 +132,7 @@ internal static class ActionTrayVisualFactory
         shadow.CornerRadius = new CornerRadius(22);
         surface.CornerRadius = new CornerRadius(22);
         chip.SizeChanged += (_, _) => UpdateRadius();
-        return (chip, label);
+        return (chip, label, hint);
     }
 
     private static Brush ChipOutlineBrush(SelectionChipPalette palette) =>

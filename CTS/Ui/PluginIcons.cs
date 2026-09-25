@@ -149,6 +149,16 @@ internal static class PluginIcons
     public static Geometry SparkleOutlined { get; } = Group(
         Geometry.Parse("M12 3c.7 4.8 4.2 8.3 9 9-4.8.7-8.3 4.2-9 9-.7-4.8-4.2-8.3-9-9 4.8-.7 8.3-4.2 9-9Z"));
 
+    public static Geometry MouseOutlined { get; } = Group(
+        new RectangleGeometry(new Rect(5, 2, 14, 20), 7, 7),
+        Geometry.Parse("M12 2v8M5 10h14"));
+
+    public static Geometry MouseLeftButtonOutlined { get; } = Group(
+        Geometry.Parse("M12 2v8H5V9a7 7 0 0 1 7-7Z"));
+
+    public static Geometry MouseRightButtonOutlined { get; } = Group(
+        Geometry.Parse("M12 2v8h7V9a7 7 0 0 0-7-7Z"));
+
     public static Geometry CoffeeOutlined { get; } = Group(
         Geometry.Parse("M4 8h13v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM17 9h2a3 3 0 0 1 0 6h-2M3 22h16M7 3v2m4-3v3m4-2v2"));
 

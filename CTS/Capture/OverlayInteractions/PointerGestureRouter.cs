@@ -38,6 +38,7 @@ internal sealed class PointerGestureRouter : IDisposable
         _modifiers = modifiers ?? (() => Keyboard.Modifiers);
         _visual.InputSurface.MouseLeftButtonDown += OnDown;
         _visual.InputSurface.MouseMove += OnMove;
+        _visual.InputSurface.MouseLeave += OnLeave;
         _visual.InputSurface.MouseLeftButtonUp += OnUp;
         _visual.InputSurface.MouseRightButtonDown += OnRightDown;
         _visual.InputSurface.MouseRightButtonUp += OnRightUp;
@@ -63,6 +64,7 @@ internal sealed class PointerGestureRouter : IDisposable
         _disposed = true;
         _visual.InputSurface.MouseLeftButtonDown -= OnDown;
         _visual.InputSurface.MouseMove -= OnMove;
+        _visual.InputSurface.MouseLeave -= OnLeave;
         _visual.InputSurface.MouseLeftButtonUp -= OnUp;
         _visual.InputSurface.MouseRightButtonDown -= OnRightDown;
         _visual.InputSurface.MouseRightButtonUp -= OnRightUp;
@@ -107,6 +109,13 @@ internal sealed class PointerGestureRouter : IDisposable
         else if (ActiveGesture == ActivePointerGesture.Text) _text.Update(point);
         else _text.Hover(point);
         if (ActiveGesture != ActivePointerGesture.None) e.Handled = true;
+    }
+
+    // The tray and toolbars sit above the input surface, so leaving onto them produces no further MouseMove.
+    private void OnLeave(object sender, MouseEventArgs e)
+    {
+        if (_disposed || IsActionSelection || ActiveGesture != ActivePointerGesture.None) return;
+        _text.EndHover();
     }
 
     private void OnUp(object sender, MouseButtonEventArgs e)

@@ -66,6 +66,7 @@ public sealed class OverlayWindow : Window
     private readonly ActionTrayOverlayController _actionTray;
     private readonly ToastOverlayController _toast;
     private readonly DebugOverlayController _debug;
+    private readonly SelectionHintOverlayController _selectionHint;
     private bool _cancelPublished;
     private bool _exitFadeStarted;
     private bool _entranceRipplePending;
@@ -192,6 +193,7 @@ public sealed class OverlayWindow : Window
         _actionTray = _controllers.ActionTray;
         _toast = _controllers.Toast;
         _debug = _controllers.Debug;
+        _selectionHint = _controllers.SelectionHint;
 
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -610,6 +612,7 @@ public sealed class OverlayWindow : Window
                 _provider.SetOpen(false);
                 _debug.SetOpen(false);
                 _toast.SettleForClosing();
+                _selectionHint.SettleForClosing();
                 _visual.Bottom.LayoutTransitions.Settle();
                 _visual.Bottom.TrayTransitions.Settle();
                 _translation.SetActionEnabled(false);

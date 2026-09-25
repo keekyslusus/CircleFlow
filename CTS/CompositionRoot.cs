@@ -43,7 +43,8 @@ public static class CompositionRoot
         Func<Uri, ITraceVideoPreview>? CreateTraceVideo,
         Func<bool> TraceTheme,
         OcrLanguageCatalog? OcrLanguages = null,
-        Action<BitmapSource>? SetImageClipboard = null);
+        Action<BitmapSource>? SetImageClipboard = null,
+        Func<SelectionHint>? NextSelectionHint = null);
 
     public static int Run(string[] args) => Run(new AppPaths(),
         (message, title, icon) => MessageBox.Show(message, title, MessageBoxButton.OK, icon),
@@ -326,7 +327,8 @@ public static class CompositionRoot
                 () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log),
             SystemTheme.IsLight,
             ocrLanguages,
-            Clipboard.SetImage);
+            Clipboard.SetImage,
+            new SelectionHintRotation().Next);
         var overlayControllerFactory = new OverlayControllerFactory(
             context => CreateOverlayControllers(context, overlayControllerDependencies));
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
@@ -465,6 +467,14 @@ public static class CompositionRoot
                     context.ProviderSelected(providerId);
                 },
                 ChangeTrayLayout));
+            var selectionHint = Track(new SelectionHintOverlayController(
+                context.Visual.Actions.Hint
+                    ?? throw new InvalidOperationException("The selection hint visual is missing."),
+                context.Strings,
+                dependencies.NextSelectionHint?.Invoke() ?? SelectionHint.EscapeCancel,
+                ChangeTrayLayout,
+                dependencies.AnimationsEnabled,
+                context.CoordinateRoot.Dispatcher));
             var mapper = new OverlayCoordinateMapper(
                 context.Scale,
                 context.Overscan,
@@ -496,7 +506,8 @@ public static class CompositionRoot
                 () => provider.SelectedProviderId,
                 publishCommand,
                 context.Strings,
-                context.Visual.LightTheme));
+                context.Visual.LightTheme,
+                selectionHint.SetTextHovered));
             var frameSource = context.Visual.Selection.Screenshot.Source as BitmapSource
                 ?? throw new InvalidOperationException("The overlay frame source is missing.");
             OverlayImageTextCoordinator? imageText = null;
@@ -626,7 +637,8 @@ public static class CompositionRoot
                 toast,
                 debug,
                 activityPresenter,
-                imageSelection);
+                imageSelection,
+                selectionHint);
             rollback.Clear();
             return controllers;
         }

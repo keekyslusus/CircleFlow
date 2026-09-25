@@ -56,6 +56,12 @@ public sealed class UiStrings
     public string SelectionTooSmall => Get("plugin_circletosearch_selection_too_small");
     public string CancelKeyName => Get("plugin_circletosearch_cancel_key_name");
     public string CancelAction => Get("plugin_circletosearch_cancel_action");
+    public string AltKeyName => Get("app_settings_alt");
+    public string LeftMouseButton => Get("plugin_circletosearch_left_mouse_button");
+    public string RightMouseButton => Get("plugin_circletosearch_right_mouse_button");
+    public string SelectionHintSearch => Get("plugin_circletosearch_selection_hint_search");
+    public string SelectionHintActions => Get("plugin_circletosearch_selection_hint_actions");
+    public string SelectionHintSearchOverText => Get("plugin_circletosearch_selection_hint_search_over_text");
     public string MusicRecognitionAction => Get("plugin_circletosearch_music_recognition_action");
     public string CancelMusicRecognition => Get("plugin_circletosearch_music_cancel_action");
     public string GoogleProviderShortLabel => Get("plugin_circletosearch_google_provider_short_label");

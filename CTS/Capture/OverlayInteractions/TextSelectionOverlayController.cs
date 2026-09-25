@@ -21,6 +21,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
     private readonly Action<IOverlayCommand> _publish;
     private readonly UiStrings _strings;
     private readonly bool _lightTheme;
+    private readonly Action<bool>? _textHoverChanged;
     private OcrDocument? _document;
     private OcrDocument? _gestureDocument;
     private OcrWord? _anchor;
@@ -29,6 +30,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
     private TextSelectionRange? _selection;
     private bool _disposed;
     private bool _searchPublished;
+    private bool _overText;
 
     internal TextSelectionOverlayController(
         TextSelectionVisual visual,
@@ -40,7 +42,8 @@ internal sealed class TextSelectionOverlayController : IDisposable
         Func<string> selectedProviderId,
         Action<IOverlayCommand> publish,
         UiStrings strings,
-        bool lightTheme)
+        bool lightTheme,
+        Action<bool>? textHoverChanged = null)
     {
         _visual = visual;
         _coordinateRoot = coordinateRoot;
@@ -52,6 +55,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _publish = publish;
         _strings = strings;
         _lightTheme = lightTheme;
+        _textHoverChanged = textHoverChanged;
         _visual.CopyButton.Click += OnCopy;
         _visual.SearchButton.Click += OnSearch;
     }
@@ -63,7 +67,11 @@ internal sealed class TextSelectionOverlayController : IDisposable
     {
         _document = document;
         _hovered = null;
-        if (document is null) Dismiss();
+        if (document is null)
+        {
+            SetOverText(false);
+            Dismiss();
+        }
         else if (_selection is null) _visual.HighlightLayer.Children.Clear();
     }
 
@@ -107,10 +115,20 @@ internal sealed class TextSelectionOverlayController : IDisposable
     {
         if (_disposed || _gestureDocument is not null || IsActionMenuOpen) return;
         var word = _hitTester.HitTest(_document, _mapper.ToPhysical(point, clamp: false));
+        SetOverText(word is not null);
         if (ReferenceEquals(word, _hovered)) return;
         _hovered = word;
         _coordinateRoot.Cursor = word is null ? Cursors.Cross : Cursors.IBeam;
         if (_selection is null) RenderHighlights(word is null ? [] : [word.BoundsPx], hover: true);
+    }
+
+    internal void EndHover()
+    {
+        if (_disposed || _gestureDocument is not null) return;
+        SetOverText(false);
+        if (_hovered is null) return;
+        _hovered = null;
+        if (_selection is null) RenderHighlights([], hover: true);
     }
 
     internal void Dismiss(bool animate = true)
@@ -195,5 +213,12 @@ internal sealed class TextSelectionOverlayController : IDisposable
     private void ReleaseCapture()
     {
         if (ReferenceEquals(Mouse.Captured, _inputSurface)) Mouse.Capture(null);
+    }
+
+    private void SetOverText(bool overText)
+    {
+        if (_overText == overText) return;
+        _overText = overText;
+        _textHoverChanged?.Invoke(overText);
     }
 }

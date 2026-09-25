@@ -38,6 +38,11 @@
     <system:String x:Key="plugin_circletosearch_selection_too_small">Selection is too small. Drag to select a larger area.</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_key_name">Esc</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_action">cancel</system:String>
+    <system:String x:Key="plugin_circletosearch_left_mouse_button">Left mouse button</system:String>
+    <system:String x:Key="plugin_circletosearch_right_mouse_button">Right mouse button</system:String>
+    <system:String x:Key="plugin_circletosearch_selection_hint_search">search</system:String>
+    <system:String x:Key="plugin_circletosearch_selection_hint_actions">actions</system:String>
+    <system:String x:Key="plugin_circletosearch_selection_hint_search_over_text">search over text</system:String>
     <system:String x:Key="plugin_circletosearch_music_recognition_action">Recognize music</system:String>
     <system:String x:Key="plugin_circletosearch_music_cancel_action">Cancel music recognition</system:String>
     <system:String x:Key="plugin_circletosearch_google_provider_short_label">Google</system:String>

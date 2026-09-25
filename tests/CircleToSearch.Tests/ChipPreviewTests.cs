@@ -12,7 +12,8 @@ public sealed class ChipPreviewTests
 {
     // Renders the real action tray to PNGs for visual checks without triggering
     // a selection: CTS_CHIP_PREVIEW=1 dotnet test --filter ChipPreviewTests.
-    // Output: tests/temp/chip-preview.png (dark) and chip-preview-light.png, 150% DPI.
+    // Output: tests/temp/chip-preview.png (dark) and chip-preview-light.png, 150% DPI,
+    // plus chip-preview-<hint>[-light].png for every selection hint.
     [Fact]
     public void Renders_chip_preview_pngs_for_both_themes()
     {
@@ -26,9 +27,15 @@ public sealed class ChipPreviewTests
         Assert.Null(RunOnSta(() => Render(
             Path.Combine(directory, "chip-preview-light.png"),
             lightTheme: true)));
+        foreach (var hint in Enum.GetValues<SelectionHint>())
+        foreach (var lightTheme in new[] { false, true })
+        {
+            var name = $"chip-preview-{hint}{(lightTheme ? "-light" : "")}.png";
+            Assert.Null(RunOnSta(() => Render(Path.Combine(directory, name), lightTheme, hint)));
+        }
     }
 
-    private static void Render(string path, bool lightTheme)
+    private static void Render(string path, bool lightTheme, SelectionHint hint = SelectionHint.EscapeCancel)
     {
         var visual = OverlayVisualFactory.CreateRoot(
             null,
@@ -36,6 +43,7 @@ public sealed class ChipPreviewTests
             32,
             lightTheme,
             TestUiStrings.English);
+        SelectionHintVisualPresenter.Show(visual.Actions.Hint!, hint, TestUiStrings.English, animate: false);
         // The screenshot layer is empty in the preview, so give the root a desktop-like gradient.
         visual.Root.Background = new LinearGradientBrush(
             Color.FromRgb(0xEA, 0xEE, 0xF3),
