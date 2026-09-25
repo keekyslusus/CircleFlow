@@ -863,6 +863,62 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
+    public void App_language_switches_the_open_window_and_later_strings_immediately() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings { AppLanguageTag = "ru" }));
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var appLanguage = Find<ComboBox>(window, "AppLanguage");
+            var cleanup = Find<ComboBox>(window, "Cleanup");
+            string[] Texts() => LogicalChildren(window).OfType<TextBlock>().Select(text => text.Text).ToArray();
+            Assert.Equal(Visibility.Visible, Find<Border>(window, "AppLanguageRow").Visibility);
+            Assert.Equal(["Как в системе", "English", "Русский"],
+                appLanguage.Items.OfType<ComboBoxItem>().Select(item => (string)item.Content));
+            Assert.Equal(2, appLanguage.SelectedIndex);
+            Assert.Contains("Язык приложения", Texts());
+            Assert.Equal("Каждые 28 дней", cleanup.SelectionBoxItem);
+
+            appLanguage.SelectedIndex = 1;
+            Assert.Equal("en", harness.Settings.Snapshot.AppLanguageTag);
+            Assert.Contains("App language", Texts());
+            Assert.DoesNotContain("Язык приложения", Texts());
+            Assert.Equal("Match system", ((ComboBoxItem)appLanguage.Items[0]).Content);
+            Assert.Equal("English", appLanguage.SelectionBoxItem);
+            Assert.Equal("Every 28 days", cleanup.SelectionBoxItem);
+            Assert.Equal("Keyboard layout", Find<ComboBox>(window, "OcrLanguage").SelectionBoxItem);
+            Assert.Equal(Visibility.Collapsed, Find<Border>(window, "StatusBanner").Visibility);
+
+            appLanguage.SelectedIndex = 2;
+            Assert.Equal("Никогда", harness.Strings.SettingsPreviewText("never"));
+            appLanguage.SelectedIndex = 0;
+            Assert.Equal(string.Empty, harness.Settings.Snapshot.AppLanguageTag);
+            Assert.Equal("Never", harness.Strings.SettingsPreviewText("never"));
+
+            harness.Settings.SetAppLanguage("de").ThrowIfFailed("test update failed");
+            Activate(window);
+            Assert.Equal(0, appLanguage.SelectedIndex);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void App_language_is_hidden_when_only_English_is_delivered() => OnSta(time =>
+    {
+        var languages = Path.Combine(TestOutputPaths.TempDirectory, "languages-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(languages);
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(languages, "en.xaml"));
+        var window = new TestSettingsWindow(languagesDirectory: languages).CreateView().Window;
+        try
+        {
+            window.Show();
+            Assert.Equal(Visibility.Collapsed, Find<Border>(window, "AppLanguageRow").Visibility);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
     public void Failed_saves_restore_the_saved_selection() => OnSta(time =>
     {
         var harness = new TestSettingsWindow(TestSettings.Create(save: _ => throw new IOException("disk unavailable")));
@@ -908,6 +964,7 @@ public sealed class SettingsPreviewTests
             SearchProviderId = SearchProviderIds.YandexImages,
             TextSearchEngineId = "bing",
             OcrLanguageTag = "de-DE",
+            AppLanguageTag = "ru",
             IgnoreHotkeyInFullscreen = false,
             BrowserDataCleanupDays = 0,
             HotkeyGesture = "Ctrl+Shift+K",
@@ -949,6 +1006,8 @@ public sealed class SettingsPreviewTests
             Assert.Equal(28, harness.Settings.Snapshot.BrowserDataCleanupDays);
             Assert.Equal(0, Find<ComboBox>(window, "Cleanup").SelectedIndex);
             Assert.Equal(0, Find<ComboBox>(window, "OcrLanguage").SelectedIndex);
+            Assert.Equal(defaults.AppLanguageTag, harness.Settings.Snapshot.AppLanguageTag);
+            Assert.Equal(0, Find<ComboBox>(window, "AppLanguage").SelectedIndex);
             Assert.Equal(defaults.HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
             Assert.Equal(0, provider.SelectedIndex);
             Assert.Equal(["Ctrl", "Alt", "Space"], ShortcutLabels(window, "ShortcutKeys"));

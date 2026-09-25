@@ -54,11 +54,15 @@ public static class CompositionRoot
         bool autostart = false)
     {
         var application = CreateApplication();
+        // The log only writes once Data exists; creating it early lets the language report problems then.
+        var log = new PluginLog(paths.LogsDirectory);
+        UiLanguage language;
         UiStrings strings;
         try
         {
-            var localStrings = LocalUiStrings.Load(paths.LanguagesDirectory, CultureInfo.CurrentUICulture);
-            strings = new UiStrings(localStrings.Get);
+            language = new UiLanguage(LocalUiStrings.LoadEnglish(paths.LanguagesDirectory),
+                new AppLanguageCatalog(paths.LanguagesDirectory), CultureInfo.CurrentUICulture, log);
+            strings = new UiStrings(language.Get);
         }
         catch
         {
@@ -88,7 +92,6 @@ public static class CompositionRoot
                 reportStartupMessage(strings.StartupDataFailed(paths.DataDirectory), strings.PluginTitle, MessageBoxImage.Error);
                 return 1;
             }
-            var log = new PluginLog(paths.LogsDirectory);
             log.Info(nameof(CompositionRoot), "standalone host initialized");
             using var watchdog = new ShutdownWatchdog(log, () => Environment.Exit(1));
             var lifetime = new AppLifetime(application, log, watchdog);
@@ -107,6 +110,9 @@ public static class CompositionRoot
                 SettingsLoadResult loaded;
                 try { loaded = store.Load(); }
                 catch { startupMessage = strings.StorageLoadFailed; throw; }
+                // Messages before this point can only use the Windows display language.
+                language.Apply(loaded.Settings.AppLanguageTag);
+                startupMessage = strings.StartupFailed;
                 if (loaded.ResetFields.Count != 0)
                     log.Warn(nameof(CompositionRoot), $"settings reset to defaults: {string.Join(", ", loaded.ResetFields)}");
                 if (loaded.Recovered)
@@ -133,7 +139,7 @@ public static class CompositionRoot
                 cancellation.ThrowIfCancellationRequested();
                 var support = new ProjectSupport(urlOpening);
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
-                    CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
+                    language, CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
                     AudioOutputDevice.DefaultName, new WindowsStartupRegistration(paths.ExecutablePath, log));
                 settingsWindow = new SettingsWindowController(application.Dispatcher,
                     () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
@@ -198,14 +204,14 @@ public static class CompositionRoot
         var providerRouter = visualSearchRollback.Own(new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(
-                    new SearchProviderDescriptor(SearchProviderIds.GoogleLens, strings.GoogleLensProviderName),
+                    new SearchProviderDescriptor(SearchProviderIds.GoogleLens, () => strings.GoogleLensProviderName),
                     () => new GoogleLensProvider(
                         jpeg => new GoogleLensBrowserOperation(jpeg, log))),
                 new VisualSearchProviderRegistration(
-                    new SearchProviderDescriptor(SearchProviderIds.YandexImages, strings.YandexImagesProviderName),
+                    new SearchProviderDescriptor(SearchProviderIds.YandexImages, () => strings.YandexImagesProviderName),
                     () => new YandexImagesProvider(log)),
                 new VisualSearchProviderRegistration(
-                    new SearchProviderDescriptor(SearchProviderIds.TraceMoe, strings.TraceMoeProviderName),
+                    new SearchProviderDescriptor(SearchProviderIds.TraceMoe, () => strings.TraceMoeProviderName),
                     () => new TraceMoeProvider(traceHttpClient)),
             ],
             SearchProviderIds.GoogleLens,

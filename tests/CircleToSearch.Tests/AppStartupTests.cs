@@ -36,6 +36,51 @@ public sealed class AppStartupTests
     }
 
     [Fact]
+    public async Task Saved_app_language_is_used_once_settings_are_loaded()
+    {
+        if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
+        StartWithSavedRussian(valid: true);
+    }
+
+    [Fact]
+    public async Task A_broken_translation_falls_back_to_English_and_still_starts()
+    {
+        if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
+        StartWithSavedRussian(valid: false);
+    }
+
+    private static void StartWithSavedRussian(bool valid)
+    {
+        var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "startup-language-" + Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(paths.LanguagesDirectory);
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        File.WriteAllText(Path.Combine(paths.LanguagesDirectory, "ru.xaml"), valid
+            ? """
+              <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                  xmlns:system="clr-namespace:System;assembly=mscorlib">
+                  <system:String x:Key="app_startup_failed">Translated startup failure</system:String>
+              </ResourceDictionary>
+              """
+            : "<ResourceDictionary broken");
+        AppDataDirectory.Initialize(paths);
+        var log = new PluginLog(paths.LogsDirectory);
+        using var probe = new HotkeyWindow(new StaDispatcher("CircleFlow startup language test"), log);
+        var registrar = new HotkeyRegistrar(probe, TestUiStrings.English, log);
+        var gesture = Enumerable.Range(1, 11).Select(key => $"Ctrl+Alt+Shift+F{key}")
+            .First(candidate => registrar.TryApply(candidate).Success);
+        Assert.True(registrar.TryApply(null).Success);
+        new SettingsStore(paths).Save(new AppSettings { HotkeyGesture = gesture, AppLanguageTag = "ru" });
+
+        // The missing tray icon fails startup only after the runtime is built with the final strings.
+        var result = RunOnSta(paths, "Local\\CircleFlow.StartupTests." + Guid.NewGuid().ToString("N"));
+        Assert.Equal(1, result.ExitCode);
+        Assert.Equal(valid ? "Translated startup failure" : TestUiStrings.English.StartupFailed, result.Message);
+        if (!valid)
+            Assert.Contains("ru.xaml was ignored", File.ReadAllText(Path.Combine(paths.LogsDirectory, "plugin.log")));
+    }
+
+    [Fact]
     public async Task Missing_English_reports_embedded_error_and_never_creates_Data()
     {
         if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;

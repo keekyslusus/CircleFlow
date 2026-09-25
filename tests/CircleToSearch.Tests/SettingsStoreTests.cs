@@ -22,7 +22,7 @@ public sealed class SettingsStoreTests
         {
             SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "kagi", HotkeyGesture = "Win+Ctrl+Shift+F7",
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
-            OcrLanguageTag = "ru-RU", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
+            OcrLanguageTag = "ru-RU", AppLanguageTag = "ru", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
             HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save, BrowserDataCleanupDays = 0,
         };
         store.Save(updated);
@@ -77,11 +77,11 @@ public sealed class SettingsStoreTests
         {
             MaxLongSidePx = 1, PaddingPx = -1, HideDelayMilliseconds = 2001, LassoMinDiagonalPx = 0,
             SearchProviderId = "unknown", TextSearchEngineId = "yandex", HotkeyGesture = "Ctrl++A", OcrLanguageTag = "not a language",
-            ImageTranslationPrivacyConsentAccepted = true, BrowserDataCleanupDays = 7,
+            AppLanguageTag = "not a language", ImageTranslationPrivacyConsentAccepted = true, BrowserDataCleanupDays = 7,
         }));
         var result = store.Load();
         Assert.False(result.Recovered);
-        Assert.Equal(9, result.ResetFields.Count);
+        Assert.Equal(10, result.ResetFields.Count);
         Assert.Equal(new AppSettings { ImageTranslationPrivacyConsentAccepted = true }, result.Settings);
         Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
         Assert.Empty(store.Load().ResetFields);

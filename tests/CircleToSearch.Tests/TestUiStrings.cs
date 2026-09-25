@@ -9,12 +9,8 @@ internal static class TestUiStrings
 
     public static UiStrings English { get; } = LoadEnglish();
 
-    private static UiStrings LoadEnglish()
-    {
-        var source = LocalUiStrings.Load(Path.Combine(AppContext.BaseDirectory, "Languages"),
-            System.Globalization.CultureInfo.GetCultureInfo("en"));
-        return new UiStrings(source.Get);
-    }
+    private static UiStrings LoadEnglish() =>
+        new(LocalUiStrings.LoadEnglish(Path.Combine(AppContext.BaseDirectory, "Languages")).Get);
 
     private static IReadOnlyDictionary<string, string> LoadEnglishValues()
     {

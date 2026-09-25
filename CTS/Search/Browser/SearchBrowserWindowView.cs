@@ -65,7 +65,6 @@ internal sealed class SearchBrowserWindowView
             var header = new DockPanel { Margin = new Thickness(16, 8, 12, 8) };
             _closeButton = new Button
             {
-                ToolTip = _strings.Close,
                 Width = 32,
                 Height = 28,
                 Padding = new Thickness(0),
@@ -88,7 +87,6 @@ internal sealed class SearchBrowserWindowView
                 System.Windows.Shapes.Shape.StrokeProperty,
                 new Binding(nameof(Control.Foreground)) { Source = _closeButton });
             _closeButton.Content = closeIcon;
-            AutomationProperties.SetName(_closeButton, _strings.Close);
             _closeButton.Click += OnCloseClick;
             DockPanel.SetDock(_closeButton, Dock.Right);
             header.Children.Add(_closeButton);
@@ -115,8 +113,11 @@ internal sealed class SearchBrowserWindowView
     internal Window Window { get; }
     internal bool IsClosed { get; private set; }
 
+    // Runs for every search the reused window shows, so its text follows app language changes too.
     internal void SetProvider(SearchProviderDescriptor descriptor)
     {
+        _closeButton.ToolTip = _strings.Close;
+        AutomationProperties.SetName(_closeButton, _strings.Close);
         var title = _strings.SearchBrowserWindowTitle(descriptor.DisplayName);
         Window.Title = title;
         _titleText.Text = title;

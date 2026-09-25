@@ -162,12 +162,7 @@
     <system:String x:Key="app_settings_launch_sub">Ready to use after sign-in</system:String>
     <system:String x:Key="app_settings_launch_failed">Could not change Windows startup.</system:String>
     <system:String x:Key="app_settings_match_system">Match system</system:String>
-    <system:String x:Key="app_settings_english">English</system:String>
-    <system:String x:Key="app_settings_russian">Russian</system:String>
-    <system:String x:Key="app_settings_german">German</system:String>
-    <system:String x:Key="app_settings_kazakh">Kazakh</system:String>
-    <system:String x:Key="app_settings_app_language">App language</system:String>
-    <system:String x:Key="app_settings_every_28">Every 28 days</system:String>
+    <system:String x:Key="app_settings_app_language">App language</system:String>    <system:String x:Key="app_settings_every_28">Every 28 days</system:String>
     <system:String x:Key="app_settings_every_56">Every 56 days</system:String>
     <system:String x:Key="app_settings_never">Never</system:String>
     <system:String x:Key="app_settings_cleanup">Clear browser data</system:String>
@@ -255,8 +250,7 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_reset_description">The search provider, the search engine, the shortcut, and the other options in this window will return to their defaults. Run at Windows startup stays as it is.</system:String>
     <system:String x:Key="app_settings_cancel">Cancel</system:String>
     <system:String x:Key="app_settings_save">Save</system:String>
-    <system:String x:Key="app_settings_preview_notice">Interface preview
-App language is not saved yet.</system:String>
+    <system:String x:Key="app_settings_preview_notice">Interface preview</system:String>
     <system:String x:Key="app_settings_ctrl">Ctrl</system:String>
     <system:String x:Key="app_settings_alt">Alt</system:String>
     <system:String x:Key="app_settings_shift">Shift</system:String>

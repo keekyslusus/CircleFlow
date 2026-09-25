@@ -23,8 +23,7 @@ internal sealed class SettingsWindowView
     ];
     private readonly UiStrings _strings;
     private readonly SettingsWindowModel _model;
-    private readonly List<Action> _restoreDefaults = [];
-    private readonly List<SettingsDropdownMotion> _dropdowns = [];
+    private readonly List<(ComboBox ComboBox, SettingsDropdownMotion Motion)> _dropdowns = [];
     private readonly DispatcherTimer _statusTimer;
     private readonly SettingsScrollMotionController _scrollMotion;
     private readonly SettingsPageTransition _pageTransition;
@@ -40,7 +39,6 @@ internal sealed class SettingsWindowView
         Window = (Window)Application.LoadComponent(new Uri(
             "/CircleFlow;component/CTS/Shell/SettingsPreview/SettingsWindow.xaml", UriKind.Relative));
         ApplyPalette(PluginPalette.Settings(lightTheme));
-        Window.Title = strings.SettingsWindowTitle;
         Window.Icon = BitmapFrame.Create(new Uri(iconPath),
             BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
         Window.SourceInitialized += (_, _) =>
@@ -49,7 +47,6 @@ internal sealed class SettingsWindowView
             NativeMethods.DwmSetWindowAttribute(new WindowInteropHelper(Window).Handle,
                 NativeMethods.DwmwaUseImmersiveDarkMode, ref darkMode, sizeof(int));
         };
-        Window.DataContext = new PreviewText(strings);
         _statusTimer = new DispatcherTimer(DispatcherPriority.Background, Window.Dispatcher)
         {
             Interval = TimeSpan.FromSeconds(3),
@@ -73,7 +70,7 @@ internal sealed class SettingsWindowView
             _scrollMotion.Dispose();
             _pageTransition.Dispose();
             _dialogMotion.Dispose();
-            foreach (var dropdown in _dropdowns) dropdown.Dispose();
+            foreach (var (_, motion) in _dropdowns) motion.Dispose();
         };
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
         Window.AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavigationChecked));
@@ -82,30 +79,26 @@ internal sealed class SettingsWindowView
 
         var provider = Element<ComboBox>("Provider");
         foreach (var descriptor in model.Providers)
-            provider.Items.Add(new ComboBoxItem { Content = descriptor.DisplayName, Tag = descriptor.Id });
+            provider.Items.Add(new ComboBoxItem { Tag = descriptor.Id });
         provider.SelectionChanged += OnProviderChanged;
-        _dropdowns.Add(new SettingsDropdownMotion(provider));
+        AddDropdown(provider);
         var textSearch = Element<ComboBox>("TextSearch");
-        textSearch.Items.Add(new ComboBoxItem
-        {
-            Content = strings.SettingsPreviewText("match_image_search"), Tag = TextSearchEngines.MatchImageSearch,
-        });
+        textSearch.Items.Add(new ComboBoxItem { Tag = TextSearchEngines.MatchImageSearch });
         foreach (var engine in TextSearchEngines.All)
-            textSearch.Items.Add(new ComboBoxItem { Content = strings.SettingsPreviewText("engine_" + engine.Id), Tag = engine.Id });
+            textSearch.Items.Add(new ComboBoxItem { Tag = engine.Id });
         textSearch.SelectionChanged += OnTextSearchChanged;
-        _dropdowns.Add(new SettingsDropdownMotion(textSearch));
+        AddDropdown(textSearch);
         var cleanup = Element<ComboBox>("Cleanup");
         foreach (var days in BrowserDataCleanup.IntervalDays)
-            cleanup.Items.Add(new ComboBoxItem { Content = strings.SettingsPreviewText("every_" + days), Tag = days });
-        cleanup.Items.Add(new ComboBoxItem { Content = strings.SettingsPreviewText("never"), Tag = BrowserDataCleanup.Never });
+            cleanup.Items.Add(new ComboBoxItem { Tag = days });
+        cleanup.Items.Add(new ComboBoxItem { Tag = BrowserDataCleanup.Never });
         cleanup.SelectionChanged += OnCleanupChanged;
-        _dropdowns.Add(new SettingsDropdownMotion(cleanup));
+        AddDropdown(cleanup);
         var ocrLanguage = Element<ComboBox>("OcrLanguage");
         PopulateOcrLanguages();
         ocrLanguage.SelectionChanged += OnOcrLanguageChanged;
-        _dropdowns.Add(new SettingsDropdownMotion(ocrLanguage));
+        AddDropdown(ocrLanguage);
         Element<TextBlock>("TranslationLanguage").Text = model.TranslationLanguageName;
-        Element<TextBlock>("AppVersion").Text = strings.SettingsVersion(ProjectSupport.Version);
         var ignoreFullscreen = Element<CheckBox>("IgnoreFullscreen");
         ignoreFullscreen.Checked += OnIgnoreFullscreenChanged;
         ignoreFullscreen.Unchecked += OnIgnoreFullscreenChanged;
@@ -121,11 +114,14 @@ internal sealed class SettingsWindowView
             toggle.Unchecked += OnToolbarActionChanged;
         }
 
-        // The app language has no application setting yet, so its value lives only in this window.
         var appLanguage = Element<ComboBox>("AppLanguage");
-        _dropdowns.Add(new SettingsDropdownMotion(appLanguage));
-        var appLanguageInitial = appLanguage.SelectedIndex;
-        _restoreDefaults.Add(() => appLanguage.SelectedIndex = appLanguageInitial);
+        appLanguage.Items.Add(new ComboBoxItem { Tag = string.Empty });
+        foreach (var language in model.AppLanguages)
+            appLanguage.Items.Add(new ComboBoxItem { Content = language.DisplayName, Tag = language.Tag });
+        Element<Border>("AppLanguageRow").Visibility = model.AppLanguages.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        appLanguage.SelectionChanged += OnAppLanguageChanged;
+        AddDropdown(appLanguage);
+        ApplyTexts();
         LoadSettings();
         // The provider can change from the selection toolbar, and the audio output and startup entry from Windows, while this window stays open.
         Window.Activated += (_, _) => LoadSettings();
@@ -200,9 +196,8 @@ internal sealed class SettingsWindowView
                 ShowStatus(saved);
                 break;
             case "confirm-reset":
-                foreach (var restore in _restoreDefaults) restore();
                 var reset = _model.ResetToDefaults();
-                LoadSettings();
+                RefreshLanguage();
                 CloseDialog();
                 if (reset is not null) ShowStatus(reset);
                 break;
@@ -294,6 +289,7 @@ internal sealed class SettingsWindowView
             Select(Element<ComboBox>("TextSearch"), _model.TextSearchEngineId);
             if (_model.RefreshOcrLanguages()) PopulateOcrLanguages();
             Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
+            Select(Element<ComboBox>("AppLanguage"), _model.AppLanguageTag);
             Element<CheckBox>("IgnoreFullscreen").IsChecked = _model.IgnoreHotkeyInFullscreen;
             Element<CheckBox>("Launch").IsChecked = _model.LaunchAtStartup;
             var cleanup = Element<ComboBox>("Cleanup");
@@ -324,16 +320,43 @@ internal sealed class SettingsWindowView
         ShowStatus(_strings.StorageSaveFailed);
     }
 
+    // Runs again after the app language changes, so it sets every text that XAML bindings do not cover.
+    private void ApplyTexts()
+    {
+        Window.Title = _strings.SettingsWindowTitle;
+        Window.DataContext = new PreviewText(_strings);
+        foreach (var (item, descriptor) in Items("Provider").Zip(_model.Providers))
+            item.Content = descriptor.DisplayName;
+        foreach (var item in Items("TextSearch"))
+            item.Content = _strings.SettingsPreviewText(Equals(item.Tag, TextSearchEngines.MatchImageSearch)
+                ? "match_image_search" : "engine_" + item.Tag);
+        foreach (var item in Items("Cleanup"))
+            item.Content = _strings.SettingsPreviewText(Equals(item.Tag, BrowserDataCleanup.Never) ? "never" : "every_" + item.Tag);
+        Items("AppLanguage")[0].Content = _strings.SettingsPreviewText("match_system");
+        ApplyOcrTexts();
+        Element<TextBlock>("AppVersion").Text = _strings.SettingsVersion(ProjectSupport.Version);
+    }
+
+    private void AddDropdown(ComboBox comboBox) => _dropdowns.Add((comboBox, new SettingsDropdownMotion(comboBox)));
+
+    private ComboBoxItem[] Items(string comboBox) => Element<ComboBox>(comboBox).Items.OfType<ComboBoxItem>().ToArray();
+
     private void PopulateOcrLanguages()
     {
         var comboBox = Element<ComboBox>("OcrLanguage");
         comboBox.Items.Clear();
-        comboBox.Items.Add(new ComboBoxItem { Content = _strings.SettingsPreviewText("match_keyboard"), Tag = string.Empty });
+        comboBox.Items.Add(new ComboBoxItem { Tag = string.Empty });
         foreach (var language in _model.OcrLanguages)
             comboBox.Items.Add(new ComboBoxItem { Content = language.DisplayName, Tag = language.Tag });
         comboBox.IsEnabled = _model.OcrLanguages.Count != 0;
-        Element<TextBlock>("OcrLanguageSubtitle").Text =
-            _strings.SettingsPreviewText(comboBox.IsEnabled ? "ocr_language_sub" : "ocr_language_none");
+        ApplyOcrTexts();
+    }
+
+    private void ApplyOcrTexts()
+    {
+        Items("OcrLanguage")[0].Content = _strings.SettingsPreviewText("match_keyboard");
+        Element<TextBlock>("OcrLanguageSubtitle").Text = _strings.SettingsPreviewText(
+            Element<ComboBox>("OcrLanguage").IsEnabled ? "ocr_language_sub" : "ocr_language_none");
     }
 
     private void OnOcrLanguageChanged(object sender, SelectionChangedEventArgs e)
@@ -342,6 +365,37 @@ internal sealed class SettingsWindowView
         if (_model.SelectOcrLanguage(tag)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnAppLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings || Element<ComboBox>("AppLanguage").SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        if (_model.SelectAppLanguage(tag))
+        {
+            RefreshLanguage();
+            return;
+        }
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void RefreshLanguage()
+    {
+        HideStatus();
+        ApplyTexts();
+        _loadingSettings = true;
+        try
+        {
+            // A combo box shows a copy of the selected content, so reselecting shows the translated text.
+            foreach (var (comboBox, _) in _dropdowns)
+            {
+                var selected = comboBox.SelectedItem;
+                comboBox.SelectedItem = null;
+                comboBox.SelectedItem = selected;
+            }
+        }
+        finally { _loadingSettings = false; }
+        LoadSettings();
     }
 
     private void OnIgnoreFullscreenChanged(object sender, RoutedEventArgs e)

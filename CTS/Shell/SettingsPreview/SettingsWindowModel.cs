@@ -12,6 +12,7 @@ internal sealed class SettingsWindowModel(
     SettingsService settings,
     ProviderSelectionStore providers,
     OcrLanguageCatalog ocrLanguages,
+    UiLanguage language,
     CultureInfo culture,
     ProjectSupport project,
     UrlOpeningService urlOpening,
@@ -32,6 +33,8 @@ internal sealed class SettingsWindowModel(
     // A saved language whose pack was removed falls back to the keyboard layout at runtime, so show that.
     public string OcrLanguageTag => ocrLanguages.Resolve(settings.Snapshot.OcrLanguageTag)?.Tag ?? string.Empty;
     public string TranslationLanguageName => TranslationTargetLanguage.DisplayName(culture);
+    public IReadOnlyList<AppLanguageOption> AppLanguages => language.Catalog.Available;
+    public string AppLanguageTag => language.Catalog.Find(settings.Snapshot.AppLanguageTag);
     public string HotkeyGesture => settings.Snapshot.HotkeyGesture;
     public bool IgnoreHotkeyInFullscreen => settings.Snapshot.IgnoreHotkeyInFullscreen;
     public int BrowserDataCleanupDays => settings.Snapshot.BrowserDataCleanupDays;
@@ -46,6 +49,13 @@ internal sealed class SettingsWindowModel(
 
     public bool SelectOcrLanguage(string languageTag) =>
         settings.Apply(new SettingsEdits { OcrLanguageTag = languageTag }).Success;
+
+    public bool SelectAppLanguage(string languageTag)
+    {
+        if (!settings.SetAppLanguage(languageTag).Success) return false;
+        language.Apply(settings.Snapshot.AppLanguageTag);
+        return true;
+    }
 
     public bool SelectIgnoreHotkeyInFullscreen(bool ignore) => settings.SetIgnoreHotkeyInFullscreen(ignore).Success;
 
@@ -72,6 +82,7 @@ internal sealed class SettingsWindowModel(
         if (!providers.Save(defaults.SearchProviderId)) return null;
         if (!SelectTextSearchEngine(defaults.TextSearchEngineId)) return strings.StorageSaveFailed;
         if (!SelectOcrLanguage(defaults.OcrLanguageTag)) return strings.StorageSaveFailed;
+        if (!SelectAppLanguage(defaults.AppLanguageTag)) return strings.StorageSaveFailed;
         if (!SelectIgnoreHotkeyInFullscreen(defaults.IgnoreHotkeyInFullscreen)) return strings.StorageSaveFailed;
         if (!settings.SetHiddenToolbarActions(defaults.HiddenToolbarActions).Success) return strings.StorageSaveFailed;
         if (!SelectBrowserDataCleanup(defaults.BrowserDataCleanupDays)) return strings.StorageSaveFailed;

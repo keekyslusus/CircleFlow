@@ -62,6 +62,7 @@ internal static class SettingsValidator
             HideDelayMilliseconds = Range(settings.HideDelayMilliseconds, 0, 2000, defaults.HideDelayMilliseconds, nameof(AppSettings.HideDelayMilliseconds)),
             LassoMinDiagonalPx = Range(settings.LassoMinDiagonalPx, 1, 1000, defaults.LassoMinDiagonalPx, nameof(AppSettings.LassoMinDiagonalPx)),
             OcrLanguageTag = Language(settings.OcrLanguageTag, nameof(AppSettings.OcrLanguageTag)),
+            AppLanguageTag = Language(settings.AppLanguageTag, nameof(AppSettings.AppLanguageTag)),
         };
         invalidFields = invalid.AsReadOnly();
         return normalized;

@@ -187,6 +187,23 @@ public sealed class ShellTests
     });
 
     [Fact]
+    public void Tray_menu_uses_the_current_app_language_each_time_it_opens() => OnSta(() =>
+    {
+        var prefix = string.Empty;
+        var strings = new UiStrings(key => prefix + TestUiStrings.EnglishValues[key]);
+        using var tray = new TrayIcon(new AppPaths(AppContext.BaseDirectory).TrayIconPath, strings,
+            Dispatcher.CurrentDispatcher, CreateLog(), () => Task.CompletedTask, () => "Ctrl+K",
+            () => Task.CompletedTask, () => Task.CompletedTask, () => Task.CompletedTask);
+        prefix = "ru:";
+        SendTrayEvent(tray, 0x7B);
+        Pump();
+        Assert.Equal(new[] { "ru:Open (Ctrl+K)", "ru:Settings", "ru:Support the project", "ru:Exit" },
+            tray.Menu.Items.Cast<MenuItem>().Select(item => (string)item.Header));
+        tray.CloseMenu();
+        Pump();
+    });
+
+    [Fact]
     public void Tray_routes_only_intended_events_restores_registration_and_disables_queued_callbacks() => OnSta(() =>
     {
         var calls = new int[4];

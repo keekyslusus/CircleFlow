@@ -23,6 +23,9 @@ public sealed class SettingsServiceTests
         Assert.Equal(8, before.PaddingPx);
         Assert.Equal(20, service.Snapshot.PaddingPx);
         Assert.Equal("en-US", service.Snapshot.OcrLanguageTag);
+        Assert.False(service.SetAppLanguage("not a language").Success);
+        Assert.True(service.SetAppLanguage(" RU ").Success);
+        Assert.Equal("ru", service.Snapshot.AppLanguageTag);
         var editedCopy = service.Snapshot with { PaddingPx = 99 };
         Assert.Equal(20, service.Snapshot.PaddingPx);
         Assert.Equal(99, editedCopy.PaddingPx);

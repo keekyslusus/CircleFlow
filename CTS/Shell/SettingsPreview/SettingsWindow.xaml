@@ -273,7 +273,7 @@
                                             </ContentControl>
                                         </Grid>
                                     </Border>
-                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,17" MinHeight="77">
+                                    <Border x:Name="AppLanguageRow" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,17" MinHeight="77">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="21"/>
@@ -290,13 +290,7 @@
                                                 <TextBlock Text="{Binding [app_language]}" Style="{StaticResource RowTitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <ComboBox x:Name="AppLanguage" SelectedIndex="0" Width="160" AutomationProperties.Name="{Binding [app_language]}">
-                                                    <ComboBoxItem Content="{Binding [match_system]}"/>
-                                                    <ComboBoxItem Content="{Binding [english]}"/>
-                                                    <ComboBoxItem Content="{Binding [russian]}"/>
-                                                    <ComboBoxItem Content="{Binding [german]}"/>
-                                                    <ComboBoxItem Content="{Binding [kazakh]}"/>
-                                                </ComboBox>
+                                                <ComboBox x:Name="AppLanguage" Width="160" AutomationProperties.Name="{Binding [app_language]}"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>

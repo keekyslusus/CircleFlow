@@ -1,0 +1,20 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
+    <system:String x:Key="app_settings_general">Основные</system:String>
+    <system:String x:Key="app_settings_general_title">Основные</system:String>
+    <system:String x:Key="app_settings_hero_description">Один жест открывает поиск по всему, что вы видите на экране.</system:String>
+    <system:String x:Key="app_settings_features">Возможности</system:String>
+    <system:String x:Key="app_settings_application">Настройки приложения</system:String>
+    <system:String x:Key="app_settings_launch">Запускать вместе с Windows</system:String>
+    <system:String x:Key="app_settings_launch_sub">Готово к работе сразу после входа в систему</system:String>
+    <system:String x:Key="app_settings_app_language">Язык приложения</system:String>
+    <system:String x:Key="app_settings_match_system">Как в системе</system:String>
+    <system:String x:Key="app_settings_cleanup">Очищать данные браузера</system:String>
+    <system:String x:Key="app_settings_cleanup_sub">Файлы cookie и кэш встроенных окон браузера</system:String>
+    <system:String x:Key="app_settings_every_28">Каждые 28 дней</system:String>
+    <system:String x:Key="app_settings_every_56">Каждые 56 дней</system:String>
+    <system:String x:Key="app_settings_never">Никогда</system:String>
+    <system:String x:Key="app_settings_selection_toolbar">Панель выделения</system:String>
+</ResourceDictionary>

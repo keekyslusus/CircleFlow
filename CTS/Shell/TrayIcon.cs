@@ -26,7 +26,6 @@ internal sealed class TrayIcon : IDisposable
     private readonly Func<Task> _open;
     private readonly Func<string?> _openHotkey;
     private readonly UiStrings _strings;
-    private readonly MenuItem _openItem;
     private NotifyIconData _data;
     private bool _added;
     private bool _disposed;
@@ -57,10 +56,10 @@ internal sealed class TrayIcon : IDisposable
             _source.AddHook(WindowProc);
             _iconWindow = _source.Handle;
             Menu = TrayMenuView.Create();
-            _openItem = AddItem(strings.TrayOpen, open);
-            AddItem(strings.TraySettings, settings);
-            AddItem(strings.TraySupport, support);
-            AddItem(strings.TrayExit, exit);
+            AddItem(OpenHeader, open);
+            AddItem(() => strings.TraySettings, settings);
+            AddItem(() => strings.TraySupport, support);
+            AddItem(() => strings.TrayExit, exit);
             Menu.Closed += OnMenuClosed;
             _data = new NotifyIconData
             {
@@ -108,12 +107,11 @@ internal sealed class TrayIcon : IDisposable
         TrayNativeMethods.DestroyIcon(previous);
     }
 
-    private MenuItem AddItem(string text, Func<Task> command)
+    private void AddItem(Func<string> header, Func<Task> command)
     {
-        var item = new MenuItem { Header = text };
+        var item = new MenuItem { Header = header(), Tag = header };
         item.Click += (_, _) => QueueCommand(command);
         Menu.Items.Add(item);
-        return item;
     }
 
     private void QueueCommand(Func<Task> command)
@@ -183,13 +181,14 @@ internal sealed class TrayIcon : IDisposable
     private void ShowMenu()
     {
         TrayMenuView.ApplyTheme(Menu, SystemTheme.IsLight());
-        _openItem.Header = OpenHeader();
+        foreach (MenuItem item in Menu.Items)
+            if (item.Tag is Func<string> header) item.Header = header();
         TrayNativeMethods.SetForegroundWindow(_source.Handle);
         Menu.IsOpen = true;
         Menu.Focus();
     }
 
-    // The hotkey can change in settings or fail to register, so the label is refreshed on every open.
+    // The hotkey and app language can change while the app runs, so labels are refreshed on every open.
     private string OpenHeader() =>
         _openHotkey() is { Length: > 0 } hotkey ? _strings.TrayOpenWithHotkey(hotkey) : _strings.TrayOpen;
 

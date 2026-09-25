@@ -85,6 +85,11 @@ public sealed class SettingsService
         lock (_gate) return Commit(_current with { BrowserDataCleanupDays = days });
     }
 
+    public SettingsChangeResult SetAppLanguage(string languageTag)
+    {
+        lock (_gate) return Commit(_current with { AppLanguageTag = languageTag });
+    }
+
     public SettingsChangeResult SetTranslationConsent(bool accepted)
     {
         lock (_gate) return Commit(_current with { ImageTranslationPrivacyConsentAccepted = accepted });

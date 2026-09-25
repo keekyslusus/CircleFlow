@@ -64,7 +64,8 @@ internal static class StartupHook
             new UiStrings(LocalUiStrings.LoadEmbeddedEnglish().Get), true, paths.TrayIconPath).Window;
         Require(settingsWindow.Icon is not null, "Settings icon did not load.");
         settingsWindow.Close();
-        var source = LocalUiStrings.Load(paths.LanguagesDirectory, CultureInfo.GetCultureInfo("fr-CA"));
+        var source = LocalUiStrings.LoadEnglish(paths.LanguagesDirectory)
+            .Translate(paths.LanguagesDirectory, CultureInfo.GetCultureInfo("fr-CA"));
         var strings = new UiStrings(source.Get);
         foreach (var property in typeof(UiStrings).GetProperties().Where(property => property.PropertyType == typeof(string)))
             Require(!string.IsNullOrWhiteSpace((string?)property.GetValue(strings)), "Missing published string: " + property.Name);

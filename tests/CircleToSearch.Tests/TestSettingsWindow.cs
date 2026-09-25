@@ -4,6 +4,7 @@ using CircleToSearch.Settings;
 using CircleToSearch.Shell;
 using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.TextRecognition;
+using CircleToSearch.Ui;
 
 namespace CircleToSearch.Tests;
 
@@ -11,7 +12,8 @@ internal sealed class TestSettingsWindow
 {
     public TestSettingsWindow(SettingsService? settings = null, bool openSucceeds = true,
         string? webViewRuntimeVersion = "140.0.3485.54", OcrLanguageCatalog? ocrLanguages = null,
-        CultureInfo? culture = null, string? audioOutputName = "Speakers (Test Audio)", bool launchAtStartup = true)
+        CultureInfo? culture = null, string? audioOutputName = "Speakers (Test Audio)", bool launchAtStartup = true,
+        string? languagesDirectory = null)
     {
         var log = new PluginLog(Path.Combine(TestOutputPaths.TempDirectory, "settings-window-" + Guid.NewGuid().ToString("N")));
         Settings = settings ?? TestSettings.Create();
@@ -29,13 +31,19 @@ internal sealed class TestSettingsWindow
         Startup = new TestStartupRegistry(Paths.ExecutablePath, log);
         Startup.Registration.TrySet(launchAtStartup);
         OcrLanguages = ocrLanguages ?? new OcrLanguageCatalog([new("de-DE", "German"), new("en-US", "English")]);
-        Model = new SettingsWindowModel(Settings, providers, OcrLanguages, culture ?? CultureInfo.GetCultureInfo("en-US"),
-            new ProjectSupport(urlOpening), urlOpening, Paths, TestUiStrings.English, () => webViewRuntimeVersion,
+        languagesDirectory ??= Paths.LanguagesDirectory;
+        var language = new UiLanguage(LocalUiStrings.LoadEnglish(languagesDirectory),
+            new AppLanguageCatalog(languagesDirectory), CultureInfo.GetCultureInfo("en-US"), log);
+        language.Apply(Settings.Snapshot.AppLanguageTag);
+        Strings = new UiStrings(language.Get);
+        Model = new SettingsWindowModel(Settings, providers, OcrLanguages, language, culture ?? CultureInfo.GetCultureInfo("en-US"),
+            new ProjectSupport(urlOpening), urlOpening, Paths, Strings, () => webViewRuntimeVersion,
             () => AudioOutputName, Startup.Registration);
         AudioOutputName = audioOutputName;
     }
 
     public SettingsService Settings { get; }
+    public UiStrings Strings { get; }
     public SettingsWindowModel Model { get; }
     public OcrLanguageCatalog OcrLanguages { get; }
     public TestStartupRegistry Startup { get; }
@@ -45,7 +53,7 @@ internal sealed class TestSettingsWindow
     public List<string> Opened { get; } = [];
 
     public SettingsWindowView CreateView(bool light = true) =>
-        new(TestUiStrings.English, light, Paths.TrayIconPath, Model);
+        new(Strings, light, Paths.TrayIconPath, Model);
 
     private static VisualSearchProviderRegistration Registration(string id, string name) =>
         new(new SearchProviderDescriptor(id, name), () => throw new InvalidOperationException("Not used by settings."));

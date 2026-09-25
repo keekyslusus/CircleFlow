@@ -117,8 +117,35 @@ public sealed class SearchBrowserWindowViewTests
         }
     }
 
-    private static SearchBrowserWindowView CreateView(Grid browser, bool loading) => new(
-        TestUiStrings.English,
+    [Fact]
+    public void Reused_window_takes_labels_and_provider_name_from_the_current_app_language()
+    {
+        using var dispatcher = new StaDispatcher("Search browser language test");
+        SearchBrowserWindowView? view = null;
+        try
+        {
+            dispatcher.Send(() =>
+            {
+                var prefix = string.Empty;
+                var strings = new UiStrings(key => prefix + TestUiStrings.EnglishValues[key]);
+                view = CreateView(new Grid(), false, strings);
+                var provider = new SearchProviderDescriptor(SearchProviderIds.YandexImages, () => strings.YandexImagesProviderName);
+                var close = (Button)((DockPanel)((Grid)view.Window.Content).Children[1]).Children[0];
+                view.SetProvider(provider);
+                Assert.Equal("Close", close.ToolTip);
+
+                prefix = "ru:";
+                view.SetProvider(provider);
+                Assert.Equal("ru:Close", close.ToolTip);
+                Assert.Equal("ru:Close", System.Windows.Automation.AutomationProperties.GetName(close));
+                Assert.Equal("ru:CircleFlow: ru:Yandex Images", view.Window.Title);
+            });
+        }
+        finally { dispatcher.Send(() => view?.Window.Close()); }
+    }
+
+    private static SearchBrowserWindowView CreateView(Grid browser, bool loading, UiStrings? strings = null) => new(
+        strings ?? TestUiStrings.English,
         browser,
         lightTheme: false,
         loading,

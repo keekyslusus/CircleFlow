@@ -14,7 +14,7 @@ public sealed class LocalUiStringsTests
         var directory = NewLanguages();
         WriteLanguage(directory, "fr", ("app_tray_open", "neutral open"), ("app_tray_exit", "neutral exit"));
         WriteLanguage(directory, "fr-CA", ("app_tray_open", "exact open"));
-        var source = LocalUiStrings.Load(directory, CultureInfo.GetCultureInfo("fr-CA"));
+        var source = Load(directory, CultureInfo.GetCultureInfo("fr-CA"));
         Assert.Equal("exact open", source.Get("app_tray_open"));
         Assert.Equal("Exit", source.Get("app_tray_exit"));
     }
@@ -26,7 +26,7 @@ public sealed class LocalUiStringsTests
     {
         var directory = NewLanguages();
         WriteLanguage(directory, neutral, ("app_tray_open", "neutral open"));
-        Assert.Equal("neutral open", LocalUiStrings.Load(directory, CultureInfo.GetCultureInfo(culture)).Get("app_tray_open"));
+        Assert.Equal("neutral open", Load(directory, CultureInfo.GetCultureInfo(culture)).Get("app_tray_open"));
     }
 
     [Theory]
@@ -35,7 +35,7 @@ public sealed class LocalUiStringsTests
     [InlineData("en-GB")]
     public void Missing_localization_and_invariant_culture_use_English(string culture)
     {
-        var source = LocalUiStrings.Load(NewLanguages(), CultureInfo.GetCultureInfo(culture));
+        var source = Load(NewLanguages(), CultureInfo.GetCultureInfo(culture));
         Assert.Equal("Open", source.Get("app_tray_open"));
         Assert.Equal("CircleFlow", source.Get("plugin_circletosearch_plugin_name"));
     }
@@ -46,7 +46,7 @@ public sealed class LocalUiStringsTests
         var directory = NewLanguages();
         var formatting = CultureInfo.CurrentCulture;
         var ui = CultureInfo.CurrentUICulture;
-        var source = LocalUiStrings.Load(directory, CultureInfo.GetCultureInfo("fr-CA"));
+        var source = Load(directory, CultureInfo.GetCultureInfo("fr-CA"));
         File.WriteAllText(Path.Combine(directory, "en.xaml"), "changed after load");
         await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
         {
@@ -64,11 +64,11 @@ public sealed class LocalUiStringsTests
         var directory = NewLanguages();
         var english = Path.Combine(directory, "en.xaml");
         File.Delete(english);
-        Assert.Throws<FileNotFoundException>(() => LocalUiStrings.Load(directory, CultureInfo.InvariantCulture));
+        Assert.Throws<FileNotFoundException>(() => Load(directory, CultureInfo.InvariantCulture));
         File.WriteAllText(english, "not xml");
-        Assert.Throws<XmlException>(() => LocalUiStrings.Load(directory, CultureInfo.InvariantCulture));
+        Assert.Throws<XmlException>(() => Load(directory, CultureInfo.InvariantCulture));
         WriteLanguage(directory, "en", ("app_tray_open", "Open"));
-        Assert.Throws<InvalidDataException>(() => LocalUiStrings.Load(directory, CultureInfo.InvariantCulture));
+        Assert.Throws<InvalidDataException>(() => Load(directory, CultureInfo.InvariantCulture));
 
         var fallback = new UiStrings(LocalUiStrings.LoadEmbeddedEnglish().Get);
         Assert.Equal("CircleFlow", fallback.PluginTitle);
@@ -84,15 +84,56 @@ public sealed class LocalUiStringsTests
         Assert.NotEmpty(TestUiStrings.English.HotkeyConflict("Ctrl+Alt+Space"));
     }
 
-    [Fact]
-    public void Duplicate_or_empty_translations_are_rejected()
+    [Theory]
+    [InlineData("not xml")]
+    [InlineData("<Window/>")]
+    [InlineData(null)]
+    public void Unreadable_translation_falls_back_to_the_neutral_file_or_English(string? content)
     {
         var directory = NewLanguages();
-        WriteLanguage(directory, "fr", ("app_tray_open", "one"), ("app_tray_open", "two"));
-        Assert.Throws<InvalidDataException>(() => LocalUiStrings.Load(directory, CultureInfo.GetCultureInfo("fr")));
-        WriteLanguage(directory, "fr", ("app_tray_open", " "));
-        Assert.Throws<InvalidDataException>(() => LocalUiStrings.Load(directory, CultureInfo.GetCultureInfo("fr")));
+        var broken = Path.Combine(directory, "fr-CA.xaml");
+        if (content is null) WriteLanguage(directory, "fr-CA", ("app_tray_open", "one"), ("app_tray_open", "two"));
+        else File.WriteAllText(broken, content);
+
+        var english = Load(directory, CultureInfo.GetCultureInfo("fr-CA"));
+        Assert.Equal("Open", english.Get("app_tray_open"));
+        Assert.StartsWith("fr-CA.xaml was ignored", Assert.Single(english.Problems));
+
+        WriteLanguage(directory, "fr", ("app_tray_open", "neutral open"));
+        Assert.Equal("neutral open", Load(directory, CultureInfo.GetCultureInfo("fr-CA")).Get("app_tray_open"));
     }
+
+    [Fact]
+    public void Unknown_keys_and_mismatched_placeholders_keep_English()
+    {
+        var directory = NewLanguages();
+        WriteLanguage(directory, "fr",
+            ("app_tray_open_hotkey", "Ouvrir ({1})"),
+            ("app_hotkey_conflict", "{0} ({0}) introuvable"),
+            ("plugin_circletosearch_music_match_album_genre", "Genre : {1} · Album : {0}"),
+            ("app_settings_version_value", "v{0"),
+            ("app_tray_exit", "Quitter {curly}"),
+            ("app_tray_unknown", "Inconnu"),
+            ("plugin_circletosearch_image_file_name", "circleflow_{0:%}"),
+            ("plugin_circletosearch_image_save_filter", "Image PNG (*.png)|*.png|JPEG"),
+            ("plugin_circletosearch_image_save_title", "Enregistrer | image"));
+        var source = Load(directory, CultureInfo.GetCultureInfo("fr"));
+        var strings = new UiStrings(source.Get);
+
+        Assert.Equal("Open (Ctrl+K)", strings.TrayOpenWithHotkey("Ctrl+K"));
+        Assert.Equal("v1.0", strings.SettingsVersion("1.0"));
+        Assert.Equal("Ctrl+K (Ctrl+K) introuvable", strings.HotkeyConflict("Ctrl+K"));
+        Assert.Equal("Genre : Pop · Album : A", strings.MusicMatchSubtitle("A", "Pop"));
+        Assert.Equal("Quitter {curly}", strings.TrayExit);
+        Assert.Equal(TestUiStrings.English.ImageFileName, strings.ImageFileName);
+        Assert.Equal(TestUiStrings.English.ImageSaveFilter, strings.ImageSaveFilter);
+        Assert.Equal(TestUiStrings.English.ImageSaveTitle, strings.ImageSaveTitle);
+        Assert.Equal(6, source.Problems.Count);
+        Assert.Contains(source.Problems, problem => problem.Contains("'app_tray_unknown'", StringComparison.Ordinal));
+    }
+
+    private static LocalUiStrings Load(string directory, CultureInfo culture) =>
+        LocalUiStrings.LoadEnglish(directory).Translate(directory, culture);
 
     private static string NewLanguages()
     {

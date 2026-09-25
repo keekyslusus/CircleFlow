@@ -1,3 +1,4 @@
+using System.Globalization;
 using CircleToSearch.Ui;
 using Xunit;
 
@@ -29,25 +30,34 @@ public sealed class UiStringsTests
     }
 
     [Fact]
-    public void Language_directory_contains_only_english_xaml()
+    public void Delivered_translations_are_named_by_culture_and_match_English_keys_and_placeholders()
     {
         var directory = Path.Combine(TestOutputPaths.RepoDirectory, "Languages");
-        var languages = Directory.GetFiles(directory, "*.xaml")
-            .Select(path => Path.GetFileName(path)!)
-            .Order()
-            .ToArray();
+        var english = LocalUiStrings.LoadEnglish(directory);
+        var files = Directory.GetFiles(directory, "*.xaml");
+        var translations = files.Select(path => Path.GetFileNameWithoutExtension(path)!).Where(name => name != "en").ToArray();
 
-        Assert.Equal(["en.xaml"], languages);
+        Assert.NotEmpty(translations);
+        Assert.All(translations, name =>
+        {
+            var culture = CultureInfo.GetCultureInfo(name, predefinedOnly: true);
+            Assert.Equal(culture.Name, name);
+            Assert.Empty(english.Translate(directory, culture).Problems);
+        });
+        Assert.Equal(files.Length, new AppLanguageCatalog(directory).Available.Count);
+        Assert.All(files, path => Assert.DoesNotContain('—', File.ReadAllText(path)));
         Assert.All(TestUiStrings.EnglishValues.Values, value =>
             Assert.DoesNotMatch("[\\u0400-\\u04FF]", value));
     }
 
     [Fact]
-    public void English_xaml_is_copied_to_application_output()
+    public void Language_files_are_copied_to_application_output()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml");
-
-        Assert.True(File.Exists(path), $"Missing language file: {path}");
+        foreach (var source in Directory.GetFiles(Path.Combine(TestOutputPaths.RepoDirectory, "Languages"), "*.xaml"))
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Languages", Path.GetFileName(source));
+            Assert.True(File.Exists(path), $"Missing language file: {path}");
+        }
     }
 
     [Fact]
