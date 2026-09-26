@@ -30,9 +30,6 @@ internal sealed class OnboardingWindowController : IDisposable
 
     public void Show() => _window.Show();
 
-    // A capture must not freeze the wizard into the screenshot, and using the shortcut means it did its job.
-    public void Close() => _window.CurrentWindow?.Close();
-
     public void Dispose()
     {
         _disposed = true;

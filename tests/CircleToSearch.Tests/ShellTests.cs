@@ -138,11 +138,6 @@ public sealed class ShellTests
         settings.Show();
         Assert.Same(first, settings.CurrentWindow);
         Assert.Equal(WindowState.Normal, first.WindowState);
-        settings.Hide();
-        Assert.False(first.IsVisible);
-        settings.Show();
-        Assert.Same(first, settings.CurrentWindow);
-        Assert.True(first.IsVisible);
         first.Close();
         Assert.Null(settings.CurrentWindow);
         settings.Show();

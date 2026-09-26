@@ -24,12 +24,6 @@ internal sealed class SingleWindowController(Dispatcher dispatcher, Func<Window>
         _window.Activate();
     }
 
-    public void Hide()
-    {
-        dispatcher.VerifyAccess();
-        _window?.Hide();
-    }
-
     public void Dispose()
     {
         dispatcher.VerifyAccess();

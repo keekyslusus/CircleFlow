@@ -49,17 +49,6 @@ public sealed class OnboardingTests
     });
 
     [Fact]
-    public void A_capture_closes_the_wizard_and_counts_as_done() => OnSta(() =>
-    {
-        using var harness = new Harness();
-        using var controller = harness.CreateController();
-        controller.ShowIfNeeded();
-        controller.Close();
-        Assert.Null(controller.CurrentWindow);
-        Assert.True(harness.Settings.Snapshot.OnboardingCompleted);
-    });
-
-    [Fact]
     public void Existing_users_never_see_the_wizard() => OnSta(() =>
     {
         using var harness = new Harness(new AppSettings { OnboardingCompleted = true });
