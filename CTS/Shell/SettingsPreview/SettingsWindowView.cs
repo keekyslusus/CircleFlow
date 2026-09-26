@@ -261,6 +261,13 @@ internal sealed class SettingsWindowView
         try
         {
             Select(Element<ComboBox>("Provider"), _model.ProviderId);
+            foreach (var item in Items("TextSearch"))
+            {
+                var available = TextSearchEngines.IsAvailable((string)item.Tag, _model.TextSearchInBuiltInBrowser,
+                    _model.BrowserDataCleanupDays);
+                item.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
+                item.IsEnabled = available;
+            }
             Select(Element<ComboBox>("TextSearch"), _model.TextSearchEngineId);
             Element<CheckBox>("TextSearchBrowser").IsChecked = _model.TextSearchInBuiltInBrowser;
             if (_model.RefreshOcrLanguages()) PopulateOcrLanguages();
@@ -377,9 +384,9 @@ internal sealed class SettingsWindowView
     private void OnTextSearchBrowserChanged(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings) return;
-        if (_model.SelectTextSearchInBuiltInBrowser(Element<CheckBox>("TextSearchBrowser").IsChecked == true)) return;
+        var saved = _model.SelectTextSearchInBuiltInBrowser(Element<CheckBox>("TextSearchBrowser").IsChecked == true);
         LoadSettings();
-        ShowStatus(_strings.StorageSaveFailed);
+        if (!saved) ShowStatus(_strings.StorageSaveFailed);
     }
 
     private void OnIgnoreFullscreenChanged(object sender, RoutedEventArgs e)
@@ -401,9 +408,9 @@ internal sealed class SettingsWindowView
     private void OnCleanupChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loadingSettings || Element<ComboBox>("Cleanup").SelectedItem is not ComboBoxItem { Tag: int days }) return;
-        if (_model.SelectBrowserDataCleanup(days)) return;
+        var saved = _model.SelectBrowserDataCleanup(days);
         LoadSettings();
-        ShowStatus(_strings.StorageSaveFailed);
+        if (!saved) ShowStatus(_strings.StorageSaveFailed);
     }
 
     private void OnToolbarActionChanged(object sender, RoutedEventArgs e)

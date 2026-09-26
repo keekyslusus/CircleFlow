@@ -1,6 +1,7 @@
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text.Json;
+using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Capture;
@@ -20,7 +21,7 @@ public sealed class SettingsStoreTests
         Assert.False(File.Exists(paths.SettingsBackupFilePath));
         var updated = new AppSettings
         {
-            SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "kagi", TextSearchInBuiltInBrowser = true, HotkeyGesture = "Win+Ctrl+Shift+F7",
+            SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "qwant", TextSearchInBuiltInBrowser = true, HotkeyGesture = "Win+Ctrl+Shift+F7",
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
             OcrLanguageTag = "ru-RU", AppLanguageTag = "ru", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
             HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save, BrowserDataCleanupDays = 0, OnboardingCompleted = true,
@@ -85,6 +86,29 @@ public sealed class SettingsStoreTests
         Assert.Equal(new AppSettings { ImageTranslationPrivacyConsentAccepted = true }, result.Settings);
         Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
         Assert.Empty(store.Load().ResetFields);
+    }
+
+    [Fact]
+    public void Sign_in_engines_fall_back_to_match_image_search_when_the_built_in_browser_data_is_cleaned()
+    {
+        var (paths, store) = Create();
+        File.WriteAllText(paths.SettingsFilePath, JsonSerializer.Serialize(new AppSettings
+        {
+            TextSearchEngineId = TextSearchEngines.Kagi, TextSearchInBuiltInBrowser = true,
+        }));
+        var result = store.Load();
+        Assert.Empty(result.ResetFields);
+        Assert.Equal(new AppSettings { TextSearchInBuiltInBrowser = true }, result.Settings);
+        Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
+        store.Save(new AppSettings { TextSearchEngineId = TextSearchEngines.Kagi });
+        Assert.Equal(TextSearchEngines.Kagi, store.Load().Settings.TextSearchEngineId);
+        var keptSignIn = new AppSettings
+        {
+            TextSearchEngineId = TextSearchEngines.Kagi, TextSearchInBuiltInBrowser = true,
+            BrowserDataCleanupDays = BrowserDataCleanup.Never,
+        };
+        store.Save(keptSignIn);
+        Assert.Equal(keptSignIn, store.Load().Settings);
     }
 
     [Fact]

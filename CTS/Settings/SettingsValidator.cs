@@ -46,6 +46,8 @@ internal static class SettingsValidator
             ? settings.BrowserDataCleanupDays
             : (int?)null;
         if (cleanupDays is null) invalid.Add(nameof(AppSettings.BrowserDataCleanupDays));
+        if (engine is not null && !TextSearchEngines.IsAvailable(engine, settings.TextSearchInBuiltInBrowser,
+            cleanupDays ?? defaults.BrowserDataCleanupDays)) engine = TextSearchEngines.MatchImageSearch;
         var gesture = defaults.HotkeyGesture;
         if (HotkeyGestureParser.TryParse(settings.HotkeyGesture, out var modifiers, out var key))
             gesture = HotkeyGestureParser.Format(modifiers, key);

@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Shell;
@@ -1119,9 +1120,29 @@ public sealed class SettingsPreviewTests
             builtIn.IsChecked = false;
             Assert.False(harness.Settings.Snapshot.TextSearchInBuiltInBrowser);
 
+            var textSearch = Find<ComboBox>(window, "TextSearch");
+            ComboBoxItem Kagi() => textSearch.Items.OfType<ComboBoxItem>().Single(item => Equals(item.Tag, TextSearchEngines.Kagi));
+            Assert.Equal(Visibility.Visible, Kagi().Visibility);
+            textSearch.SelectedItem = Kagi();
+            builtIn.IsChecked = true;
+            Assert.Equal(TextSearchEngines.MatchImageSearch, harness.Settings.Snapshot.TextSearchEngineId);
+            Assert.Equal(0, textSearch.SelectedIndex);
+            Assert.Equal(Visibility.Collapsed, Kagi().Visibility);
+            Assert.False(Kagi().IsEnabled);
+            var cleanup = Find<ComboBox>(window, "Cleanup");
+            cleanup.SelectedItem = cleanup.Items.OfType<ComboBoxItem>().Single(item => Equals(item.Tag, BrowserDataCleanup.Never));
+            Assert.Equal(Visibility.Visible, Kagi().Visibility);
+            textSearch.SelectedItem = Kagi();
+            cleanup.SelectedIndex = 0;
+            Assert.Equal(TextSearchEngines.MatchImageSearch, harness.Settings.Snapshot.TextSearchEngineId);
+            Assert.Equal(Visibility.Collapsed, Kagi().Visibility);
+            builtIn.IsChecked = false;
+            Assert.Equal(Visibility.Visible, Kagi().Visibility);
+
             harness.Settings.SetTextSearchInBuiltInBrowser(true).ThrowIfFailed("test update failed");
             Activate(window);
             Assert.True(builtIn.IsChecked);
+            Assert.Equal(Visibility.Collapsed, Kagi().Visibility);
             Assert.Empty(harness.Notifier.Errors);
         }
         finally { window.Close(); }
