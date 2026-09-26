@@ -34,18 +34,18 @@ internal sealed class TextSearchWorkflow(
             $"text search opening in the built-in browser with provider '{providerId}', engine '{engine}'");
         onBrowserStarted();
         await PresentAsync(urlBuilder.SiteName(providerId, engine), Task.FromResult(results), revealAfter: null,
-            cancellationToken).ConfigureAwait(false);
+            preconnect: null, cancellationToken).ConfigureAwait(false);
     }
 
     // Null when the selected provider has no text search, so there is nothing to warm.
     public Task? WarmAsync(string providerId, Task<Uri> results, Task revealAfter, CancellationToken cancellationToken)
     {
         var engine = engineId();
-        string site;
-        try { site = urlBuilder.SiteName(providerId, engine); }
+        Uri origin;
+        try { origin = urlBuilder.Origin(providerId, engine); }
         catch (ArgumentException) { return null; }
         log.Info(nameof(TextSearchWorkflow), "warming the built-in browser while text is selected");
-        return PresentAsync(site, results, revealAfter, cancellationToken);
+        return PresentAsync(urlBuilder.SiteName(providerId, engine), results, revealAfter, origin, cancellationToken);
     }
 
     // Quiet because the caller closes the overlay first and then reports the failure through ExecuteAsync.
@@ -70,12 +70,13 @@ internal sealed class TextSearchWorkflow(
         return null;
     }
 
-    private async Task PresentAsync(string site, Task<Uri> results, Task? revealAfter, CancellationToken cancel)
+    private async Task PresentAsync(string site, Task<Uri> results, Task? revealAfter, Uri? preconnect,
+        CancellationToken cancel)
     {
         var shown = await browserHost.ShowAsync(
             new SearchProviderDescriptor(BuiltInBrowserProviderId, site),
             PreparedVisualSearch.ForBrowserOperation(
-                new TextSearchBrowserOperation(results), externalFallbackUrl: null, revealAfter),
+                new TextSearchBrowserOperation(results, preconnect), externalFallbackUrl: null, revealAfter),
             cancel).ConfigureAwait(false);
         if (shown.Status is SearchBrowserShowStatus.Shown or SearchBrowserShowStatus.Canceled ||
             cancel.IsCancellationRequested)

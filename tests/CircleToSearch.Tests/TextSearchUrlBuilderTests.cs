@@ -43,6 +43,20 @@ public sealed class TextSearchUrlBuilderTests
         Assert.Throws<ArgumentException>(() => new TextSearchUrlBuilder().Build("text", SearchProviderIds.GoogleLens, "yandex"));
     }
 
+    [Theory]
+    [InlineData(SearchProviderIds.GoogleLens, "", "https://www.google.com/", "google.com")]
+    [InlineData(SearchProviderIds.TraceMoe, "", "https://anilist.co/", "anilist.co")]
+    [InlineData(SearchProviderIds.YandexImages, "startpage", "https://www.startpage.com/", "startpage.com")]
+    public void Origin_and_site_name_come_from_the_search_address_without_a_query(
+        string provider, string engine, string origin, string site)
+    {
+        var builder = new TextSearchUrlBuilder();
+
+        Assert.Equal(new Uri(origin), builder.Origin(provider, engine));
+        Assert.Equal(site, builder.SiteName(provider, engine));
+        Assert.Throws<ArgumentException>(() => builder.Origin("unknown"));
+    }
+
     [Fact]
     public void Rejects_query_over_scalar_limit_without_splitting_surrogates()
     {

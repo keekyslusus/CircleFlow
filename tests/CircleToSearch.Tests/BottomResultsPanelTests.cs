@@ -109,6 +109,72 @@ public sealed class BottomResultsPanelTests
         await entrance!.WaitAsync(TimeSpan.FromSeconds(2));
     }
 
+    [Fact]
+    public async Task Hidden_sheet_is_cloaked_without_a_region_until_it_is_revealed()
+    {
+        using var dispatcher = new StaDispatcher("Bottom sheet cloak test");
+        Window? window = null;
+        BottomResultsPanel? panel = null;
+        NativeMethods.GetCursorPos(out var anchor);
+        try
+        {
+            dispatcher.Send(() =>
+            {
+                window = new Window { Content = new System.Windows.Controls.Grid(), ShowInTaskbar = false };
+                panel = new BottomResultsPanel(window, anchor, animationsEnabled: true);
+                panel.ShowHidden();
+                var hwnd = new WindowInteropHelper(window).Handle;
+                Assert.True(window.IsVisible);
+                Assert.True(IsCloaked(hwnd));
+                Assert.False(HasRegion(hwnd));
+                panel.MoveTo(anchor);
+                _ = panel.ShowAsync();
+            });
+            await panel!.EntranceCompleted.WaitAsync(TimeSpan.FromSeconds(5));
+            dispatcher.Send(() =>
+            {
+                var hwnd = new WindowInteropHelper(window!).Handle;
+                Assert.False(IsCloaked(hwnd));
+                Assert.False(HasRegion(hwnd));
+            });
+        }
+        finally
+        {
+            dispatcher.Send(() => window?.Close());
+        }
+    }
+
+    [Fact]
+    public void Entrance_rises_from_the_screen_edge_unless_a_monitor_lies_below()
+    {
+        var monitor = new Rectangle(0, 0, 1920, 1080);
+        var target = BottomResultsPanel.CalculateBounds(monitor, new Rectangle(0, 0, 1920, 1032), 1, false);
+
+        Assert.Equal(1080, BottomResultsPanel.CalculateEntranceTop(monitor, target, monitorBelow: false));
+        Assert.Equal(target.Top + 1080 - target.Bottom,
+            BottomResultsPanel.CalculateEntranceTop(monitor, target, monitorBelow: true));
+    }
+
+    private static bool IsCloaked(IntPtr hwnd) =>
+        DwmGetWindowAttribute(hwnd, 14, out var cloaked, sizeof(int)) == 0 && cloaked != 0;
+
+    // GetWindowRgn reports ERROR (0) for a window that has no region.
+    private static bool HasRegion(IntPtr hwnd)
+    {
+        var region = CreateRectRgn(0, 0, 0, 0);
+        try { return GetWindowRgn(hwnd, region) != 0; }
+        finally { NativeMethods.DeleteObject(region); }
+    }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
+
+    [DllImport("user32.dll")]
+    private static extern int GetWindowRgn(IntPtr hwnd, IntPtr region);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+
     [DllImport("user32.dll")]
     private static extern bool GetWindowRect(IntPtr hwnd, out RECT bounds);
 

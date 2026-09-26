@@ -18,11 +18,17 @@ public sealed class TextSearchUrlBuilder(int maximumScalarValues = 2000)
             .Replace(TextSearchEngines.QueryPlaceholder, Uri.EscapeDataString(text), StringComparison.Ordinal);
     }
 
-    public string SiteName(string providerId, string engineId = TextSearchEngines.MatchImageSearch)
+    public Uri Origin(string providerId, string engineId = TextSearchEngines.MatchImageSearch)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
-        var host = new Uri(Template(providerId, engineId)
-            .Replace(TextSearchEngines.QueryPlaceholder, string.Empty, StringComparison.Ordinal)).Host;
+        var template = new Uri(Template(providerId, engineId)
+            .Replace(TextSearchEngines.QueryPlaceholder, string.Empty, StringComparison.Ordinal));
+        return new Uri(template.GetLeftPart(UriPartial.Authority));
+    }
+
+    public string SiteName(string providerId, string engineId = TextSearchEngines.MatchImageSearch)
+    {
+        var host = Origin(providerId, engineId).Host;
         return host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : host;
     }
 

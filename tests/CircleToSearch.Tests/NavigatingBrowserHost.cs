@@ -1,3 +1,4 @@
+using System.IO;
 using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
 
@@ -10,6 +11,7 @@ internal sealed class NavigatingBrowserHost : ISearchBrowserHost
     public BrowserNavigationResult Navigation { get; set; } = BrowserNavigationResult.Succeeded();
     public List<string> Names { get; } = [];
     public List<Uri> Navigated { get; } = [];
+    public List<string> Scripts { get; } = [];
     public List<string> Events { get; } = [];
     public int Shows => Names.Count;
 
@@ -22,9 +24,7 @@ internal sealed class NavigatingBrowserHost : ISearchBrowserHost
         Events.Add("show");
         if (ShowFailure is { } failure) return new SearchBrowserShowResult(failure);
 
-        var session = new FakeBrowserSession();
-        session.Navigations.Enqueue(Navigation);
-        var execution = preparedSearch.RequireBrowserOperation().ExecuteAsync(session, cancel);
+        var execution = preparedSearch.RequireBrowserOperation().ExecuteAsync(new Page(this), cancel);
         VisualSearchBrowserOperationStatus status;
         try
         {
@@ -35,7 +35,6 @@ internal sealed class NavigatingBrowserHost : ISearchBrowserHost
         {
             status = VisualSearchBrowserOperationStatus.Canceled;
         }
-        Navigated.AddRange(session.GetTargets);
         if (status == VisualSearchBrowserOperationStatus.Succeeded) Events.Add("revealed");
         return new SearchBrowserShowResult(status switch
         {
@@ -43,5 +42,32 @@ internal sealed class NavigatingBrowserHost : ISearchBrowserHost
             VisualSearchBrowserOperationStatus.Canceled => SearchBrowserShowStatus.Canceled,
             _ => SearchBrowserShowStatus.ProviderOperationFailed,
         });
+    }
+
+    private sealed class Page(NavigatingBrowserHost host) : IVisualSearchBrowserSession
+    {
+        public Uri? CurrentUri { get; private set; }
+
+        public Task<BrowserNavigationResult> NavigateAsync(Uri target, TimeSpan timeout, CancellationToken cancel)
+        {
+            host.Navigated.Add(target);
+            CurrentUri = target;
+            return Task.FromResult(host.Navigation);
+        }
+
+        public Task<string> ExecuteScriptAsync(string script, CancellationToken cancel)
+        {
+            host.Scripts.Add(script);
+            return Task.FromResult("null");
+        }
+
+        public Task<BrowserNavigationResult> NavigatePostAsync(Uri target, Stream body, string headers,
+            TimeSpan timeout, CancellationToken cancel) => throw new NotSupportedException();
+
+        public Task<BrowserNavigationResult> WaitForNavigationAsync(TimeSpan timeout, CancellationToken cancel) =>
+            throw new NotSupportedException();
+
+        public Task<string?> PostWebMessageAndWaitAsync(string message, Func<string, bool> predicate,
+            TimeSpan timeout, CancellationToken cancel) => throw new NotSupportedException();
     }
 }

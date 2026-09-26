@@ -13,11 +13,13 @@ namespace CircleToSearch.Ui;
 
 internal sealed class BottomResultsPanel
 {
+    private const uint MonitorDefaultToNull = 0;
     private const uint MonitorDefaultToNearest = 2;
     private const uint AbmGetAutoHideBarEx = 0xB;
     private const uint BottomEdge = 3;
     private const int DwmwaWindowCornerPreference = 33;
     private const int DwmwaTransitionsForceDisabled = 3;
+    private const int DwmwaCloak = 13;
     private const uint SwpNoZOrderOrActivate = 0x14;
     private const int WmSettingChange = 0x001A;
     private const int WmDisplayChange = 0x007E;
@@ -32,7 +34,14 @@ internal sealed class BottomResultsPanel
     private IntPtr _hwnd;
     private HwndSource? _source;
     private Rectangle _target;
+    private int _entranceTop;
     private bool _positioning;
+    private bool _cloaked;
+    private bool _countingFrames;
+    private int _framesSeen;
+    // WPF has put a frame on screen, so revealing the window never shows its unpainted surface.
+    private bool _presented;
+    private bool _waitingForFirstFrame;
 
     internal BottomResultsPanel(Window window, POINT anchor, bool? animationsEnabled = null)
     {
@@ -66,6 +75,11 @@ internal sealed class BottomResultsPanel
         return new Rectangle(work.Left + (work.Width - width) / 2, work.Bottom - gap - height, width, height);
     }
 
+    // A window region would make DWM fall back to the basic frame, so the sheet is not clipped: it rises from
+    // the screen edge behind the topmost taskbar, or only from its own gap when another monitor lies below.
+    internal static int CalculateEntranceTop(Rectangle monitor, Rectangle target, bool monitorBelow) =>
+        monitorBelow ? target.Top + monitor.Bottom - target.Bottom : monitor.Bottom;
+
     internal void MoveTo(POINT anchor)
     {
         _monitor = NativeMethods.MonitorFromPoint(anchor, MonitorDefaultToNearest);
@@ -83,41 +97,87 @@ internal sealed class BottomResultsPanel
         RefreshBounds();
         var round = 2;
         NativeMethods.DwmSetWindowAttribute(_hwnd, DwmwaWindowCornerPreference, ref round, sizeof(int));
-        Position(_animationsEnabled ? _target.Bottom : _target.Top);
+        Position(_animationsEnabled ? _entranceTop : _target.Top);
     }
 
     internal void ShowHidden()
     {
-        // A window clipped below its target keeps its HWND alive for WebView2 without being visible or active.
+        // A cloaked window keeps rendering for WebView2 without being visible, clickable or active.
         _window.ShowActivated = false;
         SetNativeTransitions(false);
-        _window.Show();
-        Position(_target.Bottom);
+        Show(cloaked: true);
+        Position(_target.Top);
     }
 
     internal Task ShowAsync()
     {
         _window.ShowActivated = true;
         SetNativeTransitions(false);
-        _window.Show();
-        if (_rendering) return _entrance.Task;
+        if (_rendering || _waitingForFirstFrame)
+        {
+            Show(_cloaked);
+            return _entrance.Task;
+        }
         if (_entrance.Task.IsCompleted)
         {
             _entrance = new(TaskCreationOptions.RunContinuationsAsynchronously);
             _clock.Reset();
         }
+        Show(cloaked: !_presented);
+        if (_presented) BeginEntrance();
+        else _waitingForFirstFrame = true;
+        return _entrance.Task;
+    }
+
+    private void Show(bool cloaked)
+    {
+        new WindowInteropHelper(_window).EnsureHandle();
+        SetCloaked(cloaked);
+        _window.Show();
+        if (_presented || _countingFrames) return;
+        _countingFrames = true;
+        CompositionTarget.Rendering += OnFirstFrames;
+    }
+
+    private void OnFirstFrames(object? sender, EventArgs args)
+    {
+        // The first tick renders the first frame; by the next one it has been presented.
+        if (++_framesSeen < 2) return;
+        StopCountingFrames();
+        _presented = true;
+        if (!_waitingForFirstFrame) return;
+        _waitingForFirstFrame = false;
+        BeginEntrance();
+    }
+
+    private void StopCountingFrames()
+    {
+        if (_countingFrames) CompositionTarget.Rendering -= OnFirstFrames;
+        _countingFrames = false;
+    }
+
+    private void BeginEntrance()
+    {
         if (_animationsEnabled)
         {
-            Position(_target.Bottom);
+            Position(_entranceTop);
+            SetCloaked(false);
             _rendering = true;
             CompositionTarget.Rendering += OnRendering;
         }
         else
         {
             Position(_target.Top);
+            SetCloaked(false);
             FinishEntrance();
         }
-        return _entrance.Task;
+    }
+
+    private void SetCloaked(bool cloaked)
+    {
+        if (_hwnd == IntPtr.Zero || _cloaked == cloaked) return;
+        var value = cloaked ? 1 : 0;
+        if (NativeMethods.DwmSetWindowAttribute(_hwnd, DwmwaCloak, ref value, sizeof(int)) == 0) _cloaked = cloaked;
     }
 
     private void RefreshBounds()
@@ -134,7 +194,14 @@ internal sealed class BottomResultsPanel
         };
         var autoHideBottom = SHAppBarMessage(AbmGetAutoHideBarEx, ref appbar) != IntPtr.Zero;
         if (NativeMethods.GetDpiForMonitor(_monitor, 0, out var dpi, out _) != 0 || dpi == 0) dpi = 96;
-        _target = CalculateBounds(ToRectangle(info.Monitor), ToRectangle(info.Work), dpi / 96d, autoHideBottom);
+        var monitor = ToRectangle(info.Monitor);
+        _target = CalculateBounds(monitor, ToRectangle(info.Work), dpi / 96d, autoHideBottom);
+        var below = new RECT
+        {
+            Left = _target.Left, Top = monitor.Bottom, Right = _target.Right, Bottom = monitor.Bottom + _target.Height,
+        };
+        _entranceTop = CalculateEntranceTop(monitor, _target,
+            MonitorFromRect(ref below, MonitorDefaultToNull) != IntPtr.Zero);
     }
 
     private void OnRendering(object? sender, EventArgs args)
@@ -143,7 +210,7 @@ internal sealed class BottomResultsPanel
         if (!_clock.IsRunning) _clock.Start();
         var progress = Math.Clamp(_clock.Elapsed.TotalMilliseconds / 300, 0, 1);
         var eased = _entranceSpline.GetSplineProgress(progress);
-        Position((int)Math.Round(_target.Bottom - _target.Height * eased));
+        Position((int)Math.Round(_entranceTop - (_entranceTop - _target.Top) * eased));
         if (progress >= 1) FinishEntrance();
     }
 
@@ -170,12 +237,6 @@ internal sealed class BottomResultsPanel
         _positioning = true;
         try
         {
-            // Clip the travelling HWND so it cannot cover the taskbar or a monitor below this one.
-            var visibleHeight = Math.Clamp(_target.Bottom - top, 0, _target.Height);
-            var region = visibleHeight < _target.Height
-                ? CreateRectRgn(0, 0, _target.Width, visibleHeight) : IntPtr.Zero;
-            if (SetWindowRgn(_hwnd, region, true) == 0 && region != IntPtr.Zero)
-                NativeMethods.DeleteObject(region);
             SetWindowPos(_hwnd, IntPtr.Zero, _target.Left, top, _target.Width, _target.Height, SwpNoZOrderOrActivate);
         }
         finally { _positioning = false; }
@@ -192,7 +253,7 @@ internal sealed class BottomResultsPanel
                 RefreshBounds();
                 if (_target == previous) return;
                 if (_rendering) return;
-                Position(_animationsEnabled && !_entrance.Task.IsCompleted ? _target.Bottom : _target.Top);
+                Position(_animationsEnabled && !_entrance.Task.IsCompleted ? _entranceTop : _target.Top);
             });
         }
         return IntPtr.Zero;
@@ -200,6 +261,8 @@ internal sealed class BottomResultsPanel
 
     private void OnClosed(object? sender, EventArgs args)
     {
+        StopCountingFrames();
+        _waitingForFirstFrame = false;
         FinishEntrance();
         _source?.RemoveHook(OnMessage);
         _source = null;
@@ -228,8 +291,5 @@ internal sealed class BottomResultsPanel
     private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int width, int height, uint flags);
 
     [DllImport("user32.dll")]
-    private static extern int SetWindowRgn(IntPtr hwnd, IntPtr region, bool redraw);
-
-    [DllImport("gdi32.dll")]
-    private static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+    private static extern IntPtr MonitorFromRect(ref RECT rect, uint flags);
 }

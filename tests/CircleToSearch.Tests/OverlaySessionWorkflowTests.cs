@@ -327,6 +327,7 @@ public sealed class OverlaySessionWorkflowTests
 
         Assert.Equal(["yandex.com"], harness.TextHost.Names);
         Assert.Equal([new Uri("https://yandex.com/search/?text=cat")], harness.TextHost.Navigated);
+        Assert.Contains("\"https://yandex.com/\"", Assert.Single(harness.TextHost.Scripts));
         Assert.Equal(["show", "revealed"], harness.TextHost.Events);
         Assert.Equal("close", harness.Events[0]);
         Assert.Equal(1, harness.UploadStartedCalls);

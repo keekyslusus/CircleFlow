@@ -56,6 +56,7 @@ public sealed class TextSearchWorkflowTests
 
         Assert.Equal(["google.com"], harness.Host.Names);
         Assert.Equal([new Uri("https://www.google.com/search?q=a%26b")], harness.Host.Navigated);
+        Assert.Empty(harness.Host.Scripts);
         Assert.Equal(1, harness.BrowserStartedCalls);
         Assert.Empty(harness.Opened);
         Assert.Empty(harness.Errors);
@@ -89,6 +90,8 @@ public sealed class TextSearchWorkflowTests
         var warming = harness.Workflow.WarmAsync(SearchProviderIds.TraceMoe, results.Task, reveal.Task, CancellationToken.None)!;
         Assert.Equal(["bing.com"], harness.Host.Names);
         Assert.Empty(harness.Host.Navigated);
+        Assert.Contains("'preconnect'", Assert.Single(harness.Host.Scripts));
+        Assert.Contains("\"https://www.bing.com/\"", harness.Host.Scripts[0]);
         results.SetResult(harness.Workflow.TryCreateResultsUrl("cat", SearchProviderIds.TraceMoe)!);
         await Task.Delay(20);
         Assert.False(warming.IsCompleted);
