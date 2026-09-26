@@ -29,6 +29,49 @@ public sealed class SearchBrowserExtensionTests
     }
 
     [Fact]
+    public void Installed_id_survives_reuse_and_is_forgotten_when_the_package_is_extracted_again()
+    {
+        var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+            Assert.Null(SearchBrowserExtension.InstalledId(directory));
+            SearchBrowserExtension.RememberInstalled(directory, "extension-id");
+            SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+            Assert.Equal("extension-id", SearchBrowserExtension.InstalledId(directory));
+
+            File.WriteAllText(Path.Combine(directory, ".package-sha256"), "previous package");
+            SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+            Assert.Null(SearchBrowserExtension.InstalledId(directory));
+        }
+        finally { if (Directory.Exists(profile)) Directory.Delete(profile, true); }
+    }
+
+    [Fact]
+    public void Installed_id_is_forgotten_when_the_app_folder_moves()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
+        var profile = Path.Combine(root, "before");
+        var moved = Path.Combine(root, "after");
+        try
+        {
+            var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+            SearchBrowserExtension.RememberInstalled(directory, "extension-id");
+            var copied = directory.Replace(profile, moved);
+            Directory.CreateDirectory(copied);
+            // Copying what marks a finished extraction avoids moving files a virus scanner may still hold.
+            foreach (var name in new[] { ".package-sha256", "manifest.json", ".installed-id" })
+                File.Copy(Path.Combine(directory, name), Path.Combine(copied, name));
+
+            var movedDirectory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, moved);
+            Assert.Equal(copied, movedDirectory);
+            Assert.True(File.Exists(Path.Combine(movedDirectory, ".installed-id")));
+            Assert.Null(SearchBrowserExtension.InstalledId(movedDirectory));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public void Modified_package_is_rejected_before_extraction()
     {
         var directory = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));

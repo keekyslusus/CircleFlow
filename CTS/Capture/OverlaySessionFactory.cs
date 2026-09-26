@@ -5,9 +5,12 @@ namespace CircleToSearch.Capture;
 
 public sealed class OverlaySessionFactory : IOverlaySessionFactory
 {
+    private static readonly TimeSpan ReclaimDelay = TimeSpan.FromSeconds(2);
+
     private readonly PluginLog _log;
     private readonly IPointerMonitorCapture _capture;
     private readonly IOverlayWindowFactory _windowFactory;
+    private int _runningSessions;
 
     public OverlaySessionFactory(
         PluginLog log,
@@ -38,6 +41,7 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
         CancellationToken cancellationToken,
         TaskCompletionSource<IOverlaySession?> ready)
     {
+        Interlocked.Increment(ref _runningSessions);
         var previousContext = NativeMethods.SetThreadDpiAwarenessContext(NativeMethods.DpiAwarenessPerMonitorV2);
         OverlaySession? session = null;
         Exception? failure = null;
@@ -91,10 +95,26 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
         finally
         {
             session?.Complete(failure);
+            Interlocked.Decrement(ref _runningSessions);
             if (session is not null)
+            {
                 _log.Info(nameof(OverlaySessionFactory), "overlay session thread stopped");
+                _ = ReclaimClosedOverlayMemoryAsync();
+            }
             NativeMethods.SetThreadDpiAwarenessContext(previousContext);
         }
+    }
+
+    // The closed overlay's screen-sized native bitmaps and render resources are freed only by finalizers,
+    // and the small managed heap rarely triggers a full collection on its own.
+    private async Task ReclaimClosedOverlayMemoryAsync()
+    {
+        // A blocking collection would stutter an overlay reopened right away; that session reclaims when it closes.
+        await Task.Delay(ReclaimDelay).ConfigureAwait(false);
+        if (Volatile.Read(ref _runningSessions) != 0) return;
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
     }
 
     internal static void RunDispatcherLoop(OverlaySession session)

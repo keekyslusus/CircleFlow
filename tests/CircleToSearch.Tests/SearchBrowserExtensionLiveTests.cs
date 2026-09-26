@@ -10,6 +10,9 @@ namespace CircleToSearch.Tests;
 
 public sealed class SearchBrowserExtensionLiveTests
 {
+    // uBO Lite redirects doubleclick requests to stubs, so the probe needs a host its rules block outright.
+    private const string BlockedAdUrl = "https://adservice.google.com/adsid/google/ui";
+
     [Fact]
     [Trait("Category", "Live")]
     public async Task Extension_blocks_ad_requests_but_allows_normal_resources_and_can_be_disabled()
@@ -39,31 +42,97 @@ public sealed class SearchBrowserExtensionLiveTests
                 await Task.Delay(1000);
                 Assert.Contains("easylist", await core.ExecuteScriptAsync("JSON.stringify(window.rules)"));
 
-                core.AddWebResourceRequestedFilter("https://circleflow-test.invalid/*", CoreWebView2WebResourceContext.All);
-                core.WebResourceRequested += (_, args) =>
-                {
-                    var uri = new Uri(args.Request.Uri);
-                    var target = Uri.UnescapeDataString(uri.Query.TrimStart('?'));
-                    var html = "<!doctype html><script>window.result=null; fetch(" +
-                        System.Text.Json.JsonSerializer.Serialize(target.Length > 0 ? target : "/normal.js") +
-                        ", {cache:'no-store',mode:'no-cors'}).then(()=>window.result='loaded',()=>window.result='blocked');</script>";
-                    args.Response = environment.CreateWebResourceResponse(
-                        new MemoryStream(Encoding.UTF8.GetBytes(uri.AbsolutePath.EndsWith(".js") ? "/* test */" : html)),
-                        200, "OK", "Content-Type: " + (uri.AbsolutePath.EndsWith(".js") ? "application/javascript" : "text/html") + "\r\nCache-Control: no-store");
-                };
+                ServeTestPages(core, environment);
                 await Navigate(core, "https://circleflow-test.invalid/");
                 Assert.Equal("loaded", await Fetch(core, "https://circleflow-test.invalid/normal.js"));
-                Assert.Equal("blocked", await Fetch(core, "https://googleads.g.doubleclick.net/pagead/ads"));
+                Assert.Equal("blocked", await Fetch(core, BlockedAdUrl));
                 await extension.EnableAsync(false);
-                Assert.Equal("loaded", await Fetch(core, "https://googleads.g.doubleclick.net/pagead/ads"));
+                Assert.Equal("loaded", await Fetch(core, BlockedAdUrl));
                 await extension.EnableAsync(true);
-                Assert.Equal("blocked", await Fetch(core, "https://googleads.g.doubleclick.net/pagead/ads"));
+                Assert.Equal("blocked", await Fetch(core, BlockedAdUrl));
                 completion.SetResult();
             }
             catch (Exception exception) { completion.SetException(exception); }
             finally { host?.Close(); }
         }));
         await completion.Task.WaitAsync(TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    [Trait("Category", "Live")]
+    public async Task Remembered_extension_blocks_ads_in_a_new_browser_process_without_being_added_again()
+    {
+        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
+        var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+        var id = await RunInBrowser(profile, async (core, _) =>
+        {
+            var extension = await core.Profile.AddBrowserExtensionAsync(directory);
+            SearchBrowserExtension.RememberInstalled(directory, extension.Id);
+            return extension.Id;
+        });
+
+        Assert.Equal(directory, SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile));
+        Assert.Equal(id, SearchBrowserExtension.InstalledId(directory));
+        var outcome = await RunInBrowser(profile, async (core, environment) =>
+        {
+            var extensions = await core.Profile.GetBrowserExtensionsAsync();
+            Assert.Contains(extensions, extension => extension.Id == id && extension.IsEnabled);
+            ServeTestPages(core, environment);
+            return await Fetch(core, BlockedAdUrl);
+        });
+        Assert.Equal("blocked", outcome);
+    }
+
+    private static async Task<T> RunInBrowser<T>(
+        string profile,
+        Func<CoreWebView2, CoreWebView2Environment, Task<T>> body)
+    {
+        using var dispatcher = new StaDispatcher("Extension integration test");
+        var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Assert.True(dispatcher.TryPost(async () =>
+        {
+            System.Windows.Window? host = null;
+            WebView2? view = null;
+            try
+            {
+                var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: profile,
+                    options: new CoreWebView2EnvironmentOptions { AreBrowserExtensionsEnabled = true });
+                environment.BrowserProcessExited += (_, _) => exited.TrySetResult();
+                view = new WebView2();
+                host = new System.Windows.Window { Content = view, Width = 640, Height = 480, ShowActivated = false };
+                host.Show();
+                await view.EnsureCoreWebView2Async(environment);
+                completion.SetResult(await body(view.CoreWebView2, environment));
+            }
+            catch (Exception exception) { completion.TrySetException(exception); }
+            finally
+            {
+                host?.Close();
+                view?.Dispose();
+            }
+        }));
+        var result = await completion.Task.WaitAsync(TimeSpan.FromMinutes(1));
+        // The next run must start a fresh browser process that loads the extension from the profile.
+        await exited.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        return result;
+    }
+
+    private static void ServeTestPages(CoreWebView2 core, CoreWebView2Environment environment)
+    {
+        core.AddWebResourceRequestedFilter("https://circleflow-test.invalid/*", CoreWebView2WebResourceContext.All);
+        core.WebResourceRequested += (_, args) =>
+        {
+            var uri = new Uri(args.Request.Uri);
+            var target = Uri.UnescapeDataString(uri.Query.TrimStart('?'));
+            var html = "<!doctype html><script>window.result=null; fetch(" +
+                System.Text.Json.JsonSerializer.Serialize(target.Length > 0 ? target : "/normal.js") +
+                ", {cache:'no-store',mode:'no-cors'}).then(()=>window.result='loaded',()=>window.result='blocked');</script>";
+            args.Response = environment.CreateWebResourceResponse(
+                new MemoryStream(Encoding.UTF8.GetBytes(uri.AbsolutePath.EndsWith(".js") ? "/* test */" : html)),
+                200, "OK", "Content-Type: " + (uri.AbsolutePath.EndsWith(".js") ? "application/javascript" : "text/html") + "\r\nCache-Control: no-store");
+        };
     }
 
     private static async Task Navigate(CoreWebView2 core, string uri)

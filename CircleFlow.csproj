@@ -23,7 +23,13 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>CTS\app.ico</ApplicationIcon>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Precompiling the Windows SDK projection adds about 30 MB for code the app barely touches. -->
+    <PublishReadyToRunExclude Include="Microsoft.Windows.SDK.NET.dll" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Extensions\uBlockOriginLite.zip">
