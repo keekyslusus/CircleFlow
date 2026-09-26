@@ -28,6 +28,7 @@ internal sealed class SettingsWindowModel(
     public IReadOnlyList<SearchProviderDescriptor> Providers => providers.Providers;
     public string ProviderId => providers.GetEffectiveSelection().Id;
     public string TextSearchEngineId => settings.Snapshot.TextSearchEngineId;
+    public bool TextSearchInBuiltInBrowser => settings.Snapshot.TextSearchInBuiltInBrowser;
     public IReadOnlyList<OcrLanguageOption> OcrLanguages => ocrLanguages.AvailableLanguages;
     // Languages can be installed from Windows Settings while this window is open.
     public bool RefreshOcrLanguages() => ocrLanguages.Refresh();
@@ -53,6 +54,9 @@ internal sealed class SettingsWindowModel(
     public bool SelectProvider(string providerId) => providers.Save(providerId);
 
     public bool SelectTextSearchEngine(string engineId) => settings.SetTextSearchEngine(engineId).Success;
+
+    public bool SelectTextSearchInBuiltInBrowser(bool builtIn) =>
+        settings.SetTextSearchInBuiltInBrowser(builtIn).Success;
 
     public bool SelectOcrLanguage(string languageTag) =>
         settings.Apply(new SettingsEdits { OcrLanguageTag = languageTag }).Success;
@@ -88,6 +92,7 @@ internal sealed class SettingsWindowModel(
         var defaults = new AppSettings();
         if (!providers.Save(defaults.SearchProviderId)) return null;
         if (!SelectTextSearchEngine(defaults.TextSearchEngineId)) return strings.StorageSaveFailed;
+        if (!SelectTextSearchInBuiltInBrowser(defaults.TextSearchInBuiltInBrowser)) return strings.StorageSaveFailed;
         if (!SelectOcrLanguage(defaults.OcrLanguageTag)) return strings.StorageSaveFailed;
         if (!SelectAppLanguage(defaults.AppLanguageTag)) return strings.StorageSaveFailed;
         if (!SelectIgnoreHotkeyInFullscreen(defaults.IgnoreHotkeyInFullscreen)) return strings.StorageSaveFailed;

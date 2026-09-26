@@ -120,7 +120,7 @@ public sealed class PointerGestureRouterTests
     }
 
     [Fact]
-    public void Search_action_publishes_exactly_one_command()
+    public void Text_selection_announces_its_start_then_search_publishes_exactly_one_command()
     {
         var failure = RunOnSta(() =>
         {
@@ -132,7 +132,9 @@ public sealed class PointerGestureRouterTests
                 harness.Visual.TextSelection.SearchButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 harness.Visual.TextSelection.SearchButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-                var command = Assert.IsType<SearchSelectedText>(Assert.Single(harness.Commands));
+                Assert.Equal(2, harness.Commands.Count);
+                Assert.IsType<TextSelectionStarted>(harness.Commands[0]);
+                var command = Assert.IsType<SearchSelectedText>(harness.Commands[1]);
                 Assert.Equal("one", command.Text);
             }
         });
@@ -156,7 +158,7 @@ public sealed class PointerGestureRouterTests
 
                 Assert.True(harness.Visual.TextSelection.SearchButton.IsEnabled);
                 harness.Visual.TextSelection.SearchButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.Equal(2, harness.Commands.Count);
+                Assert.Equal(2, harness.Commands.OfType<SearchSelectedText>().Count());
             }
         });
         Assert.Null(failure);
@@ -179,7 +181,7 @@ public sealed class PointerGestureRouterTests
                 harness.Visual.TextSelection.SearchButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
                 Assert.Empty(copied);
-                Assert.Empty(harness.Commands);
+                Assert.Empty(harness.Commands.OfType<SearchSelectedText>());
                 Assert.False(harness.Text.IsActionMenuOpen);
             }
         });

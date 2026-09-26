@@ -964,6 +964,7 @@ public sealed class SettingsPreviewTests
         {
             SearchProviderId = SearchProviderIds.YandexImages,
             TextSearchEngineId = "bing",
+            TextSearchInBuiltInBrowser = true,
             OcrLanguageTag = "de-DE",
             AppLanguageTag = "ru",
             IgnoreHotkeyInFullscreen = false,
@@ -1001,6 +1002,8 @@ public sealed class SettingsPreviewTests
             var defaults = new AppSettings();
             Assert.Equal(defaults.SearchProviderId, harness.Settings.Snapshot.SearchProviderId);
             Assert.Equal(defaults.TextSearchEngineId, harness.Settings.Snapshot.TextSearchEngineId);
+            Assert.False(harness.Settings.Snapshot.TextSearchInBuiltInBrowser);
+            Assert.False(Find<CheckBox>(window, "TextSearchBrowser").IsChecked);
             Assert.Equal(defaults.OcrLanguageTag, harness.Settings.Snapshot.OcrLanguageTag);
             Assert.True(harness.Settings.Snapshot.IgnoreHotkeyInFullscreen);
             Assert.True(Find<CheckBox>(window, "IgnoreFullscreen").IsChecked);
@@ -1096,6 +1099,29 @@ public sealed class SettingsPreviewTests
             harness.Settings.SetHiddenToolbarActions(SelectionToolbarAction.Save).ThrowIfFailed("test update failed");
             Activate(window);
             Assert.Equal([true, true, false, true], Toggles());
+            Assert.Empty(harness.Notifier.Errors);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Text_search_browser_comes_from_settings_saves_changes_and_reloads_on_activation() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var builtIn = Find<CheckBox>(window, "TextSearchBrowser");
+            Assert.False(builtIn.IsChecked);
+            builtIn.IsChecked = true;
+            Assert.True(harness.Settings.Snapshot.TextSearchInBuiltInBrowser);
+            builtIn.IsChecked = false;
+            Assert.False(harness.Settings.Snapshot.TextSearchInBuiltInBrowser);
+
+            harness.Settings.SetTextSearchInBuiltInBrowser(true).ThrowIfFailed("test update failed");
+            Activate(window);
+            Assert.True(builtIn.IsChecked);
             Assert.Empty(harness.Notifier.Errors);
         }
         finally { window.Close(); }

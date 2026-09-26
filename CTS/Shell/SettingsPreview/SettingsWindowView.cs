@@ -92,6 +92,9 @@ internal sealed class SettingsWindowView
         ocrLanguage.SelectionChanged += OnOcrLanguageChanged;
         AddDropdown(ocrLanguage);
         Element<TextBlock>("TranslationLanguage").Text = model.TranslationLanguageName;
+        var textSearchBrowser = Element<CheckBox>("TextSearchBrowser");
+        textSearchBrowser.Checked += OnTextSearchBrowserChanged;
+        textSearchBrowser.Unchecked += OnTextSearchBrowserChanged;
         var ignoreFullscreen = Element<CheckBox>("IgnoreFullscreen");
         ignoreFullscreen.Checked += OnIgnoreFullscreenChanged;
         ignoreFullscreen.Unchecked += OnIgnoreFullscreenChanged;
@@ -259,6 +262,7 @@ internal sealed class SettingsWindowView
         {
             Select(Element<ComboBox>("Provider"), _model.ProviderId);
             Select(Element<ComboBox>("TextSearch"), _model.TextSearchEngineId);
+            Element<CheckBox>("TextSearchBrowser").IsChecked = _model.TextSearchInBuiltInBrowser;
             if (_model.RefreshOcrLanguages()) PopulateOcrLanguages();
             Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
             Select(Element<ComboBox>("AppLanguage"), _model.AppLanguageTag);
@@ -368,6 +372,14 @@ internal sealed class SettingsWindowView
         }
         finally { _loadingSettings = false; }
         LoadSettings();
+    }
+
+    private void OnTextSearchBrowserChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        if (_model.SelectTextSearchInBuiltInBrowser(Element<CheckBox>("TextSearchBrowser").IsChecked == true)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
     }
 
     private void OnIgnoreFullscreenChanged(object sender, RoutedEventArgs e)

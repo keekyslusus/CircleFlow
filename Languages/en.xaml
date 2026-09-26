@@ -195,7 +195,9 @@
     <system:String x:Key="app_settings_provider_sub">Can also be changed in the selection toolbar</system:String>
     <system:String x:Key="app_settings_text_search">Text search</system:String>
     <system:String x:Key="app_settings_text_search_engine">Search engine</system:String>
-    <system:String x:Key="app_settings_text_search_engine_sub">Opens in your default browser</system:String>
+    <system:String x:Key="app_settings_text_search_engine_sub">Used when you search selected text</system:String>
+    <system:String x:Key="app_settings_text_search_browser">Open in CircleFlow window</system:String>
+    <system:String x:Key="app_settings_text_search_browser_sub">Results appear next to the cursor, like image search. When off, they open in your default browser</system:String>
     <system:String x:Key="app_settings_match_image_search">Match image search</system:String>
     <system:String x:Key="app_settings_engine_bing">Bing</system:String>
     <system:String x:Key="app_settings_engine_duckduckgo">DuckDuckGo</system:String>

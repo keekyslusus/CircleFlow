@@ -313,6 +313,8 @@ public static class CompositionRoot
         var textSearch = new TextSearchWorkflow(
             new TextSearchUrlBuilder(),
             () => settings.Snapshot.TextSearchEngineId,
+            () => settings.Snapshot.TextSearchInBuiltInBrowser,
+            searchBrowserHost,
             urlOpening,
             notifier,
             strings,
@@ -354,7 +356,8 @@ public static class CompositionRoot
             textSearch,
             imageSave.SaveAsync,
             (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation),
-            (maxLongSidePx, cancellation) => new OverlayLensSession(lensPrewarm, maxLongSidePx, cancellation));
+            (maxLongSidePx, cancellation) => new OverlayLensSession(lensPrewarm, maxLongSidePx, cancellation),
+            cancellation => new OverlayTextSearchSession(textSearch, cancellation));
         var coordinator = new SearchCoordinator(
             workflow,
             hideOwnWindows,

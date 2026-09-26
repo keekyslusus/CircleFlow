@@ -20,7 +20,7 @@ public sealed class SettingsStoreTests
         Assert.False(File.Exists(paths.SettingsBackupFilePath));
         var updated = new AppSettings
         {
-            SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "kagi", HotkeyGesture = "Win+Ctrl+Shift+F7",
+            SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "kagi", TextSearchInBuiltInBrowser = true, HotkeyGesture = "Win+Ctrl+Shift+F7",
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
             OcrLanguageTag = "ru-RU", AppLanguageTag = "ru", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
             HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save, BrowserDataCleanupDays = 0, OnboardingCompleted = true,

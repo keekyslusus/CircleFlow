@@ -32,6 +32,8 @@ public sealed record VisualSelection : IOverlayCommand
 // A left-button lasso that has started moving usually ends in a search with this provider.
 public sealed record VisualSelectionStarted(string ProviderId) : IOverlayCommand;
 
+public sealed record TextSelectionStarted(string ProviderId) : IOverlayCommand;
+
 public sealed record StartMusicRecognition : IOverlayCommand;
 public sealed record MusicDebugScenarioSelected(MusicDebugScenario Scenario) : IOverlayCommand;
 public sealed record CancelSession : IOverlayCommand;

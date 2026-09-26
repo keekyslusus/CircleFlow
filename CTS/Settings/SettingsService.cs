@@ -70,6 +70,11 @@ public sealed class SettingsService
         lock (_gate) return Commit(_current with { TextSearchEngineId = engineId });
     }
 
+    public SettingsChangeResult SetTextSearchInBuiltInBrowser(bool builtIn)
+    {
+        lock (_gate) return Commit(_current with { TextSearchInBuiltInBrowser = builtIn });
+    }
+
     public SettingsChangeResult SetIgnoreHotkeyInFullscreen(bool ignore)
     {
         lock (_gate) return Commit(_current with { IgnoreHotkeyInFullscreen = ignore });

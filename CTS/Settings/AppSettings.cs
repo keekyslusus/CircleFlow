@@ -9,6 +9,8 @@ public sealed record AppSettings
 
     public string TextSearchEngineId { get; init; } = TextSearchEngines.MatchImageSearch;
 
+    public bool TextSearchInBuiltInBrowser { get; init; }
+
     public string HotkeyGesture { get; init; } = "Ctrl+Alt+Space";
 
     public bool IgnoreHotkeyInFullscreen { get; init; } = true;

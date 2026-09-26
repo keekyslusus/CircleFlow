@@ -22,7 +22,8 @@ internal sealed class OverlaySessionWorkflow(
     TextSearchWorkflow? textSearch = null,
     Func<System.Windows.Media.Imaging.BitmapSource, Task>? saveImage = null,
     Func<int, CancellationToken, OverlayAskSession>? createAskSession = null,
-    Func<int, CancellationToken, OverlayLensSession>? createLensSession = null) : ISearchSessionWorkflow
+    Func<int, CancellationToken, OverlayLensSession>? createLensSession = null,
+    Func<CancellationToken, OverlayTextSearchSession>? createTextSearchSession = null) : ISearchSessionWorkflow
 {
     public async Task RunAsync(SearchSessionOptions options, Action onUploadStarted, CancellationToken cancellationToken)
     {
@@ -43,6 +44,7 @@ internal sealed class OverlaySessionWorkflow(
         OverlayTraceSession? trace = null;
         OverlayAskSession? ask = null;
         OverlayLensSession? lens = null;
+        OverlayTextSearchSession? textWarm = null;
         Task<IOverlayCommand>? commandTask = null;
         try
         {
@@ -52,6 +54,8 @@ internal sealed class OverlaySessionWorkflow(
             if (ask is not null) operations.Add(ask);
             lens = createLensSession?.Invoke(options.MaxLongSidePx, cancellationToken);
             if (lens is not null) operations.Add(lens);
+            textWarm = createTextSearchSession?.Invoke(cancellationToken);
+            if (textWarm is not null) operations.Add(textWarm);
             translation = createTranslationSession?.Invoke(overlay, cancellationToken);
             if (translation is not null) operations.Add(translation);
             trace = createTraceSession(overlay, options.MaxLongSidePx, cancellationToken);
@@ -91,6 +95,8 @@ internal sealed class OverlaySessionWorkflow(
                             providerSelection.Save(provider.ProviderId);
                             if (!OverlayLensSession.Handles(provider.ProviderId))
                                 await ReleaseWarmLensAsync(lens).ConfigureAwait(false);
+                            // The warm browser is named after the previous provider's search site.
+                            await ReleaseWarmTextSearchAsync(textWarm).ConfigureAwait(false);
                             break;
 
                         case MusicDebugScenarioSelected selected:
@@ -110,7 +116,15 @@ internal sealed class OverlaySessionWorkflow(
 
                         case VisualSelectionStarted started when lens is not null && ask?.PendingTask is null &&
                             !music.IsRunning && OverlayLensSession.Handles(started.ProviderId):
+                            await ReleaseWarmTextSearchAsync(textWarm).ConfigureAwait(false);
                             lens.Start();
+                            break;
+
+                        case TextSelectionStarted started when textWarm is not null &&
+                            textSearch is { OpensInBuiltInBrowser: true } && ask?.PendingTask is null &&
+                            !music.IsRunning:
+                            await ReleaseWarmLensAsync(lens).ConfigureAwait(false);
+                            textWarm.Start(started.ProviderId);
                             break;
 
                         case VisualSelection visual when lens is { IsWarming: true } && !music.IsRunning &&
@@ -157,9 +171,19 @@ internal sealed class OverlaySessionWorkflow(
                             await asking.ConfigureAwait(false);
                             return;
 
+                        case SearchSelectedText selectedText when textWarm is { IsWarming: true }:
+                            await textWarm.SubmitAsync(selectedText, overlay.CloseAsync, onUploadStarted)
+                                .ConfigureAwait(false);
+                            return;
+
                         case SearchSelectedText selectedText when textSearch is not null:
                             await overlay.CloseAsync().ConfigureAwait(false);
-                            textSearch.Execute(selectedText.Text, selectedText.ProviderId);
+                            await ReleaseWarmLensAsync(lens).ConfigureAwait(false);
+                            await textSearch.ExecuteAsync(
+                                selectedText.Text,
+                                selectedText.ProviderId,
+                                onUploadStarted,
+                                cancellationToken).ConfigureAwait(false);
                             return;
 
                         case ScreenTranslationRequested requested when
@@ -174,6 +198,7 @@ internal sealed class OverlaySessionWorkflow(
                         case StartMusicRecognition when !music.IsRunning:
                         case RetryMusicRecognition when !music.IsRunning:
                             await ReleaseWarmLensAsync(lens).ConfigureAwait(false);
+                            await ReleaseWarmTextSearchAsync(textWarm).ConfigureAwait(false);
                             await music.StartAsync().ConfigureAwait(false);
                             break;
 
@@ -223,6 +248,9 @@ internal sealed class OverlaySessionWorkflow(
     // A warm Lens browser only pays off while the next lasso may still search with Lens.
     private static Task ReleaseWarmLensAsync(OverlayLensSession? lens) =>
         lens?.CancelAsync() ?? Task.CompletedTask;
+
+    private static Task ReleaseWarmTextSearchAsync(OverlayTextSearchSession? textWarm) =>
+        textWarm?.CancelAsync() ?? Task.CompletedTask;
 
     private void TryCleanup(Action action, string operation)
     {

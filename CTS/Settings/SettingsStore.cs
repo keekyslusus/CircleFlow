@@ -94,6 +94,8 @@ internal sealed class SettingsStore(AppPaths paths)
         {
             SearchProviderId = Text(nameof(AppSettings.SearchProviderId), defaults.SearchProviderId),
             TextSearchEngineId = Text(nameof(AppSettings.TextSearchEngineId), defaults.TextSearchEngineId),
+            TextSearchInBuiltInBrowser = Flag(nameof(AppSettings.TextSearchInBuiltInBrowser),
+                defaults.TextSearchInBuiltInBrowser),
             HotkeyGesture = Text(nameof(AppSettings.HotkeyGesture), defaults.HotkeyGesture),
             IgnoreHotkeyInFullscreen = Flag(nameof(AppSettings.IgnoreHotkeyInFullscreen), defaults.IgnoreHotkeyInFullscreen),
             HiddenToolbarActions = Actions(nameof(AppSettings.HiddenToolbarActions), defaults.HiddenToolbarActions),

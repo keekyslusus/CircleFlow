@@ -293,6 +293,74 @@ public sealed class OverlaySessionWorkflowTests
 
         Assert.Equal(["close", "text-open", "close"], harness.Events);
         Assert.Contains("q=a%26b", Assert.Single(harness.Opened));
+        Assert.Equal(0, harness.TextHost.Shows);
+        Assert.Equal(0, harness.UploadStartedCalls);
+    }
+
+    [Fact]
+    public async Task Text_search_can_open_in_the_built_in_browser_after_the_overlay_closes()
+    {
+        using var harness = new Harness();
+        harness.Service.SetTextSearchInBuiltInBrowser(true).ThrowIfFailed("test update failed");
+        harness.Service.SetTextSearchEngine("duckduckgo").ThrowIfFailed("test update failed");
+        harness.Overlay.Enqueue(new SearchSelectedText("a&b", SearchProviderIds.GoogleLens));
+
+        await harness.RunAsync();
+
+        Assert.Equal(["duckduckgo.com"], harness.TextHost.Names);
+        Assert.Equal([new Uri("https://duckduckgo.com/?q=a%26b")], harness.TextHost.Navigated);
+        Assert.Empty(harness.Opened);
+        Assert.Equal(1, harness.UploadStartedCalls);
+        Assert.Equal("close", harness.Events[0]);
+    }
+
+    [Fact]
+    public async Task Selecting_text_warms_the_built_in_browser_that_the_search_then_reveals()
+    {
+        using var harness = new Harness();
+        harness.Service.SetTextSearchInBuiltInBrowser(true).ThrowIfFailed("test update failed");
+        harness.Overlay.Enqueue(new TextSelectionStarted(SearchProviderIds.YandexImages));
+        harness.Overlay.Enqueue(new TextSelectionStarted(SearchProviderIds.YandexImages));
+        harness.Overlay.Enqueue(new SearchSelectedText("cat", SearchProviderIds.YandexImages));
+
+        await harness.RunAsync();
+
+        Assert.Equal(["yandex.com"], harness.TextHost.Names);
+        Assert.Equal([new Uri("https://yandex.com/search/?text=cat")], harness.TextHost.Navigated);
+        Assert.Equal(["show", "revealed"], harness.TextHost.Events);
+        Assert.Equal("close", harness.Events[0]);
+        Assert.Equal(1, harness.UploadStartedCalls);
+        Assert.Empty(harness.Opened);
+    }
+
+    [Fact]
+    public async Task Text_selection_warms_nothing_while_results_open_in_the_default_browser()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new TextSelectionStarted(SearchProviderIds.GoogleLens));
+        harness.Overlay.Enqueue(new CancelSession());
+
+        await harness.RunAsync();
+
+        Assert.Equal(0, harness.TextHost.Shows);
+    }
+
+    [Fact]
+    public async Task Warm_text_search_is_released_when_the_session_ends_or_the_provider_changes()
+    {
+        using var harness = new Harness();
+        harness.Service.SetTextSearchInBuiltInBrowser(true).ThrowIfFailed("test update failed");
+        harness.Overlay.Enqueue(new TextSelectionStarted(SearchProviderIds.GoogleLens));
+        harness.Overlay.Enqueue(new ProviderSelected(SearchProviderIds.YandexImages));
+        harness.Overlay.Enqueue(new TextSelectionStarted(SearchProviderIds.YandexImages));
+        harness.Overlay.Enqueue(new CancelSession());
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(["google.com", "yandex.com"], harness.TextHost.Names);
+        Assert.Empty(harness.TextHost.Navigated);
+        Assert.DoesNotContain("revealed", harness.TextHost.Events);
+        Assert.Empty(harness.Opened);
     }
 
     [Fact]
@@ -1068,6 +1136,8 @@ public sealed class OverlaySessionWorkflowTests
             var textSearch = new TextSearchWorkflow(
                 new TextSearchUrlBuilder(),
                 () => Service.Snapshot.TextSearchEngineId,
+                () => Service.Snapshot.TextSearchInBuiltInBrowser,
+                TextHost,
                 new UrlOpeningService(url => { Events.Add("text-open"); Opened.Add(url); return true; },
                     Notifier, TestUiStrings.English, Log),
                 Notifier,
@@ -1136,12 +1206,14 @@ public sealed class OverlaySessionWorkflowTests
                 textSearch,
                 saveImage,
                 (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation),
-                (maxLongSidePx, cancellation) => new OverlayLensSession(lensPrewarm, maxLongSidePx, cancellation));
+                (maxLongSidePx, cancellation) => new OverlayLensSession(lensPrewarm, maxLongSidePx, cancellation),
+                cancellation => new OverlayTextSearchSession(textSearch, cancellation));
             AskHost.Revealed = () => CloseCallsWhenRevealed.Add(Overlay.CloseCalls);
             LensHost.Revealed = () => LensRevealedAfterClose.Add(Overlay.CloseCompletion.IsCompleted);
         }
 
         public FakeBrowserHost LensHost { get; } = new();
+        public NavigatingBrowserHost TextHost { get; } = new();
         public List<Task<byte[]>> LensImages { get; } = [];
         public List<bool> LensRevealedAfterClose { get; } = [];
         public int LensCrops { get; private set; }

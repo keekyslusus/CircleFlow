@@ -87,6 +87,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         RenderRange(TextSelectionRange.Create(_gestureDocument, word, word), showMenu: false);
         _coordinateRoot.Cursor = Cursors.IBeam;
         _inputSurface.CaptureMouse();
+        _publish(new TextSelectionStarted(_selectedProviderId()));
         return true;
     }
 
