@@ -17,10 +17,10 @@ internal static class OverlayScrollbarScript
                 if (window[installationKey]) return;
                 window[installationKey] = true;
 
-                const install = () => {
-                    const nativeStyle = document.createElement('style');
-                    nativeStyle.dataset.circleFlowScrollbar = 'native';
-                    nativeStyle.textContent = `
+                // Document-created scripts run before a root element exists; an adopted sheet
+                // hides native scrollbars before the parser can produce the first visible frame.
+                const nativeStyle = new CSSStyleSheet();
+                nativeStyle.replaceSync(`
                         :root, body {
                             scrollbar-width: none !important;
                             scrollbar-gutter: auto !important;
@@ -30,9 +30,10 @@ internal static class OverlayScrollbarScript
                             width: 0 !important;
                             height: 0 !important;
                         }
-                    `;
-                    (document.head || document.documentElement).append(nativeStyle);
+                `);
+                document.adoptedStyleSheets = [...document.adoptedStyleSheets, nativeStyle];
 
+                const install = () => {
                     const host = document.createElement('div');
                     host.dataset.circleFlowScrollbar = 'overlay';
                     const setHostStyle = (name, value) => host.style.setProperty(name, value, 'important');
