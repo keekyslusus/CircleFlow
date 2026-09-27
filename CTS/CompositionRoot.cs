@@ -16,6 +16,7 @@ using CircleToSearch.Settings;
 using CircleToSearch.Shell;
 using CircleToSearch.Shell.Onboarding;
 using CircleToSearch.Shell.SettingsPreview;
+using CircleToSearch.Shell.TestBrowser;
 using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
 using CircleToSearch.TextRecognition;
@@ -143,9 +144,18 @@ public static class CompositionRoot
                 var onboarding = new OnboardingWindowController(application.Dispatcher, onboardingModel,
                     () => new OnboardingWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, onboardingModel).Window);
                 lifetime.AddCleanup("close-onboarding", () => { onboarding.Dispose(); return Task.CompletedTask; });
+                var testBrowserEnvironments = new WebViewEnvironmentFactory(paths, strings, notifier);
+                var testBrowser = new SingleWindowController(application.Dispatcher,
+                    () => new TestBrowserWindow(strings, SystemTheme.IsLight(),
+                        () => testBrowserEnvironments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true),
+                        paths.RootDirectory, paths.SearchProfileDirectory,
+                        () => urlOpening.TryOpen(CosmeticFilters.FilePath(paths.RootDirectory),
+                            strings.SettingsPreviewText("open_filters_failed")),
+                        log).Window);
+                lifetime.AddCleanup("close-test-browser", () => { testBrowser.Dispose(); return Task.CompletedTask; });
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
                     language, CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
-                    AudioOutputDevice.DefaultName, startup, onboarding.Show);
+                    AudioOutputDevice.DefaultName, startup, onboarding.Show, testBrowser.Show);
                 var settingsWindow = new SingleWindowController(application.Dispatcher,
                     () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });

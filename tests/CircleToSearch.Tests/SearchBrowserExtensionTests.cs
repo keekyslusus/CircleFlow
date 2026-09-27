@@ -29,20 +29,24 @@ public sealed class SearchBrowserExtensionTests
     }
 
     [Fact]
-    public void Installed_id_survives_reuse_and_is_forgotten_when_the_package_is_extracted_again()
+    public void Installed_id_and_enabled_lists_survive_reuse_and_are_forgotten_when_the_package_is_extracted_again()
     {
         var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
         try
         {
             var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
             Assert.Null(SearchBrowserExtension.InstalledId(directory));
+            Assert.Null(SearchBrowserExtension.EnabledRulesets(directory));
             SearchBrowserExtension.RememberInstalled(directory, "extension-id");
+            File.WriteAllText(Path.Combine(directory, ".enabled-rulesets"), "annoyances-others");
             SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
             Assert.Equal("extension-id", SearchBrowserExtension.InstalledId(directory));
+            Assert.Equal("annoyances-others", SearchBrowserExtension.EnabledRulesets(directory));
 
             File.WriteAllText(Path.Combine(directory, ".package-sha256"), "previous package");
             SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
             Assert.Null(SearchBrowserExtension.InstalledId(directory));
+            Assert.Null(SearchBrowserExtension.EnabledRulesets(directory));
         }
         finally { if (Directory.Exists(profile)) Directory.Delete(profile, true); }
     }

@@ -187,6 +187,7 @@ internal sealed class SettingsWindowView
             case "ocr-languages": _model.OpenOcrLanguageSettings(); break;
             case "preview": ShowStatus(_strings.SettingsPreviewText("preview_action")); break;
             case "show-onboarding": _model.ShowOnboarding(); break;
+            case "test-browser": _model.OpenTestBrowser(); break;
         }
         e.Handled = true;
     }

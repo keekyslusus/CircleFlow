@@ -32,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Extensions\uBlockOriginLite.zip">
+    <Content Include="Extensions\uBlockOriginLite.zip;Extensions\CircleFlowFilters.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>

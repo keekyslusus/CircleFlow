@@ -36,7 +36,7 @@ try {
     }
     $required = @('CircleFlow.exe', 'deps/CircleFlow.dll', 'deps/CircleFlow.runtimeconfig.json', 'deps/CircleFlow.deps.json',
         'deps/WinRT.Runtime.dll', 'deps/coreclr.dll', 'deps/System.Private.CoreLib.dll', 'deps/hostfxr.dll', 'deps/hostpolicy.dll',
-        'Languages/en.xaml', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip',
+        'Languages/en.xaml', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip', 'Extensions/CircleFlowFilters.txt',
         'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.LICENSE.txt',
         'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.NOTICE.txt', 'THIRD_PARTY_LICENSES/System.Numerics.Tensors.NOTICE.txt')
     foreach ($asset in $required) {
@@ -52,6 +52,7 @@ finally { $archive.Dispose() }
 $assetSources = [ordered]@{
     'Languages/en.xaml' = 'Languages/en.xaml'; 'Images/app.ico' = 'CTS/app.ico'
     'Extensions/uBlockOriginLite.zip' = 'Extensions/uBlockOriginLite.zip'; 'LICENSE' = 'LICENSE'
+    'Extensions/CircleFlowFilters.txt' = 'Extensions/CircleFlowFilters.txt'
     'THIRD_PARTY_NOTICES.txt' = 'THIRD_PARTY_NOTICES.txt'
 }
 foreach ($asset in $assetSources.Keys) {

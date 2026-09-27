@@ -29,6 +29,7 @@ public sealed class UiStrings
     public string SettingsWindowTitle => Get("app_settings_window_title");
     internal string SettingsPreviewText(string key) => Get("app_settings_" + key);
     internal string OnboardingText(string key) => Get("app_onboarding_" + key);
+    internal string TestBrowserText(string key) => Get("app_test_browser_" + key);
     internal string OnboardingStep(int step, int count) => Get("app_onboarding_step", step, count);
     public string SettingsShortcutSaved => Get("app_settings_shortcut_saved");
     public string SettingsShortcutInvalid => Get("app_settings_invalid_shortcut");

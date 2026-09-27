@@ -1331,7 +1331,7 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
-    public void Three_clicks_on_the_version_reveal_developer_settings_that_open_onboarding() => OnSta(time =>
+    public void Three_clicks_on_the_version_reveal_developer_settings_that_open_onboarding_and_the_test_browser() => OnSta(time =>
     {
         var harness = new TestSettingsWindow();
         var window = harness.CreateView(light: false).Window;
@@ -1357,6 +1357,8 @@ public sealed class SettingsPreviewTests
             if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1") Capture(window, "settings-dark-developer.png");
             Click(window, "show-onboarding");
             Assert.Equal(1, harness.OnboardingRequests);
+            Click(window, "test-browser");
+            Assert.Equal(1, harness.TestBrowserRequests);
         }
         finally { window.Close(); }
 

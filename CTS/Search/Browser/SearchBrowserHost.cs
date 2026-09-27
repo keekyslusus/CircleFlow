@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using CircleToSearch.Interop;
@@ -423,18 +422,16 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
                 .ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
             if (view.IsClosed || !ReferenceEquals(_view, view)) throw new OperationCanceledException();
-            var extensionDirectory = await Task.Run(() =>
-                SearchBrowserExtension.Prepare(_assetDirectory, _userDataFolder), cancel).ConfigureAwait(true);
+            var filterScript = await Task.Run(() => CosmeticFilters.LoadScript(_assetDirectory, _log), cancel)
+                .ConfigureAwait(true);
+            await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(filterScript).ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
             if (view.IsClosed || !ReferenceEquals(_view, view)) throw new OperationCanceledException();
-            var extension = await EnsureExtensionAsync(webView.CoreWebView2.Profile, extensionDirectory)
+            await SearchBrowserExtension.EnsureEnabledAsync(
+                    webView, _assetDirectory, _userDataFolder, _log, cancel)
                 .ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
             if (view.IsClosed || !ReferenceEquals(_view, view)) throw new OperationCanceledException();
-            if (!extension.IsEnabled) await extension.EnableAsync(true).ConfigureAwait(true);
-            cancel.ThrowIfCancellationRequested();
-            if (view.IsClosed || !ReferenceEquals(_view, view)) throw new OperationCanceledException();
-            _log.Info(nameof(SearchBrowserHost), $"uBlock Origin Lite enabled: {extension.Id}");
             webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
             webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
             webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
@@ -453,31 +450,6 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
             if (wasClosed) throw new OperationCanceledException();
             throw;
         }
-    }
-
-    // The registration persists in the profile, and adding it again costs about 700 ms per window.
-    private async Task<CoreWebView2BrowserExtension> EnsureExtensionAsync(
-        CoreWebView2Profile profile,
-        string directory)
-    {
-        string? id = null;
-        try { id = SearchBrowserExtension.InstalledId(directory); }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            _log.SafeError(nameof(SearchBrowserHost), "read-extension-id", exception);
-        }
-        if (id is not null &&
-            (await profile.GetBrowserExtensionsAsync().ConfigureAwait(true))
-                .FirstOrDefault(extension => extension.Id == id) is { } installed)
-            return installed;
-        var added = await profile.AddBrowserExtensionAsync(directory).ConfigureAwait(true);
-        // The id only saves time on the next window, so failing to store it must not fail this one.
-        try { SearchBrowserExtension.RememberInstalled(directory, added.Id); }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            _log.SafeError(nameof(SearchBrowserHost), "remember-extension-id", exception);
-        }
-        return added;
     }
 
     private static void OnContextMenuRequested(object? sender, CoreWebView2ContextMenuRequestedEventArgs args)

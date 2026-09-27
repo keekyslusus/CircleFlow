@@ -21,7 +21,8 @@ internal sealed class SettingsWindowModel(
     Func<string?> webViewRuntimeVersion,
     Func<string?> audioOutputName,
     WindowsStartupRegistration startup,
-    Action showOnboarding)
+    Action showOnboarding,
+    Action openTestBrowser)
 {
     private const string OcrLanguageSettingsUri = "ms-settings:regionlanguage";
 
@@ -50,6 +51,8 @@ internal sealed class SettingsWindowModel(
     public void UnlockDeveloperSettings() => DeveloperSettingsUnlocked = true;
 
     public void ShowOnboarding() => showOnboarding();
+
+    public void OpenTestBrowser() => openTestBrowser();
 
     public bool SelectProvider(string providerId) => providers.Save(providerId);
 

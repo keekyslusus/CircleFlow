@@ -65,17 +65,18 @@ public sealed class SearchBrowserExtensionLiveTests
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
         var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
         var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
-        var id = await RunInBrowser(profile, async (core, _) =>
+        var id = await RunInBrowser(profile, async (view, _) =>
         {
-            var extension = await core.Profile.AddBrowserExtensionAsync(directory);
+            var extension = await view.CoreWebView2.Profile.AddBrowserExtensionAsync(directory);
             SearchBrowserExtension.RememberInstalled(directory, extension.Id);
             return extension.Id;
         });
 
         Assert.Equal(directory, SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile));
         Assert.Equal(id, SearchBrowserExtension.InstalledId(directory));
-        var outcome = await RunInBrowser(profile, async (core, environment) =>
+        var outcome = await RunInBrowser(profile, async (view, environment) =>
         {
+            var core = view.CoreWebView2;
             var extensions = await core.Profile.GetBrowserExtensionsAsync();
             Assert.Contains(extensions, extension => extension.Id == id && extension.IsEnabled);
             ServeTestPages(core, environment);
@@ -84,9 +85,68 @@ public sealed class SearchBrowserExtensionLiveTests
         Assert.Equal("blocked", outcome);
     }
 
+    [Fact]
+    [Trait("Category", "Live")]
+    public async Task First_window_adds_the_annoyance_lists_to_the_lists_uBO_Lite_chose()
+    {
+        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
+        var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+
+        var (enabled, defaults) = await RunInBrowser(profile, (view, _) => EnableAndReadListsAsync(view, profile, directory));
+
+        Assert.Equal(string.Join(',', SearchBrowserExtension.AnnoyanceRulesets), SearchBrowserExtension.EnabledRulesets(directory));
+        Assert.Contains("easylist", defaults);
+        Assert.Superset(new HashSet<string>([.. defaults, .. SearchBrowserExtension.AnnoyanceRulesets]), enabled.ToHashSet());
+        Assert.DoesNotContain("annoyances-cookies", enabled);
+        Assert.DoesNotContain("annoyances-social", enabled);
+    }
+
+    [Fact]
+    [Trait("Category", "Live")]
+    public async Task Annoyance_lists_are_enabled_again_after_the_browser_data_is_cleared()
+    {
+        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
+        var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+        await RunInBrowser(profile, (view, _) => EnableAndReadListsAsync(view, profile, directory));
+
+        // BrowserDataCleanup removes this folder, and uBO Lite's settings with it, but keeps the unpacked extension.
+        Directory.Delete(Path.Combine(profile, "EBWebView"), recursive: true);
+        var (enabled, _) = await RunInBrowser(profile, (view, _) => EnableAndReadListsAsync(view, profile, directory));
+
+        Assert.Superset(new HashSet<string>(SearchBrowserExtension.AnnoyanceRulesets), enabled.ToHashSet());
+    }
+
+    // uBO Lite's own defaults include the regional list it picked for this system's languages.
+    private static async Task<Rulesets> EnableAndReadListsAsync(WebView2 view, string profile, string directory)
+    {
+        var extension = await SearchBrowserExtension.EnsureEnabledAsync(
+            view, AppContext.BaseDirectory, profile, new PluginLog(profile), CancellationToken.None);
+        for (var attempt = 0; attempt < 600 && SearchBrowserExtension.EnabledRulesets(directory) is null; attempt++)
+            await Task.Delay(50);
+
+        await Navigate(view.CoreWebView2, $"chrome-extension://{extension.Id}/dashboard.html");
+        await view.CoreWebView2.ExecuteScriptAsync("""
+            window.rules = null;
+            Promise.all([
+                chrome.declarativeNetRequest.getEnabledRulesets(),
+                chrome.runtime.sendMessage({ what: 'getDefaultConfig' }),
+            ]).then(([enabled, defaults]) => window.rules = { enabled, defaults: defaults.rulesets });
+            """);
+        string rules;
+        for (var attempt = 0; (rules = await view.CoreWebView2.ExecuteScriptAsync("window.rules")) == "null" && attempt < 100; attempt++)
+            await Task.Delay(50);
+        return System.Text.Json.JsonSerializer.Deserialize<Rulesets>(rules)!;
+    }
+
+    private sealed record Rulesets(
+        [property: System.Text.Json.Serialization.JsonPropertyName("enabled")] string[] Enabled,
+        [property: System.Text.Json.Serialization.JsonPropertyName("defaults")] string[] Defaults);
+
     private static async Task<T> RunInBrowser<T>(
         string profile,
-        Func<CoreWebView2, CoreWebView2Environment, Task<T>> body)
+        Func<WebView2, CoreWebView2Environment, Task<T>> body)
     {
         using var dispatcher = new StaDispatcher("Extension integration test");
         var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -104,7 +164,7 @@ public sealed class SearchBrowserExtensionLiveTests
                 host = new System.Windows.Window { Content = view, Width = 640, Height = 480, ShowActivated = false };
                 host.Show();
                 await view.EnsureCoreWebView2Async(environment);
-                completion.SetResult(await body(view.CoreWebView2, environment));
+                completion.SetResult(await body(view, environment));
             }
             catch (Exception exception) { completion.TrySetException(exception); }
             finally

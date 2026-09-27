@@ -1,0 +1,30 @@
+! CircleFlow cosmetic filters for the built-in search browser.
+! Syntax follows uBlock Origin cosmetic filters, so rules exported from uBO or uBO Lite can be pasted in:
+!   example.com##.selector        hides on example.com and its subdomains
+!   google.*##.selector           hides on google with any top-level domain
+!   ~example.com##.selector       hides everywhere except example.com
+!   ##.selector                   hides on every site
+! Selectors are applied as plain CSS, so native :has() and :not() work.
+! Scriptlets (##+js), HTML filters (##^) and uBO-only operators such as :has-text() are ignored.
+! An element the page styles inline with display: ... !important cannot be hidden this way.
+
+duckduckgo.com##[data-testid="floating-feedback-prompt"]
+duckduckgo.com##[data-testid="serp-popover-promo"]
+duckduckgo.com##[data-testid="feedback-prompt"]
+duckduckgo.com##div.footer
+duckduckgo.com##.header--aside__item:has(> a[href^="/compare-privacy"])
+
+yandex.*##div.SearchFooter.SerpFooter-Wrapper
+
+startpage.com##button.feedback-button
+startpage.com##[data-testid="site-footer"]
+startpage.com##div:has(> div > button.close-button[aria-label="Close"]):has(> div > div > div > svg[viewBox="0 0 36 45"])
+
+bing.com###id_rh_w
+bing.com##div[class*="b_siprov"]
+
+google.*###fbar
+
+qwant.com##footer
+qwant.com##[role="dialog"] a[href*="microsoftedge.microsoft.com/addons"]
+qwant.com##div:not([role="dialog"] *):has(> a[href*="microsoftedge.microsoft.com/addons"])
