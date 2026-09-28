@@ -163,9 +163,11 @@ public static class CompositionRoot
                             strings.SettingsPreviewText("open_filters_failed")),
                         log).Window);
                 lifetime.AddCleanup("close-test-browser", () => { testBrowser.Dispose(); return Task.CompletedTask; });
+                var updates = StartUpdates(application, lifetime, notifier, strings, log);
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
                     language, CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
-                    AudioOutputDevice.DefaultName, startup, onboarding.Show, testBrowser.Show);
+                    AudioOutputDevice.DefaultName, startup, onboarding.Show, testBrowser.Show,
+                    updates is null ? null : updates.CheckNowAsync);
                 var settingsWindow = new SingleWindowController(application.Dispatcher,
                     () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });
@@ -178,7 +180,6 @@ public static class CompositionRoot
                 lifetime.AddStop("remove-tray", tray.RemoveForShutdown);
                 lifetime.AddCleanup("close-tray", () => { tray.Dispose(); return Task.CompletedTask; });
                 watchdog.AddEmergencyCleanup(tray.RemoveForShutdown);
-                StartUpdates(application, lifetime, notifier, strings, log);
                 cancellation.ThrowIfCancellationRequested();
                 activation.SetReady(runtime.OpenAsync);
                 onboarding.ShowIfNeeded();
@@ -194,13 +195,13 @@ public static class CompositionRoot
         }
     }
 
-    private static void StartUpdates(Application application, AppLifetime lifetime, IPluginNotifier notifier,
+    private static UpdateService? StartUpdates(Application application, AppLifetime lifetime, IPluginNotifier notifier,
         UiStrings strings, PluginLog log)
     {
         var updates = new ReleaseUpdates(ReleaseUpdates.BuiltInTestRepository ?? ProjectSupport.RepositoryUrl,
             ReleaseUpdates.BuiltInTestFeed);
         // A copy run from the build output has no Update.exe to install with.
-        if (!updates.IsInstalled) return;
+        if (!updates.IsInstalled) return null;
         if (updates.ToastAppUserModelId is { } appUserModelId)
         {
             var toasts = new SystemToastPresenter(appUserModelId, application.Dispatcher, log);
@@ -211,6 +212,7 @@ public static class CompositionRoot
         lifetime.AddStop("stop-updates", service.Stop);
         lifetime.AddCleanup("stop-updates", service.StopAsync);
         service.Start();
+        return service;
     }
 
     internal static Application CreateApplication() => new()

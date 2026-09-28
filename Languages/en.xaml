@@ -262,7 +262,12 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_alt">Alt</system:String>
     <system:String x:Key="app_settings_shift">Shift</system:String>
     <system:String x:Key="app_settings_space">Space</system:String>
-    <system:String x:Key="app_settings_preview_action">This action is not connected in the interface preview.</system:String>
+    <system:String x:Key="app_settings_updates_checking">Checking for updates...</system:String>
+    <system:String x:Key="app_settings_updates_current">CircleFlow is up to date.</system:String>
+    <system:String x:Key="app_settings_updates_available">An update is available. Use Update in the notification to install it.</system:String>
+    <system:String x:Key="app_settings_updates_installing">The update is already being installed.</system:String>
+    <system:String x:Key="app_settings_updates_failed">Could not check for updates. Check your connection and try again.</system:String>
+    <system:String x:Key="app_settings_updates_unavailable">This copy cannot update itself. Install CircleFlow from the latest release to get updates.</system:String>
     <system:String x:Key="app_settings_win">Win</system:String>
     <system:String x:Key="app_settings_shortcut_saved">Shortcut saved.</system:String>
     <system:String x:Key="app_settings_shortcut_unavailable">{0} is already used by another app. Choose a different shortcut.</system:String>

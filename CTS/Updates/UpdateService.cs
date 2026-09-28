@@ -4,6 +4,8 @@ namespace CircleToSearch.Updates;
 
 internal sealed record AvailableUpdate(string Version, Func<CancellationToken, Task> DownloadAsync, Action ApplyAfterExit);
 
+internal enum UpdateCheckOutcome { UpToDate, Offered, Installing, Failed }
+
 internal sealed class UpdateService(
     Func<CancellationToken, Task<AvailableUpdate?>> findAsync,
     IPluginNotifier notifier,
@@ -18,6 +20,8 @@ internal sealed class UpdateService(
     internal static readonly TimeSpan RetryInterval = TimeSpan.FromHours(1);
 
     private readonly CancellationTokenSource _stop = new();
+    // A check from Settings can meet the daily one, and Velopack's UpdateManager is not documented as thread-safe.
+    private readonly SemaphoreSlim _checking = new(1, 1);
     private readonly Func<TimeSpan, CancellationToken, Task> _delayAsync = delayAsync ?? Task.Delay;
     private Task _loop = Task.CompletedTask;
     private int _installing;
@@ -25,6 +29,8 @@ internal sealed class UpdateService(
     public void Start() => _loop = Task.Run(() => RunAsync(_stop.Token));
 
     public void Stop() => _stop.Cancel();
+
+    public Task<UpdateCheckOutcome> CheckNowAsync() => CheckAsync(_stop.Token);
 
     public async Task StopAsync()
     {
@@ -39,27 +45,29 @@ internal sealed class UpdateService(
         while (true)
         {
             await _delayAsync(wait, cancellation);
-            wait = await CheckAsync(cancellation) ? CheckInterval : RetryInterval;
+            wait = await CheckAsync(cancellation) == UpdateCheckOutcome.Failed ? RetryInterval : CheckInterval;
         }
     }
 
-    internal async Task<bool> CheckAsync(CancellationToken cancellation)
+    internal async Task<UpdateCheckOutcome> CheckAsync(CancellationToken cancellation)
     {
-        if (Volatile.Read(ref _installing) != 0) return true;
+        await _checking.WaitAsync(cancellation);
         try
         {
+            if (Volatile.Read(ref _installing) != 0) return UpdateCheckOutcome.Installing;
             var update = await findAsync(cancellation);
-            if (update is null) return true;
+            if (update is null) return UpdateCheckOutcome.UpToDate;
             log.Info(nameof(UpdateService), $"version {update.Version} is available");
             notifier.ShowMessageWithButton(strings.UpdateAvailableTitle, strings.UpdateAvailable(update.Version),
                 strings.UpdateInstall, () => _ = InstallAsync(update));
-            return true;
+            return UpdateCheckOutcome.Offered;
         }
         catch (Exception exception) when (!cancellation.IsCancellationRequested)
         {
             log.SafeError(nameof(UpdateService), "check", exception);
-            return false;
+            return UpdateCheckOutcome.Failed;
         }
+        finally { _checking.Release(); }
     }
 
     internal async Task InstallAsync(AvailableUpdate update)

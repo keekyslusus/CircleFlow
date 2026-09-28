@@ -161,7 +161,8 @@ internal static class StartupHook
         var urlOpening = new UrlOpeningService(_ => false, notifier, strings, log);
         return new SettingsWindowModel(settings, new ProviderSelectionStore(router, settings, notifier, strings, log),
             new OcrLanguageCatalog(), language, CultureInfo.GetCultureInfo("en-US"), new ProjectSupport(urlOpening), urlOpening,
-            paths, strings, () => null, () => null, new WindowsStartupRegistration(paths.ExecutablePath, log), () => { }, () => { });
+            paths, strings, () => null, () => null, new WindowsStartupRegistration(paths.ExecutablePath, log), () => { }, () => { },
+            checkForUpdates: null);
     }
 
     private static async Task NavigateAsync(CoreWebView2 core)

@@ -61,36 +61,16 @@ internal sealed class SettingsDialogMotion : IDisposable
         }
         var duration = TimeSpan.FromMilliseconds(open ? 200 : 140);
         var easing = new CubicEase { EasingMode = open ? EasingMode.EaseOut : EasingMode.EaseIn };
-        AnimateValue(_scale, ScaleTransform.ScaleXProperty, open ? 1 : 0.98, duration, easing);
-        AnimateValue(_scale, ScaleTransform.ScaleYProperty, open ? 1 : 0.98, duration, easing);
-        AnimateValue(_translation, TranslateTransform.YProperty, open ? 0 : 8, duration, easing);
-        AnimateValue(_scrim, UIElement.OpacityProperty, open ? 1 : 0, duration, easing);
-        AnimateValue(_surface, UIElement.OpacityProperty, open ? 1 : 0, duration, easing, () =>
+        SettingsMotionValue.Animate(_scale, ScaleTransform.ScaleXProperty, open ? 1 : 0.98, duration, easing);
+        SettingsMotionValue.Animate(_scale, ScaleTransform.ScaleYProperty, open ? 1 : 0.98, duration, easing);
+        SettingsMotionValue.Animate(_translation, TranslateTransform.YProperty, open ? 0 : 8, duration, easing);
+        SettingsMotionValue.Animate(_scrim, UIElement.OpacityProperty, open ? 1 : 0, duration, easing);
+        SettingsMotionValue.Animate(_surface, UIElement.OpacityProperty, open ? 1 : 0, duration, easing, () =>
         {
             if (version != _version) return;
             if (open) SetValues(true, 1, 0);
             else FinishClose();
         });
-    }
-
-    private static void AnimateValue(DependencyObject target, DependencyProperty property,
-        double value, TimeSpan duration, IEasingFunction easing, Action? completed = null)
-    {
-        var current = (double)target.GetValue(property);
-        var animation = new DoubleAnimation(current, value, duration) { EasingFunction = easing };
-        if (completed is not null) animation.Completed += (_, _) => completed();
-        if (target is Animatable animatable)
-        {
-            animatable.BeginAnimation(property, null);
-            target.SetValue(property, current);
-            animatable.BeginAnimation(property, animation);
-        }
-        else if (target is UIElement element)
-        {
-            element.BeginAnimation(property, null);
-            element.SetValue(property, current);
-            element.BeginAnimation(property, animation);
-        }
     }
 
     private void SetValues(bool visible, double scale, double y)

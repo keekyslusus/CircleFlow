@@ -5,6 +5,7 @@ using CircleToSearch.Settings;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
 using CircleToSearch.Ui;
+using CircleToSearch.Updates;
 
 namespace CircleToSearch.Shell.SettingsPreview;
 
@@ -22,7 +23,8 @@ internal sealed class SettingsWindowModel(
     Func<string?> audioOutputName,
     WindowsStartupRegistration startup,
     Action showOnboarding,
-    Action openTestBrowser)
+    Action openTestBrowser,
+    Func<Task<UpdateCheckOutcome>>? checkForUpdates)
 {
     private const string OcrLanguageSettingsUri = "ms-settings:regionlanguage";
 
@@ -53,6 +55,12 @@ internal sealed class SettingsWindowModel(
     public void ShowOnboarding() => showOnboarding();
 
     public void OpenTestBrowser() => openTestBrowser();
+
+    // False for a copy without Update.exe, such as the development build.
+    public bool CanCheckForUpdates => checkForUpdates is not null;
+
+    public Task<UpdateCheckOutcome> CheckForUpdatesAsync() =>
+        (checkForUpdates ?? throw new InvalidOperationException("This copy cannot check for updates."))();
 
     public bool SelectProvider(string providerId) => providers.Save(providerId);
 
