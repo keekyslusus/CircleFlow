@@ -287,6 +287,9 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_test_browser">Test browser</system:String>
     <system:String x:Key="app_settings_test_browser_sub">Opens any site in the search browser profile with DevTools and CircleFlow filters</system:String>
     <system:String x:Key="app_settings_open">Open</system:String>
+    <system:String x:Key="app_settings_developer_notifications">Notifications</system:String>
+    <system:String x:Key="app_settings_test_notifications">Test notifications</system:String>
+    <system:String x:Key="app_settings_test_notifications_sub">Shows a message, an error and an update offer in the corner of the screen</system:String>
     <system:String x:Key="app_settings_open_filters_failed">Could not open the filters file.</system:String>
     <system:String x:Key="app_test_browser_title">CircleFlow test browser</system:String>
     <system:String x:Key="app_test_browser_back">Back</system:String>

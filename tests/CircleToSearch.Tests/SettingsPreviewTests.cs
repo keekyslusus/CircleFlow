@@ -1418,7 +1418,7 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
-    public void Three_clicks_on_the_version_reveal_developer_settings_that_open_onboarding_and_the_test_browser() => OnSta(time =>
+    public void Three_clicks_on_the_version_reveal_developer_settings_that_open_onboarding_the_test_browser_and_notifications() => OnSta(time =>
     {
         var harness = new TestSettingsWindow();
         var window = harness.CreateView(light: false).Window;
@@ -1446,6 +1446,8 @@ public sealed class SettingsPreviewTests
             Assert.Equal(1, harness.OnboardingRequests);
             Click(window, "test-browser");
             Assert.Equal(1, harness.TestBrowserRequests);
+            Click(window, "test-notifications");
+            Assert.Equal(1, harness.TestNotificationRequests);
         }
         finally { window.Close(); }
 

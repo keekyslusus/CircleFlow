@@ -24,6 +24,7 @@ internal sealed class SettingsWindowModel(
     WindowsStartupRegistration startup,
     Action showOnboarding,
     Action openTestBrowser,
+    Action showTestNotifications,
     Func<Task<UpdateCheckOutcome>>? checkForUpdates)
 {
     private const string OcrLanguageSettingsUri = "ms-settings:regionlanguage";
@@ -55,6 +56,8 @@ internal sealed class SettingsWindowModel(
     public void ShowOnboarding() => showOnboarding();
 
     public void OpenTestBrowser() => openTestBrowser();
+
+    public void ShowTestNotifications() => showTestNotifications();
 
     // False for a copy without Update.exe, such as the development build.
     public bool CanCheckForUpdates => checkForUpdates is not null;

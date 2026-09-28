@@ -61,11 +61,11 @@ internal sealed class SettingsDialogMotion : IDisposable
         }
         var duration = TimeSpan.FromMilliseconds(open ? 200 : 140);
         var easing = new CubicEase { EasingMode = open ? EasingMode.EaseOut : EasingMode.EaseIn };
-        SettingsMotionValue.Animate(_scale, ScaleTransform.ScaleXProperty, open ? 1 : 0.98, duration, easing);
-        SettingsMotionValue.Animate(_scale, ScaleTransform.ScaleYProperty, open ? 1 : 0.98, duration, easing);
-        SettingsMotionValue.Animate(_translation, TranslateTransform.YProperty, open ? 0 : 8, duration, easing);
-        SettingsMotionValue.Animate(_scrim, UIElement.OpacityProperty, open ? 1 : 0, duration, easing);
-        SettingsMotionValue.Animate(_surface, UIElement.OpacityProperty, open ? 1 : 0, duration, easing, () =>
+        MotionValue.Animate(_scale, ScaleTransform.ScaleXProperty, open ? 1 : 0.98, duration, easing);
+        MotionValue.Animate(_scale, ScaleTransform.ScaleYProperty, open ? 1 : 0.98, duration, easing);
+        MotionValue.Animate(_translation, TranslateTransform.YProperty, open ? 0 : 8, duration, easing);
+        MotionValue.Animate(_scrim, UIElement.OpacityProperty, open ? 1 : 0, duration, easing);
+        MotionValue.Animate(_surface, UIElement.OpacityProperty, open ? 1 : 0, duration, easing, () =>
         {
             if (version != _version) return;
             if (open) SetValues(true, 1, 0);

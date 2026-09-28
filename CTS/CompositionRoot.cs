@@ -14,6 +14,7 @@ using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
 using CircleToSearch.Settings;
 using CircleToSearch.Shell;
+using CircleToSearch.Shell.Notifications;
 using CircleToSearch.Shell.Onboarding;
 using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.Shell.TestBrowser;
@@ -132,7 +133,8 @@ public static class CompositionRoot
                     reportStartupMessage(strings.StorageRecovered, strings.PluginTitle, MessageBoxImage.Warning);
                 _ = new BrowserDataCleanup(paths, log).Run(loaded.Settings.BrowserDataCleanupDays);
                 cancellation.ThrowIfCancellationRequested();
-                var notifications = new NotificationPresenter(application.Dispatcher, strings, log);
+                var notifications = new NotificationPresenter(application.Dispatcher, strings, paths.TrayIconPath,
+                    SystemTheme.IsLight, log);
                 lifetime.AddCleanup("close-notifications", () => { notifications.Dispose(); return Task.CompletedTask; });
                 var notifier = new PluginNotifier(notifications.ShowMessage, notifications.ShowMessageWithButton,
                     notifications.ShowError, log);
@@ -167,6 +169,7 @@ public static class CompositionRoot
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
                     language, CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
                     AudioOutputDevice.DefaultName, startup, onboarding.Show, testBrowser.Show,
+                    () => NotificationSamples.Show(notifier, strings, runtime.Settings.Snapshot.HotkeyGesture),
                     updates is null ? null : updates.CheckNowAsync);
                 var settingsWindow = new SingleWindowController(application.Dispatcher,
                     () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
