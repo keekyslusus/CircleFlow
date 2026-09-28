@@ -45,6 +45,8 @@ This check extracts a separate copy under `tests\temp`, checks its packaged asse
 
 To try the update flow without publishing a release, uninstall CircleFlow and run `.\tests\Test-Update.ps1`. It installs a test build that reads updates from `tests\temp\update-feed`, publishes a newer build there and starts the app; about a minute later it offers the update.
 
+To try the same flow through GitHub, build with `.\build_release.ps1 -UpdateRepository https://github.com/<owner>/<test-repo> -Version <version>`, install that build, then publish a newer build there with `dotnet vpk upload github --repoUrl <repo> --token <token> -o bin\releases --publish --tag v<version>`. The repository must be public; the app reads releases without a token. Run the installer from Explorer: an installer started from a packaged app, such as a terminal inside the Claude desktop app, lands in that app's virtualized `AppData`, and Windows cannot uninstall it.
+
 Tests marked `Category=Live` and tests guarded by environment variables need their respective services or interactive setup. The package check uses local browser content; it does not certify external search, translation or music providers, or multi-monitor/DPI behavior.
 
 ## License

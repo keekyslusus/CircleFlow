@@ -197,7 +197,8 @@ public static class CompositionRoot
     private static void StartUpdates(Application application, AppLifetime lifetime, IPluginNotifier notifier,
         UiStrings strings, PluginLog log)
     {
-        var updates = new ReleaseUpdates(ProjectSupport.RepositoryUrl, ReleaseUpdates.BuiltInTestFeed);
+        var updates = new ReleaseUpdates(ReleaseUpdates.BuiltInTestRepository ?? ProjectSupport.RepositoryUrl,
+            ReleaseUpdates.BuiltInTestFeed);
         // A copy run from the build output has no Update.exe to install with.
         if (!updates.IsInstalled) return;
         if (updates.ToastAppUserModelId is { } appUserModelId)

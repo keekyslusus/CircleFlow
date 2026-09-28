@@ -3,6 +3,8 @@ param(
     [switch]$NoPause,
     # A test build: the app looks for updates in this folder instead of GitHub, and the packages go there too.
     [string]$UpdateFeed,
+    # A test build that looks for updates in the releases of this GitHub repository instead of the project's.
+    [string]$UpdateRepository,
     [string]$Version
 )
 
@@ -55,6 +57,11 @@ try {
         New-Item -ItemType Directory -Path $releases -Force | Out-Null
         $publishProperties += "-p:UpdateFeed=$releases"
     }
+    if ($UpdateRepository) {
+        if ($UpdateFeed) { throw 'Pass either -UpdateFeed or -UpdateRepository.' }
+        if ($UpdateRepository -notmatch '^https://github\.com/[^/]+/[^/]+$') { throw 'Pass the repository as https://github.com/<owner>/<name>.' }
+        $publishProperties += "-p:UpdateRepository=$UpdateRepository"
+    }
     if ($Version) { $publishProperties += "-p:Version=$Version" }
     dotnet publish (Join-Path $workspace 'CircleFlow.csproj') -c Release -r win-x64 --self-contained true `
         -p:PublishSingleFile=false -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false @publishProperties -o $appDirectory
@@ -82,6 +89,13 @@ try {
     }
     $version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $appDirectory 'deps/CircleFlow.dll')).ProductVersion.Split('+')[0]
     if ($version -notmatch '^\d+\.\d+\.\d+(?:[.\-][0-9A-Za-z.\-]+)?$') { throw 'Unexpected product version.' }
+    $feedFile = Join-Path $releases 'releases.win.json'
+    # vpk refuses to pack a version the feed already has, so a local rebuild starts from an empty output.
+    if ((Test-Path -LiteralPath $feedFile) -and
+        @((Get-Content -LiteralPath $feedFile -Raw | ConvertFrom-Json).Assets | Where-Object { $_.Version -eq $version }).Count -gt 0) {
+        if ($UpdateFeed) { throw "The update feed already has $version; pass a newer -Version." }
+        Get-ChildItem -LiteralPath $releases -Force | Remove-Item -Recurse -Force
+    }
     dotnet tool restore
     if ($LASTEXITCODE -ne 0) { throw 'Restoring the Velopack CLI failed.' }
     # The Start menu shortcut also carries the AUMID that Windows needs to show update toasts.
