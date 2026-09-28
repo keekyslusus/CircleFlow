@@ -1,0 +1,36 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize" ShowInTaskbar="False" ShowActivated="False" Topmost="True" Background="{DynamicResource SettingsTransparent}" Foreground="{DynamicResource SettingsText}" FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../SettingsPreview/SettingsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="NotificationCard" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource SettingsPaper}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource SettingsLine}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="9"/>
+                <Setter Property="Padding" Value="16,10,10,16"/>
+            </Style>
+            <Style x:Key="NotificationClose" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Foreground" Value="{DynamicResource SettingsMuted}"/>
+                <Setter Property="Background" Value="{DynamicResource SettingsTransparent}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="8"/>
+                <Setter Property="MinHeight" Value="0"/>
+            </Style>
+            <Style x:Key="NotificationTitle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+            <Style x:Key="NotificationMessage" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="LineHeight" Value="19"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                <Setter Property="MaxHeight" Value="228"/>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+    <StackPanel x:Name="Cards" VerticalAlignment="Bottom" Margin="16,0,16,12"/>
+</Window>
