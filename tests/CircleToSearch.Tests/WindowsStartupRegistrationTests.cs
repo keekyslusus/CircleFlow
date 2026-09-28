@@ -57,6 +57,22 @@ public sealed class WindowsStartupRegistrationTests
     }
 
     [Fact]
+    public void Uninstall_removes_only_the_entry_of_this_copy()
+    {
+        using var registry = new TestStartupRegistry(@"C:\Apps\CircleFlow\current\CircleFlow.exe");
+        const string other = "\"D:\\Portable\\CircleFlow.exe\" --autostart";
+        registry.RunValue = other;
+        registry.Registration.RemoveForUninstall();
+        Assert.Equal(other, registry.RunValue);
+
+        Assert.True(registry.Registration.TrySet(true));
+        registry.SetTaskManagerState(enabled: false);
+        registry.Registration.RemoveForUninstall();
+        Assert.Null(registry.RunValue);
+        Assert.Null(registry.ApprovedValue);
+    }
+
+    [Fact]
     public void Path_comparison_ignores_case_and_non_string_values_are_off()
     {
         using var registry = new TestStartupRegistry(@"C:\Apps\CircleFlow\CircleFlow.exe");

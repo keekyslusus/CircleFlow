@@ -46,4 +46,11 @@
     <system:String x:Key="app_onboarding_next">Далее</system:String>
     <system:String x:Key="app_onboarding_step">Шаг {0} из {1}</system:String>
     <system:String x:Key="app_onboarding_try">Попробовать</system:String>
+    <system:String x:Key="app_update_available_title">Доступно обновление</system:String>
+    <system:String x:Key="app_update_available">CircleFlow {0} готов к установке.</system:String>
+    <system:String x:Key="app_update_install">Обновить</system:String>
+    <system:String x:Key="app_update_downloading_title">Загрузка обновления</system:String>
+    <system:String x:Key="app_update_downloading">CircleFlow перезапустится и установит версию {0}, когда загрузка завершится.</system:String>
+    <system:String x:Key="app_update_failed_title">Не удалось обновить</system:String>
+    <system:String x:Key="app_update_failed">Не удалось загрузить обновление. Проверьте подключение и попробуйте позже.</system:String>
 </ResourceDictionary>

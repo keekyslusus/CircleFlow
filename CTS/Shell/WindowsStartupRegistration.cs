@@ -24,11 +24,7 @@ internal sealed class WindowsStartupRegistration(
         {
             try
             {
-                using var run = Registry.CurrentUser.OpenSubKey(runKeyPath);
-                // An entry left by another copy of the app does not start this one.
-                if (run?.GetValue(ValueName) is not string command
-                    || !command.StartsWith($"\"{executablePath}\"", StringComparison.OrdinalIgnoreCase))
-                    return false;
+                if (!StartsThisCopy()) return false;
                 using var approved = Registry.CurrentUser.OpenSubKey(approvedKeyPath);
                 // Task Manager keeps the Run entry and marks it disabled with an odd first byte here.
                 return approved?.GetValue(ValueName) is not byte[] { Length: > 0 } state || (state[0] & 1) == 0;
@@ -39,6 +35,29 @@ internal sealed class WindowsStartupRegistration(
                 return false;
             }
         }
+    }
+
+    // Uninstalling must not remove an entry that starts another copy of the app.
+    public void RemoveForUninstall()
+    {
+        try
+        {
+            if (!StartsThisCopy()) return;
+        }
+        catch (Exception exception) when (exception is SecurityException or UnauthorizedAccessException or IOException)
+        {
+            log.SafeError(nameof(WindowsStartupRegistration), "read-for-uninstall", exception);
+            return;
+        }
+        TrySet(false);
+    }
+
+    private bool StartsThisCopy()
+    {
+        using var run = Registry.CurrentUser.OpenSubKey(runKeyPath);
+        // An entry left by another copy of the app does not start this one.
+        return run?.GetValue(ValueName) is string command
+            && command.StartsWith($"\"{executablePath}\"", StringComparison.OrdinalIgnoreCase);
     }
 
     public bool TrySet(bool enabled)

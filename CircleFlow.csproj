@@ -53,6 +53,7 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
     <PackageReference Include="NAudio" Version="3.0.1" />
     <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
+    <PackageReference Include="Velopack" Version="1.2.158" />
   </ItemGroup>
 
   <ItemGroup>
@@ -60,6 +61,10 @@
     <Compile Remove="poc\**\*.cs" />
     <ApplicationDefinition Remove="tests\**\*.xaml" />
     <Page Remove="tests\**\*.xaml" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UpdateFeed)' != ''">
+    <AssemblyMetadata Include="UpdateFeed" Value="$(UpdateFeed)" />
   </ItemGroup>
 
   <ItemGroup>

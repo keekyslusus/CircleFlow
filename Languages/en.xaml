@@ -319,4 +319,11 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_onboarding_next">Next</system:String>
     <system:String x:Key="app_onboarding_step">Step {0} of {1}</system:String>
     <system:String x:Key="app_onboarding_try">Try it</system:String>
+    <system:String x:Key="app_update_available_title">Update available</system:String>
+    <system:String x:Key="app_update_available">CircleFlow {0} is ready to install.</system:String>
+    <system:String x:Key="app_update_install">Update</system:String>
+    <system:String x:Key="app_update_downloading_title">Downloading update</system:String>
+    <system:String x:Key="app_update_downloading">CircleFlow will restart to install version {0} once the download finishes.</system:String>
+    <system:String x:Key="app_update_failed_title">Update failed</system:String>
+    <system:String x:Key="app_update_failed">The update could not be downloaded. Check your connection and try again later.</system:String>
 </ResourceDictionary>
