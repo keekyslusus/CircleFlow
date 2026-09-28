@@ -32,7 +32,7 @@ The portable zip has the same layout in any folder, marked by a `.portable` file
 
 ## Updates
 
-`UpdateService` checks the GitHub releases of this repository a minute after start and then daily (hourly after a failed check). A newer release is offered in a Windows toast; the portable copy, which has no Start menu shortcut for Windows to resolve toasts, uses the app's own notification window. **Update** downloads the delta or full package, exits CircleFlow gracefully and lets `Update.exe` install the release and restart the app. Copies without `Update.exe`, such as the development build, never check.
+`UpdateService` checks the GitHub releases of this repository a minute after start and then daily (hourly after a failed check). A newer release is offered in the app's own notification window, not a Windows toast, so the offer appears even when Windows notifications or Do Not Disturb are off. The card stays until it is closed or CircleFlow starts a capture; a later check does not stack a second card for the same version. **Update** downloads the delta or full package, exits CircleFlow gracefully and lets `Update.exe` install the release and restart the app. Copies without `Update.exe`, such as the development build, never check.
 
 Uninstalling runs the `--veloapp-uninstall` hook, which removes the autostart entry if it points at this copy, then deletes the whole install folder including `Data`.
 
@@ -66,7 +66,7 @@ Locally, without publishing anything: uninstall CircleFlow and run
 powershell -ExecutionPolicy Bypass -File .\tests\Test-Update.ps1
 ```
 
-It builds `<version>-update.1` with `-UpdateFeed tests\temp\update-feed`, installs it, builds `<version>-update.2` into the same feed and starts the app. About a minute later the toast offers the update.
+It builds `<version>-update.1` with `-UpdateFeed tests\temp\update-feed`, installs it, builds `<version>-update.2` into the same feed and starts the app. About a minute later a CircleFlow notification offers the update.
 
 Through GitHub: build with `.\build_release.ps1 -UpdateRepository https://github.com/<owner>/<test-repo> -Version <version>`, install that build, then build a newer version the same way and publish it with `dotnet vpk upload github --repoUrl <repo> --token <token> -o bin\releases --publish --tag v<version>`. The test repository must be public, because the app reads releases without a token.
 

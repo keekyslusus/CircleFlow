@@ -166,7 +166,7 @@ public static class CompositionRoot
                             strings.SettingsPreviewText("open_filters_failed")),
                         log).Window);
                 lifetime.AddCleanup("close-test-browser", () => { testBrowser.Dispose(); return Task.CompletedTask; });
-                var updates = StartUpdates(application, lifetime, notifier, strings, log);
+                var updates = StartUpdates(lifetime, notifier, strings, log);
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
                     language, CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
                     AudioOutputDevice.DefaultName, startup, onboarding.Show, testBrowser.Show,
@@ -200,19 +200,13 @@ public static class CompositionRoot
         }
     }
 
-    private static UpdateService? StartUpdates(Application application, AppLifetime lifetime, IPluginNotifier notifier,
+    private static UpdateService? StartUpdates(AppLifetime lifetime, IPluginNotifier notifier,
         UiStrings strings, PluginLog log)
     {
         var updates = new ReleaseUpdates(ReleaseUpdates.BuiltInTestRepository ?? ProjectSupport.RepositoryUrl,
             ReleaseUpdates.BuiltInTestFeed);
         // A copy run from the build output has no Update.exe to install with.
         if (!updates.IsInstalled) return null;
-        if (updates.ToastAppUserModelId is { } appUserModelId)
-        {
-            var toasts = new SystemToastPresenter(appUserModelId, application.Dispatcher, log);
-            lifetime.AddCleanup("clear-update-toasts", () => { toasts.Clear(); return Task.CompletedTask; });
-            notifier = new PluginNotifier(toasts.ShowMessage, toasts.ShowMessageWithButton, toasts.ShowError, log);
-        }
         var service = new UpdateService(updates.FindAsync, notifier, lifetime.RequestExitAsync, strings, log);
         lifetime.AddStop("stop-updates", service.Stop);
         lifetime.AddCleanup("stop-updates", service.StopAsync);

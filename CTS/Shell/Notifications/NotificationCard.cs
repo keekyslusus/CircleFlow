@@ -28,6 +28,7 @@ internal sealed class NotificationCard
     internal NotificationCard(FrameworkElement styles, NotificationContent content, NotificationChrome chrome,
         Action close, Action? act, TimeSpan? autoDismiss)
     {
+        Content = content;
         CloseButton = new Button
         {
             Style = (Style)styles.FindResource("NotificationClose"),
@@ -139,6 +140,7 @@ internal sealed class NotificationCard
         }
     }
 
+    internal NotificationContent Content { get; }
     internal Canvas Root { get; }
     internal Button CloseButton { get; }
     internal Button? ActionButton { get; }
