@@ -188,6 +188,29 @@ public sealed class NotificationPresenterTests
     });
 
     [Fact]
+    public void A_repeated_offer_or_error_still_open_is_not_stacked_again() => OnSta(time =>
+    {
+        using var presenter = Create();
+        var clicked = 0;
+        presenter.ShowMessageWithButton(Strings.UpdateAvailableTitle, "offer", Strings.UpdateInstall, () => clicked++);
+        presenter.ShowError(Strings.PluginTitle, "failure");
+        presenter.ShowMessage(Strings.PluginTitle, "information");
+        presenter.ShowMessageWithButton(Strings.UpdateAvailableTitle, "offer", Strings.UpdateInstall, () => { });
+        presenter.ShowError(Strings.PluginTitle, "failure");
+        presenter.ShowMessage(Strings.PluginTitle, "information");
+        presenter.ShowMessageWithButton(Strings.UpdateAvailableTitle, "newer offer", Strings.UpdateInstall, () => { });
+        Pump();
+        Assert.Equal(["offer", "failure", "information", "information", "newer offer"],
+            presenter.Cards.Select(card => card.MessageText.Text));
+
+        Click(presenter.Cards[0].ActionButton!);
+        Assert.Equal(1, clicked);
+        presenter.ShowMessageWithButton(Strings.UpdateAvailableTitle, "offer", Strings.UpdateInstall, () => { });
+        Pump();
+        Assert.Equal("offer", presenter.Cards[^1].MessageText.Text);
+    });
+
+    [Fact]
     public void Closing_all_removes_every_card_at_once() => OnSta(time =>
     {
         using var presenter = Create();

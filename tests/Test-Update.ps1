@@ -30,5 +30,5 @@ Start-Process -FilePath (Join-Path $installRoot 'current\CircleFlow.exe')
 
 Write-Host ''
 Write-Host "Installed $installed and started it; $offered is waiting in $feed."
-Write-Host 'About a minute after start, Windows shows the update offer. Click Update: CircleFlow downloads the delta,'
+Write-Host 'About a minute after start, CircleFlow shows the update offer. Click Update: CircleFlow downloads the delta,'
 Write-Host "exits, installs $offered and starts again. Its version is in $installRoot\current\sq.version."

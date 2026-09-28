@@ -1,6 +1,5 @@
 using System.Reflection;
 using Velopack;
-using Velopack.Locators;
 using Velopack.Sources;
 
 namespace CircleToSearch.Updates;
@@ -18,10 +17,6 @@ internal sealed class ReleaseUpdates(string repositoryUrl, string? testFeed)
     public static string? BuiltInTestRepository { get; } = BuiltInMetadata("UpdateRepository");
 
     public bool IsInstalled => _manager.IsInstalled;
-
-    // Null for a portable copy: it has no Start menu shortcut, and Windows shows toasts only for apps it can resolve.
-    public string? ToastAppUserModelId =>
-        _manager.IsInstalled && !_manager.IsPortable ? VelopackLocator.Current.AppUserModelId : null;
 
     public async Task<AvailableUpdate?> FindAsync(CancellationToken cancellation)
     {

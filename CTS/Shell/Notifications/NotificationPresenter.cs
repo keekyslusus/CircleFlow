@@ -43,9 +43,12 @@ internal sealed class NotificationPresenter(
 
     private void Show(string title, string message, string? button, Action? action, bool isError)
     {
-        var (window, stack, chrome) = EnsureWindow();
         // Most callers pass the app name as the title, which the card header already shows.
         var content = new NotificationContent(title == strings.PluginTitle ? null : title, message, button, isError);
+        var waitsForUser = action is not null || isError;
+        // The daily update check and repeated failures would otherwise stack identical cards the user has not closed.
+        if (waitsForUser && _cards.Any(shown => shown.Content == content)) return;
+        var (window, stack, chrome) = EnsureWindow();
         NotificationCard? card = null;
         try
         {
@@ -58,7 +61,7 @@ internal sealed class NotificationPresenter(
                     catch (Exception exception) { log.SafeError(nameof(NotificationPresenter), "notification-action", exception); }
                 },
                 // Errors and offers wait for the user; a plain message is only information.
-                autoDismiss: action is null && !isError ? autoDismiss ?? DefaultAutoDismiss : null);
+                autoDismiss: waitsForUser ? null : autoDismiss ?? DefaultAutoDismiss);
         }
         catch
         {
