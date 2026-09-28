@@ -54,13 +54,13 @@ public sealed class CosmeticFiltersTests
         var path = CosmeticFilters.FilePath(AppContext.BaseDirectory);
         Assert.True(File.Exists(path));
         Assert.Equal(CosmeticFilters.CreateScript(CosmeticFilters.Parse(File.ReadAllLines(path))),
-            CosmeticFilters.LoadScript(AppContext.BaseDirectory, new PluginLog(Path.GetTempPath())));
+            CosmeticFilters.LoadScript(AppContext.BaseDirectory, new PluginLog(TestOutputPaths.TempDirectory)));
     }
 
     [Fact]
     public void Missing_filter_file_is_logged_and_applies_no_rules()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "CircleFlowFilterTests", Guid.NewGuid().ToString("N"));
+        var directory = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowFilterTests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -91,7 +91,7 @@ public sealed class CosmeticFiltersTests
             System.Windows.Window? host = null;
             try
             {
-                var profile = Path.Combine(Path.GetTempPath(), "CircleFlowFilterLive", Guid.NewGuid().ToString("N"));
+                var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowFilterLive", Guid.NewGuid().ToString("N"));
                 var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: profile);
                 using var view = new WebView2();
                 host = new System.Windows.Window { Content = view, Width = 640, Height = 480, ShowActivated = false };

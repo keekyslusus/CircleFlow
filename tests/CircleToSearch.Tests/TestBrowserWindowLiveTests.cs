@@ -19,7 +19,7 @@ public sealed class TestBrowserWindowLiveTests
     public async Task Extension_popup_acts_on_its_own_page_opens_the_dashboard_and_starts_the_picker()
     {
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
-        var profile = Path.Combine(Path.GetTempPath(), "CircleFlowTestBrowserLive", Guid.NewGuid().ToString("N"));
+        var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowTestBrowserLive", Guid.NewGuid().ToString("N"));
         using var dispatcher = new StaDispatcher("Test browser live test");
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Assert.True(dispatcher.TryPost(async () =>

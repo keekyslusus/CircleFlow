@@ -178,16 +178,21 @@ public sealed class SettingsStoreTests
         File.WriteAllText(paths.SettingsFilePath, "damaged original");
         File.WriteAllText(paths.SettingsBackupFilePath, JsonSerializer.Serialize(new AppSettings { PaddingPx = 40 }));
         var directory = new DirectoryInfo(paths.DataDirectory);
-        var originalAcl = directory.GetAccessControl();
-        var deniedAcl = directory.GetAccessControl();
+        var security = directory.GetAccessControl();
         using var identity = WindowsIdentity.GetCurrent();
-        deniedAcl.AddAccessRule(new FileSystemAccessRule(identity.User!, FileSystemRights.CreateFiles, AccessControlType.Deny));
+        var deny = new FileSystemAccessRule(identity.User!, FileSystemRights.CreateFiles, AccessControlType.Deny);
+        security.AddAccessRule(deny);
         try
         {
-            directory.SetAccessControl(deniedAcl);
+            directory.SetAccessControl(security);
             Assert.Throws<UnauthorizedAccessException>(() => store.Load());
         }
-        finally { directory.SetAccessControl(originalAcl); }
+        finally
+        {
+            // Setting an unmodified copy of the original security writes nothing, so the rule must be removed explicitly.
+            security.RemoveAccessRuleSpecific(deny);
+            directory.SetAccessControl(security);
+        }
         Assert.Equal("damaged original", File.ReadAllText(paths.SettingsFilePath));
         Assert.Equal(40, Read(paths.SettingsBackupFilePath).PaddingPx);
         Assert.Empty(Directory.GetFiles(paths.DataDirectory, "settings.corrupt-*.json"));

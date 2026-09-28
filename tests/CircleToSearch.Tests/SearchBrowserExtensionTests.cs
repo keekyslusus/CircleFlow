@@ -10,7 +10,7 @@ public sealed class SearchBrowserExtensionTests
     [Fact]
     public void Bundled_extension_extracts_with_easylist_and_reuses_its_path()
     {
-        var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
+        var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
         try
         {
             var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
@@ -31,7 +31,7 @@ public sealed class SearchBrowserExtensionTests
     [Fact]
     public void Installed_id_and_enabled_lists_survive_reuse_and_are_forgotten_when_the_package_is_extracted_again()
     {
-        var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
+        var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
         try
         {
             var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
@@ -54,7 +54,7 @@ public sealed class SearchBrowserExtensionTests
     [Fact]
     public void Installed_id_is_forgotten_when_the_app_folder_moves()
     {
-        var root = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
         var profile = Path.Combine(root, "before");
         var moved = Path.Combine(root, "after");
         try
@@ -78,7 +78,7 @@ public sealed class SearchBrowserExtensionTests
     [Fact]
     public void Modified_package_is_rejected_before_extraction()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
+        var directory = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
         try
         {
             Directory.CreateDirectory(Path.Combine(directory, "Extensions"));

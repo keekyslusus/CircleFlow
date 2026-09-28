@@ -23,7 +23,7 @@ public sealed class OverlaySessionLifecycleTests
     [Fact]
     public async Task Dispatcher_crash_faults_channel_and_dispose_does_not_wait_for_dead_thread()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
+        var directory = Path.Combine(TestOutputPaths.TempDirectory, "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         var ready = new TaskCompletionSource<OverlaySession>(TaskCreationOptions.RunContinuationsAsynchronously);
         var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

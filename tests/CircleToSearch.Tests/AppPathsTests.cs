@@ -116,19 +116,24 @@ public sealed class AppPathsTests
     {
         var paths = new AppPaths(NewRoot());
         var directory = Directory.CreateDirectory(paths.DataDirectory);
-        var original = directory.GetAccessControl();
-        var restricted = directory.GetAccessControl();
+        var security = directory.GetAccessControl();
         using var identity = WindowsIdentity.GetCurrent();
-        restricted.AddAccessRule(new FileSystemAccessRule(identity.User!, FileSystemRights.Write,
-            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Deny));
+        var deny = new FileSystemAccessRule(identity.User!, FileSystemRights.Write,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Deny);
+        security.AddAccessRule(deny);
         try
         {
-            directory.SetAccessControl(restricted);
+            directory.SetAccessControl(security);
             Assert.Throws<UnauthorizedAccessException>(() => AppDataDirectory.Initialize(paths));
             Assert.Empty(Directory.GetFiles(paths.DataDirectory));
             Assert.False(Directory.Exists(paths.LogsDirectory));
         }
-        finally { directory.SetAccessControl(original); }
+        finally
+        {
+            // Setting an unmodified copy of the original security writes nothing, so the rule must be removed explicitly.
+            security.RemoveAccessRuleSpecific(deny);
+            directory.SetAccessControl(security);
+        }
     }
 
     [Fact]

@@ -252,7 +252,7 @@ public sealed class VisualSearchWorkflowTests
 
     private static PluginLog NewLog()
     {
-        var path = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(TestOutputPaths.TempDirectory, "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return new PluginLog(path);
     }

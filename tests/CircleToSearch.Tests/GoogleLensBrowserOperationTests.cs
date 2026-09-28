@@ -293,7 +293,7 @@ public sealed class GoogleLensBrowserOperationTests
 
     private static PluginLog NewLog()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
+        var directory = Path.Combine(TestOutputPaths.TempDirectory, "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         return new PluginLog(directory);
     }

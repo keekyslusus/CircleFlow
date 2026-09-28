@@ -5,9 +5,5 @@ obj/
 tests/temp/
 tests/**/TestResults/
 /Data/
-/design
 
-# REMOVE THESE BEFORE PUBLIC RELEASE!!!:
 RELEASE_ROADMAP.md
-/poc
-*.jpg

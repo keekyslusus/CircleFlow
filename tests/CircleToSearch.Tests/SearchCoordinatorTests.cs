@@ -234,7 +234,7 @@ public sealed class SearchCoordinatorTests
             Func<Task>? hideOwnWindows = null)
         {
             var logDirectory = Path.Combine(
-                Path.GetTempPath(),
+                TestOutputPaths.TempDirectory,
                 "CircleToSearch.Tests",
                 Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(logDirectory);

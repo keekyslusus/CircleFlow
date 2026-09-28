@@ -21,7 +21,7 @@ public sealed class OverlayScrollbarLiveTests
             System.Windows.Window? window = null;
             try
             {
-                var profile = Path.Combine(Path.GetTempPath(), "CircleFlowOverlayScrollbarLive", Guid.NewGuid().ToString("N"));
+                var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowOverlayScrollbarLive", Guid.NewGuid().ToString("N"));
                 var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: profile);
                 using var view = new WebView2();
                 window = new System.Windows.Window { Content = view, Width = 640, Height = 480, ShowActivated = false };
@@ -65,7 +65,7 @@ public sealed class OverlayScrollbarLiveTests
             try
             {
                 var profile = Path.Combine(
-                    Path.GetTempPath(),
+                    TestOutputPaths.TempDirectory,
                     "CircleFlowOverlayScrollbarLive",
                     Guid.NewGuid().ToString("N"));
                 var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: profile);

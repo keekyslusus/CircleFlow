@@ -26,7 +26,7 @@ public sealed class HotkeyWindowTests
     private static PluginLog NewLog()
     {
         var directory = Path.Combine(
-            Path.GetTempPath(),
+            TestOutputPaths.TempDirectory,
             "CircleToSearch.Tests",
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);

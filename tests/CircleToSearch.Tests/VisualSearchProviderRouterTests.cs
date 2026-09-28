@@ -213,7 +213,7 @@ public sealed class VisualSearchProviderRouterTests
         public RouterHarness()
         {
             LogDirectory = Path.Combine(
-                Path.GetTempPath(),
+                TestOutputPaths.TempDirectory,
                 "CircleToSearch.Tests",
                 Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(LogDirectory);
@@ -256,7 +256,7 @@ public sealed class VisualSearchProviderRouterTests
     private static PluginLog SilentLog()
     {
         var directory = Path.Combine(
-            Path.GetTempPath(),
+            TestOutputPaths.TempDirectory,
             "CircleToSearch.Tests",
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);

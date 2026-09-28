@@ -25,7 +25,7 @@ public sealed class SearchBrowserExtensionLiveTests
             System.Windows.Window? host = null;
             try
             {
-                var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
+                var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
                 var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: profile,
                     options: new CoreWebView2EnvironmentOptions { AreBrowserExtensionsEnabled = true });
                 using var view = new WebView2();
@@ -63,7 +63,7 @@ public sealed class SearchBrowserExtensionLiveTests
     public async Task Remembered_extension_blocks_ads_in_a_new_browser_process_without_being_added_again()
     {
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
-        var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
+        var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
         var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
         var id = await RunInBrowser(profile, async (view, _) =>
         {
@@ -90,7 +90,7 @@ public sealed class SearchBrowserExtensionLiveTests
     public async Task First_window_adds_the_annoyance_lists_to_the_lists_uBO_Lite_chose()
     {
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
-        var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
+        var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
         var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
 
         var (enabled, defaults) = await RunInBrowser(profile, (view, _) => EnableAndReadListsAsync(view, profile, directory));
@@ -107,7 +107,7 @@ public sealed class SearchBrowserExtensionLiveTests
     public async Task Annoyance_lists_are_enabled_again_after_the_browser_data_is_cleared()
     {
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
-        var profile = Path.Combine(Path.GetTempPath(), "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
+        var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
         var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
         await RunInBrowser(profile, (view, _) => EnableAndReadListsAsync(view, profile, directory));
 

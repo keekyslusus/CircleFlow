@@ -182,7 +182,7 @@ public sealed class VisualSearchResultPresenterTests
         public Harness(SearchBrowserShowStatus status)
         {
             Host = new FakeHost { Status = status, Owner = this };
-            var directory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
+            var directory = Path.Combine(TestOutputPaths.TempDirectory, "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(directory);
             var log = new PluginLog(directory);
             _presenter = new VisualSearchResultPresenter(

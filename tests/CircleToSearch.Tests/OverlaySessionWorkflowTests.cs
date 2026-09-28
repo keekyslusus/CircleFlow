@@ -1078,7 +1078,7 @@ public sealed class OverlaySessionWorkflowTests
             bool traceFactoryThrows = false,
             Func<BitmapSource, Task>? saveImage = null)
         {
-            _logDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
+            _logDirectory = Path.Combine(TestOutputPaths.TempDirectory, "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_logDirectory);
             Log = new PluginLog(_logDirectory);
             Service = TestSettings.Create(SettingsValidator.Normalize(new AppSettings { SearchProviderId = providerId, HideDelayMilliseconds = 0 }, out _), _ =>

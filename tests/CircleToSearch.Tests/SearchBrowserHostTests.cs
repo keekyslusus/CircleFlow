@@ -158,7 +158,7 @@ public sealed class SearchBrowserHostTests
         Action? viewCreated = null)
     {
         var directory = Path.Combine(
-            Path.GetTempPath(),
+            TestOutputPaths.TempDirectory,
             "CircleToSearch.Tests",
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);

@@ -206,7 +206,7 @@ public sealed class ProgressiveMusicRecognizerTests
 
         public Harness(bool silent = false, TimeSpan? requestTimeout = null)
         {
-            _logDirectory = Path.Combine(Path.GetTempPath(), "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
+            _logDirectory = Path.Combine(TestOutputPaths.TempDirectory, "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_logDirectory);
             Clock = new FakeClock();
             Capture = new FakeCapture(Clock, silent);
