@@ -1,6 +1,9 @@
 [CmdletBinding()]
 param(
-    [switch]$NoPause
+    [switch]$NoPause,
+    # A test build: the app looks for updates in this folder instead of GitHub, and the packages go there too.
+    [string]$UpdateFeed,
+    [string]$Version
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,8 +49,15 @@ try {
     }
     New-Item -ItemType Directory -Path $staging | Out-Null
     $appDirectory = Join-Path $staging 'CircleFlow'
+    $publishProperties = @()
+    if ($UpdateFeed) {
+        $releases = [IO.Path]::GetFullPath($UpdateFeed)
+        New-Item -ItemType Directory -Path $releases -Force | Out-Null
+        $publishProperties += "-p:UpdateFeed=$releases"
+    }
+    if ($Version) { $publishProperties += "-p:Version=$Version" }
     dotnet publish (Join-Path $workspace 'CircleFlow.csproj') -c Release -r win-x64 --self-contained true `
-        -p:PublishSingleFile=false -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o $appDirectory
+        -p:PublishSingleFile=false -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false @publishProperties -o $appDirectory
     if ($LASTEXITCODE -ne 0) { throw 'Publish of CircleFlow failed.' }
 
     $required = @('CircleFlow.exe', 'deps/CircleFlow.dll', 'deps/CircleFlow.deps.json', 'deps/CircleFlow.runtimeconfig.json',
@@ -72,38 +82,28 @@ try {
     }
     $version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $appDirectory 'deps/CircleFlow.dll')).ProductVersion.Split('+')[0]
     if ($version -notmatch '^\d+\.\d+\.\d+(?:[.\-][0-9A-Za-z.\-]+)?$') { throw 'Unexpected product version.' }
-    $archivePath = Join-Path $releases "CircleFlow-$version-win-x64.zip"
-    $temporaryZip = Join-Path $staging 'package.zip'
-    Add-Type -AssemblyName System.IO.Compression
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $archive = [IO.Compression.ZipFile]::Open($temporaryZip, [IO.Compression.ZipArchiveMode]::Create)
-    try {
-        foreach ($file in $files) {
-            $entryName = 'CircleFlow/' + $file.FullName.Substring($appDirectory.Length + 1).Replace('\', '/')
-            $entry = $archive.CreateEntry($entryName, [IO.Compression.CompressionLevel]::Optimal)
-            $entry.LastWriteTime = [DateTimeOffset]::new(1980, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
-            $inputStream = [IO.File]::OpenRead($file.FullName)
-            try {
-                $outputStream = $entry.Open()
-                try { $inputStream.CopyTo($outputStream) }
-                finally { $outputStream.Dispose() }
-            }
-            finally { $inputStream.Dispose() }
-        }
+    dotnet tool restore
+    if ($LASTEXITCODE -ne 0) { throw 'Restoring the Velopack CLI failed.' }
+    # The Start menu shortcut also carries the AUMID that Windows needs to show update toasts.
+    dotnet vpk pack --packId CircleFlow --packVersion $version --packDir $appDirectory --mainExe CircleFlow.exe `
+        --packTitle CircleFlow --packAuthors keekys --icon (Join-Path $workspace 'CTS\app.ico') `
+        --runtime win-x64 --shortcuts StartMenuRoot --outputDir $releases
+    if ($LASTEXITCODE -ne 0) { throw 'Packing the Velopack release failed.' }
+    $setupPath = Join-Path $releases 'CircleFlow-win-Setup.exe'
+    $portablePath = Join-Path $releases 'CircleFlow-win-Portable.zip'
+    foreach ($output in @($setupPath, $portablePath, (Join-Path $releases 'releases.win.json'),
+        (Join-Path $releases "CircleFlow-$version-full.nupkg"))) {
+        if (-not (Test-Path -LiteralPath $output -PathType Leaf)) { throw "Missing release output: $output" }
     }
-    finally { $archive.Dispose() }
-    Move-Item -LiteralPath $temporaryZip -Destination $archivePath -Force
-    $publishedPath = Resolve-Path -Relative -LiteralPath $appDirectory
-    $releaseZipPath = Resolve-Path -Relative -LiteralPath $archivePath
     Write-Host ''
     Write-Host 'Published application: ' -NoNewline
-    Write-Host "${lavenderish}$publishedPath"
+    Write-Host "${lavenderish}$(Resolve-Path -Relative -LiteralPath $appDirectory)"
     Write-Host 'WebView2 loader: ' -NoNewline
     Write-Host "${lavenderish}$($loaders -join ', ')"
-    Write-Host 'Release ZIP: ' -NoNewline
-    Write-Host "${lavenderish}$releaseZipPath"
-    Write-Host 'SHA256: ' -NoNewline
-    Write-Host "${lavenderish}$((Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash)"
+    Write-Host 'Installer: ' -NoNewline
+    Write-Host "${lavenderish}$(Resolve-Path -Relative -LiteralPath $setupPath)"
+    Write-Host 'Portable ZIP: ' -NoNewline
+    Write-Host "${lavenderish}$(Resolve-Path -Relative -LiteralPath $portablePath)"
 }
 catch {
     $exitCode = 1

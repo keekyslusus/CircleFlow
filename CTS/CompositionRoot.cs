@@ -21,7 +21,9 @@ using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
+using CircleToSearch.Updates;
 using System.Globalization;
+using Velopack;
 
 namespace CircleToSearch;
 
@@ -48,9 +50,17 @@ public static class CompositionRoot
         Action<BitmapSource>? SetImageClipboard = null,
         Func<SelectionHint>? NextSelectionHint = null);
 
-    public static int Run(string[] args) => Run(new AppPaths(),
-        (message, title, icon) => MessageBox.Show(message, title, MessageBoxButton.OK, icon),
-        autostart: args.Contains(WindowsStartupRegistration.AutostartArgument, StringComparer.OrdinalIgnoreCase));
+    public static int Run(string[] args)
+    {
+        var paths = new AppPaths();
+        // Setup and Update.exe start the app with hook arguments; Run handles them and exits before any UI.
+        VelopackApp.Build()
+            .OnBeforeUninstallFastCallback(_ => new WindowsStartupRegistration(paths.ExecutablePath,
+                new PluginLog(paths.LogsDirectory)).RemoveForUninstall())
+            .Run();
+        return Run(paths, (message, title, icon) => MessageBox.Show(message, title, MessageBoxButton.OK, icon),
+            autostart: args.Contains(WindowsStartupRegistration.AutostartArgument, StringComparer.OrdinalIgnoreCase));
+    }
 
     internal static int Run(AppPaths paths, Action<string, string, MessageBoxImage> reportStartupMessage,
         string? instanceName = null, CancellationToken startupCancellation = default, TimeSpan? activationTimeout = null,
@@ -168,6 +178,7 @@ public static class CompositionRoot
                 lifetime.AddStop("remove-tray", tray.RemoveForShutdown);
                 lifetime.AddCleanup("close-tray", () => { tray.Dispose(); return Task.CompletedTask; });
                 watchdog.AddEmergencyCleanup(tray.RemoveForShutdown);
+                StartUpdates(application, lifetime, notifier, strings, log);
                 cancellation.ThrowIfCancellationRequested();
                 activation.SetReady(runtime.OpenAsync);
                 onboarding.ShowIfNeeded();
@@ -181,6 +192,24 @@ public static class CompositionRoot
             reportStartupMessage(strings.StartupFailed, strings.PluginTitle, MessageBoxImage.Error);
             return 1;
         }
+    }
+
+    private static void StartUpdates(Application application, AppLifetime lifetime, IPluginNotifier notifier,
+        UiStrings strings, PluginLog log)
+    {
+        var updates = new ReleaseUpdates(ProjectSupport.RepositoryUrl, ReleaseUpdates.BuiltInTestFeed);
+        // A copy run from the build output has no Update.exe to install with.
+        if (!updates.IsInstalled) return;
+        if (updates.ToastAppUserModelId is { } appUserModelId)
+        {
+            var toasts = new SystemToastPresenter(appUserModelId, application.Dispatcher, log);
+            lifetime.AddCleanup("clear-update-toasts", () => { toasts.Clear(); return Task.CompletedTask; });
+            notifier = new PluginNotifier(toasts.ShowMessage, toasts.ShowMessageWithButton, toasts.ShowError, log);
+        }
+        var service = new UpdateService(updates.FindAsync, notifier, lifetime.RequestExitAsync, strings, log);
+        lifetime.AddStop("stop-updates", service.Stop);
+        lifetime.AddCleanup("stop-updates", service.StopAsync);
+        service.Start();
     }
 
     internal static Application CreateApplication() => new()

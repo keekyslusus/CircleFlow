@@ -25,6 +25,27 @@ public sealed class AppPathsTests
     }
 
     [Fact]
+    public void Installed_copy_keeps_Data_beside_Update_exe_so_updates_do_not_replace_it()
+    {
+        var root = NewRoot();
+        var current = Path.Combine(root, "current");
+        Directory.CreateDirectory(current);
+        try
+        {
+            Assert.Equal(Path.Combine(current, "Data"), new AppPaths(current).DataDirectory);
+            File.WriteAllBytes(Path.Combine(root, "Update.exe"), []);
+            var paths = new AppPaths(current);
+            Assert.Equal(Path.Combine(root, "Data"), paths.DataDirectory);
+            Assert.Equal(Path.Combine(root, "Data", "settings.json"), paths.SettingsFilePath);
+            Assert.Equal(Path.Combine(current, "Languages"), paths.LanguagesDirectory);
+            Assert.Equal(Path.Combine(current, "CircleFlow.exe"), paths.ExecutablePath);
+            Assert.True(paths.IsInsideData(paths.SearchProfileDirectory));
+            Assert.Equal(Path.Combine(root, "Data"), new AppPaths(root).DataDirectory);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
     public void Paths_are_absolute_and_construction_does_not_create_directories()
     {
         var root = NewRoot();

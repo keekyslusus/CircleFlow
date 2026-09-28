@@ -51,6 +51,13 @@ public sealed class UiStrings
     public string ActivationFailed => Get("app_activation_failed");
     public string ShutdownFailed => Get("app_shutdown_failed");
     public string ShutdownTimedOut => Get("app_shutdown_timed_out");
+    public string UpdateAvailableTitle => Get("app_update_available_title");
+    public string UpdateAvailable(string version) => Get("app_update_available", version);
+    public string UpdateInstall => Get("app_update_install");
+    public string UpdateDownloadingTitle => Get("app_update_downloading_title");
+    public string UpdateDownloading(string version) => Get("app_update_downloading", version);
+    public string UpdateFailedTitle => Get("app_update_failed_title");
+    public string UpdateFailed => Get("app_update_failed");
     public string BrowserProfileOutsideData => Get("app_browser_profile_outside_data");
     public string PluginDescription => Get("plugin_circletosearch_plugin_description");
     public string GoogleLensProviderName => Get("plugin_circletosearch_google_lens_provider_name");

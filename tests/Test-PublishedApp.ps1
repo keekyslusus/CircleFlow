@@ -11,7 +11,9 @@ if (Get-Process -Name CircleFlow -ErrorAction SilentlyContinue | Where-Object Se
 $testDirectory = Join-Path $PSScriptRoot ('temp\publish-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $testDirectory -Force | Out-Null
 $unpacked = Join-Path $testDirectory ('unpacked ' + [char]0x442 + [char]0x435 + [char]0x441 + [char]0x442)
-$appDirectory = Join-Path $unpacked 'CircleFlow'
+# Velopack's portable layout: Update.exe and a launcher stub beside current\, where the application lives.
+$appDirectory = Join-Path $unpacked 'current'
+$velopackEntries = @('.portable', 'CircleFlow.exe', 'Update.exe', 'current/sq.version')
 $probeOutput = Join-Path $testDirectory 'hook'
 
 Add-Type -AssemblyName System.IO.Compression
@@ -20,17 +22,18 @@ $archive = [IO.Compression.ZipFile]::OpenRead($archivePath)
 try {
     $entries = @($archive.Entries | ForEach-Object FullName)
     foreach ($name in $entries) {
-        if (-not $name.StartsWith('CircleFlow/', [StringComparison]::Ordinal) -or $name.Contains('\') -or
+        if (-not ($name.StartsWith('current/', [StringComparison]::Ordinal) -or $velopackEntries -ccontains $name) -or $name.Contains('\') -or
             $name -match '(^|/)(\.\.?|Data|tests|design|poc|Profiles|Logs|Temp)(/|$)|(^|/)(plugin\.json|settings[^/]*\.json|Flow\.Launcher[^/]*|CircleFlow\.PublishProbe[^/]*)$') {
             throw "Unexpected ZIP entry: $name"
         }
         $destination = [IO.Path]::GetFullPath((Join-Path $unpacked $name))
-        if (-not $destination.StartsWith($appDirectory + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        if (-not $destination.StartsWith($unpacked + '\', [StringComparison]::OrdinalIgnoreCase)) {
             throw "ZIP entry escaped the application folder: $name"
         }
     }
     foreach ($name in $entries) {
-        if ($name -match '\.xml$' -or $name -notmatch '^CircleFlow/(deps/|Images/|Languages/|Extensions/|THIRD_PARTY_LICENSES/|CircleFlow\.exe$|LICENSE$|THIRD_PARTY_NOTICES\.txt$)') {
+        if ($velopackEntries -ccontains $name) { continue }
+        if ($name -match '\.xml$' -or $name -notmatch '^current/(deps/|Images/|Languages/|Extensions/|THIRD_PARTY_LICENSES/|CircleFlow\.exe$|LICENSE$|THIRD_PARTY_NOTICES\.txt$)') {
             throw "Unexpected release layout: $name"
         }
     }
@@ -39,12 +42,15 @@ try {
         'Languages/en.xaml', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip', 'Extensions/CircleFlowFilters.txt',
         'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.LICENSE.txt',
         'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.NOTICE.txt', 'THIRD_PARTY_LICENSES/System.Numerics.Tensors.NOTICE.txt')
+    foreach ($asset in $velopackEntries) {
+        if ($entries -cnotcontains $asset) { throw "Missing Velopack entry: $asset" }
+    }
     foreach ($asset in $required) {
-        if ($entries -cnotcontains ('CircleFlow/' + $asset)) { throw "Missing ZIP asset: $asset" }
+        if ($entries -cnotcontains ('current/' + $asset)) { throw "Missing ZIP asset: $asset" }
     }
     $licenseNames = Get-ChildItem -LiteralPath (Join-Path $workspace 'THIRD_PARTY_LICENSES') -Filter '*.txt' -File
     foreach ($license in $licenseNames) {
-        if ($entries -cnotcontains ('CircleFlow/THIRD_PARTY_LICENSES/' + $license.Name)) { throw "Missing license: $($license.Name)" }
+        if ($entries -cnotcontains ('current/THIRD_PARTY_LICENSES/' + $license.Name)) { throw "Missing license: $($license.Name)" }
     }
 }
 finally { $archive.Dispose() }
@@ -66,7 +72,7 @@ if (-not $runtimeConfig.runtimeOptions.includedFrameworks -or $runtimeConfig.run
 
 dotnet build (Join-Path $PSScriptRoot 'PublishedHostProbe\PublishedHostProbe.csproj') -c Release -o $probeOutput
 if ($LASTEXITCODE -ne 0) { throw 'Published-process probe did not build.' }
-$reportPath = Join-Path $appDirectory 'Data\Temp\publish-probe.json'
+$reportPath = Join-Path $unpacked 'Data\Temp\publish-probe.json'
 $start = New-Object Diagnostics.ProcessStartInfo
 $start.FileName = Join-Path $appDirectory 'CircleFlow.exe'
 $start.WorkingDirectory = $testDirectory

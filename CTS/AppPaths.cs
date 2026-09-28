@@ -10,7 +10,10 @@ internal sealed class AppPaths
         if (!Path.IsPathFullyQualified(rootDirectory))
             throw new ArgumentException("The application root must be an absolute path.", nameof(rootDirectory));
         RootDirectory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(rootDirectory));
+        _installDirectory = ResolveInstallDirectory(RootDirectory);
     }
+
+    private readonly string _installDirectory;
 
     public string RootDirectory { get; }
     internal static string ResolveRootDirectory(string baseDirectory)
@@ -23,11 +26,21 @@ internal sealed class AppPaths
             ? parent.FullName
             : directory.FullName;
     }
+    // Velopack replaces current\ on every update, so user data lives beside it next to Update.exe.
+    internal static string ResolveInstallDirectory(string rootDirectory)
+    {
+        var directory = new DirectoryInfo(rootDirectory);
+        return directory.Name.Equals("current", StringComparison.OrdinalIgnoreCase)
+            && directory.Parent is { } parent
+            && File.Exists(Path.Combine(parent.FullName, "Update.exe"))
+            ? parent.FullName
+            : directory.FullName;
+    }
     public string ExecutablePath => Path.Combine(RootDirectory, "CircleFlow.exe");
     public string LanguagesDirectory => Path.Combine(RootDirectory, "Languages");
     public string TrayIconPath => Path.Combine(RootDirectory, "Images", "app.ico");
     public string ExtensionArchivePath => Path.Combine(RootDirectory, "Extensions", "uBlockOriginLite.zip");
-    public string DataDirectory => Path.Combine(RootDirectory, "Data");
+    public string DataDirectory => Path.Combine(_installDirectory, "Data");
     public string SettingsFilePath => Path.Combine(DataDirectory, "settings.json");
     public string SettingsBackupFilePath => Path.Combine(DataDirectory, "settings.json.bak");
     public string LogsDirectory => Path.Combine(DataDirectory, "Logs");

@@ -2,18 +2,20 @@
 
 # CircleFlow
 
-The release includes its own .NET runtime and `WinRT.Runtime.dll`; no separate .NET installation is required. Keep all files from the archive together. The root contains `CircleFlow.exe`, application assets and licenses; `deps` contains the managed application, .NET runtime, native libraries and dependency translations. Developer XML documentation is excluded. `Data` is created beside the executable on first launch.
+Install with `CircleFlow-win-Setup.exe` from the latest release. It needs no administrator rights and puts everything in `%LocalAppData%\CircleFlow`: `current` holds the application, `Data` holds your settings, and `Update.exe` installs updates. `CircleFlow-win-Portable.zip` is the same application for a folder of your choice.
+
+The release includes its own .NET runtime and `WinRT.Runtime.dll`; no separate .NET installation is required. Inside `current`, the root contains `CircleFlow.exe`, application assets and licenses; `deps` contains the managed application, .NET runtime, native libraries and dependency translations. Developer XML documentation is excluded.
 
 Browser features require the [Microsoft Edge WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download). It is an external prerequisite and is not bundled. OCR languages depend on the recognition packs installed in Windows. Search, translation and music recognition require an internet connection.
 
 
 ## Data and updates
 
-Settings, logs, browser profiles and application temporary files are stored under `Data` beside `CircleFlow.exe`. The folder must be writable.
+Settings, logs, browser profiles and application temporary files are stored under `Data` next to `current` and `Update.exe`, so updates, which replace `current`, keep them. A copy run without `Update.exe`, such as the development build, keeps `Data` beside `CircleFlow.exe`. The folder must be writable.
 
-Exit CircleFlow before moving or replacing its files. Keep `Data` when updating; do not delete the bundled runtime DLLs. A future installer may use `%LocalAppData%\Programs\CircleFlow`; the current release is a portable ZIP with no installer or updater.
+CircleFlow checks the GitHub releases a minute after it starts and then once a day. When a newer version is out, a Windows notification offers **Update**; CircleFlow then downloads it (only the changed files when possible), exits, installs it and starts again. The portable copy shows the same offer in its own window. Uninstalling from Windows Settings removes the whole folder, including `Data`. Velopack, the installer and updater, keeps its own logs in `%LocalAppData%\velopack`.
 
-**Run at Windows startup** in Settings adds a `CircleFlow` value to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` that points to this copy of `CircleFlow.exe`; it is off until you turn it on. Turn it off before moving or deleting the folder, or the entry is left behind. Disabling CircleFlow in Task Manager's Startup apps is shown as off in Settings.
+**Run at Windows startup** in Settings adds a `CircleFlow` value to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` that points to this copy of `CircleFlow.exe`; it is off until you turn it on. Uninstalling removes it; turn it off before moving or deleting a portable folder, or the entry is left behind. Disabling CircleFlow in Task Manager's Startup apps is shown as off in Settings.
 
 Normal shutdown waits for cleanup. If shutdown remains stuck for 10 seconds, CircleFlow attempts to remove its tray icon and close its activation channel, then terminates its own process with an error code. Diagnostic logs are in `Data\Logs`.
 
@@ -31,12 +33,12 @@ powershell -ExecutionPolicy Bypass -File .\build_release.ps1 -NoPause
 
 Ordinary `dotnet build` output keeps the standard development layout. `dotnet publish` and the release script produce the clean `deps` layout; publish into a fresh directory to avoid leftover files from older builds.
 
-The release script works from any working directory. It publishes a self-contained x64 application into a new `bin\publish\stage-<id>\CircleFlow` folder and creates `bin\releases\CircleFlow-<version>-win-x64.zip`. Each build uses a fresh staging directory; existing build output and user `Data` are not merged into the archive or deleted. Archive entries use a stable order and timestamp.
+The release script works from any working directory. It publishes a self-contained x64 application into a new `bin\publish\stage-<id>\CircleFlow` folder and packs it with Velopack (`dotnet vpk`, restored from `.config\dotnet-tools.json`) into `bin\releases`: `CircleFlow-win-Setup.exe`, `CircleFlow-win-Portable.zip`, the update packages and the `releases.win.json` feed. When `bin\releases` already holds the previous version's packages, the script also builds a delta update. Each build uses a fresh staging directory; existing build output and user `Data` are not merged into the packages or deleted. The release workflow downloads the previous release for the delta and uploads everything to GitHub with `vpk upload github`.
 
 Verify a release with the installed WebView2 Runtime and at least one Windows OCR language:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tests\Test-PublishedApp.ps1 -ArchivePath .\bin\releases\CircleFlow-0.5.1-win-x64.zip
+powershell -ExecutionPolicy Bypass -File .\tests\Test-PublishedApp.ps1 -ArchivePath .\bin\releases\CircleFlow-win-Portable.zip
 ```
 
 This check extracts a separate copy under `tests\temp`, checks its packaged assets, and launches that copy of `CircleFlow.exe` from a different working directory. A test-only .NET startup hook initializes OCR, WebView2 and WebView2CompositionControl in the application's default load context, then raises the managed session-ending event and verifies that CircleFlow does not cancel it. It never requests a real Windows logoff or shutdown. It checks the bundled .NET and WinRT assemblies and actual browser profile paths. The hook is not included in the release ZIP. The report remains in the extracted copy's `Data\Temp\publish-probe.json`.
