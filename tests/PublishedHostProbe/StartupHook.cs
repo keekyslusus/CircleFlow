@@ -9,7 +9,12 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using CircleToSearch;
 using CircleToSearch.Interop;
+using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
+using CircleToSearch.Settings;
+using CircleToSearch.Shell;
+using CircleToSearch.Shell.SettingsPreview;
+using CircleToSearch.TextRecognition;
 using CircleToSearch.Ui;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
@@ -60,8 +65,11 @@ internal static class StartupHook
         Require(Path.GetFileName(Environment.ProcessPath) == "CircleFlow.exe", "The published executable must be the process host.");
         Require(!string.Equals(Environment.CurrentDirectory, paths.RootDirectory, StringComparison.OrdinalIgnoreCase), "Expected a different working directory.");
         Require(Path.GetDirectoryName(Environment.ProcessPath) == paths.RootDirectory, "Assets must resolve beside the apphost.");
-        var settingsWindow = new CircleToSearch.Shell.SettingsPreview.SettingsWindowView(
-            new UiStrings(LocalUiStrings.LoadEmbeddedEnglish().Get), true, paths.TrayIconPath).Window;
+        var log = new PluginLog(paths.LogsDirectory);
+        var notifications = new PluginNotifier((_, _) => { }, (_, _, _, _) => { }, (_, message) => throw new InvalidOperationException(message), log);
+        var embeddedStrings = new UiStrings(LocalUiStrings.LoadEmbeddedEnglish().Get);
+        var settingsWindow = new SettingsWindowView(embeddedStrings, true, paths.TrayIconPath,
+            CreateSettingsModel(paths, embeddedStrings, notifications, log)).Window;
         Require(settingsWindow.Icon is not null, "Settings icon did not load.");
         settingsWindow.Close();
         var source = LocalUiStrings.LoadEnglish(paths.LanguagesDirectory)
@@ -90,8 +98,6 @@ internal static class StartupHook
         RequireLocalAssembly(typeof(AppRuntime).Assembly, paths);
         var reference = typeof(WebView2CompositionControl).Assembly.GetReferencedAssemblies().Single(name => name.Name == "WinRT.Runtime");
         Require(AssemblyLoadContext.Default.LoadFromAssemblyName(reference) == winrt, "WebView2 resolved a different WinRT runtime.");
-        var log = new PluginLog(paths.LogsDirectory);
-        var notifications = new PluginNotifier((_, _) => { }, (_, _, _, _) => { }, (_, message) => throw new InvalidOperationException(message), log);
         var factory = new WebViewEnvironmentFactory(paths, strings, notifications);
         var environment = await factory.CreateAsync(paths.SearchProfileDirectory);
         var compositionEnvironment = await factory.CreateAsync(paths.TraceVideoProfileDirectory);
@@ -139,6 +145,23 @@ internal static class StartupHook
         {
             window.Close();
         }
+    }
+
+    // In-memory settings and a no-op URL opener keep the probe from changing the user's settings or opening anything.
+    private static SettingsWindowModel CreateSettingsModel(AppPaths paths, UiStrings strings, IPluginNotifier notifier, PluginLog log)
+    {
+        var settings = new SettingsService(new AppSettings(), _ => { },
+            gesture => new(true, new(gesture ?? string.Empty, gesture is not null)), log);
+        var router = new VisualSearchProviderRouter(
+            [new(new SearchProviderDescriptor(SearchProviderIds.GoogleLens, () => strings.GoogleLensProviderName),
+                () => throw new InvalidOperationException("Not used by settings."))],
+            SearchProviderIds.GoogleLens, log);
+        var language = new UiLanguage(LocalUiStrings.LoadEnglish(paths.LanguagesDirectory),
+            new AppLanguageCatalog(paths.LanguagesDirectory), CultureInfo.GetCultureInfo("en-US"), log);
+        var urlOpening = new UrlOpeningService(_ => false, notifier, strings, log);
+        return new SettingsWindowModel(settings, new ProviderSelectionStore(router, settings, notifier, strings, log),
+            new OcrLanguageCatalog(), language, CultureInfo.GetCultureInfo("en-US"), new ProjectSupport(urlOpening), urlOpening,
+            paths, strings, () => null, () => null, new WindowsStartupRegistration(paths.ExecutablePath, log), () => { }, () => { });
     }
 
     private static async Task NavigateAsync(CoreWebView2 core)
