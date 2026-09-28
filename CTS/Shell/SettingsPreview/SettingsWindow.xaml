@@ -1,4 +1,4 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:CircleToSearch.Ui" Width="995" Height="637" MinWidth="960" MinHeight="590" WindowStartupLocation="CenterScreen" WindowStyle="SingleBorderWindow" ResizeMode="CanResize" Background="{DynamicResource SettingsPaper}" Foreground="{DynamicResource SettingsText}" FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:CircleToSearch.Ui" Width="960" Height="590" MinWidth="960" MinHeight="590" WindowStartupLocation="CenterScreen" WindowStyle="SingleBorderWindow" ResizeMode="CanResize" Background="{DynamicResource SettingsPaper}" Foreground="{DynamicResource SettingsText}" FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -12,11 +12,26 @@
                 <ColumnDefinition Width="225"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Border Background="{DynamicResource SettingsSidebar}" Padding="12,20,12,13">
-                <DockPanel LastChildFill="True">
-                    <TextBlock Text="{Binding [brand]}" DockPanel.Dock="Top" FontSize="17" FontWeight="SemiBold" Margin="13,3,0,25"/>
-                    <TextBlock Text="{Binding [preview_notice]}" Style="{StaticResource Muted}" DockPanel.Dock="Bottom" Margin="13,16,13,0" TextWrapping="Wrap"/>
-                    <Grid x:Name="NavigationHost" VerticalAlignment="Top">
+            <Border Background="{DynamicResource SettingsSidebar}" Padding="12,13">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" MinHeight="104"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Style="{StaticResource AppLogo}" CornerRadius="14" Width="48" Height="48" Margin="0,0,0,10">
+                            <ContentControl Foreground="{DynamicResource SettingsAccent}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Viewbox Width="29" Height="29">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.CircleSearchOutlined}"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </ContentControl>
+                        </Border>
+                        <TextBlock Text="{Binding [brand]}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <Grid x:Name="NavigationHost" Grid.Row="1">
                         <Border x:Name="NavigationSelection" IsHitTestVisible="False" Visibility="Hidden" VerticalAlignment="Top" CornerRadius="5" Background="{DynamicResource SettingsSelected}">
                             <Border.RenderTransform>
                                 <TranslateTransform/>
@@ -96,7 +111,7 @@
                             </RadioButton>
                         </StackPanel>
                     </Grid>
-                </DockPanel>
+                </Grid>
             </Border>
             <Border x:Name="ContentSurface" Grid.Column="1" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1,1,0,0" CornerRadius="9,0,0,0">
                 <ScrollViewer x:Name="PageScroll" Style="{StaticResource PageScrollViewer}" BorderThickness="0" Background="{DynamicResource SettingsTransparent}" FocusVisualStyle="{x:Null}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
@@ -714,7 +729,7 @@
                             <TextBlock Text="{Binding [about_title]}" Style="{StaticResource PageTitle}"/>
                             <Border Style="{StaticResource Hero}">
                                 <StackPanel>
-                                    <Border Background="{DynamicResource SettingsHeroStart}" BorderBrush="{DynamicResource SettingsAccentLine}" BorderThickness="1" CornerRadius="21" Width="72" Height="72" HorizontalAlignment="Center" Margin="0,0,0,14">
+                                    <Border Style="{StaticResource AppLogo}" CornerRadius="21" Width="72" Height="72" HorizontalAlignment="Center" Margin="0,0,0,14">
                                         <ContentControl Foreground="{DynamicResource SettingsAccent}" HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <Viewbox Width="43" Height="43" VerticalAlignment="Center">
                                                 <Canvas Width="24" Height="24">
@@ -972,7 +987,7 @@
                                     </Border>
                                 </StackPanel>
                             </Border>
-                            <TextBlock Text="{Binding [developer_browser]}" Style="{StaticResource SectionTitle}" Margin="0,0,0,9"/>
+                            <TextBlock Text="{Binding [developer_browser]}" Style="{StaticResource SectionTitle}"/>
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
                                     <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,0,0,0" Padding="19,17" MinHeight="77">
@@ -1001,7 +1016,7 @@
                                     </Border>
                                 </StackPanel>
                             </Border>
-                            <TextBlock Text="{Binding [developer_notifications]}" Style="{StaticResource SectionTitle}" Margin="0,0,0,9"/>
+                            <TextBlock Text="{Binding [developer_notifications]}" Style="{StaticResource SectionTitle}"/>
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
                                     <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,0,0,0" Padding="19,17" MinHeight="77">
@@ -1048,7 +1063,14 @@
                     <StackPanel x:Name="ShortcutDialog">
                         <TextBlock Text="{Binding [new_shortcut]}" FontSize="20" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding [open_selection]}" Style="{StaticResource Muted}" Margin="0,8,0,16"/>
-                        <TextBox x:Name="ShortcutInput" IsReadOnly="True" Height="70" TextAlignment="Center" VerticalContentAlignment="Center" AutomationProperties.Name="{Binding [press_shortcut]}"/>
+                        <Border x:Name="ShortcutInput" Style="{StaticResource ShortcutRecorder}" Height="84" AutomationProperties.Name="{Binding [press_shortcut]}">
+                            <Grid Margin="16,0">
+                                <Viewbox StretchDirection="DownOnly" Height="39">
+                                    <ItemsControl x:Name="ShortcutDraftKeys" Style="{StaticResource LargeKeys}" Focusable="False"/>
+                                </Viewbox>
+                                <TextBlock x:Name="ShortcutPrompt" FontSize="15" Foreground="{DynamicResource SettingsMuted}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" AutomationProperties.LiveSetting="Polite"/>
+                            </Grid>
+                        </Border>
                         <TextBlock Text="{Binding [shortcut_instructions]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
                     </StackPanel>
                     <StackPanel x:Name="ResetDialog" Visibility="Collapsed">

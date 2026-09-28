@@ -82,7 +82,7 @@ internal sealed class OnboardingWindowView
         var screen = PluginPalette.OnboardingScreen;
         (string Key, Color Color)[] colors =
         [
-            ("KeycapBorder", palette.KeycapBorder), ("InactiveStep", palette.InactiveStep), ("OnAccent", palette.OnAccent),
+            ("InactiveStep", palette.InactiveStep), ("OnAccent", palette.OnAccent),
             ("ToolbarSurface", palette.ToolbarSurface), ("ToolbarText", palette.ToolbarText),
             ("ToolbarBorder", palette.ToolbarBorder), ("ChipSurface", palette.ChipSurface),
             ("ChipText", palette.ChipText), ("ChipBorder", palette.ChipBorder), ("TextHighlight", palette.TextHighlight),
@@ -190,9 +190,7 @@ internal sealed class OnboardingWindowView
 
     private void ShowHotkey()
     {
-        var plus = _strings.SettingsPreviewText("plus");
-        Element<ItemsControl>("HotkeyKeys").ItemsSource = ShortcutText.Labels(_model.HotkeyGesture, _strings)
-            .Select((label, index) => new KeyPart(label, index > 0, plus)).ToArray();
+        Element<ItemsControl>("HotkeyKeys").ItemsSource = ShortcutText.Keys(_model.HotkeyGesture, _strings);
     }
 
     private void ShowStatus(string text, bool expires)
@@ -213,6 +211,4 @@ internal sealed class OnboardingWindowView
     {
         public string this[string key] => strings.OnboardingText(key);
     }
-
-    private sealed record KeyPart(string Label, bool HasSeparator, string Plus);
 }

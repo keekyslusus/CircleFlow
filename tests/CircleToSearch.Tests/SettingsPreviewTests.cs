@@ -28,6 +28,45 @@ namespace CircleToSearch.Tests;
 [Trait("Category", "Slow")]
 public sealed class SettingsPreviewTests
 {
+    [Fact]
+    public void Shortcut_dialog_shows_recorded_keys_as_keycaps_explains_invalid_keys_and_saves() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            window.Activate();
+            Click(window, "edit");
+            CompleteDialogTransition(window, time, open: true);
+            var input = Find<Border>(window, "ShortcutInput");
+            var prompt = Find<TextBlock>(window, "ShortcutPrompt");
+            var save = Find<Button>(window, "SaveShortcut");
+            // Keyboard focus needs the test window in the foreground, which another app can take.
+            if (window.IsActive) Assert.True(input.IsKeyboardFocused);
+            Assert.Equal(TestUiStrings.English.SettingsPreviewText("press_shortcut"), prompt.Text);
+            Assert.True(prompt.IsVisible);
+            Assert.Empty(ShortcutLabels(window, "ShortcutDraftKeys"));
+
+            PressKey(input, Key.A, ModifierKeys.None);
+            Assert.Equal(TestUiStrings.English.SettingsShortcutInvalid, prompt.Text);
+            Assert.True(prompt.IsVisible);
+            Assert.Empty(ShortcutLabels(window, "ShortcutDraftKeys"));
+            Assert.False(save.IsEnabled);
+
+            PressKey(input, Key.X, ModifierKeys.Control | ModifierKeys.Alt);
+            Assert.False(prompt.IsVisible);
+            Assert.Equal(["Ctrl", "Alt", "X"], ShortcutLabels(window, "ShortcutDraftKeys"));
+            Assert.True(save.IsEnabled);
+
+            Click(window, "save");
+            CompleteDialogTransition(window, time, open: false);
+            Assert.Equal("Ctrl+Alt+X", harness.Settings.Snapshot.HotkeyGesture);
+            Assert.Equal(["Ctrl", "Alt", "X"], ShortcutLabels(window, "ShortcutKeys"));
+        }
+        finally { window.Close(); }
+    });
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -1462,6 +1501,24 @@ public sealed class SettingsPreviewTests
         var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonDownEvent };
         typeof(MouseButtonEventArgs).GetProperty(nameof(MouseButtonEventArgs.ClickCount))!.SetValue(args, clickCount);
         text.RaiseEvent(args);
+    }
+
+    private static void PressKey(UIElement target, Key key, ModifierKeys modifiers) =>
+        target.RaiseEvent(new KeyEventArgs(new TestKeyboard(modifiers), PresentationSource.FromVisual(target), 0, key)
+        {
+            RoutedEvent = Keyboard.PreviewKeyDownEvent,
+        });
+
+    // Keyboard.PrimaryDevice reads the real keys, so a test could not hold Ctrl or Alt without it.
+    private sealed class TestKeyboard(ModifierKeys modifiers) : KeyboardDevice(InputManager.Current)
+    {
+        protected override KeyStates GetKeyStatesFromSystem(Key key) => key switch
+        {
+            Key.LeftCtrl when modifiers.HasFlag(ModifierKeys.Control) => KeyStates.Down,
+            Key.LeftAlt when modifiers.HasFlag(ModifierKeys.Alt) => KeyStates.Down,
+            Key.LeftShift when modifiers.HasFlag(ModifierKeys.Shift) => KeyStates.Down,
+            _ => KeyStates.None,
+        };
     }
 
     private static string[] ShortcutLabels(Window window, string name) =>

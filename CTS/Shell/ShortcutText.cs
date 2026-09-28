@@ -24,12 +24,18 @@ internal static class ShortcutText
     public static bool IsModifier(Key key) =>
         key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift;
 
-    public static IReadOnlyList<string> Labels(string gesture, UiStrings strings) =>
+    private static IReadOnlyList<string> Labels(string gesture, UiStrings strings) =>
         gesture.Split('+').Select(token => token switch
         {
             "Ctrl" or "Alt" or "Shift" or "Space" or "Win" => strings.SettingsPreviewText(token.ToLowerInvariant()),
             _ => token,
         }).ToArray();
+
+    public static ShortcutKey[] Keys(string gesture, UiStrings strings)
+    {
+        var plus = strings.SettingsPreviewText("plus");
+        return Labels(gesture, strings).Select((label, index) => new ShortcutKey(label, index > 0, plus)).ToArray();
+    }
 
     public static string ChangeMessage(SettingsChangeResult result, string gesture, string success, UiStrings strings) =>
         result.Status switch
@@ -41,3 +47,5 @@ internal static class ShortcutText
             _ => strings.StorageSaveFailed,
         };
 }
+
+internal sealed record ShortcutKey(string Label, bool HasSeparator, string Plus);

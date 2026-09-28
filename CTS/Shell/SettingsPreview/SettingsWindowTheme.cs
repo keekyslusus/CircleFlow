@@ -21,7 +21,7 @@ internal static class SettingsWindowTheme
             ("Muted", palette.Muted), ("Accent", palette.Accent), ("Line", palette.Line),
             ("Hover", palette.Hover), ("Selected", palette.Selected), ("Wash", palette.Wash),
             ("HeroStart", palette.HeroStart), ("HeroEnd", palette.HeroEnd),
-            ("AccentLine", palette.AccentLine), ("Scrim", palette.Scrim),
+            ("AccentLine", palette.AccentLine), ("KeycapBorder", palette.KeycapBorder), ("Scrim", palette.Scrim),
             ("Transparent", PluginPalette.Transparent),
         ];
         foreach (var (key, color) in colors) window.Resources["Settings" + key] = Frozen(color);

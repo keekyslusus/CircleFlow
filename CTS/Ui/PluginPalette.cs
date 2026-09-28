@@ -74,6 +74,7 @@ internal static class PluginPalette
             HeroStart: Composite(paper, WithAlpha(state.PrimaryContainer, 0.45)),
             HeroEnd: Composite(paper, WithAlpha(state.PrimaryContainer, 0.12)),
             AccentLine: WithAlpha(theme.MusicOverlay.Primary, 0.18),
+            KeycapBorder: WithAlpha(state.Text, 0.16),
             Scrim: WithAlpha(OpaqueBlack, 0.35));
     }
 
@@ -82,7 +83,6 @@ internal static class PluginPalette
         var theme = For(lightTheme);
         var text = theme.StateCard.Text;
         return new OnboardingPalette(
-            KeycapBorder: WithAlpha(text, 0.16),
             InactiveStep: WithAlpha(text, 0.25),
             OnAccent: lightTheme ? Colors.White : Color.FromRgb(0x38, 0x1E, 0x72),
             ToolbarSurface: theme.FloatingToolbar.Surface,
@@ -317,10 +317,10 @@ internal static class PluginPalette
 internal sealed record SettingsPalette(
     Color Paper, Color Surface, Color Card, Color Sidebar, Color ScrollbarThumb,
     Color Text, Color Muted, Color Accent, Color Line, Color Hover, Color Selected,
-    Color Wash, Color HeroStart, Color HeroEnd, Color AccentLine, Color Scrim);
+    Color Wash, Color HeroStart, Color HeroEnd, Color AccentLine, Color KeycapBorder, Color Scrim);
 
 internal sealed record OnboardingPalette(
-    Color KeycapBorder, Color InactiveStep, Color OnAccent,
+    Color InactiveStep, Color OnAccent,
     Color ToolbarSurface, Color ToolbarText, Color ToolbarBorder,
     Color ChipSurface, Color ChipText, Color ChipBorder, Color TextHighlight);
 

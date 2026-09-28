@@ -257,7 +257,6 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_reset_description">The search provider, the search engine, the shortcut, and the other options in this window will return to their defaults. Run at Windows startup stays as it is.</system:String>
     <system:String x:Key="app_settings_cancel">Cancel</system:String>
     <system:String x:Key="app_settings_save">Save</system:String>
-    <system:String x:Key="app_settings_preview_notice">Interface preview</system:String>
     <system:String x:Key="app_settings_ctrl">Ctrl</system:String>
     <system:String x:Key="app_settings_alt">Alt</system:String>
     <system:String x:Key="app_settings_shift">Shift</system:String>

@@ -69,7 +69,9 @@ internal sealed class SettingsWindowView
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
         Window.AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavigationChecked));
         Window.PreviewKeyDown += OnPreviewKeyDown;
-        Element<TextBox>("ShortcutInput").PreviewKeyDown += RecordShortcut;
+        var shortcutInput = Element<Border>("ShortcutInput");
+        shortcutInput.PreviewKeyDown += RecordShortcut;
+        shortcutInput.MouseLeftButtonDown += (_, _) => shortcutInput.Focus();
         Element<TextBlock>("AppVersion").MouseLeftButtonDown += OnVersionClicked;
         if (model.DeveloperSettingsUnlocked) Element<RadioButton>("Nav_developer").Visibility = Visibility.Visible;
 
@@ -242,9 +244,8 @@ internal sealed class SettingsWindowView
         Element<Button>("SaveShortcut").IsEnabled = false;
         Element<Button>("ConfirmReset").Visibility = shortcut ? Visibility.Collapsed : Visibility.Visible;
         _dialogMotion.Open();
-        var input = Element<TextBox>("ShortcutInput");
-        input.Text = _strings.SettingsPreviewText("press_shortcut");
-        if (shortcut) input.Focus();
+        ShowShortcutPrompt(_strings.SettingsPreviewText("press_shortcut"));
+        if (shortcut) Element<Border>("ShortcutInput").Focus();
         else Element<Border>("DialogCard").MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
     }
 
@@ -276,11 +277,24 @@ internal sealed class SettingsWindowView
         e.Handled = true;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         if (ShortcutText.IsModifier(key)) return;
-        _pendingShortcut = ShortcutText.Gesture(key, Keyboard.Modifiers);
+        _pendingShortcut = ShortcutText.Gesture(key, e.KeyboardDevice.Modifiers);
         Element<Button>("SaveShortcut").IsEnabled = _pendingShortcut is not null;
-        Element<TextBox>("ShortcutInput").Text = _pendingShortcut is null
-            ? _strings.SettingsShortcutInvalid
-            : string.Join(" + ", ShortcutText.Labels(_pendingShortcut, _strings));
+        if (_pendingShortcut is null) ShowShortcutPrompt(_strings.SettingsShortcutInvalid);
+        else ShowShortcutKeys(_pendingShortcut);
+    }
+
+    private void ShowShortcutPrompt(string text)
+    {
+        var prompt = Element<TextBlock>("ShortcutPrompt");
+        prompt.Text = text;
+        prompt.Visibility = Visibility.Visible;
+        Element<ItemsControl>("ShortcutDraftKeys").ItemsSource = null;
+    }
+
+    private void ShowShortcutKeys(string gesture)
+    {
+        Element<TextBlock>("ShortcutPrompt").Visibility = Visibility.Collapsed;
+        Element<ItemsControl>("ShortcutDraftKeys").ItemsSource = ShortcutText.Keys(gesture, _strings);
     }
 
     private void LoadSettings()
@@ -310,8 +324,7 @@ internal sealed class SettingsWindowView
                 Element<CheckBox>(name).IsChecked = _model.IsToolbarActionShown(action);
         }
         finally { _loadingSettings = false; }
-        var keys = ShortcutText.Labels(_model.HotkeyGesture, _strings)
-            .Select((label, index) => new ShortcutPart(label, index > 0)).ToArray();
+        var keys = ShortcutText.Keys(_model.HotkeyGesture, _strings);
         Element<ItemsControl>("ShortcutKeys").ItemsSource = keys;
         Element<ItemsControl>("HeroShortcutKeys").ItemsSource = keys;
         Element<TextBlock>("RuntimeVersion").Text = _model.WebViewRuntimeVersion ?? _strings.SettingsRuntimeMissing;
@@ -473,6 +486,4 @@ internal sealed class SettingsWindowView
     {
         public string this[string key] => strings.SettingsPreviewText(key);
     }
-
-    private sealed record ShortcutPart(string Label, bool HasSeparator);
 }
