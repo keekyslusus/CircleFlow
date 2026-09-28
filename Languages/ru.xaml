@@ -46,6 +46,13 @@
     <system:String x:Key="app_onboarding_next">Далее</system:String>
     <system:String x:Key="app_onboarding_step">Шаг {0} из {1}</system:String>
     <system:String x:Key="app_onboarding_try">Попробовать</system:String>
+    <system:String x:Key="app_settings_check_updates">Проверить обновления</system:String>
+    <system:String x:Key="app_settings_updates_checking">Проверка обновлений...</system:String>
+    <system:String x:Key="app_settings_updates_current">У вас последняя версия CircleFlow.</system:String>
+    <system:String x:Key="app_settings_updates_available">Доступно обновление. Нажмите «Обновить» в уведомлении, чтобы установить его.</system:String>
+    <system:String x:Key="app_settings_updates_installing">Обновление уже устанавливается.</system:String>
+    <system:String x:Key="app_settings_updates_failed">Не удалось проверить обновления. Проверьте подключение и попробуйте ещё раз.</system:String>
+    <system:String x:Key="app_settings_updates_unavailable">Эта копия не может обновляться сама. Установите CircleFlow из последнего релиза, чтобы получать обновления.</system:String>
     <system:String x:Key="app_update_available_title">Доступно обновление</system:String>
     <system:String x:Key="app_update_available">CircleFlow {0} готов к установке.</system:String>
     <system:String x:Key="app_update_install">Обновить</system:String>

@@ -771,7 +771,7 @@
                                                 <TextBlock Text="{Binding [version_value_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <Button Tag="preview">
+                                                <Button Tag="check-updates">
                                                     <StackPanel Orientation="Horizontal">
                                                         <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                             <Canvas Width="24" Height="24">

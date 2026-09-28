@@ -8,6 +8,7 @@ using CircleToSearch.Capture;
 using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
+using CircleToSearch.Updates;
 
 namespace CircleToSearch.Shell.SettingsPreview;
 
@@ -26,6 +27,7 @@ internal sealed class SettingsWindowView
     private readonly SettingsScrollMotionController _scrollMotion;
     private readonly SettingsPageTransition _pageTransition;
     private readonly SettingsDialogMotion _dialogMotion;
+    private readonly SettingsStatusMotion _statusMotion;
     private IInputElement? _dialogOwner;
     private string? _pendingShortcut;
     private bool _loadingSettings;
@@ -43,6 +45,7 @@ internal sealed class SettingsWindowView
             Interval = TimeSpan.FromSeconds(3),
         };
         _statusTimer.Tick += (_, _) => HideStatus();
+        _statusMotion = new SettingsStatusMotion(Element<Border>("StatusBanner"));
         var scrolling = new SettingsScrollController(Element<ScrollViewer>("PageScroll"));
         var navigationIndicator = new SettingsNavigationIndicator(Element<Grid>("NavigationHost"),
             Element<StackPanel>("NavigationItems"), Element<Border>("NavigationSelection"));
@@ -185,11 +188,34 @@ internal sealed class SettingsWindowView
             case "folder": _model.OpenDataFolder(); break;
             case "logs": _model.OpenLogsFolder(); break;
             case "ocr-languages": _model.OpenOcrLanguageSettings(); break;
-            case "preview": ShowStatus(_strings.SettingsPreviewText("preview_action")); break;
+            case "check-updates": _ = CheckForUpdatesAsync((Button)e.OriginalSource); break;
             case "show-onboarding": _model.ShowOnboarding(); break;
             case "test-browser": _model.OpenTestBrowser(); break;
         }
         e.Handled = true;
+    }
+
+    private async Task CheckForUpdatesAsync(Button button)
+    {
+        if (!_model.CanCheckForUpdates)
+        {
+            ShowStatus(_strings.SettingsPreviewText("updates_unavailable"));
+            return;
+        }
+        button.IsEnabled = false;
+        ShowStatus(_strings.SettingsPreviewText("updates_checking"));
+        try
+        {
+            ShowStatus(_strings.SettingsPreviewText(await _model.CheckForUpdatesAsync() switch
+            {
+                UpdateCheckOutcome.UpToDate => "updates_current",
+                UpdateCheckOutcome.Offered => "updates_available",
+                UpdateCheckOutcome.Installing => "updates_installing",
+                _ => "updates_failed",
+            }));
+        }
+        catch (OperationCanceledException) { }
+        finally { button.IsEnabled = true; }
     }
 
     // Like Android's build number: three quick clicks on the version reveal the developer page.
@@ -431,7 +457,7 @@ internal sealed class SettingsWindowView
     private void ShowStatus(string text)
     {
         Element<TextBlock>("StatusText").Text = text;
-        Element<Border>("StatusBanner").Visibility = Visibility.Visible;
+        _statusMotion.Show();
         _statusTimer.Stop();
         _statusTimer.Start();
     }
@@ -439,7 +465,7 @@ internal sealed class SettingsWindowView
     private void HideStatus()
     {
         _statusTimer.Stop();
-        Element<Border>("StatusBanner").Visibility = Visibility.Collapsed;
+        _statusMotion.Hide();
     }
 
     private sealed class PreviewText(UiStrings strings)

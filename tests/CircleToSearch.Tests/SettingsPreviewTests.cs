@@ -19,6 +19,7 @@ using CircleToSearch.TextRecognition;
 using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
 using CircleToSearch.Capture;
+using CircleToSearch.Updates;
 using Xunit;
 using static CircleToSearch.Tests.WpfUi;
 
@@ -1257,6 +1258,92 @@ public sealed class SettingsPreviewTests
                     ProjectSupport.ProjectUrl, harness.Paths.DataDirectory, harness.Paths.LogsDirectory],
                 harness.Opened);
             Assert.Empty(harness.Notifier.Errors);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Check_for_updates_shows_progress_then_each_outcome() => OnSta(time =>
+    {
+        TaskCompletionSource<UpdateCheckOutcome>? pending = null;
+        var harness = new TestSettingsWindow(checkForUpdates: () => (pending = new()).Task);
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var button = LogicalChildren(window).OfType<Button>().Single(button => Equals(button.Tag, "check-updates"));
+            var status = Find<TextBlock>(window, "StatusText");
+            foreach (var (outcome, key) in new[]
+            {
+                (UpdateCheckOutcome.UpToDate, "updates_current"), (UpdateCheckOutcome.Offered, "updates_available"),
+                (UpdateCheckOutcome.Installing, "updates_installing"), (UpdateCheckOutcome.Failed, "updates_failed"),
+            })
+            {
+                Click(window, "check-updates");
+                Assert.False(button.IsEnabled);
+                Assert.Equal(harness.Strings.SettingsPreviewText("updates_checking"), status.Text);
+                pending!.SetResult(outcome);
+                Assert.True(DispatcherPump.Until(() => button.IsEnabled));
+                Assert.Equal(harness.Strings.SettingsPreviewText(key), status.Text);
+            }
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Status_banner_fades_in_and_out_and_reverses_from_where_it_is() => OnSta(time =>
+    {
+        var window = new TestSettingsWindow().CreateView().Window;
+        try
+        {
+            window.Show();
+            Pump();
+            var banner = Find<Border>(window, "StatusBanner");
+            var translation = (TranslateTransform)banner.RenderTransform;
+            Click(window, "check-updates");
+            Assert.Equal(Visibility.Visible, banner.Visibility);
+            if (UiAnimationPolicy.Enabled)
+            {
+                time.Advance(60);
+                Assert.InRange(banner.Opacity, 0.001, 0.999);
+                Assert.InRange(translation.Y, 0.001, 7.999);
+            }
+            time.Advance(240);
+            Assert.Equal(1, banner.Opacity);
+            Assert.Equal(0, translation.Y);
+
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            if (UiAnimationPolicy.Enabled)
+            {
+                time.Advance(60);
+                Assert.Equal(Visibility.Visible, banner.Visibility);
+                var opacity = banner.Opacity;
+                Assert.InRange(opacity, 0.001, 0.999);
+                Click(window, "check-updates");
+                Assert.Equal(opacity, banner.Opacity);
+                time.Advance(40);
+                Assert.True(banner.Opacity > opacity);
+                time.Advance(240);
+                Assert.Equal(1, banner.Opacity);
+                Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            }
+            time.Advance(240);
+            Assert.Equal(Visibility.Collapsed, banner.Visibility);
+            Assert.Equal(0, banner.Opacity);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Check_for_updates_explains_that_a_copy_without_the_updater_cannot_update() => OnSta(time =>
+    {
+        var window = new TestSettingsWindow().CreateView().Window;
+        try
+        {
+            window.Show();
+            Click(window, "check-updates");
+            Assert.Equal(TestUiStrings.English.SettingsPreviewText("updates_unavailable"),
+                Find<TextBlock>(window, "StatusText").Text);
         }
         finally { window.Close(); }
     });

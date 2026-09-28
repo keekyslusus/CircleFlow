@@ -5,6 +5,7 @@ using CircleToSearch.Shell;
 using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Ui;
+using CircleToSearch.Updates;
 
 namespace CircleToSearch.Tests;
 
@@ -13,7 +14,7 @@ internal sealed class TestSettingsWindow
     public TestSettingsWindow(SettingsService? settings = null, bool openSucceeds = true,
         string? webViewRuntimeVersion = "140.0.3485.54", OcrLanguageCatalog? ocrLanguages = null,
         CultureInfo? culture = null, string? audioOutputName = "Speakers (Test Audio)", bool launchAtStartup = true,
-        string? languagesDirectory = null)
+        string? languagesDirectory = null, Func<Task<UpdateCheckOutcome>>? checkForUpdates = null)
     {
         var log = new PluginLog(Path.Combine(TestOutputPaths.TempDirectory, "settings-window-" + Guid.NewGuid().ToString("N")));
         Settings = settings ?? TestSettings.Create();
@@ -38,7 +39,8 @@ internal sealed class TestSettingsWindow
         Strings = new UiStrings(language.Get);
         Model = new SettingsWindowModel(Settings, providers, OcrLanguages, language, culture ?? CultureInfo.GetCultureInfo("en-US"),
             new ProjectSupport(urlOpening), urlOpening, Paths, Strings, () => webViewRuntimeVersion,
-            () => AudioOutputName, Startup.Registration, () => OnboardingRequests++, () => TestBrowserRequests++);
+            () => AudioOutputName, Startup.Registration, () => OnboardingRequests++, () => TestBrowserRequests++,
+            checkForUpdates);
         AudioOutputName = audioOutputName;
     }
 

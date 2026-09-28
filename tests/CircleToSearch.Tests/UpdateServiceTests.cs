@@ -56,11 +56,11 @@ public sealed class UpdateServiceTests
                 () => steps.Add("apply"))),
             notifier, () => { steps.Add("exit"); exited.SetResult(); return Task.CompletedTask; }, Strings, NewLog());
 
-        Assert.True(await service.CheckAsync(CancellationToken.None));
+        Assert.Equal(UpdateCheckOutcome.Offered, await service.CheckAsync(CancellationToken.None));
         var offer = Assert.Single(notifier.Buttons);
         offer.Action();
         offer.Action();
-        Assert.True(await service.CheckAsync(CancellationToken.None));
+        Assert.Equal(UpdateCheckOutcome.Installing, await service.CheckAsync(CancellationToken.None));
         Assert.Single(notifier.Buttons);
         Assert.Equal(["download"], steps);
         Assert.Equal((Strings.UpdateDownloadingTitle, Strings.UpdateDownloading("2.0.0")),
@@ -70,6 +70,40 @@ public sealed class UpdateServiceTests
         await exited.Task.WaitAsync(TimeSpan.FromSeconds(10));
         Assert.Equal(["download", "apply", "exit"], steps);
         Assert.Empty(notifier.Errors);
+    }
+
+    [Fact]
+    public async Task Check_from_settings_reports_up_to_date_and_failure_without_an_offer()
+    {
+        var notifier = new TestPluginNotifier();
+        var results = new Queue<Func<AvailableUpdate?>>([() => null, () => throw new HttpRequestException("offline")]);
+        var service = new UpdateService(_ => Task.FromResult(results.Dequeue()()), notifier, () => Task.CompletedTask,
+            Strings, NewLog());
+
+        Assert.Equal(UpdateCheckOutcome.UpToDate, await service.CheckNowAsync());
+        Assert.Equal(UpdateCheckOutcome.Failed, await service.CheckNowAsync());
+        Assert.Empty(notifier.Buttons);
+        Assert.Empty(notifier.Errors);
+    }
+
+    [Fact]
+    public async Task Overlapping_checks_run_one_after_another()
+    {
+        var first = new TaskCompletionSource<AvailableUpdate?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        var service = new UpdateService(
+            _ => Interlocked.Increment(ref calls) == 1 ? first.Task : Task.FromResult<AvailableUpdate?>(null),
+            new TestPluginNotifier(), () => Task.CompletedTask, Strings, NewLog());
+
+        var scheduled = service.CheckAsync(CancellationToken.None);
+        var manual = service.CheckNowAsync();
+        Assert.Equal(1, Volatile.Read(ref calls));
+        Assert.False(manual.IsCompleted);
+
+        first.SetResult(null);
+        Assert.Equal(UpdateCheckOutcome.UpToDate, await scheduled.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.Equal(UpdateCheckOutcome.UpToDate, await manual.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.Equal(2, calls);
     }
 
     [Fact]
