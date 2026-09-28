@@ -4,7 +4,7 @@
 
 Development requires Windows and the .NET 9 SDK. Browser features need the [Microsoft Edge WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download); OCR tests need at least one Windows OCR language pack.
 
-Code conventions (composition, one responsibility per class, strings in `Languages/*.xaml`, colors in `PluginPalette`, icon style) are in [AGENTS.md](./AGENTS.md). They apply to people as well as coding agents.
+Code conventions (composition, one responsibility per class, strings in `Languages/*.xaml`, colors in `PluginPalette`, icon style) are in [AGENTS.md](./AGENTS.md). They apply to people as well as clanker agents.
 
 ## Build and test
 
@@ -75,13 +75,12 @@ Both options bake the test source into the build as assembly metadata; normal an
 ## Publishing a release
 
 1. Raise `<Version>` in `CircleFlow.csproj`. It must be higher than the latest release, and its tag `v<version>` must not exist yet.
-2. Commit and push to `master`.
-3. Run **Actions → release → Run workflow** on `master`.
+2. Commit/push to `master`.
+3. Run `release` workflow on `master`.
 
 The workflow downloads the latest release to build a delta against it, runs `build_release.ps1`, and publishes the release `v<version>` with `vpk upload github`. Installed copies offer it within a day. Add release notes on GitHub afterwards; `vpk` creates the release without a description.
 
 Things to keep in mind:
 
-- Users receive updates only while this repository is public.
 - A published release cannot be rolled back: Velopack never downgrades, so deleting a release does not bring anyone back. Ship a fix as a higher version.
 - The installer is not code-signed, so SmartScreen warns people who download `Setup.exe`. Updates are not affected.
