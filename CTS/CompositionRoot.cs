@@ -139,10 +139,11 @@ public static class CompositionRoot
                 var notifier = new PluginNotifier(notifications.ShowMessage, notifications.ShowMessageWithButton,
                     notifications.ShowError, log);
                 var urlOpening = new UrlOpeningService(OpenResultsUrl, notifier, strings, log);
+                var runtimeNotice = new WebViewRuntimeNotice(WebViewEnvironmentFactory.RuntimeVersion, notifier, urlOpening, strings);
                 TrayIcon? tray = null;
                 var rollback = new ResourceRollbackScope(log);
                 lifetime.AddCleanup("stop-runtime", () => rollback.DisposeAsync().AsTask());
-                var runtime = Create(paths, loaded.Settings, store, strings, notifier, urlOpening,
+                var runtime = Create(paths, loaded.Settings, store, strings, notifier, urlOpening, runtimeNotice,
                     () => application.Dispatcher.InvokeAsync(() =>
                     {
                         tray?.CloseMenu();
@@ -169,7 +170,7 @@ public static class CompositionRoot
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
                     language, CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
                     AudioOutputDevice.DefaultName, startup, onboarding.Show, testBrowser.Show,
-                    () => NotificationSamples.Show(notifier, strings, runtime.Settings.Snapshot.HotkeyGesture),
+                    () => NotificationSamples.Show(notifier, runtimeNotice, strings, runtime.Settings.Snapshot.HotkeyGesture),
                     updates is null ? null : updates.CheckNowAsync);
                 var settingsWindow = new SingleWindowController(application.Dispatcher,
                     () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
@@ -185,6 +186,7 @@ public static class CompositionRoot
                 watchdog.AddEmergencyCleanup(tray.RemoveForShutdown);
                 cancellation.ThrowIfCancellationRequested();
                 activation.SetReady(runtime.OpenAsync);
+                runtimeNotice.ShowIfMissing();
                 onboarding.ShowIfNeeded();
             }, startupCancellation);
             if (lifetime.StartupFailure is not null)
@@ -230,6 +232,7 @@ public static class CompositionRoot
         UiStrings strings,
         IPluginNotifier notifier,
         UrlOpeningService urlOpening,
+        WebViewRuntimeNotice runtimeNotice,
         Func<Task> hideOwnWindows,
         PluginLog log,
         ResourceRollbackScope rollback)
@@ -272,6 +275,7 @@ public static class CompositionRoot
         var visualSearchPresenter = new VisualSearchResultPresenter(
             searchBrowserHost,
             urlOpening,
+            runtimeNotice,
             notifier,
             strings,
             log);

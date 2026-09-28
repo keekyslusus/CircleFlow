@@ -34,8 +34,22 @@ public sealed class VisualSearchResultPresenterTests
         Assert.Empty(harness.Notifier.Errors);
     }
 
+    [Fact]
+    public async Task Missing_runtime_without_fallback_offers_the_runtime_download()
+    {
+        var harness = new Harness(SearchBrowserShowStatus.RuntimeUnavailable);
+
+        await harness.PresentAsync(harness.OperationPreparation());
+
+        Assert.Empty(harness.Notifier.Errors);
+        var offer = Assert.Single(harness.Notifier.Buttons);
+        Assert.Equal(TestUiStrings.English.BrowserRuntimeRequired("Third Provider"), offer.Message);
+        Assert.Empty(harness.Opened);
+        offer.Action();
+        Assert.Equal([WebViewRuntimeNotice.DownloadUrl], harness.Opened);
+    }
+
     [Theory]
-    [InlineData(SearchBrowserShowStatus.RuntimeUnavailable)]
     [InlineData(SearchBrowserShowStatus.InitializationFailed)]
     [InlineData(SearchBrowserShowStatus.NavigationFailed)]
     [InlineData(SearchBrowserShowStatus.ProviderOperationFailed)]
@@ -185,9 +199,11 @@ public sealed class VisualSearchResultPresenterTests
             var directory = Path.Combine(TestOutputPaths.TempDirectory, "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(directory);
             var log = new PluginLog(directory);
+            var urlOpening = new UrlOpeningService(Open, Notifier, TestUiStrings.English, log);
             _presenter = new VisualSearchResultPresenter(
                 Host,
-                new UrlOpeningService(Open, Notifier, TestUiStrings.English, log),
+                urlOpening,
+                new WebViewRuntimeNotice(() => "1.0", Notifier, urlOpening, TestUiStrings.English),
                 Notifier,
                 TestUiStrings.English,
                 log);

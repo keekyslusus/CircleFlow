@@ -179,13 +179,15 @@ public sealed class VisualSearchWorkflowTests
                 ],
                 SearchProviderIds.GoogleLens,
                 log);
+            var urlOpening = new UrlOpeningService(url =>
+            {
+                Opened.Add(url);
+                return true;
+            }, Notifier, TestUiStrings.English, log);
             var presenter = new VisualSearchResultPresenter(
                 Host,
-                new UrlOpeningService(url =>
-                {
-                    Opened.Add(url);
-                    return true;
-                }, Notifier, TestUiStrings.English, log),
+                urlOpening,
+                new WebViewRuntimeNotice(() => "1.0", Notifier, urlOpening, TestUiStrings.English),
                 Notifier,
                 TestUiStrings.English,
                 log);

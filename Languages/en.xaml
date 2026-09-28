@@ -334,4 +334,7 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_update_downloading">CircleFlow will restart to install version {0} once the download finishes.</system:String>
     <system:String x:Key="app_update_failed_title">Update failed</system:String>
     <system:String x:Key="app_update_failed">The update could not be downloaded. Check your connection and try again later.</system:String>
+    <system:String x:Key="app_webview_runtime_missing_title">WebView2 Runtime not found</system:String>
+    <system:String x:Key="app_webview_runtime_missing">CircleFlow needs Microsoft Edge WebView2 Runtime to show search results.</system:String>
+    <system:String x:Key="app_webview_runtime_download">Download</system:String>
 </ResourceDictionary>

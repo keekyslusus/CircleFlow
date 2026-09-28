@@ -7,6 +7,7 @@ namespace CircleToSearch.Search;
 internal sealed class VisualSearchResultPresenter(
     ISearchBrowserHost browserHost,
     UrlOpeningService urlOpening,
+    WebViewRuntimeNotice runtimeNotice,
     IPluginNotifier notifier,
     UiStrings strings,
     PluginLog log)
@@ -57,10 +58,14 @@ internal sealed class VisualSearchResultPresenter(
             return;
         }
 
+        if (shown.Status is SearchBrowserShowStatus.RuntimeUnavailable)
+        {
+            runtimeNotice.Show(strings.BrowserRuntimeRequired(routed.ProviderDisplayName));
+            return;
+        }
+
         var reason = shown.Status switch
         {
-            SearchBrowserShowStatus.RuntimeUnavailable =>
-                strings.BrowserRuntimeRequired(routed.ProviderDisplayName),
             SearchBrowserShowStatus.ProviderOperationFailed =>
                 strings.BrowserImageAttachmentFailed(routed.ProviderDisplayName),
             _ => strings.SearchBrowserShowFailed(routed.ProviderDisplayName),

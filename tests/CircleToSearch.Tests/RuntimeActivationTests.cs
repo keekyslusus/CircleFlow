@@ -22,10 +22,11 @@ public sealed class RuntimeActivationTests
         var hiding = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var hides = 0;
         await using var rollback = new ResourceRollbackScope(log);
+        var urlOpening = new UrlOpeningService(_ => true, notifier, TestUiStrings.English, log);
         var runtime = CompositionRoot.Create(paths,
             new AppSettings { HotkeyGesture = gesture, HideDelayMilliseconds = 2000 }, new SettingsStore(paths),
-            TestUiStrings.English, notifier,
-            new UrlOpeningService(_ => true, notifier, TestUiStrings.English, log),
+            TestUiStrings.English, notifier, urlOpening,
+            new WebViewRuntimeNotice(() => "1.0", notifier, urlOpening, TestUiStrings.English),
             () => { hides++; return hiding.Task; }, log, rollback);
         Assert.False(runtime.Settings.HotkeyStatus.IsActive);
         Assert.Equal(TestUiStrings.English.HotkeyConflict(gesture), Assert.Single(notifier.Errors).Message);

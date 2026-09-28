@@ -1104,9 +1104,12 @@ public sealed class OverlaySessionWorkflowTests
             Overlay = overlaySessions[0];
             Factory = new FakeOverlayFactory(overlaySessions);
             Notifier = new FakeNotifier(Errors, Messages);
+            var presenterUrls = new UrlOpeningService(_ => true, Notifier, TestUiStrings.English, Log);
+            var runtimeNotice = new WebViewRuntimeNotice(() => "1.0", Notifier, presenterUrls, TestUiStrings.English);
             var visualPresenter = new VisualSearchResultPresenter(
                 new FakeBrowserHost(),
-                new UrlOpeningService(_ => true, Notifier, TestUiStrings.English, Log),
+                presenterUrls,
+                runtimeNotice,
                 Notifier,
                 TestUiStrings.English,
                 Log);
@@ -1159,7 +1162,8 @@ public sealed class OverlaySessionWorkflowTests
                 },
                 new VisualSearchResultPresenter(
                     AskHost,
-                    new UrlOpeningService(_ => true, Notifier, TestUiStrings.English, Log),
+                    presenterUrls,
+                    runtimeNotice,
                     Notifier,
                     TestUiStrings.English,
                     Log),
@@ -1178,7 +1182,8 @@ public sealed class OverlaySessionWorkflowTests
                 },
                 new VisualSearchResultPresenter(
                     LensHost,
-                    new UrlOpeningService(_ => true, Notifier, TestUiStrings.English, Log),
+                    presenterUrls,
+                    runtimeNotice,
                     Notifier,
                     TestUiStrings.English,
                     Log),

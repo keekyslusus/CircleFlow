@@ -58,6 +58,9 @@ public sealed class UiStrings
     public string UpdateDownloading(string version) => Get("app_update_downloading", version);
     public string UpdateFailedTitle => Get("app_update_failed_title");
     public string UpdateFailed => Get("app_update_failed");
+    public string WebViewRuntimeMissingTitle => Get("app_webview_runtime_missing_title");
+    public string WebViewRuntimeMissing => Get("app_webview_runtime_missing");
+    public string WebViewRuntimeDownload => Get("app_webview_runtime_download");
     public string BrowserProfileOutsideData => Get("app_browser_profile_outside_data");
     public string PluginDescription => Get("plugin_circletosearch_plugin_description");
     public string GoogleLensProviderName => Get("plugin_circletosearch_google_lens_provider_name");
