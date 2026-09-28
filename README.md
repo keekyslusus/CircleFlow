@@ -43,6 +43,8 @@ powershell -ExecutionPolicy Bypass -File .\tests\Test-PublishedApp.ps1 -ArchiveP
 
 This check extracts a separate copy under `tests\temp`, checks its packaged assets, and launches that copy of `CircleFlow.exe` from a different working directory. A test-only .NET startup hook initializes OCR, WebView2 and WebView2CompositionControl in the application's default load context, then raises the managed session-ending event and verifies that CircleFlow does not cancel it. It never requests a real Windows logoff or shutdown. It checks the bundled .NET and WinRT assemblies and actual browser profile paths. The hook is not included in the release ZIP. The report remains in the extracted copy's `Data\Temp\publish-probe.json`.
 
+To try the update flow without publishing a release, uninstall CircleFlow and run `.\tests\Test-Update.ps1`. It installs a test build that reads updates from `tests\temp\update-feed`, publishes a newer build there and starts the app; about a minute later it offers the update.
+
 Tests marked `Category=Live` and tests guarded by environment variables need their respective services or interactive setup. The package check uses local browser content; it does not certify external search, translation or music providers, or multi-monitor/DPI behavior.
 
 ## License
