@@ -191,6 +191,7 @@ internal sealed class SettingsWindowView
             case "check-updates": _ = CheckForUpdatesAsync((Button)e.OriginalSource); break;
             case "show-onboarding": _model.ShowOnboarding(); break;
             case "test-browser": _model.OpenTestBrowser(); break;
+            case "test-notifications": _model.ShowTestNotifications(); break;
         }
         e.Handled = true;
     }

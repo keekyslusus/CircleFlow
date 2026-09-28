@@ -98,6 +98,10 @@ internal static class PluginIcons
         new EllipseGeometry(new Point(12, 12), 9, 9),
         Geometry.Parse("M12 11v6m0-10h.01"));
 
+    public static Geometry ErrorOutlined { get; } = Group(
+        new EllipseGeometry(new Point(12, 12), 9, 9),
+        Geometry.Parse("M12 7v6m0 4h.01"));
+
     public static Geometry SunOutlined { get; } = Group(
         new EllipseGeometry(new Point(12, 12), 4, 4),
         Geometry.Parse("M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"));

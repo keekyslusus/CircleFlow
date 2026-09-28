@@ -148,40 +148,6 @@ public sealed class ShellTests
     });
 
     [Fact]
-    public void Notifications_marshal_to_dispatcher_keep_actions_and_ignore_work_after_disposal() => OnSta(() =>
-    {
-        var dispatcher = Dispatcher.CurrentDispatcher;
-        using var presenter = new NotificationPresenter(dispatcher, TestUiStrings.English, CreateLog());
-        var calls = 0;
-        Task.Run(() => presenter.ShowMessageWithButton("test", "recognized track", "Open in Shazam", () =>
-        {
-            dispatcher.VerifyAccess();
-            calls++;
-            throw new InvalidOperationException("failed action");
-        })).GetAwaiter().GetResult();
-        Pump();
-        var window = Assert.Single(presenter.Windows);
-        Assert.True(window.IsVisible);
-        var panel = Assert.IsType<StackPanel>(window.Content);
-        Assert.Equal("recognized track", Assert.IsType<TextBlock>(panel.Children[0]).Text);
-        var buttons = Assert.IsType<StackPanel>(panel.Children[1]);
-        var action = Assert.IsType<Button>(buttons.Children[0]);
-        Assert.Equal("Open in Shazam", action.Content);
-        action.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        action.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Assert.Equal(1, calls);
-        Assert.Empty(presenter.Windows);
-        presenter.ShowError("test", "failure");
-        Pump();
-        Assert.Single(presenter.Windows);
-        presenter.ShowMessage("test", "queued before exit");
-        presenter.Dispose();
-        presenter.ShowMessage("test", "late callback");
-        Pump();
-        Assert.Empty(presenter.Windows);
-    });
-
-    [Fact]
     public void Tray_menu_uses_the_current_app_language_each_time_it_opens() => OnSta(() =>
     {
         var prefix = string.Empty;

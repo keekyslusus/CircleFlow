@@ -1,9 +1,9 @@
 using System.Windows;
 using System.Windows.Media.Animation;
 
-namespace CircleToSearch.Shell.SettingsPreview;
+namespace CircleToSearch.Ui;
 
-internal static class SettingsMotionValue
+internal static class MotionValue
 {
     // Starts from the value on screen, so a reversed transition continues instead of jumping.
     internal static void Animate(DependencyObject target, DependencyProperty property,

@@ -40,6 +40,7 @@ internal sealed class TestSettingsWindow
         Model = new SettingsWindowModel(Settings, providers, OcrLanguages, language, culture ?? CultureInfo.GetCultureInfo("en-US"),
             new ProjectSupport(urlOpening), urlOpening, Paths, Strings, () => webViewRuntimeVersion,
             () => AudioOutputName, Startup.Registration, () => OnboardingRequests++, () => TestBrowserRequests++,
+            () => TestNotificationRequests++,
             checkForUpdates);
         AudioOutputName = audioOutputName;
     }
@@ -55,6 +56,7 @@ internal sealed class TestSettingsWindow
     public List<string> Opened { get; } = [];
     public int OnboardingRequests { get; private set; }
     public int TestBrowserRequests { get; private set; }
+    public int TestNotificationRequests { get; private set; }
 
     public SettingsWindowView CreateView(bool light = true) =>
         new(Strings, light, Paths.TrayIconPath, Model);

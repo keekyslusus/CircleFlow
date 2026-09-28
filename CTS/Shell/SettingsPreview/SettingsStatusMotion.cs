@@ -45,8 +45,8 @@ internal sealed class SettingsStatusMotion
         }
         var duration = TimeSpan.FromMilliseconds(show ? 200 : 140);
         var easing = new CubicEase { EasingMode = show ? EasingMode.EaseOut : EasingMode.EaseIn };
-        SettingsMotionValue.Animate(_translation, TranslateTransform.YProperty, show ? 0 : HiddenOffset, duration, easing);
-        SettingsMotionValue.Animate(_banner, UIElement.OpacityProperty, show ? 1 : 0, duration, easing, () =>
+        MotionValue.Animate(_translation, TranslateTransform.YProperty, show ? 0 : HiddenOffset, duration, easing);
+        MotionValue.Animate(_banner, UIElement.OpacityProperty, show ? 1 : 0, duration, easing, () =>
         {
             if (version == _version) Finish(show);
         });
