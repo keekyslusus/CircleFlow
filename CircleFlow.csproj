@@ -67,6 +67,10 @@
     <AssemblyMetadata Include="UpdateFeed" Value="$(UpdateFeed)" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(UpdateRepository)' != ''">
+    <AssemblyMetadata Include="UpdateRepository" Value="$(UpdateRepository)" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="CircleToSearch.Tests" />
     <InternalsVisibleTo Include="CircleFlow.PublishProbe" />

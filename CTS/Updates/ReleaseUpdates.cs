@@ -11,10 +11,11 @@ internal sealed class ReleaseUpdates(string repositoryUrl, string? testFeed)
         ? new(new GithubSource(repositoryUrl, accessToken: null, prerelease: false))
         : new(testFeed);
 
-    // Set only by build_release.ps1 -UpdateFeed, so the update flow can be tried without publishing a release.
-    public static string? BuiltInTestFeed { get; } = typeof(ReleaseUpdates).Assembly
-        .GetCustomAttributes<AssemblyMetadataAttribute>()
-        .FirstOrDefault(metadata => metadata.Key == "UpdateFeed")?.Value;
+    // Set only by build_release.ps1 -UpdateFeed or -UpdateRepository, so the update flow can be tried
+    // against a local folder or a test repository instead of the project's releases.
+    public static string? BuiltInTestFeed { get; } = BuiltInMetadata("UpdateFeed");
+
+    public static string? BuiltInTestRepository { get; } = BuiltInMetadata("UpdateRepository");
 
     public bool IsInstalled => _manager.IsInstalled;
 
@@ -31,4 +32,8 @@ internal sealed class ReleaseUpdates(string repositoryUrl, string? testFeed)
                 download => _manager.DownloadUpdatesAsync(update, cancelToken: download),
                 () => _manager.WaitExitThenApplyUpdates(update.TargetFullRelease, silent: false, restart: true));
     }
+
+    private static string? BuiltInMetadata(string key) => typeof(ReleaseUpdates).Assembly
+        .GetCustomAttributes<AssemblyMetadataAttribute>()
+        .FirstOrDefault(metadata => metadata.Key == key)?.Value;
 }
