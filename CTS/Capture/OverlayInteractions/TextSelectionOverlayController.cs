@@ -50,7 +50,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _inputSurface = inputSurface;
         _mapper = mapper;
         _hitTester = hitTester;
-        _clipboardCopy = clipboardCopy ?? throw new ArgumentNullException(nameof(clipboardCopy));
+        _clipboardCopy = clipboardCopy;
         _selectedProviderId = selectedProviderId;
         _publish = publish;
         _strings = strings;

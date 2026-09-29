@@ -19,15 +19,14 @@ internal sealed class ClipboardCopyService
         UiStrings strings,
         Action<BitmapSource>? setImage = null)
     {
-        _setClipboard = setClipboard ?? throw new ArgumentNullException(nameof(setClipboard));
-        _showToast = showToast ?? throw new ArgumentNullException(nameof(showToast));
-        _strings = strings ?? throw new ArgumentNullException(nameof(strings));
+        _setClipboard = setClipboard;
+        _showToast = showToast;
+        _strings = strings;
         _setImage = setImage;
     }
 
     internal bool TryCopyImage(BitmapSource image)
     {
-        ArgumentNullException.ThrowIfNull(image);
         try
         {
             if (_setImage is null) throw new InvalidOperationException("Image clipboard is unavailable.");
@@ -44,7 +43,6 @@ internal sealed class ClipboardCopyService
 
     internal bool TryCopy(string text)
     {
-        ArgumentNullException.ThrowIfNull(text);
         try
         {
             _setClipboard(text);

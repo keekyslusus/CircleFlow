@@ -12,7 +12,6 @@ internal sealed class TextSearchBrowserOperation(Task<Uri> results, Uri? preconn
         IVisualSearchBrowserSession session,
         CancellationToken cancel)
     {
-        ArgumentNullException.ThrowIfNull(session);
         Uri target;
         try
         {

@@ -48,9 +48,9 @@ public sealed class PointerMonitorCapture : IPointerMonitorCapture
         Func<int, int, GdiBitmap> createFrame,
         Action<GdiGraphics, GdiRectangle> copyFrame)
     {
-        _readMetadata = readMetadata ?? throw new ArgumentNullException(nameof(readMetadata));
-        _createFrame = createFrame ?? throw new ArgumentNullException(nameof(createFrame));
-        _copyFrame = copyFrame ?? throw new ArgumentNullException(nameof(copyFrame));
+        _readMetadata = readMetadata;
+        _createFrame = createFrame;
+        _copyFrame = copyFrame;
     }
 
     public PointerMonitorCaptureResult? Capture()

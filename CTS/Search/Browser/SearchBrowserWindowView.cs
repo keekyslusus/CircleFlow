@@ -31,9 +31,8 @@ internal sealed class SearchBrowserWindowView
         bool loadingOverlayEnabled,
         Func<Window, BottomResultsPanel> createResultsPanel)
     {
-        _strings = strings ?? throw new ArgumentNullException(nameof(strings));
-        _browserContent = browserContent ?? throw new ArgumentNullException(nameof(browserContent));
-        ArgumentNullException.ThrowIfNull(createResultsPanel);
+        _strings = strings;
+        _browserContent = browserContent;
         var palette = PluginPalette.For(lightTheme);
         var background = Frozen(palette.WindowSurface);
         _content = new Grid { Background = background };

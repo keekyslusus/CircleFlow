@@ -37,7 +37,7 @@ public sealed class MusicRecognitionSimulator : IMusicRecognitionSimulator
         TimeSpan? duration = null,
         TimeSpan? frameInterval = null)
     {
-        _strings = strings ?? throw new ArgumentNullException(nameof(strings));
+        _strings = strings;
         _duration = duration ?? TimeSpan.FromMilliseconds(1800);
         _frameInterval = frameInterval ?? TimeSpan.FromMilliseconds(75);
         if (_duration < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(duration));

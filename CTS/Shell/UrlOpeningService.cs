@@ -15,15 +15,14 @@ internal sealed class UrlOpeningService
         UiStrings strings,
         PluginLog log)
     {
-        _openUrl = openUrl ?? throw new ArgumentNullException(nameof(openUrl));
-        _notifier = notifier ?? throw new ArgumentNullException(nameof(notifier));
-        _strings = strings ?? throw new ArgumentNullException(nameof(strings));
-        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _openUrl = openUrl;
+        _notifier = notifier;
+        _strings = strings;
+        _log = log;
     }
 
     internal bool TryOpen(string url, string? failureMessage = null)
     {
-        ArgumentNullException.ThrowIfNull(url);
         bool opened;
         try { opened = _openUrl(url); }
         catch (Exception exception)

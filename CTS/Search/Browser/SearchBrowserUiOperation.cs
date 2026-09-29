@@ -17,7 +17,6 @@ internal sealed class SearchBrowserUiOperation
 
     public void SetOutcome(SearchBrowserShowResult outcome)
     {
-        ArgumentNullException.ThrowIfNull(outcome);
         _outcome ??= outcome;
     }
 

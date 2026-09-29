@@ -463,14 +463,6 @@ public static class CompositionRoot
         OverlayControllerContext context,
         OverlayControllerDependencies dependencies)
     {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(dependencies);
-        ArgumentNullException.ThrowIfNull(dependencies.SetClipboard);
-        ArgumentNullException.ThrowIfNull(dependencies.AnimationsEnabled);
-        ArgumentNullException.ThrowIfNull(dependencies.OcrRecognizer);
-        ArgumentNullException.ThrowIfNull(dependencies.TranslationConsentAccepted);
-        ArgumentNullException.ThrowIfNull(dependencies.AcceptTranslationConsent);
-        ArgumentNullException.ThrowIfNull(dependencies.TraceTheme);
         if (!double.IsFinite(dependencies.TextHitToleranceDips) || dependencies.TextHitToleranceDips < 0)
             throw new ArgumentOutOfRangeException(nameof(dependencies.TextHitToleranceDips));
 

@@ -46,7 +46,6 @@ internal sealed class OverlaySession : IOverlaySession
 
     public void Publish(IOverlayCommand command)
     {
-        ArgumentNullException.ThrowIfNull(command);
         if (Volatile.Read(ref _disposed) != 0)
         {
             Reject(command);

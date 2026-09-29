@@ -8,16 +8,6 @@ namespace CircleToSearch.Tests;
 public sealed class MusicRecognitionLifetimeTests
 {
     [Fact]
-    public void Rejects_null_dependencies()
-    {
-        var log = PluginRuntimeLifetimeTests.NewLog();
-        var events = new List<string>();
-        Assert.Throws<ArgumentNullException>(() => new MusicRecognitionLifetime(null!, new Resource("http", events), log));
-        Assert.Throws<ArgumentNullException>(() => new MusicRecognitionLifetime(new Resource("throttle", events), null!, log));
-        Assert.Throws<ArgumentNullException>(() => new MusicRecognitionLifetime(new Resource("throttle", events), new Resource("http", events), null!));
-    }
-
-    [Fact]
     public async Task Disposes_in_order_once_even_when_throttle_fails()
     {
         var events = new List<string>();
@@ -35,18 +25,6 @@ public sealed class MusicRecognitionLifetimeTests
 
 public sealed class ScreenTranslationLifetimeTests
 {
-    [Fact]
-    public void Rejects_null_dependencies_and_barrier()
-    {
-        var log = PluginRuntimeLifetimeTests.NewLog();
-        var http = new Resource("http", []);
-        Assert.Throws<ArgumentNullException>(() => new ScreenTranslationLifetime(null!, http, null, log));
-        Assert.Throws<ArgumentNullException>(() => new ScreenTranslationLifetime(() => Task.CompletedTask, null!, null, log));
-        Assert.Throws<ArgumentNullException>(() => new ScreenTranslationLifetime(() => Task.CompletedTask, http, null, null!));
-        var lifetime = new ScreenTranslationLifetime(() => Task.CompletedTask, http, null, log);
-        Assert.Throws<ArgumentNullException>(() => { _ = lifetime.StopAsync(null!); });
-    }
-
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -107,16 +85,6 @@ public sealed class ScreenTranslationLifetimeTests
 
 public sealed class VisualSearchLifetimeTests
 {
-    [Fact]
-    public void Rejects_null_dependencies()
-    {
-        var log = PluginRuntimeLifetimeTests.NewLog();
-        var http = new Resource("http", []);
-        Assert.Throws<ArgumentNullException>(() => new VisualSearchLifetime(null!, http, log));
-        Assert.Throws<ArgumentNullException>(() => new VisualSearchLifetime(() => Task.CompletedTask, null!, log));
-        Assert.Throws<ArgumentNullException>(() => new VisualSearchLifetime(() => Task.CompletedTask, http, null!));
-    }
-
     [Fact]
     public async Task Trace_http_waits_for_router_and_is_disposed_once()
     {

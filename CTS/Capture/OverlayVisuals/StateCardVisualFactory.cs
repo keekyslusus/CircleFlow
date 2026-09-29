@@ -29,13 +29,9 @@ internal static class StateCardVisualFactory
         StateCardOptions options,
         StateCardPalette palette)
     {
-        ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(palette);
-        ArgumentNullException.ThrowIfNull(options.Icon);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.Message);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.AccessibleName);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.CloseLabel);
-        ArgumentNullException.ThrowIfNull(options.Close);
         if (options.Title is not null) ArgumentException.ThrowIfNullOrWhiteSpace(options.Title);
         if (options.CardWidth is { } width && (!double.IsFinite(width) || width < 160))
             throw new ArgumentOutOfRangeException(nameof(options.CardWidth));
@@ -44,7 +40,6 @@ internal static class StateCardVisualFactory
         if (options.PrimaryAction is { } action)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(action.Label);
-            ArgumentNullException.ThrowIfNull(action.Execute);
         }
 
         var cardWidth = options.CardWidth ?? 340;

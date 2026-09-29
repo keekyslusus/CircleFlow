@@ -21,9 +21,9 @@ internal sealed class ToastOverlayController : IDisposable
         bool lightTheme,
         Func<bool> animationsEnabled)
     {
-        _bottom = bottom ?? throw new ArgumentNullException(nameof(bottom));
+        _bottom = bottom;
         _lightTheme = lightTheme;
-        _animationsEnabled = animationsEnabled ?? throw new ArgumentNullException(nameof(animationsEnabled));
+        _animationsEnabled = animationsEnabled;
     }
 
     internal int ActiveCount => _active.Count;
@@ -54,7 +54,6 @@ internal sealed class ToastOverlayController : IDisposable
 
     private void ShowCore(ToastNotification notification, string? key)
     {
-        ArgumentNullException.ThrowIfNull(notification);
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_closing) return;
         var animationsEnabled = _animationsEnabled();

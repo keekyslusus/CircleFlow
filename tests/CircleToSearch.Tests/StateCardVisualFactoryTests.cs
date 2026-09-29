@@ -233,20 +233,14 @@ public sealed class StateCardVisualFactoryTests
         {
             var palette = PluginPalette.For(lightTheme: false).StateCard;
 
-            Assert.Throws<ArgumentNullException>(() => StateCardVisualFactory.Create(null!, palette));
-            Assert.Throws<ArgumentNullException>(() => StateCardVisualFactory.Create(Options() with { Icon = null! }, palette));
             Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(Options() with { Message = " " }, palette));
             Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(Options() with { AccessibleName = "" }, palette));
             Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(Options() with { CloseLabel = "\t" }, palette));
             Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(Options() with { Title = " " }, palette));
             Assert.Throws<ArgumentOutOfRangeException>(() => StateCardVisualFactory.Create(Options() with { CardWidth = 100 }, palette));
             Assert.Throws<ArgumentOutOfRangeException>(() => StateCardVisualFactory.Create(Options() with { CardMaxHeight = 100 }, palette));
-            Assert.Throws<ArgumentNullException>(() => StateCardVisualFactory.Create(Options() with { Close = null! }, palette));
             Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(
                 Options(action: new StateCardAction(" ", () => { })),
-                palette));
-            Assert.Throws<ArgumentNullException>(() => StateCardVisualFactory.Create(
-                Options(action: new StateCardAction("Retry", null!)),
                 palette));
         });
 

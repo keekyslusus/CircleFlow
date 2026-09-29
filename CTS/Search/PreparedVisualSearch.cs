@@ -54,7 +54,6 @@ public sealed class PreparedVisualSearch
         Uri? externalFallbackUrl,
         Task? revealAfter = null)
     {
-        ArgumentNullException.ThrowIfNull(operation);
         RequireAbsoluteIfPresent(externalFallbackUrl, nameof(externalFallbackUrl));
         return new PreparedVisualSearch(
             PreparedVisualSearchKind.BrowserOperation,
@@ -75,7 +74,6 @@ public sealed class PreparedVisualSearch
 
     private static void RequireAbsolute(Uri uri, string parameterName)
     {
-        ArgumentNullException.ThrowIfNull(uri, parameterName);
         if (!uri.IsAbsoluteUri) throw new ArgumentException("The URL must be absolute.", parameterName);
     }
 

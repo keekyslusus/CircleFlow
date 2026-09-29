@@ -12,7 +12,6 @@ internal static class ToastOverlayVisualFactory
 
     internal static ToastOverlayVisual Create(ToastNotification notification, bool lightTheme)
     {
-        ArgumentNullException.ThrowIfNull(notification);
         var theme = PluginPalette.For(lightTheme);
         var accent = notification.Tone switch
         {
@@ -62,7 +61,6 @@ internal static class ToastOverlayVisualFactory
 
     internal static AutomationPeer Announce(ToastOverlayVisual visual)
     {
-        ArgumentNullException.ThrowIfNull(visual);
         var peer = UIElementAutomationPeer.CreatePeerForElement(visual.Message)
                    ?? throw new InvalidOperationException("The toast live region has no automation peer.");
         peer.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);

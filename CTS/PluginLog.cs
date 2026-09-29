@@ -31,7 +31,6 @@ public sealed class PluginLog
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(operation);
-        ArgumentNullException.ThrowIfNull(exception);
         Write(
             "ERROR",
             source,

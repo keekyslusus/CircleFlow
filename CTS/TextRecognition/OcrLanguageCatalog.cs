@@ -15,7 +15,7 @@ public sealed class OcrLanguageCatalog
     }
 
     internal OcrLanguageCatalog(IReadOnlyList<OcrLanguageOption> languages)
-        : this(() => languages ?? throw new ArgumentNullException(nameof(languages)))
+        : this(() => languages)
     {
     }
 

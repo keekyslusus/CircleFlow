@@ -14,9 +14,6 @@ public sealed record TextSelectionRange
 
     public static TextSelectionRange Create(OcrDocument document, OcrWord anchor, OcrWord current)
     {
-        ArgumentNullException.ThrowIfNull(document);
-        ArgumentNullException.ThrowIfNull(anchor);
-        ArgumentNullException.ThrowIfNull(current);
         if (!document.Words.Contains(anchor) || !document.Words.Contains(current))
             throw new ArgumentException("The selected words are not part of the document.");
         var minimum = Math.Min(anchor.ReadingOrder, current.ReadingOrder);

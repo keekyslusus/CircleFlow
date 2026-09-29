@@ -14,7 +14,7 @@ public sealed record OcrDocument
             throw new ArgumentOutOfRangeException(nameof(pixelSize));
         LanguageTag = languageTag;
         PixelSize = pixelSize;
-        Lines = new ReadOnlyCollection<OcrLine>((lines ?? throw new ArgumentNullException(nameof(lines))).ToArray());
+        Lines = new ReadOnlyCollection<OcrLine>(lines.ToArray());
         _words = new ReadOnlyCollection<OcrWord>(Lines.SelectMany(line => line.Words)
             .OrderBy(word => word.ReadingOrder).ToArray());
     }
@@ -35,7 +35,7 @@ public sealed record OcrLine
         Id = id;
         Order = order;
         BoundsPx = boundsPx;
-        Words = new ReadOnlyCollection<OcrWord>((words ?? throw new ArgumentNullException(nameof(words))).ToArray());
+        Words = new ReadOnlyCollection<OcrWord>(words.ToArray());
     }
 
     public int Id { get; }

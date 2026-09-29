@@ -34,9 +34,6 @@ public sealed class ShazamClient : IShazamClient
         IShazamUserAgentProvider userAgentProvider,
         IShazamLocationProvider locationProvider)
     {
-        ArgumentNullException.ThrowIfNull(httpClient);
-        ArgumentNullException.ThrowIfNull(userAgentProvider);
-        ArgumentNullException.ThrowIfNull(locationProvider);
         _httpClient = httpClient;
         _userAgent = userAgentProvider.Select();
         _location = locationProvider.Select();

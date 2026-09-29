@@ -71,7 +71,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         TranslationMemoryProfiler? profiler = null)
     {
         _action = action;
-        _activityPresenter = activityPresenter ?? throw new ArgumentNullException(nameof(activityPresenter));
+        _activityPresenter = activityPresenter;
         _overlay = overlay;
         _bottom = bottom;
         _effects = effects;
@@ -85,7 +85,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _showToast = showToast;
         _animationsEnabled = animationsEnabled;
         _lightTheme = lightTheme;
-        _screenshot = screenshot ?? throw new ArgumentNullException(nameof(screenshot));
+        _screenshot = screenshot;
         _scopeOriginal = screenshot.Source as BitmapSource
             ?? throw new InvalidOperationException("The overlay screenshot source must be a bitmap.");
         _imageChanged = imageChanged;

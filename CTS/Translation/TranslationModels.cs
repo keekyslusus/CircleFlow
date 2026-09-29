@@ -19,7 +19,7 @@ public sealed record ScreenTranslationResult
     {
         if (requestId == Guid.Empty) throw new ArgumentException("A translation request id is required.", nameof(requestId));
         RequestId = requestId;
-        Image = image ?? throw new ArgumentNullException(nameof(image));
+        Image = image;
     }
 
     public Guid RequestId { get; }

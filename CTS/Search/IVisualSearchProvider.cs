@@ -38,7 +38,6 @@ public sealed class VisualSearchPreparationOutcome
 
     public static VisualSearchPreparationOutcome Ready(PreparedVisualSearch preparedSearch)
     {
-        ArgumentNullException.ThrowIfNull(preparedSearch);
         return new VisualSearchPreparationOutcome(preparedSearch, UploadFailure.None, null);
     }
 

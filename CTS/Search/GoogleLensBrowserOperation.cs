@@ -22,16 +22,15 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
     private int _started;
 
     public GoogleLensBrowserOperation(byte[] jpeg, PluginLog log, string? question = null)
-        : this(Task.FromResult(jpeg ?? throw new ArgumentNullException(nameof(jpeg))), log, question)
+        : this(Task.FromResult(jpeg), log, question)
     {
     }
 
     public GoogleLensBrowserOperation(Task<byte[]> jpeg, PluginLog log, string? question = null)
     {
-        ArgumentNullException.ThrowIfNull(jpeg);
         if (question is not null) ArgumentException.ThrowIfNullOrWhiteSpace(question);
         _jpeg = jpeg;
-        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _log = log;
         _question = question;
     }
 
@@ -39,7 +38,6 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         IVisualSearchBrowserSession session,
         CancellationToken cancel)
     {
-        ArgumentNullException.ThrowIfNull(session);
         if (Interlocked.Exchange(ref _started, 1) != 0)
             throw new InvalidOperationException("A Google Lens browser operation can only be executed once.");
 
@@ -129,7 +127,6 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
 
     internal static Uri? CreateAiModeUri(Uri lensResults, string token, string question)
     {
-        ArgumentNullException.ThrowIfNull(lensResults);
         ArgumentException.ThrowIfNullOrWhiteSpace(token);
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
         if (!GoogleSearchUrl.IsSearch(lensResults) ||
@@ -274,7 +271,6 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
 
     internal static MemoryStream CreateLensUploadBody(byte[] jpeg, string fileName, string boundary)
     {
-        ArgumentNullException.ThrowIfNull(jpeg);
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
         ArgumentException.ThrowIfNullOrWhiteSpace(boundary);
         if (boundary.Contains('\r', StringComparison.Ordinal) ||

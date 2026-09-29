@@ -14,7 +14,6 @@ public sealed class WindowsOcrRecognizer : IOcrRecognizer
         string? requestedLanguageTag,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(source);
         try
         {
             cancellationToken.ThrowIfCancellationRequested();

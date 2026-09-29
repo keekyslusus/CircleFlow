@@ -46,9 +46,9 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         _assetDirectory = assetDirectory;
         _userDataFolder = userDataFolder;
         _log = log;
-        _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-        _createEnvironment = createEnvironment ?? throw new ArgumentNullException(nameof(createEnvironment));
-        _createWindowView = createWindowView ?? throw new ArgumentNullException(nameof(createWindowView));
+        _dispatcher = dispatcher;
+        _createEnvironment = createEnvironment;
+        _createWindowView = createWindowView;
         _shutdownTimeout = shutdownTimeout ?? ShutdownTimeout;
         if (_shutdownTimeout < TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(shutdownTimeout));
@@ -59,8 +59,6 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         PreparedVisualSearch preparedSearch,
         CancellationToken cancel)
     {
-        ArgumentNullException.ThrowIfNull(descriptor);
-        ArgumentNullException.ThrowIfNull(preparedSearch);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancel, _lifetime.Token);
         lock (_lifecycleGate)
         {

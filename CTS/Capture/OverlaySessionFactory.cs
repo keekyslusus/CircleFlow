@@ -17,14 +17,13 @@ public sealed class OverlaySessionFactory : IOverlaySessionFactory
         IPointerMonitorCapture capture,
         IOverlayWindowFactory windowFactory)
     {
-        _log = log ?? throw new ArgumentNullException(nameof(log));
-        _capture = capture ?? throw new ArgumentNullException(nameof(capture));
-        _windowFactory = windowFactory ?? throw new ArgumentNullException(nameof(windowFactory));
+        _log = log;
+        _capture = capture;
+        _windowFactory = windowFactory;
     }
 
     public Task<IOverlaySession?> OpenAsync(OverlayLaunchOptions options, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(options);
         var ready = new TaskCompletionSource<IOverlaySession?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() => Run(options, cancellationToken, ready))
         {

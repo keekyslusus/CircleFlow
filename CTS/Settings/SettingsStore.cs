@@ -47,7 +47,6 @@ internal sealed class SettingsStore(AppPaths paths)
 
     public void Save(AppSettings settings)
     {
-        ArgumentNullException.ThrowIfNull(settings);
         var normalized = SettingsValidator.Normalize(settings, out var invalidFields);
         if (invalidFields.Count != 0) throw new ArgumentException("Settings contain invalid fields.", nameof(settings));
         lock (_gate) Write(normalized, createBackup: true);

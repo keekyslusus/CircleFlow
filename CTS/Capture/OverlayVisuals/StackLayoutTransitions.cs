@@ -21,8 +21,8 @@ public sealed class StackLayoutTransitions : IDisposable
 
     internal StackLayoutTransitions(FrameworkElement root, StackPanel stack)
     {
-        _root = root ?? throw new ArgumentNullException(nameof(root));
-        _stack = stack ?? throw new ArgumentNullException(nameof(stack));
+        _root = root;
+        _stack = stack;
         _axis = stack.Orientation == Orientation.Horizontal
             ? TranslateTransform.XProperty
             : TranslateTransform.YProperty;
@@ -31,7 +31,6 @@ public sealed class StackLayoutTransitions : IDisposable
 
     internal void Apply(Action mutation, bool animationsEnabled)
     {
-        ArgumentNullException.ThrowIfNull(mutation);
         Apply(
             () =>
             {
@@ -43,7 +42,6 @@ public sealed class StackLayoutTransitions : IDisposable
 
     internal T Apply<T>(Func<T> mutation, bool animationsEnabled)
     {
-        ArgumentNullException.ThrowIfNull(mutation);
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         if (_transactionDepth > 0)

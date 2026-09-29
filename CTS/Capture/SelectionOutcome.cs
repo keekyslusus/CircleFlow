@@ -11,7 +11,7 @@ public sealed class SelectionOutcome : IDisposable
     public SelectionOutcome(Rectangle bounds, Bitmap frozenFrame)
     {
         Bounds = bounds;
-        _frozenFrame = frozenFrame ?? throw new ArgumentNullException(nameof(frozenFrame));
+        _frozenFrame = frozenFrame;
     }
 
     public Rectangle Bounds { get; }
@@ -53,7 +53,7 @@ public sealed record OverlayOutcome
     public SelectionOutcome? Selection { get; }
 
     public static OverlayOutcome VisualSelection(SelectionOutcome selection) =>
-        new(OverlayAction.VisualSelection, selection ?? throw new ArgumentNullException(nameof(selection)));
+        new(OverlayAction.VisualSelection, selection);
 
     public static OverlayOutcome MusicRecognition() => new(OverlayAction.MusicRecognition, null);
 }

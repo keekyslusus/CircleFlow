@@ -23,7 +23,7 @@ public sealed class SceneRippleHost : ISceneRippleSink, IDisposable
 
     internal SceneRippleHost(Canvas canvas, bool animationsEnabled)
     {
-        _canvas = canvas ?? throw new ArgumentNullException(nameof(canvas));
+        _canvas = canvas;
         _animationsEnabled = animationsEnabled;
         _canvas.IsHitTestVisible = false;
     }

@@ -21,8 +21,8 @@ internal sealed class KeyboardInputLanguageSource : IDisposable
 
     internal KeyboardInputLanguageSource(Action<string?> changed, Action<string?> initialReady)
     {
-        _changed = changed ?? throw new ArgumentNullException(nameof(changed));
-        _initialReady = initialReady ?? throw new ArgumentNullException(nameof(initialReady));
+        _changed = changed;
+        _initialReady = initialReady;
     }
 
     internal static KeyboardLanguageSnapshot CaptureForeground()

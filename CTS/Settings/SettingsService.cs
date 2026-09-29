@@ -38,8 +38,8 @@ public sealed class SettingsService
     {
         _current = SettingsValidator.Normalize(initial, out var invalid);
         if (invalid.Count != 0) throw new ArgumentException("Initial settings must be valid.", nameof(initial));
-        _save = save ?? throw new ArgumentNullException(nameof(save));
-        _applyHotkey = applyHotkey ?? throw new ArgumentNullException(nameof(applyHotkey));
+        _save = save;
+        _applyHotkey = applyHotkey;
         _log = log;
         _hotkey = new(_current.HotkeyGesture, false);
     }
@@ -49,7 +49,6 @@ public sealed class SettingsService
 
     public SettingsChangeResult Apply(SettingsEdits edits)
     {
-        ArgumentNullException.ThrowIfNull(edits);
         lock (_gate) return Commit(_current with
         {
             MaxLongSidePx = edits.MaxLongSidePx ?? _current.MaxLongSidePx,

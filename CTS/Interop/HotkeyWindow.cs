@@ -25,8 +25,8 @@ public sealed class HotkeyWindow : IDisposable, IAsyncDisposable
 
     internal HotkeyWindow(IStaDispatcher dispatcher, PluginLog log)
     {
-        _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _dispatcher = dispatcher;
+        _log = log;
         if (!EnsureWindowClass())
         {
             _log.Warn(nameof(HotkeyWindow), "window class registration failed; the global hotkey is unavailable");

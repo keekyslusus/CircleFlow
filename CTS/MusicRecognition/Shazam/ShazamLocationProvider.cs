@@ -51,7 +51,6 @@ public sealed class ShazamLocationProvider : IShazamLocationProvider
 
     internal ShazamLocationProvider(Func<int, int> selectIndex)
     {
-        ArgumentNullException.ThrowIfNull(selectIndex);
         _selectIndex = selectIndex;
     }
 

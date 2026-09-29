@@ -40,7 +40,6 @@ internal sealed class MusicHistory(
 
     public void Record(ShazamRecognition track)
     {
-        ArgumentNullException.ThrowIfNull(track);
         if (!saving()) return;
         Update(entries => [new MusicHistoryEntry(track, time.GetUtcNow()), .. entries]);
     }

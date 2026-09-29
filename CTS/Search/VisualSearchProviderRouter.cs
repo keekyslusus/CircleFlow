@@ -17,16 +17,13 @@ public sealed class VisualSearchProviderRouter : IDisposable, IAsyncDisposable
         string defaultProviderId,
         PluginLog log)
     {
-        ArgumentNullException.ThrowIfNull(registrations);
         ArgumentException.ThrowIfNullOrWhiteSpace(defaultProviderId);
-        ArgumentNullException.ThrowIfNull(log);
         _log = log;
 
         var entries = new List<Entry>();
         _entriesById = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
         foreach (var registration in registrations)
         {
-            ArgumentNullException.ThrowIfNull(registration);
             Validate(registration);
             var entry = new Entry(registration);
             if (!_entriesById.TryAdd(registration.Descriptor.Id, entry))
@@ -55,8 +52,6 @@ public sealed class VisualSearchProviderRouter : IDisposable, IAsyncDisposable
         byte[] jpeg,
         CancellationToken cancel)
     {
-        ArgumentNullException.ThrowIfNull(jpeg);
-
         var resolution = Resolve(requestedProviderId);
         IVisualSearchProvider provider;
         lock (_gate)
@@ -161,10 +156,8 @@ public sealed class VisualSearchProviderRouter : IDisposable, IAsyncDisposable
 
     private static void Validate(VisualSearchProviderRegistration registration)
     {
-        ArgumentNullException.ThrowIfNull(registration.Descriptor);
         ArgumentException.ThrowIfNullOrWhiteSpace(registration.Descriptor.Id);
         ArgumentException.ThrowIfNullOrWhiteSpace(registration.Descriptor.DisplayName);
-        ArgumentNullException.ThrowIfNull(registration.Factory);
     }
 
     private sealed class Entry

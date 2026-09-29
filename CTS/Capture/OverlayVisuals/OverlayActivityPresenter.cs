@@ -22,8 +22,8 @@ internal sealed class OverlayActivityPresenter : IDisposable
 
     internal OverlayActivityPresenter(Grid host, Func<bool> animationsEnabled)
     {
-        _host = host ?? throw new ArgumentNullException(nameof(host));
-        _animationsEnabled = animationsEnabled ?? throw new ArgumentNullException(nameof(animationsEnabled));
+        _host = host;
+        _animationsEnabled = animationsEnabled;
         _label = new TextBlock
         {
             Foreground = OverlayVisualResources.Frozen(PluginPalette.ListeningText),
@@ -76,14 +76,12 @@ internal sealed class OverlayActivityPresenter : IDisposable
 
     internal ActivityPresentation ShowLoading(string label, Brush fill)
     {
-        ArgumentNullException.ThrowIfNull(fill);
         _loading.Fill = fill;
         return Show(label, _loading, ownsRendering: true);
     }
 
     internal ActivityPresentation ShowContent(FrameworkElement content, string label)
     {
-        ArgumentNullException.ThrowIfNull(content);
         return Show(label, content, ownsRendering: false);
     }
 
@@ -101,7 +99,6 @@ internal sealed class OverlayActivityPresenter : IDisposable
     {
         if (_disposed) throw new ObjectDisposedException(nameof(OverlayActivityPresenter));
         _host.Dispatcher.VerifyAccess();
-        ArgumentNullException.ThrowIfNull(label);
         FinishCurrent();
 
         var presentation = new ActivityPresentation(this, ++_generation, ownsRendering);

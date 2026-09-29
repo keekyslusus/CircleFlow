@@ -29,12 +29,12 @@ public sealed class SearchCoordinator
         UiStrings strings,
         PluginLog log)
     {
-        _workflow = workflow ?? throw new ArgumentNullException(nameof(workflow));
-        _hideOwnWindows = hideOwnWindows ?? throw new ArgumentNullException(nameof(hideOwnWindows));
-        _sessionOptions = sessionOptions ?? throw new ArgumentNullException(nameof(sessionOptions));
-        _notifier = notifier ?? throw new ArgumentNullException(nameof(notifier));
-        _strings = strings ?? throw new ArgumentNullException(nameof(strings));
-        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _workflow = workflow;
+        _hideOwnWindows = hideOwnWindows;
+        _sessionOptions = sessionOptions;
+        _notifier = notifier;
+        _strings = strings;
+        _log = log;
     }
 
     public SearchState State => (SearchState)Volatile.Read(ref _state);

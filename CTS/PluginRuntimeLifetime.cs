@@ -21,13 +21,13 @@ internal sealed class PluginRuntimeLifetime
         Func<Task> stopVisualSearch,
         PluginLog log)
     {
-        _stopSession = stopSession ?? throw new ArgumentNullException(nameof(stopSession));
-        _stopHotkey = stopHotkey ?? throw new ArgumentNullException(nameof(stopHotkey));
-        _stopBrowser = stopBrowser ?? throw new ArgumentNullException(nameof(stopBrowser));
-        _stopMusic = stopMusic ?? throw new ArgumentNullException(nameof(stopMusic));
-        _stopTranslation = stopTranslation ?? throw new ArgumentNullException(nameof(stopTranslation));
-        _stopVisualSearch = stopVisualSearch ?? throw new ArgumentNullException(nameof(stopVisualSearch));
-        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _stopSession = stopSession;
+        _stopHotkey = stopHotkey;
+        _stopBrowser = stopBrowser;
+        _stopMusic = stopMusic;
+        _stopTranslation = stopTranslation;
+        _stopVisualSearch = stopVisualSearch;
+        _log = log;
     }
 
     public Task StopAsync()

@@ -61,17 +61,6 @@ public sealed class UrlOpeningServiceTests
         Assert.DoesNotContain("private-query exception detail", log);
     }
 
-    [Fact]
-    public void Constructor_requires_all_dependencies()
-    {
-        var notifier = new TestPluginNotifier();
-        var log = new PluginLog(TestOutputPaths.TempDirectory);
-        Assert.Throws<ArgumentNullException>(() => new UrlOpeningService(null!, notifier, TestUiStrings.English, log));
-        Assert.Throws<ArgumentNullException>(() => new UrlOpeningService(_ => true, null!, TestUiStrings.English, log));
-        Assert.Throws<ArgumentNullException>(() => new UrlOpeningService(_ => true, notifier, null!, log));
-        Assert.Throws<ArgumentNullException>(() => new UrlOpeningService(_ => true, notifier, TestUiStrings.English, null!));
-    }
-
     private static UrlOpeningService Create(Func<string, bool> open, TestPluginNotifier notifier) =>
         new(open, notifier, TestUiStrings.English, new PluginLog(TestOutputPaths.TempDirectory));
 }

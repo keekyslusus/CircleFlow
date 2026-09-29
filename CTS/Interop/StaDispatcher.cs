@@ -71,7 +71,6 @@ internal sealed class StaDispatcher : IStaDispatcher
 
     public bool TryPost(Action action)
     {
-        ArgumentNullException.ThrowIfNull(action);
         if (Volatile.Read(ref _stopping) != 0) return false;
         var dispatcher = _dispatcher;
         if (dispatcher is null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished) return false;

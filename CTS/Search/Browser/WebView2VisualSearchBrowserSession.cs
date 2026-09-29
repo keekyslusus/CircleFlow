@@ -9,10 +9,9 @@ internal sealed class WebView2VisualSearchBrowserSession(
     CoreWebView2Environment environment,
     Func<bool> isCurrent) : IVisualSearchBrowserSession
 {
-    private readonly WebView2 _webView = webView ?? throw new ArgumentNullException(nameof(webView));
-    private readonly CoreWebView2Environment _environment =
-        environment ?? throw new ArgumentNullException(nameof(environment));
-    private readonly Func<bool> _isCurrent = isCurrent ?? throw new ArgumentNullException(nameof(isCurrent));
+    private readonly WebView2 _webView = webView;
+    private readonly CoreWebView2Environment _environment = environment;
+    private readonly Func<bool> _isCurrent = isCurrent;
 
     public Uri? CurrentUri => _isCurrent() ? _webView.Source : null;
 
@@ -36,8 +35,6 @@ internal sealed class WebView2VisualSearchBrowserSession(
         CancellationToken cancel)
     {
         RequireTarget(target);
-        ArgumentNullException.ThrowIfNull(body);
-        ArgumentNullException.ThrowIfNull(headers);
         return NavigateCoreAsync(
             () =>
             {
@@ -59,7 +56,6 @@ internal sealed class WebView2VisualSearchBrowserSession(
 
     public async Task<string> ExecuteScriptAsync(string script, CancellationToken cancel)
     {
-        ArgumentNullException.ThrowIfNull(script);
         EnsureCurrent();
         var core = _webView.CoreWebView2;
         try
@@ -80,8 +76,6 @@ internal sealed class WebView2VisualSearchBrowserSession(
         TimeSpan timeout,
         CancellationToken cancel)
     {
-        ArgumentNullException.ThrowIfNull(message);
-        ArgumentNullException.ThrowIfNull(predicate);
         EnsureCurrent();
 
         var completion = new TaskCompletionSource<string>(
@@ -194,7 +188,6 @@ internal sealed class WebView2VisualSearchBrowserSession(
 
     private static void RequireTarget(Uri target)
     {
-        ArgumentNullException.ThrowIfNull(target);
         if (!target.IsAbsoluteUri) throw new ArgumentException("The navigation target must be absolute.", nameof(target));
     }
 

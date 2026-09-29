@@ -19,8 +19,7 @@ public interface IOverlayWindowFactory
 
 internal sealed class OverlayWindowFactory(IOverlayControllerFactory controllerFactory) : IOverlayWindowFactory
 {
-    private readonly IOverlayControllerFactory _controllerFactory =
-        controllerFactory ?? throw new ArgumentNullException(nameof(controllerFactory));
+    private readonly IOverlayControllerFactory _controllerFactory = controllerFactory;
 
     public OverlayWindow Create(
         GdiBitmap frame,

@@ -62,7 +62,7 @@ internal sealed class MusicOverlayController : IDisposable
         Func<bool> animationsEnabled)
     {
         _visual = visual;
-        _activityPresenter = activityPresenter ?? throw new ArgumentNullException(nameof(activityPresenter));
+        _activityPresenter = activityPresenter;
         _layoutTransitions = layoutTransitions;
         _effects = effects;
         _root = root;
@@ -72,7 +72,7 @@ internal sealed class MusicOverlayController : IDisposable
         _startRequested = startRequested;
         _cancelRequested = cancelRequested;
         _resultCommandRequested = resultCommandRequested;
-        _clipboardCopy = clipboardCopy ?? throw new ArgumentNullException(nameof(clipboardCopy));
+        _clipboardCopy = clipboardCopy;
         _animationsEnabled = animationsEnabled;
 
         _visual.Button.Click += OnMusicButtonClick;

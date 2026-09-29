@@ -174,7 +174,6 @@ public sealed class PixelUserAgentProvider : IShazamUserAgentProvider
 
     internal PixelUserAgentProvider(Func<int, int> selectIndex)
     {
-        ArgumentNullException.ThrowIfNull(selectIndex);
         _selectIndex = selectIndex;
     }
 

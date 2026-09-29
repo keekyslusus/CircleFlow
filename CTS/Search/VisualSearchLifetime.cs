@@ -10,9 +10,9 @@ internal sealed class VisualSearchLifetime : IAsyncDisposable
 
     public VisualSearchLifetime(Func<Task> stopRouter, IDisposable traceHttpClient, PluginLog log)
     {
-        _stopRouter = stopRouter ?? throw new ArgumentNullException(nameof(stopRouter));
-        _traceHttpClient = traceHttpClient ?? throw new ArgumentNullException(nameof(traceHttpClient));
-        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _stopRouter = stopRouter;
+        _traceHttpClient = traceHttpClient;
+        _log = log;
     }
 
     public Task StopAsync()

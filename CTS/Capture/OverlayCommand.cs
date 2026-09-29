@@ -20,7 +20,7 @@ public sealed record VisualSelection : IOverlayCommand
 {
     public VisualSelection(SelectionOutcome selection, string providerId)
     {
-        Selection = selection ?? throw new ArgumentNullException(nameof(selection));
+        Selection = selection;
         ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
         ProviderId = providerId;
     }
@@ -64,7 +64,7 @@ public sealed record AskDraftCanceled : IOverlayCommand;
 public sealed record AskImageAttached : IOverlayCommand
 {
     public AskImageAttached(SelectionOutcome selection) =>
-        Selection = selection ?? throw new ArgumentNullException(nameof(selection));
+        Selection = selection;
 
     public SelectionOutcome Selection { get; }
 }
@@ -100,7 +100,7 @@ public sealed record ScreenTranslationRequested : IOverlayCommand
         if (requestId == Guid.Empty) throw new ArgumentException("A translation request id is required.", nameof(requestId));
         ArgumentException.ThrowIfNullOrWhiteSpace(targetLanguageTag);
         RequestId = requestId;
-        Image = image ?? throw new ArgumentNullException(nameof(image));
+        Image = image;
         TargetLanguageTag = targetLanguageTag;
     }
 
@@ -129,9 +129,9 @@ public sealed record OverlayLaunchOptions
         string initialProviderId,
         SearchSessionOptions? sessionOptions = null)
     {
-        CaptureOptions = captureOptions ?? throw new ArgumentNullException(nameof(captureOptions));
-        Strings = strings ?? throw new ArgumentNullException(nameof(strings));
-        Providers = providers ?? throw new ArgumentNullException(nameof(providers));
+        CaptureOptions = captureOptions;
+        Strings = strings;
+        Providers = providers;
         ArgumentException.ThrowIfNullOrWhiteSpace(initialProviderId);
         if (!providers.Any(provider => string.Equals(provider.Id, initialProviderId, StringComparison.OrdinalIgnoreCase)))
             throw new ArgumentException("The initial provider must be present in the provider list.", nameof(initialProviderId));

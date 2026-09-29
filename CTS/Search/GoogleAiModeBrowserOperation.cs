@@ -26,17 +26,16 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
         Func<byte[], string, IVisualSearchBrowserOperation> createFallback,
         PluginLog log)
     {
-        _image = image ?? throw new ArgumentNullException(nameof(image));
-        _question = question ?? throw new ArgumentNullException(nameof(question));
-        _createFallback = createFallback ?? throw new ArgumentNullException(nameof(createFallback));
-        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _image = image;
+        _question = question;
+        _createFallback = createFallback;
+        _log = log;
     }
 
     public async Task<VisualSearchBrowserOperationStatus> ExecuteAsync(
         IVisualSearchBrowserSession session,
         CancellationToken cancel)
     {
-        ArgumentNullException.ThrowIfNull(session);
         if (Interlocked.Exchange(ref _started, 1) != 0)
             throw new InvalidOperationException("A Google AI Mode browser operation can only be executed once.");
 

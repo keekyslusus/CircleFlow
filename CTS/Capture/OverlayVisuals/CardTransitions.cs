@@ -17,7 +17,6 @@ internal static class CardTransitions
         double initialScale,
         bool preserveCurrentValues = false)
     {
-        ArgumentNullException.ThrowIfNull(card);
         var transforms = Prepare(card);
         var opacity = preserveCurrentValues ? card.Opacity : 0;
         var scaleX = preserveCurrentValues ? transforms.Scale.ScaleX : initialScale;
@@ -42,8 +41,6 @@ internal static class CardTransitions
         Action completed,
         TimeSpan duration)
     {
-        ArgumentNullException.ThrowIfNull(card);
-        ArgumentNullException.ThrowIfNull(completed);
         var transforms = Prepare(card);
         var opacity = card.Opacity;
         var scaleX = transforms.Scale.ScaleX;
@@ -75,14 +72,12 @@ internal static class CardTransitions
     internal static (ScaleTransform Scale, TranslateTransform Translate) GetTransforms(
         FrameworkElement card)
     {
-        ArgumentNullException.ThrowIfNull(card);
         var transforms = Prepare(card);
         return (transforms.Scale, transforms.Translate);
     }
 
     internal static void Settle(FrameworkElement card)
     {
-        ArgumentNullException.ThrowIfNull(card);
         var transforms = Prepare(card);
         StopAnimations(card, transforms, preserveCurrentValues: true);
     }

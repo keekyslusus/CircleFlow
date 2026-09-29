@@ -11,15 +11,14 @@ public sealed class ScreenTranslationWorkflow
 
     internal ScreenTranslationWorkflow(IImageTranslationProvider images, PluginLog log)
     {
-        _images = images ?? throw new ArgumentNullException(nameof(images));
-        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _images = images;
+        _log = log;
     }
 
     public async Task<ScreenTranslationOutcome> TranslateAsync(Guid requestId, BitmapSource image,
         string targetLanguageTag, CancellationToken cancellationToken)
     {
         if (requestId == Guid.Empty) throw new ArgumentException("A translation request id is required.", nameof(requestId));
-        ArgumentNullException.ThrowIfNull(image);
         ArgumentException.ThrowIfNullOrWhiteSpace(targetLanguageTag);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(45));

@@ -12,15 +12,14 @@ internal sealed class ScreenTranslationLifetime : IAsyncDisposable
     public ScreenTranslationLifetime(Func<Task> stopSigner, IDisposable httpClient,
         IDisposable? profiler, PluginLog log)
     {
-        _stopSigner = stopSigner ?? throw new ArgumentNullException(nameof(stopSigner));
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _stopSigner = stopSigner;
+        _httpClient = httpClient;
         _profiler = profiler;
-        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _log = log;
     }
 
     public Task StopAsync(Task sessionSettled)
     {
-        ArgumentNullException.ThrowIfNull(sessionSettled);
         lock (_gate) return _stopTask ??= Task.Run(() => StopCoreAsync(sessionSettled));
     }
 

@@ -10,9 +10,9 @@ internal sealed class MusicRecognitionLifetime : IAsyncDisposable
 
     public MusicRecognitionLifetime(IDisposable throttle, IDisposable httpClient, PluginLog log)
     {
-        _throttle = throttle ?? throw new ArgumentNullException(nameof(throttle));
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _log = log ?? throw new ArgumentNullException(nameof(log));
+        _throttle = throttle;
+        _httpClient = httpClient;
+        _log = log;
     }
 
     public Task StopAsync()

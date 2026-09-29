@@ -109,7 +109,6 @@ public sealed class OverlayWindow : Window
         _publishCommand = publishCommand;
         _strings = strings;
         _initialInputLanguage = inputLanguage;
-        ArgumentNullException.ThrowIfNull(controllerFactory);
         _entranceOrigin = entranceOrigin is null
             ? null
             : new Point(

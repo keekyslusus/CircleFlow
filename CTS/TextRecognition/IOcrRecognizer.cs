@@ -29,7 +29,7 @@ public sealed record OcrRecognitionOutcome
     public OcrDocument? Document { get; }
 
     public static OcrRecognitionOutcome Success(OcrDocument document) =>
-        new(OcrRecognitionStatus.Success, document ?? throw new ArgumentNullException(nameof(document)));
+        new(OcrRecognitionStatus.Success, document);
     public static OcrRecognitionOutcome NoText() => new(OcrRecognitionStatus.NoText, null);
     public static OcrRecognitionOutcome LanguageUnavailable() => new(OcrRecognitionStatus.LanguageUnavailable, null);
     public static OcrRecognitionOutcome PlatformUnavailable() => new(OcrRecognitionStatus.PlatformUnavailable, null);

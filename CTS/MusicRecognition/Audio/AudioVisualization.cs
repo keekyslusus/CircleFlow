@@ -25,7 +25,6 @@ public static class AudioLevelMeter
 {
     public static AudioLevelFrame Measure(ReadOnlySpan<byte> bytes, WaveFormat format, TimeSpan elapsed)
     {
-        ArgumentNullException.ThrowIfNull(format);
         var bytesPerSample = format.BitsPerSample / 8;
         if (bytesPerSample <= 0 || bytes.Length < bytesPerSample)
             return new AudioLevelFrame(elapsed, 0, 0);

@@ -37,7 +37,7 @@ internal sealed class TraceOverlayController : IDisposable
         Func<Uri, ITraceVideoPreview>? createVideo = null)
     {
         _root = root;
-        _activityPresenter = activityPresenter ?? throw new ArgumentNullException(nameof(activityPresenter));
+        _activityPresenter = activityPresenter;
         _bottom = bottom;
         _effects = effects;
         _strings = strings;

@@ -8,7 +8,6 @@ public sealed class UiStrings
 
     public UiStrings(Func<string, string> getTranslation)
     {
-        ArgumentNullException.ThrowIfNull(getTranslation);
         _getTranslation = getTranslation;
     }
 

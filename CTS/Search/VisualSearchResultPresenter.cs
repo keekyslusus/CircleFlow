@@ -16,7 +16,6 @@ internal sealed class VisualSearchResultPresenter(
         RoutedVisualSearchPreparation routed,
         CancellationToken cancel)
     {
-        ArgumentNullException.ThrowIfNull(routed);
         var prepared = routed.Outcome.PreparedSearch
                        ?? throw new ArgumentException(
                            "Only a successful preparation can be presented.",

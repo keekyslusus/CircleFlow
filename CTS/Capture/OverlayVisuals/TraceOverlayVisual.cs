@@ -53,7 +53,7 @@ internal sealed class TraceOverlayVisual : IDisposable
         _light = light;
         _open = open;
         _close = close;
-        _clipboardCopy = clipboardCopy ?? throw new ArgumentNullException(nameof(clipboardCopy));
+        _clipboardCopy = clipboardCopy;
     }
 
     internal static TraceOverlayVisual Create(Grid root, OverlayActivityPresenter activityPresenter, BottomOverlayVisual bottom, OverlayEffectsVisual effects, UiStrings strings,
