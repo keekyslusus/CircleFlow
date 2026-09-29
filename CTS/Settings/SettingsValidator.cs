@@ -1,6 +1,7 @@
 using System.Globalization;
 using CircleToSearch.Capture;
 using CircleToSearch.Interop;
+using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Trigger;
 
@@ -46,6 +47,10 @@ internal static class SettingsValidator
             ? settings.BrowserDataCleanupDays
             : (int?)null;
         if (cleanupDays is null) invalid.Add(nameof(AppSettings.BrowserDataCleanupDays));
+        var historyDays = MusicHistory.IsValidRetention(settings.MusicHistoryRetentionDays)
+            ? settings.MusicHistoryRetentionDays
+            : defaults.MusicHistoryRetentionDays;
+        if (historyDays != settings.MusicHistoryRetentionDays) invalid.Add(nameof(AppSettings.MusicHistoryRetentionDays));
         if (engine is not null && !TextSearchEngines.IsAvailable(engine, settings.TextSearchInBuiltInBrowser,
             cleanupDays ?? defaults.BrowserDataCleanupDays)) engine = TextSearchEngines.MatchImageSearch;
         var gesture = defaults.HotkeyGesture;
@@ -59,6 +64,7 @@ internal static class SettingsValidator
             HotkeyGesture = gesture,
             HiddenToolbarActions = settings.HiddenToolbarActions & SelectionToolbarAction.All,
             BrowserDataCleanupDays = cleanupDays ?? defaults.BrowserDataCleanupDays,
+            MusicHistoryRetentionDays = historyDays,
             MaxLongSidePx = Range(settings.MaxLongSidePx, 256, 8000, defaults.MaxLongSidePx, nameof(AppSettings.MaxLongSidePx)),
             PaddingPx = Range(settings.PaddingPx, 0, 100, defaults.PaddingPx, nameof(AppSettings.PaddingPx)),
             HideDelayMilliseconds = Range(settings.HideDelayMilliseconds, 0, 2000, defaults.HideDelayMilliseconds, nameof(AppSettings.HideDelayMilliseconds)),

@@ -108,6 +108,18 @@
         <Setter Property="Background" Value="{DynamicResource SettingsAccent}"/>
         <Setter Property="Foreground" Value="{DynamicResource SettingsPaper}"/>
     </Style>
+    <Style x:Key="RowIconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Foreground" Value="{DynamicResource SettingsMuted}"/>
+        <Setter Property="Background" Value="{DynamicResource SettingsTransparent}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource SettingsText}"/></Trigger>
+        </Style.Triggers>
+    </Style>
     <Style x:Key="Feature" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="{DynamicResource SettingsCard}"/>
         <Setter Property="BorderThickness" Value="1"/>
@@ -229,6 +241,39 @@
                         <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource SettingsAccent}"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="SearchBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="Padding" Value="9,6,10,6"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Frame" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ContentControl Foreground="{DynamicResource SettingsMuted}" Focusable="False" IsTabStop="False" IsHitTestVisible="False" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <Viewbox Width="20" Height="20">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.SearchOutlined}"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </ContentControl>
+                            <!-- The text box insets its text by Padding itself, and the text view adds 2px more. -->
+                            <Grid Grid.Column="1">
+                                <TextBlock x:Name="Placeholder" Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Foreground="{DynamicResource SettingsMuted}" Margin="{TemplateBinding Padding}" Padding="2,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" IsHitTestVisible="False" Visibility="Collapsed"/>
+                                <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Text" Value=""><Setter TargetName="Placeholder" Property="Visibility" Value="Visible"/></Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource SettingsAccent}"/></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

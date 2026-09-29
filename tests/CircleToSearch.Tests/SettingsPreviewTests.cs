@@ -11,6 +11,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Interop;
+using CircleToSearch.MusicRecognition;
+using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Shell;
@@ -712,7 +714,7 @@ public sealed class SettingsPreviewTests
 
             Assert.True(Wheel(scroll, -120).Handled);
             time.Advance(50);
-            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            Find<RadioButton>(window, "Nav_text").IsChecked = true;
             CompletePageTransition(window, time);
             Assert.Equal(0, translation.Y);
             Assert.False(Wheel(scroll, 120).Handled);
@@ -804,7 +806,7 @@ public sealed class SettingsPreviewTests
             var background = PluginPalette.Settings(light).Sidebar;
             Assert.Equal(new[] { background.B, background.G, background.R, background.A }, pixel);
 
-            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            Find<RadioButton>(window, "Nav_text").IsChecked = true;
             CompletePageTransition(window, time);
             Assert.Equal(0, scroll.ScrollableHeight);
             Assert.False(bar.IsHitTestVisible);
@@ -1011,6 +1013,8 @@ public sealed class SettingsPreviewTests
             IgnoreHotkeyInFullscreen = false,
             BrowserDataCleanupDays = 0,
             HotkeyGesture = "Ctrl+Shift+K",
+            SaveMusicHistory = false,
+            MusicHistoryRetentionDays = 7,
         }));
         var window = harness.CreateView().Window;
         try
@@ -1061,6 +1065,11 @@ public sealed class SettingsPreviewTests
             Assert.Equal(0, textSearch.SelectedIndex);
             Assert.True(Find<CheckBox>(window, "ToolbarAsk").IsChecked);
             Assert.Equal(SelectionToolbarAction.None, harness.Settings.Snapshot.HiddenToolbarActions);
+            Assert.True(harness.Settings.Snapshot.SaveMusicHistory);
+            Assert.True(Find<CheckBox>(window, "SaveHistory").IsChecked);
+            Assert.Equal(defaults.MusicHistoryRetentionDays, harness.Settings.Snapshot.MusicHistoryRetentionDays);
+            Assert.Equal(1, Find<ComboBox>(window, "HistoryRetention").SelectedIndex);
+            Assert.Equal(Visibility.Visible, Find<FrameworkElement>(window, "HistoryRetentionRow").Visibility);
             Assert.True(Find<Grid>(window, "Workspace").IsEnabled);
             Assert.Equal(TestUiStrings.English.SettingsResetDone, Find<TextBlock>(window, "StatusText").Text);
 
@@ -1495,6 +1504,203 @@ public sealed class SettingsPreviewTests
         finally { reopened.Close(); }
         Assert.Equal(Visibility.Collapsed, Find<RadioButton>(new TestSettingsWindow().CreateView().Window, "Nav_developer").Visibility);
     });
+
+    [Fact]
+    public void Music_history_groups_tracks_by_day_filters_them_and_copies_or_opens_a_track() => OnSta(time =>
+    {
+        Thread.CurrentThread.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        var harness = new TestSettingsWindow();
+        RecordTrack(harness, "Nightcall", "Kavinsky", TimeSpan.FromDays(3));
+        RecordTrack(harness, "Midnight City", "M83", TimeSpan.FromHours(5), genre: "Electronic");
+        RecordTrack(harness, "Blinding Lights", "The Weeknd", TimeSpan.FromHours(2), shazamUrl: "https://www.shazam.com/track/1");
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            CompletePageTransition(window, time);
+            var days = Find<ItemsControl>(window, "HistoryDays");
+            Assert.Equal(["Today", "Saturday, September 26"], DayHeaders(days));
+            var times = new[] { 14, 11, 16 }.Select(hour => new DateTime(2026, 9, 29, hour, 40, 0).ToString("t", CultureInfo.CurrentCulture)).ToArray();
+            days.UpdateLayout();
+            Assert.Equal(times, VisualChildren(days).OfType<TextBlock>().Select(text => text.Text).Where(times.Contains));
+            Assert.True(Find<FrameworkElement>(window, "HistoryToolbar").IsVisible);
+            Assert.False(Find<FrameworkElement>(window, "HistoryEmpty").IsVisible);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+            {
+                Find<ScrollViewer>(window, "PageScroll").ScrollToBottom();
+                Pump();
+                Capture(window, "settings-music-history.png");
+            }
+
+            var search = Find<TextBox>(window, "HistorySearch");
+            var placeholder = (TextBlock)search.Template.FindName("Placeholder", search);
+            var caret = search.GetRectFromCharacterIndex(0);
+            var hint = placeholder.TranslatePoint(new Point(placeholder.Padding.Left, 0), search);
+            Assert.Equal(hint.X, caret.X, 0.5);
+            Assert.Equal(hint.Y, caret.Y, 0.5);
+            search.Text = "KAVIN";
+            Assert.Equal(["Saturday, September 26"], DayHeaders(days));
+            search.Text = "zzz";
+            window.UpdateLayout();
+            Assert.Empty(DayHeaders(days));
+            Assert.True(Find<FrameworkElement>(window, "HistoryNoMatch").IsVisible);
+            Assert.Equal("Nothing matches \"zzz\"", Find<TextBlock>(window, "HistoryNoMatchText").Text);
+            search.Text = string.Empty;
+            window.UpdateLayout();
+            Assert.False(Find<FrameworkElement>(window, "HistoryNoMatch").IsVisible);
+
+            var actions = VisualChildren(days).OfType<StackPanel>().First(panel => panel.Name == "Actions");
+            Assert.Equal(0, actions.Opacity);
+            var firstCopy = RowButtons(days, "history-copy")[0];
+            window.Activate();
+            // Keyboard focus needs the test window in the foreground, which another app can take.
+            if (firstCopy.Focus() && window.IsActive)
+            {
+                if (UiAnimationPolicy.Enabled)
+                {
+                    time.Advance(48);
+                    Assert.InRange(actions.Opacity, 0.001, 0.999);
+                }
+                Assert.True(time.AdvanceUntil(() => actions.Opacity == 1), "The row actions did not fade in.");
+                search.Focus();
+                Assert.True(time.AdvanceUntil(() => actions.Opacity == 0), "The row actions did not fade out.");
+                firstCopy.Focus();
+                Assert.True(time.AdvanceUntil(() => actions.Opacity == 1), "The row actions did not fade in again.");
+                search.Focus();
+                Assert.True(time.AdvanceUntil(() => actions.Opacity == 0), "The row actions did not fade out again.");
+            }
+
+            var copy = RowButtons(days, "history-copy");
+            var open = RowButtons(days, "history-open");
+            Assert.Equal([Visibility.Visible, Visibility.Collapsed, Visibility.Collapsed], open.Select(button => button.Visibility));
+            Assert.All(copy, button => Assert.Equal(TestUiStrings.English.CopyTrackInfo, button.ToolTip));
+            copy[1].RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, copy[1]));
+            Assert.Equal(["Midnight City - M83"], harness.Clipboard);
+            Assert.Equal(TestUiStrings.English.CopiedText("Midnight City - M83"), Find<TextBlock>(window, "StatusText").Text);
+            open[0].RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, open[0]));
+            Assert.Equal(["https://www.shazam.com/track/1"], harness.Opened);
+
+            var rows = days.ItemsSource;
+            Activate(window);
+            Assert.Same(rows, days.ItemsSource);
+            harness.Time.Now = harness.Time.Now.AddDays(1);
+            Activate(window);
+            Assert.Equal(["Yesterday", "Saturday, September 26"], DayHeaders(days));
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Turning_off_saved_tracks_folds_the_retention_row_and_history_away_and_back() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        RecordTrack(harness, "Blinding Lights", "The Weeknd", TimeSpan.FromHours(2));
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            CompletePageTransition(window, time);
+            var toggle = Find<CheckBox>(window, "SaveHistory");
+            var row = Find<FrameworkElement>(window, "HistoryRetentionRow");
+            var content = Find<FrameworkElement>(window, "HistoryContent");
+            // DesiredSize is the space a section takes; ActualHeight keeps the unclipped size while it folds.
+            var rowHeight = row.DesiredSize.Height;
+            var contentHeight = content.DesiredSize.Height;
+            Assert.True(rowHeight > 0 && contentHeight > 0);
+
+            toggle.IsChecked = false;
+            Assert.False(harness.Settings.Snapshot.SaveMusicHistory);
+            if (UiAnimationPolicy.Enabled)
+            {
+                time.Advance(100);
+                window.UpdateLayout();
+                Assert.InRange(row.DesiredSize.Height, 1, rowHeight - 1);
+                Assert.InRange(content.DesiredSize.Height, 1, contentHeight - 1);
+                Assert.InRange(content.Opacity, 0.001, 0.999);
+                var height = content.DesiredSize.Height;
+                toggle.IsChecked = true;
+                window.UpdateLayout();
+                Assert.Equal(height, content.DesiredSize.Height, 1);
+                toggle.IsChecked = false;
+            }
+            Assert.True(time.AdvanceUntil(() => row.Visibility == Visibility.Collapsed && content.Visibility == Visibility.Collapsed),
+                "The history did not fold away.");
+            Assert.Single(harness.History.Entries);
+
+            toggle.IsChecked = true;
+            if (UiAnimationPolicy.Enabled)
+            {
+                time.Advance(100);
+                window.UpdateLayout();
+                Assert.InRange(content.DesiredSize.Height, 1, contentHeight - 1);
+            }
+            Assert.True(time.AdvanceUntil(() => content.Opacity == 1 && double.IsNaN(content.Height) && double.IsNaN(row.Height)),
+                "The history did not unfold.");
+            window.UpdateLayout();
+            Assert.Equal(rowHeight, row.DesiredSize.Height, 1);
+            Assert.Equal(contentHeight, content.DesiredSize.Height, 1);
+        }
+        finally { window.Close(); }
+
+        var off = new TestSettingsWindow(TestSettings.Create(new AppSettings { SaveMusicHistory = false })).CreateView().Window;
+        Assert.Equal(Visibility.Collapsed, Find<FrameworkElement>(off, "HistoryRetentionRow").Visibility);
+        Assert.Equal(Visibility.Collapsed, Find<FrameworkElement>(off, "HistoryContent").Visibility);
+        off.Close();
+    });
+
+    [Fact]
+    public void Clearing_the_music_history_asks_first_and_new_tracks_appear_while_the_window_is_open() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        RecordTrack(harness, "Blinding Lights", "The Weeknd", TimeSpan.FromHours(2));
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            CompletePageTransition(window, time);
+            Click(window, "clear-history");
+            Assert.True(Find<StackPanel>(window, "ClearHistoryDialog").IsVisible);
+            Assert.False(Find<StackPanel>(window, "ResetDialog").IsVisible);
+            Assert.True(Find<Button>(window, "ConfirmClearHistory").IsVisible);
+            Click(window, "cancel");
+            CompleteDialogTransition(window, time, open: false);
+            Assert.Single(harness.History.Entries);
+
+            Click(window, "clear-history");
+            Click(window, "confirm-clear-history");
+            CompleteDialogTransition(window, time, open: false);
+            Assert.Empty(harness.History.Entries);
+            Assert.True(Find<FrameworkElement>(window, "HistoryEmpty").IsVisible);
+            Assert.False(Find<FrameworkElement>(window, "HistoryToolbar").IsVisible);
+
+            RecordTrack(harness, "Midnight City", "M83", TimeSpan.Zero);
+            window.UpdateLayout();
+            Assert.False(Find<FrameworkElement>(window, "HistoryEmpty").IsVisible);
+            Assert.Equal(["Today"], DayHeaders(Find<ItemsControl>(window, "HistoryDays")));
+        }
+        finally { window.Close(); }
+    });
+
+    private static void RecordTrack(TestSettingsWindow harness, string title, string artist, TimeSpan ago,
+        string? genre = null, string? shazamUrl = null)
+    {
+        var now = harness.Time.Now;
+        harness.Time.Now = now - ago;
+        harness.History.Record(new ShazamRecognition(title, artist, "Album", genre, null, null, shazamUrl));
+        harness.Time.Now = now;
+    }
+
+    private static string[] DayHeaders(ItemsControl days) =>
+        days.Items.Cast<object>().Select(day => (string)day.GetType().GetProperty("Label")!.GetValue(day)!).ToArray();
+
+    private static Button[] RowButtons(ItemsControl days, string tag)
+    {
+        days.UpdateLayout();
+        return VisualChildren(days).OfType<Button>().Where(button => Equals(button.Tag, tag)).ToArray();
+    }
 
     private static void ClickText(TextBlock text, int clickCount)
     {

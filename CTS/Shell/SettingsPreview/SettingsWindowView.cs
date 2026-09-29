@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Interop;
+using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
 using CircleToSearch.Updates;
@@ -28,11 +29,15 @@ internal sealed class SettingsWindowView
     private readonly SettingsPageTransition _pageTransition;
     private readonly SettingsDialogMotion _dialogMotion;
     private readonly SettingsStatusMotion _statusMotion;
+    private readonly SettingsMusicHistoryPanel _history;
+    private readonly SettingsCollapseMotion _historyRetentionMotion;
+    private readonly SettingsCollapseMotion _historyContentMotion;
     private IInputElement? _dialogOwner;
     private string? _pendingShortcut;
     private bool _loadingSettings;
 
-    internal SettingsWindowView(UiStrings strings, bool lightTheme, string iconPath, SettingsWindowModel model)
+    internal SettingsWindowView(UiStrings strings, bool lightTheme, string iconPath, SettingsWindowModel model,
+        Func<Action<ToastNotification>, ClipboardCopyService> createClipboardCopy)
     {
         _strings = strings;
         _model = model;
@@ -56,6 +61,11 @@ internal sealed class SettingsWindowView
             Pages.Select(page => Element<FrameworkElement>("Page_" + page)).ToArray());
         _dialogMotion = new SettingsDialogMotion(Element<Border>("DialogLayer"),
             Element<FrameworkElement>("DialogMotionSurface"), Element<Border>("DialogScrim"), FinishCloseDialog);
+        _history = new SettingsMusicHistoryPanel(Element<FrameworkElement>("HistoryContent"), model, strings,
+            createClipboardCopy(toast => ShowStatus(toast.Message)));
+        _historyRetentionMotion = new SettingsCollapseMotion(Element<FrameworkElement>("HistoryRetentionRow"));
+        _historyContentMotion = new SettingsCollapseMotion(Element<FrameworkElement>("HistoryContent"));
+        model.MusicHistoryChanged += OnMusicHistoryChanged;
         Window.Closed += (_, _) =>
         {
             _statusTimer.Stop();
@@ -65,6 +75,7 @@ internal sealed class SettingsWindowView
             _pageTransition.Dispose();
             _dialogMotion.Dispose();
             foreach (var (_, motion) in _dropdowns) motion.Dispose();
+            model.MusicHistoryChanged -= OnMusicHistoryChanged;
         };
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
         Window.AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavigationChecked));
@@ -106,6 +117,15 @@ internal sealed class SettingsWindowView
         var launch = Element<CheckBox>("Launch");
         launch.Checked += OnLaunchChanged;
         launch.Unchecked += OnLaunchChanged;
+        var saveHistory = Element<CheckBox>("SaveHistory");
+        saveHistory.Checked += OnSaveHistoryChanged;
+        saveHistory.Unchecked += OnSaveHistoryChanged;
+        var historyRetention = Element<ComboBox>("HistoryRetention");
+        foreach (var days in MusicHistory.RetentionDays)
+            historyRetention.Items.Add(new ComboBoxItem { Tag = days });
+        historyRetention.Items.Add(new ComboBoxItem { Tag = MusicHistory.KeepForever });
+        historyRetention.SelectionChanged += OnHistoryRetentionChanged;
+        AddDropdown(historyRetention);
 
         foreach (var (name, action) in ToolbarActions)
         {
@@ -168,8 +188,9 @@ internal sealed class SettingsWindowView
         }
         switch (action)
         {
-            case "edit": OpenDialog(shortcut: true); break;
-            case "reset": OpenDialog(shortcut: false); break;
+            case "edit": OpenDialog(SettingsDialog.Shortcut); break;
+            case "reset": OpenDialog(SettingsDialog.Reset); break;
+            case "clear-history": OpenDialog(SettingsDialog.ClearHistory); break;
             case "cancel": CloseDialog(); break;
             case "save" when _pendingShortcut is not null:
                 var saved = _model.ChangeHotkey(_pendingShortcut);
@@ -182,6 +203,12 @@ internal sealed class SettingsWindowView
                 RefreshLanguage();
                 CloseDialog();
                 if (reset is not null) ShowStatus(reset);
+                break;
+            case "confirm-clear-history":
+                var cleared = _model.ClearMusicHistory();
+                _history.Refresh();
+                CloseDialog();
+                if (!cleared) ShowStatus(_strings.StorageSaveFailed);
                 break;
             case "github": _model.Project.OpenRepository(); break;
             case "feedback": _model.Project.OpenFeedback(); break;
@@ -230,8 +257,9 @@ internal sealed class SettingsWindowView
         ShowStatus(_strings.SettingsPreviewText("developer_unlocked"));
     }
 
-    private void OpenDialog(bool shortcut)
+    private void OpenDialog(SettingsDialog dialog)
     {
+        var shortcut = dialog == SettingsDialog.Shortcut;
         _scrollMotion.Reset();
         HideStatus();
         if (Element<Border>("DialogLayer").Visibility != Visibility.Visible)
@@ -239,10 +267,12 @@ internal sealed class SettingsWindowView
         _pendingShortcut = null;
         Element<Grid>("Workspace").IsEnabled = false;
         Element<StackPanel>("ShortcutDialog").Visibility = shortcut ? Visibility.Visible : Visibility.Collapsed;
-        Element<StackPanel>("ResetDialog").Visibility = shortcut ? Visibility.Collapsed : Visibility.Visible;
+        Element<StackPanel>("ResetDialog").Visibility = Visible(dialog == SettingsDialog.Reset);
+        Element<StackPanel>("ClearHistoryDialog").Visibility = Visible(dialog == SettingsDialog.ClearHistory);
         Element<Button>("SaveShortcut").Visibility = shortcut ? Visibility.Visible : Visibility.Collapsed;
         Element<Button>("SaveShortcut").IsEnabled = false;
-        Element<Button>("ConfirmReset").Visibility = shortcut ? Visibility.Collapsed : Visibility.Visible;
+        Element<Button>("ConfirmReset").Visibility = Visible(dialog == SettingsDialog.Reset);
+        Element<Button>("ConfirmClearHistory").Visibility = Visible(dialog == SettingsDialog.ClearHistory);
         _dialogMotion.Open();
         ShowShortcutPrompt(_strings.SettingsPreviewText("press_shortcut"));
         if (shortcut) Element<Border>("ShortcutInput").Focus();
@@ -322,8 +352,15 @@ internal sealed class SettingsWindowView
                 .FirstOrDefault(item => Equals(item.Tag, _model.BrowserDataCleanupDays));
             foreach (var (name, action) in ToolbarActions)
                 Element<CheckBox>(name).IsChecked = _model.IsToolbarActionShown(action);
+            Element<CheckBox>("SaveHistory").IsChecked = _model.SaveMusicHistory;
+            var historyRetention = Element<ComboBox>("HistoryRetention");
+            historyRetention.SelectedItem = historyRetention.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(item => Equals(item.Tag, _model.MusicHistoryRetentionDays));
         }
         finally { _loadingSettings = false; }
+        _historyRetentionMotion.Set(_model.SaveMusicHistory);
+        _historyContentMotion.Set(_model.SaveMusicHistory);
+        _history.RefreshIfOutdated();
         var keys = ShortcutText.Keys(_model.HotkeyGesture, _strings);
         Element<ItemsControl>("ShortcutKeys").ItemsSource = keys;
         Element<ItemsControl>("HeroShortcutKeys").ItemsSource = keys;
@@ -357,6 +394,10 @@ internal sealed class SettingsWindowView
         foreach (var item in Items("Cleanup"))
             item.Content = _strings.SettingsPreviewText(Equals(item.Tag, BrowserDataCleanup.Never) ? "never" : "every_" + item.Tag);
         Items("AppLanguage")[0].Content = _strings.SettingsPreviewText("match_system");
+        foreach (var item in Items("HistoryRetention"))
+            item.Content = _strings.SettingsPreviewText(Equals(item.Tag, MusicHistory.KeepForever)
+                ? "never" : "history_days_" + item.Tag);
+        _history.ApplyTexts();
         ApplyOcrTexts();
         Element<TextBlock>("AppVersion").Text = _strings.SettingsVersion(ProjectSupport.Version);
     }
@@ -454,6 +495,29 @@ internal sealed class SettingsWindowView
         if (!saved) ShowStatus(_strings.StorageSaveFailed);
     }
 
+    private void OnSaveHistoryChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        var saved = _model.SelectSaveMusicHistory(Element<CheckBox>("SaveHistory").IsChecked == true);
+        LoadSettings();
+        if (!saved) ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnHistoryRetentionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings || Element<ComboBox>("HistoryRetention").SelectedItem is not ComboBoxItem { Tag: int days }) return;
+        var saved = _model.SelectMusicHistoryRetention(days);
+        LoadSettings();
+        if (!saved) ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    // Tracks are recorded on a background thread while this window may be open.
+    private void OnMusicHistoryChanged()
+    {
+        if (Window.Dispatcher.CheckAccess()) _history.Refresh();
+        else Window.Dispatcher.BeginInvoke(_history.Refresh);
+    }
+
     private void OnToolbarActionChanged(object sender, RoutedEventArgs e)
     {
         if (_loadingSettings || sender is not CheckBox { Tag: SelectionToolbarAction action } toggle) return;
@@ -481,6 +545,10 @@ internal sealed class SettingsWindowView
         _statusTimer.Stop();
         _statusMotion.Hide();
     }
+
+    private static Visibility Visible(bool visible) => visible ? Visibility.Visible : Visibility.Collapsed;
+
+    private enum SettingsDialog { Shortcut, Reset, ClearHistory }
 
     private sealed class PreviewText(UiStrings strings)
     {

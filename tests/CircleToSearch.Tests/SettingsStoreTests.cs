@@ -2,6 +2,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text.Json;
 using CircleToSearch.Interop;
+using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Capture;
@@ -25,6 +26,7 @@ public sealed class SettingsStoreTests
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
             OcrLanguageTag = "ru-RU", AppLanguageTag = "ru", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
             HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save, BrowserDataCleanupDays = 0, OnboardingCompleted = true,
+            SaveMusicHistory = false, MusicHistoryRetentionDays = MusicHistory.KeepForever,
         };
         store.Save(updated);
         Assert.Equal(updated, new SettingsStore(paths).Load().Settings);
@@ -86,6 +88,17 @@ public sealed class SettingsStoreTests
         Assert.Equal(new AppSettings { ImageTranslationPrivacyConsentAccepted = true }, result.Settings);
         Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
         Assert.Empty(store.Load().ResetFields);
+    }
+
+    [Fact]
+    public void Unsupported_music_history_retention_resets_to_the_default()
+    {
+        var (paths, store) = Create();
+        File.WriteAllText(paths.SettingsFilePath, """{"MusicHistoryRetentionDays":45,"SaveMusicHistory":false}""");
+        var result = store.Load();
+        Assert.Equal([nameof(AppSettings.MusicHistoryRetentionDays)], result.ResetFields);
+        Assert.Equal(new AppSettings { SaveMusicHistory = false, OnboardingCompleted = true }, result.Settings);
+        Assert.Equal(result.Settings, Read(paths.SettingsFilePath));
     }
 
     [Fact]

@@ -107,7 +107,7 @@ internal static class MusicResultCardVisualFactory
         copyButton.Click += (_, e) =>
         {
             e.Handled = true;
-            copy($"{recognition.Title} - {recognition.Artist}", copyButton);
+            copy(recognition.TrackInfo, copyButton);
         };
         actions.Children.Add(copyButton);
         var close = OverlayVisualResources.IconButton(

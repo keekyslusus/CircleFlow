@@ -168,12 +168,14 @@ public static class CompositionRoot
                 lifetime.AddCleanup("close-test-browser", () => { testBrowser.Dispose(); return Task.CompletedTask; });
                 var updates = StartUpdates(lifetime, notifier, strings, log);
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
+                    runtime.MusicHistory, runtime.MusicResults,
                     language, CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
                     AudioOutputDevice.DefaultName, startup, onboarding.Show, testBrowser.Show,
                     () => NotificationSamples.Show(notifier, runtimeNotice, strings, runtime.Settings.Snapshot.HotkeyGesture),
                     updates is null ? null : updates.CheckNowAsync);
                 var settingsWindow = new SingleWindowController(application.Dispatcher,
-                    () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel).Window);
+                    () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel,
+                        feedback => new ClipboardCopyService(Clipboard.SetText, feedback, strings)).Window);
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });
                 tray = new TrayIcon(paths.TrayIconPath, strings, application.Dispatcher, log,
                     () => { activation.TryRequestOpen(); return Task.CompletedTask; },
@@ -320,7 +322,9 @@ public static class CompositionRoot
             musicClock,
             log);
         var musicSimulator = new MusicRecognitionSimulator(strings);
-        var musicRecognition = new MusicRecognitionWorkflow(musicRecognizer, musicSimulator, log);
+        var musicHistory = new MusicHistory(paths.MusicHistoryFilePath, () => settings.Snapshot.SaveMusicHistory,
+            () => settings.Snapshot.MusicHistoryRetentionDays, TimeProvider.System, log);
+        var musicRecognition = new MusicRecognitionWorkflow(musicRecognizer, musicSimulator, musicHistory.Record, log);
         var musicResultPresenter = new MusicResultPresenter(urlOpening, notifier, strings);
         var providerSelection = new ProviderSelectionStore(
             providerRouter,
@@ -417,7 +421,8 @@ public static class CompositionRoot
             translationLifetime.StopAsync,
             visualSearchLifetime.StopAsync,
             log);
-        var runtime = rollback.TransferAllTo(new AppRuntime(coordinator, lifetime, settings, providerSelection, ocrLanguages));
+        var runtime = rollback.TransferAllTo(new AppRuntime(coordinator, lifetime, settings, providerSelection, ocrLanguages,
+            musicHistory, musicResultPresenter));
 
         hotkeyWindow.HotkeyPressed += () =>
         {

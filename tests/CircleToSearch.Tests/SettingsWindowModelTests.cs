@@ -1,4 +1,6 @@
 using System.Windows.Input;
+using CircleToSearch.MusicRecognition.Shazam;
+using CircleToSearch.Settings;
 using CircleToSearch.Search;
 using CircleToSearch.Shell;
 using CircleToSearch.Trigger;
@@ -22,6 +24,27 @@ public sealed class SettingsWindowModelTests
 
         Assert.Equal(expected, gesture);
         if (gesture is not null) Assert.True(HotkeyGestureParser.TryParse(gesture, out _, out _));
+    }
+
+    [Fact]
+    public void A_busy_history_file_does_not_fail_retention_changes_or_stop_a_reset()
+    {
+        var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings { HotkeyGesture = "Ctrl+Shift+K" }));
+        // Older than every retention, so each change has to rewrite the file.
+        var now = harness.Time.Now;
+        harness.Time.Now = now.AddDays(-100);
+        harness.History.Record(new ShazamRecognition("Kids", "MGMT", null, null, null, null, null));
+        harness.Time.Now = now;
+
+        using (new FileStream(harness.HistoryFilePath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.True(harness.Model.SelectMusicHistoryRetention(7));
+            Assert.Equal(7, harness.Settings.Snapshot.MusicHistoryRetentionDays);
+            Assert.Equal(harness.Strings.SettingsResetDone, harness.Model.ResetToDefaults());
+        }
+
+        Assert.Equal(new AppSettings().MusicHistoryRetentionDays, harness.Settings.Snapshot.MusicHistoryRetentionDays);
+        Assert.Equal(new AppSettings().HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
     }
 
     [Fact]

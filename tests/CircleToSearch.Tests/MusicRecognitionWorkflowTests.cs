@@ -1,5 +1,6 @@
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
+using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Search;
 using Xunit;
 
@@ -46,6 +47,31 @@ public sealed class MusicRecognitionWorkflowTests
     }
 
     [Fact]
+    public async Task Only_live_matches_are_recorded_in_the_history()
+    {
+        var harness = new Harness();
+        var match = new ShazamRecognition("Blinding Lights", "The Weeknd", null, null, null, null, null);
+
+        await harness.Workflow.RecognizeAsync(MusicDebugScenario.Live, null, CancellationToken.None);
+        harness.Recognizer.Outcome = MusicRecognitionOutcome.Matched(match);
+        harness.Simulator.Outcome = MusicRecognitionOutcome.Matched(match with { Title = "Midnight Debug" });
+        await harness.Workflow.RecognizeAsync(MusicDebugScenario.Matched, null, CancellationToken.None);
+        await harness.Workflow.RecognizeAsync(MusicDebugScenario.Live, null, CancellationToken.None);
+
+        Assert.Equal([match], harness.Recorded);
+    }
+
+    [Fact]
+    public async Task A_history_failure_keeps_the_match()
+    {
+        var match = MusicRecognitionOutcome.Matched(new ShazamRecognition("Kids", "MGMT", null, null, null, null, null));
+        var harness = new Harness(_ => throw new IOException("disk full"));
+        harness.Recognizer.Outcome = match;
+
+        Assert.Same(match, await harness.Workflow.RecognizeAsync(MusicDebugScenario.Live, null, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task Cancellation_exception_is_not_converted_to_a_ui_outcome()
     {
         var harness = new Harness();
@@ -57,15 +83,16 @@ public sealed class MusicRecognitionWorkflowTests
 
     private sealed class Harness
     {
-        public Harness()
+        public Harness(Action<ShazamRecognition>? recordMatch = null)
         {
             var path = Path.Combine(TestOutputPaths.TempDirectory, "CircleToSearch.Tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(path);
-            Workflow = new MusicRecognitionWorkflow(Recognizer, Simulator, new PluginLog(path));
+            Workflow = new MusicRecognitionWorkflow(Recognizer, Simulator, recordMatch ?? Recorded.Add, new PluginLog(path));
         }
 
         public FakeRecognizer Recognizer { get; } = new();
         public FakeSimulator Simulator { get; } = new();
+        public List<ShazamRecognition> Recorded { get; } = [];
         public MusicRecognitionWorkflow Workflow { get; }
     }
 
@@ -74,7 +101,7 @@ public sealed class MusicRecognitionWorkflowTests
         public int Calls { get; private set; }
         public IMusicVisualizationProgress? Progress { get; private set; }
         public Exception? Exception { get; set; }
-        public MusicRecognitionOutcome Outcome { get; } = MusicRecognitionOutcome.From(MusicRecognitionStatus.NoMatch);
+        public MusicRecognitionOutcome Outcome { get; set; } = MusicRecognitionOutcome.From(MusicRecognitionStatus.NoMatch);
 
         public Task<MusicRecognitionOutcome> RecognizeAsync(CancellationToken cancellationToken) =>
             RecognizeAsync(null, cancellationToken);
@@ -96,7 +123,7 @@ public sealed class MusicRecognitionWorkflowTests
         public int Calls { get; private set; }
         public MusicDebugScenario? Scenario { get; private set; }
         public IMusicVisualizationProgress? Progress { get; private set; }
-        public MusicRecognitionOutcome Outcome { get; } = MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio);
+        public MusicRecognitionOutcome Outcome { get; set; } = MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio);
 
         public Task<MusicRecognitionOutcome> RecognizeAsync(
             MusicDebugScenario scenario,

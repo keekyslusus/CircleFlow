@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace CircleToSearch.MusicRecognition.Shazam;
 
 public sealed record ShazamRecognition(
@@ -7,4 +9,8 @@ public sealed record ShazamRecognition(
     string? Genre,
     string? TrackKey,
     string? CoverUrl,
-    string? ShazamUrl);
+    string? ShazamUrl)
+{
+    [JsonIgnore]
+    public string TrackInfo => $"{Title} - {Artist}";
+}

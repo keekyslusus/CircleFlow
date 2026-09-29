@@ -4,6 +4,86 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="SettingsStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <Storyboard x:Key="HistoryActionsIn">
+                <DoubleAnimation Storyboard.TargetName="Actions" Storyboard.TargetProperty="Opacity" To="1" Duration="{x:Static ui:UiAnimationPolicy.HoverFadeDuration}"/>
+            </Storyboard>
+            <Storyboard x:Key="HistoryActionsOut">
+                <DoubleAnimation Storyboard.TargetName="Actions" Storyboard.TargetProperty="Opacity" To="0" Duration="{x:Static ui:UiAnimationPolicy.HoverFadeDuration}"/>
+            </Storyboard>
+            <DataTemplate x:Key="HistoryTrack">
+                <Border x:Name="Row" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,10,12,10" MinHeight="54" Background="{DynamicResource SettingsTransparent}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="58"/>
+                            <ColumnDefinition Width="32"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Time}" Style="{StaticResource Muted}" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
+                        <Border Grid.Column="1" Width="32" Height="32" CornerRadius="5" Background="{DynamicResource SettingsHeroStart}" BorderBrush="{DynamicResource SettingsAccentLine}" BorderThickness="1">
+                            <ContentControl Foreground="{DynamicResource SettingsAccent}" Focusable="False" IsTabStop="False" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Viewbox Width="20" Height="20">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.MusicOutlined}"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </ContentControl>
+                        </Border>
+                        <Border x:Name="Cover" Grid.Column="1" Width="32" Height="32" CornerRadius="5">
+                            <Border.Background>
+                                <ImageBrush ImageSource="{Binding Cover}" Stretch="UniformToFill"/>
+                            </Border.Background>
+                        </Border>
+                        <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}" ToolTip="{Binding Title}" Style="{StaticResource RowTitle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding Artist}" ToolTip="{Binding Artist}" Style="{StaticResource RowSubtitle}" Margin="0,1,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <Border x:Name="Genre" Grid.Column="5" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="5" Padding="8,2" Margin="8,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Genre}" Style="{StaticResource Muted}" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel x:Name="Actions" Grid.Column="4" Orientation="Horizontal" Margin="12,0,0,0" Opacity="0">
+                            <Button Tag="history-copy" Style="{StaticResource RowIconButton}" ToolTip="{DynamicResource HistoryCopyLabel}" AutomationProperties.Name="{DynamicResource HistoryCopyLabel}">
+                                <Viewbox Width="20" Height="20">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.CopyOutlined}"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </Button>
+                            <Button x:Name="Open" Tag="history-open" Style="{StaticResource RowIconButton}" Margin="2,0,0,0" ToolTip="{DynamicResource HistoryOpenLabel}" AutomationProperties.Name="{DynamicResource HistoryOpenLabel}">
+                                <Viewbox Width="20" Height="20">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.LinkOutlined}"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsFirst}" Value="True"><Setter TargetName="Row" Property="BorderThickness" Value="0"/></DataTrigger>
+                    <DataTrigger Binding="{Binding Genre}" Value="{x:Null}"><Setter TargetName="Genre" Property="Visibility" Value="Collapsed"/></DataTrigger>
+                    <DataTrigger Binding="{Binding Cover}" Value="{x:Null}"><Setter TargetName="Cover" Property="Visibility" Value="Collapsed"/></DataTrigger>
+                    <DataTrigger Binding="{Binding CanOpen}" Value="False"><Setter TargetName="Open" Property="Visibility" Value="Collapsed"/></DataTrigger>
+                    <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                        <Trigger.EnterActions><BeginStoryboard Storyboard="{StaticResource HistoryActionsIn}"/></Trigger.EnterActions>
+                        <Trigger.ExitActions><BeginStoryboard Storyboard="{StaticResource HistoryActionsOut}"/></Trigger.ExitActions>
+                    </Trigger>
+                    <Trigger SourceName="Row" Property="IsKeyboardFocusWithin" Value="True">
+                        <Trigger.EnterActions><BeginStoryboard Storyboard="{StaticResource HistoryActionsIn}"/></Trigger.EnterActions>
+                        <Trigger.ExitActions><BeginStoryboard Storyboard="{StaticResource HistoryActionsOut}"/></Trigger.ExitActions>
+                    </Trigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+            <DataTemplate x:Key="HistoryDay">
+                <StackPanel>
+                    <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold" Margin="2,16,0,8"/>
+                    <Border Style="{StaticResource Card}">
+                        <ItemsControl ItemsSource="{Binding Tracks}" ItemTemplate="{StaticResource HistoryTrack}" Focusable="False"/>
+                    </Border>
+                </StackPanel>
+            </DataTemplate>
         </ResourceDictionary>
     </Window.Resources>
     <Grid Background="{DynamicResource SettingsPaper}">
@@ -724,6 +804,99 @@
                                     <TextBlock Text="{Binding [recognition_info_text]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
+                            <TextBlock Text="{Binding [history]}" Style="{StaticResource SectionTitle}"/>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,0,0,0" Padding="19,17" MinHeight="77">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="21"/>
+                                                <ColumnDefinition Width="16"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Viewbox Width="21" Height="21" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.HistoryOutlined}"/>
+                                                </Canvas>
+                                            </Viewbox>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
+                                                <TextBlock Text="{Binding [save_history]}" Style="{StaticResource RowTitle}"/>
+                                                <TextBlock Text="{Binding [save_history_sub]}" Style="{StaticResource RowSubtitle}"/>
+                                            </StackPanel>
+                                            <ContentControl Grid.Column="3" VerticalAlignment="Center">
+                                                <CheckBox x:Name="SaveHistory" Style="{StaticResource Toggle}" AutomationProperties.Name="{Binding [save_history]}"/>
+                                            </ContentControl>
+                                        </Grid>
+                                    </Border>
+                                    <Border x:Name="HistoryRetentionRow">
+                                        <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,17" MinHeight="77">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="21"/>
+                                                    <ColumnDefinition Width="16"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Viewbox Width="21" Height="21" VerticalAlignment="Center">
+                                                    <Canvas Width="24" Height="24">
+                                                        <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.RestoreOutlined}"/>
+                                                    </Canvas>
+                                                </Viewbox>
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
+                                                    <TextBlock Text="{Binding [history_retention]}" Style="{StaticResource RowTitle}"/>
+                                                    <TextBlock Text="{Binding [history_retention_sub]}" Style="{StaticResource RowSubtitle}"/>
+                                                </StackPanel>
+                                                <ContentControl Grid.Column="3" VerticalAlignment="Center">
+                                                    <ComboBox x:Name="HistoryRetention" Width="160" AutomationProperties.Name="{Binding [history_retention]}"/>
+                                                </ContentControl>
+                                            </Grid>
+                                        </Border>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                            <StackPanel x:Name="HistoryContent">
+                                <Grid x:Name="HistoryToolbar" Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="HistorySearch" Style="{StaticResource SearchBox}" Tag="{Binding [history_search]}" AutomationProperties.Name="{Binding [history_search]}"/>
+                                    <Button Tag="clear-history" Grid.Column="1" Margin="10,0,0,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="20" Height="20" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.DeleteOutlined}"/>
+                                                </Canvas>
+                                            </Viewbox>
+                                            <Border Width="8"/>
+                                            <TextBlock Text="{Binding [clear_history]}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <ItemsControl x:Name="HistoryDays" ItemTemplate="{StaticResource HistoryDay}" Focusable="False"/>
+                                <Border x:Name="HistoryNoMatch" Style="{StaticResource Card}" Margin="0,16,0,0" Padding="20,22" Visibility="Collapsed">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock x:Name="HistoryNoMatchText" Style="{StaticResource RowTitle}" TextAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding [history_no_match_sub]}" Style="{StaticResource RowSubtitle}" TextAlignment="Center" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border x:Name="HistoryEmpty" Style="{StaticResource Card}" Margin="0,16,0,0" Padding="20,28" Visibility="Collapsed">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <Border Style="{StaticResource AppLogo}" CornerRadius="13" Width="44" Height="44" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                            <ContentControl Foreground="{DynamicResource SettingsAccent}" Focusable="False" IsTabStop="False" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <Viewbox Width="20" Height="20">
+                                                    <Canvas Width="24" Height="24">
+                                                        <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.MusicOutlined}"/>
+                                                    </Canvas>
+                                                </Viewbox>
+                                            </ContentControl>
+                                        </Border>
+                                        <TextBlock Text="{Binding [history_empty]}" Style="{StaticResource RowTitle}" TextAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding [history_empty_sub]}" Style="{StaticResource RowSubtitle}" TextAlignment="Center" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
                         <StackPanel x:Name="Page_about" Visibility="Collapsed">
                             <TextBlock Text="{Binding [about_title]}" Style="{StaticResource PageTitle}"/>
@@ -1077,6 +1250,10 @@
                         <TextBlock Text="{Binding [reset_title]}" FontSize="20" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding [reset_description]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
                     </StackPanel>
+                    <StackPanel x:Name="ClearHistoryDialog" Visibility="Collapsed">
+                        <TextBlock Text="{Binding [clear_history_title]}" FontSize="20" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding [clear_history_description]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
                         <Button Tag="cancel">
                             <TextBlock Text="{Binding [cancel]}"/>
@@ -1086,6 +1263,9 @@
                         </Button>
                         <Button Tag="confirm-reset" x:Name="ConfirmReset" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Visibility="Collapsed">
                             <TextBlock Text="{Binding [reset]}"/>
+                        </Button>
+                        <Button Tag="confirm-clear-history" x:Name="ConfirmClearHistory" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Visibility="Collapsed">
+                            <TextBlock Text="{Binding [clear]}"/>
                         </Button>
                     </StackPanel>
                 </StackPanel>

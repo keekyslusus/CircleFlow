@@ -1125,7 +1125,7 @@ public sealed class OverlaySessionWorkflowTests
                 Notifier,
                 TestUiStrings.English,
                 Log);
-            var musicRecognition = new MusicRecognitionWorkflow(Music, Simulator, Log);
+            var musicRecognition = new MusicRecognitionWorkflow(Music, Simulator, _ => { }, Log);
             var musicPresenter = new MusicResultPresenter(
                 new UrlOpeningService(url => { Events.Add("open"); Opened.Add(url); return true; },
                     Notifier, TestUiStrings.English, Log),

@@ -1,5 +1,6 @@
 using System.Globalization;
 using CircleToSearch.Capture;
+using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.TextRecognition;
@@ -13,6 +14,8 @@ internal sealed class SettingsWindowModel(
     SettingsService settings,
     ProviderSelectionStore providers,
     OcrLanguageCatalog ocrLanguages,
+    MusicHistory musicHistory,
+    MusicResultPresenter musicResults,
     UiLanguage language,
     CultureInfo culture,
     ProjectSupport project,
@@ -45,6 +48,10 @@ internal sealed class SettingsWindowModel(
     public bool IgnoreHotkeyInFullscreen => settings.Snapshot.IgnoreHotkeyInFullscreen;
     public int BrowserDataCleanupDays => settings.Snapshot.BrowserDataCleanupDays;
     public bool LaunchAtStartup => startup.IsEnabled;
+    public bool SaveMusicHistory => settings.Snapshot.SaveMusicHistory;
+    public int MusicHistoryRetentionDays => settings.Snapshot.MusicHistoryRetentionDays;
+    public IReadOnlyList<MusicHistoryEntry> MusicHistory => musicHistory.Entries;
+    public TimeProvider Time => musicHistory.Time;
     public ProjectSupport Project => project;
     public string? WebViewRuntimeVersion => webViewRuntimeVersion();
     public string? AudioOutputName => audioOutputName();
@@ -88,6 +95,31 @@ internal sealed class SettingsWindowModel(
 
     public bool SelectLaunchAtStartup(bool enabled) => startup.TrySet(enabled);
 
+    public bool SelectSaveMusicHistory(bool save) => settings.SetSaveMusicHistory(save).Success;
+
+    // The history logs its own write failures and removes old tracks again on its next change.
+    public bool SelectMusicHistoryRetention(int days)
+    {
+        if (!settings.SetMusicHistoryRetentionDays(days).Success) return false;
+        musicHistory.ApplyRetention();
+        return true;
+    }
+
+    public bool ClearMusicHistory() => musicHistory.Clear();
+
+    public event Action MusicHistoryChanged
+    {
+        add => musicHistory.Changed += value;
+        remove => musicHistory.Changed -= value;
+    }
+
+    public bool CanOpenInShazam(MusicHistoryEntry entry) => musicResults.CanOpen(entry.Track);
+
+    public void OpenInShazam(MusicHistoryEntry entry)
+    {
+        if (musicResults.CanOpen(entry.Track)) musicResults.Open(entry.Track);
+    }
+
     public bool IsToolbarActionShown(SelectionToolbarAction action) =>
         !settings.Snapshot.HiddenToolbarActions.HasFlag(action);
 
@@ -112,6 +144,8 @@ internal sealed class SettingsWindowModel(
         if (!SelectIgnoreHotkeyInFullscreen(defaults.IgnoreHotkeyInFullscreen)) return strings.StorageSaveFailed;
         if (!settings.SetHiddenToolbarActions(defaults.HiddenToolbarActions).Success) return strings.StorageSaveFailed;
         if (!SelectBrowserDataCleanup(defaults.BrowserDataCleanupDays)) return strings.StorageSaveFailed;
+        if (!SelectSaveMusicHistory(defaults.SaveMusicHistory)) return strings.StorageSaveFailed;
+        if (!SelectMusicHistoryRetention(defaults.MusicHistoryRetentionDays)) return strings.StorageSaveFailed;
         return ShortcutText.ChangeMessage(settings.ChangeHotkey(defaults.HotkeyGesture), defaults.HotkeyGesture,
             strings.SettingsResetDone, strings);
     }

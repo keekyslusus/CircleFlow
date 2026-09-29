@@ -90,6 +90,16 @@ public sealed class SettingsService
         lock (_gate) return Commit(_current with { BrowserDataCleanupDays = days });
     }
 
+    public SettingsChangeResult SetSaveMusicHistory(bool save)
+    {
+        lock (_gate) return Commit(_current with { SaveMusicHistory = save });
+    }
+
+    public SettingsChangeResult SetMusicHistoryRetentionDays(int days)
+    {
+        lock (_gate) return Commit(_current with { MusicHistoryRetentionDays = days });
+    }
+
     public SettingsChangeResult SetAppLanguage(string languageTag)
     {
         lock (_gate) return Commit(_current with { AppLanguageTag = languageTag });

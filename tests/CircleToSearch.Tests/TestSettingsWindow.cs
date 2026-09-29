@@ -1,4 +1,6 @@
 using System.Globalization;
+using CircleToSearch.Capture;
+using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Shell;
@@ -37,7 +39,11 @@ internal sealed class TestSettingsWindow
             new AppLanguageCatalog(languagesDirectory), CultureInfo.GetCultureInfo("en-US"), log);
         language.Apply(Settings.Snapshot.AppLanguageTag);
         Strings = new UiStrings(language.Get);
-        Model = new SettingsWindowModel(Settings, providers, OcrLanguages, language, culture ?? CultureInfo.GetCultureInfo("en-US"),
+        HistoryFilePath = Path.Combine(TestOutputPaths.NewTempDirectory("music-history-" + Guid.NewGuid().ToString("N")), "music-history.json");
+        History = new MusicHistory(HistoryFilePath,
+            () => Settings.Snapshot.SaveMusicHistory, () => Settings.Snapshot.MusicHistoryRetentionDays, Time, log);
+        Model = new SettingsWindowModel(Settings, providers, OcrLanguages, History,
+            new MusicResultPresenter(urlOpening, Notifier, TestUiStrings.English), language, culture ?? CultureInfo.GetCultureInfo("en-US"),
             new ProjectSupport(urlOpening), urlOpening, Paths, Strings, () => webViewRuntimeVersion,
             () => AudioOutputName, Startup.Registration, () => OnboardingRequests++, () => TestBrowserRequests++,
             () => TestNotificationRequests++,
@@ -49,6 +55,10 @@ internal sealed class TestSettingsWindow
     public UiStrings Strings { get; }
     public SettingsWindowModel Model { get; }
     public OcrLanguageCatalog OcrLanguages { get; }
+    public MusicHistory History { get; }
+    public string HistoryFilePath { get; }
+    public TestTimeProvider Time { get; } = new(new DateTimeOffset(2026, 9, 29, 16, 40, 0, TimeSpan.Zero));
+    public List<string> Clipboard { get; } = [];
     public TestStartupRegistry Startup { get; }
     public string? AudioOutputName { get; set; }
     public AppPaths Paths { get; } = new();
@@ -59,7 +69,8 @@ internal sealed class TestSettingsWindow
     public int TestNotificationRequests { get; private set; }
 
     public SettingsWindowView CreateView(bool light = true) =>
-        new(Strings, light, Paths.TrayIconPath, Model);
+        new(Strings, light, Paths.TrayIconPath, Model,
+            feedback => new ClipboardCopyService(Clipboard.Add, feedback, Strings));
 
     private static VisualSearchProviderRegistration Registration(string id, string name) =>
         new(new SearchProviderDescriptor(id, name), () => throw new InvalidOperationException("Not used by settings."));

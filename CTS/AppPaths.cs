@@ -43,6 +43,7 @@ internal sealed class AppPaths
     public string DataDirectory => Path.Combine(_installDirectory, "Data");
     public string SettingsFilePath => Path.Combine(DataDirectory, "settings.json");
     public string SettingsBackupFilePath => Path.Combine(DataDirectory, "settings.json.bak");
+    public string MusicHistoryFilePath => Path.Combine(DataDirectory, "music-history.json");
     public string LogsDirectory => Path.Combine(DataDirectory, "Logs");
     public string ProfilesDirectory => Path.Combine(DataDirectory, "Profiles");
     public string SearchProfileDirectory => Path.Combine(ProfilesDirectory, "Search");

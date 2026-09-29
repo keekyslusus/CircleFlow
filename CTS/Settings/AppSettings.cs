@@ -19,6 +19,10 @@ public sealed record AppSettings
 
     public int BrowserDataCleanupDays { get; init; } = 28;
 
+    public bool SaveMusicHistory { get; init; } = true;
+
+    public int MusicHistoryRetentionDays { get; init; } = 28;
+
     public int MaxLongSidePx { get; init; } = 1600;
 
     public int PaddingPx { get; init; } = 8;
