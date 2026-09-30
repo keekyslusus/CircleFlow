@@ -1,7 +1,9 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Shapes;
+using CircleToSearch.Links;
 using CircleToSearch.Search;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Ui;
@@ -28,8 +30,9 @@ internal sealed class TextSelectionOverlayController : IDisposable
     private OcrWord? _current;
     private OcrWord? _hovered;
     private TextSelectionRange? _selection;
+    private ScreenLink? _link;
     private bool _disposed;
-    private bool _searchPublished;
+    private bool _actionPublished;
     private bool _overText;
 
     internal TextSelectionOverlayController(
@@ -58,6 +61,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _textHoverChanged = textHoverChanged;
         _visual.CopyButton.Click += OnCopy;
         _visual.SearchButton.Click += OnSearch;
+        _visual.OpenLinkButton.Click += OnOpenLink;
     }
 
     internal bool HasSelection => _selection is not null;
@@ -140,7 +144,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _current = null;
         _selection = null;
         _hovered = null;
-        _searchPublished = false;
+        _actionPublished = false;
         _visual.Toolbar.Hide(animate);
         _visual.HighlightLayer.Children.Clear();
     }
@@ -157,6 +161,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _disposed = true;
         _visual.CopyButton.Click -= OnCopy;
         _visual.SearchButton.Click -= OnSearch;
+        _visual.OpenLinkButton.Click -= OnOpenLink;
         Dismiss(animate: false);
     }
 
@@ -169,23 +174,56 @@ internal sealed class TextSelectionOverlayController : IDisposable
 
     private void OnSearch(object sender, RoutedEventArgs e)
     {
-        if (_selection is null || _searchPublished) return;
-        _searchPublished = true;
-        _visual.SearchButton.IsEnabled = false;
+        if (_selection is null || _actionPublished) return;
+        _actionPublished = true;
+        DisableActions();
         _publish(new SearchSelectedText(_selection.Text, _selectedProviderId()));
         e.Handled = true;
+    }
+
+    private void OnOpenLink(object sender, RoutedEventArgs e)
+    {
+        if (_link?.Target is not { } target || _actionPublished) return;
+        _actionPublished = true;
+        DisableActions();
+        _publish(new OpenLink(target));
+        e.Handled = true;
+    }
+
+    // Search and Open link both end the session, so only the first click may leave the overlay.
+    private void DisableActions()
+    {
+        _visual.SearchButton.IsEnabled = false;
+        _visual.OpenLinkButton.IsEnabled = false;
     }
 
     private void RenderRange(TextSelectionRange range, bool showMenu)
     {
         _selection = range;
-        _searchPublished = false;
+        _link = null;
+        _actionPublished = false;
         RenderHighlights(range.HighlightBoundsPx, hover: false);
         if (!showMenu) return;
         _visual.SearchButton.IsEnabled = true;
+        _visual.OpenLinkButton.IsEnabled = true;
+        ShowOpenLink(ScreenLink.FromRecognizedText(range.Text));
         _visual.Toolbar.Show(
             _mapper.ToDips(range.BoundsPx),
             new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight));
+    }
+
+    // OCR misreads links often, so Open link sits beside Search instead of replacing it, and the button shows the
+    // host that would really open.
+    private void ShowOpenLink(ScreenLink? link)
+    {
+        _link = link;
+        var button = _visual.OpenLinkButton;
+        button.Visibility = link is null ? Visibility.Collapsed : Visibility.Visible;
+        if (link is null) return;
+        _visual.Toolbar.SetActionContent(button, LinkActionContent.Label(link), LinkActionContent.Icon(link));
+        var description = _strings.LinkOpen(link.Label);
+        button.ToolTip = description;
+        AutomationProperties.SetName(button, description);
     }
 
     private void RenderHighlights(IReadOnlyList<GdiRectangle> rectangles, bool hover)
