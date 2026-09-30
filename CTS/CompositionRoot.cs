@@ -261,6 +261,8 @@ public static class CompositionRoot
                 strings, content, anchor, lightTheme)));
         var visualSearchRollback = rollback.Own(new ResourceRollbackScope(log));
         var providerHttpClient = visualSearchRollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
+        // Each provider is a row in the Selection toolbar providers dialog in settings, and four rows nearly
+        // fill its DialogCard MaxHeight. Before adding a fifth, make ProviderMenuDialog in SettingsWindow.xaml scroll.
         var providerRouter = visualSearchRollback.Own(new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(

@@ -33,7 +33,6 @@ internal sealed class SettingsWindowModel(
     private const string OcrLanguageSettingsUri = "ms-settings:regionlanguage";
 
     public IReadOnlyList<SearchProviderDescriptor> Providers => providers.Providers;
-    public string ProviderId => providers.GetEffectiveSelection().Id;
     public string TextSearchEngineId => settings.Snapshot.TextSearchEngineId;
     public bool TextSearchInBuiltInBrowser => settings.Snapshot.TextSearchInBuiltInBrowser;
     public IReadOnlyList<OcrLanguageOption> OcrLanguages => ocrLanguages.AvailableLanguages;
@@ -73,7 +72,13 @@ internal sealed class SettingsWindowModel(
     public Task<UpdateCheckOutcome> CheckForUpdatesAsync() =>
         (checkForUpdates ?? throw new InvalidOperationException("This copy cannot check for updates."))();
 
-    public bool SelectProvider(string providerId) => providers.Save(providerId);
+    public IReadOnlyList<SearchProviderDescriptor> ProvidersShownInMenu => providers.ShownInMenu;
+
+    public bool IsProviderShownInMenu(string providerId) => providers.IsShownInMenu(providerId);
+
+    public bool CanHideProviderFromMenu(string providerId) => ProviderSelectionStore.CanHideFromMenu(providerId);
+
+    public bool ShowProviderInMenu(string providerId, bool shown) => providers.ShowInMenu(providerId, shown);
 
     public bool SelectTextSearchEngine(string engineId) => settings.SetTextSearchEngine(engineId).Success;
 
@@ -140,6 +145,8 @@ internal sealed class SettingsWindowModel(
     {
         var defaults = new AppSettings();
         if (!providers.Save(defaults.SearchProviderId)) return null;
+        if (!settings.SetHiddenSearchProviders(HiddenSearchProviders.Parse(defaults.HiddenSearchProviderIds)).Success)
+            return strings.StorageSaveFailed;
         if (!SelectTextSearchEngine(defaults.TextSearchEngineId)) return strings.StorageSaveFailed;
         if (!SelectTextSearchInBuiltInBrowser(defaults.TextSearchInBuiltInBrowser)) return strings.StorageSaveFailed;
         if (!SelectOcrLanguage(defaults.OcrLanguageTag)) return strings.StorageSaveFailed;

@@ -156,6 +156,50 @@ public sealed class ControlRippleHostTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Active_ripple_fades_and_clips_with_a_row_that_folds_away_under_it()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var time = ManualAnimationClock.Install();
+            var button = new Button { Width = 100, Height = 44, VerticalAlignment = VerticalAlignment.Top };
+            var row = new Border { Child = button, Height = 44, ClipToBounds = true, VerticalAlignment = VerticalAlignment.Top };
+            var root = new AdornerDecorator { Child = row, Opacity = 0.8 };
+            var window = new Window { Width = 300, Height = 200, Content = root };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                using var ripple = ControlRippleHost.AttachForTest(button);
+                button.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent,
+                    Source = button,
+                });
+                window.UpdateLayout();
+                var adorner = Assert.Single(AdornerLayer.GetAdornerLayer(button)!.GetAdorners(button)!);
+                Assert.Equal(1, adorner.Opacity);
+
+                row.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200)));
+                row.BeginAnimation(FrameworkElement.HeightProperty, new DoubleAnimation(44, 0, TimeSpan.FromMilliseconds(200)));
+                time.Advance(96);
+                window.UpdateLayout();
+
+                Assert.InRange(row.Opacity, 0.1, 0.9);
+                Assert.Equal(row.Opacity, adorner.Opacity, 2);
+                Assert.InRange(row.ActualHeight, 1, 43);
+                Assert.Equal(row.ActualHeight, adorner.Clip.Bounds.Height, 0.5);
+
+                time.Advance(200);
+                window.UpdateLayout();
+                Assert.True(adorner.Opacity == 0 || adorner.Clip.Bounds.IsEmpty || adorner.Clip.Bounds.Height == 0);
+            }
+            finally { window.Close(); }
+        });
+
+        Assert.Null(failure);
+    }
+
     private static void PumpUntil(Func<bool> condition)
     {
         if (condition()) return;

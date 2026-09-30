@@ -6,6 +6,11 @@ public static class SearchProviderIds
     public const string YandexImages = "yandex-images";
     public const string TraceMoe = "trace-moe";
     public const string Pinterest = "pinterest";
+
+    public static IReadOnlyList<string> All { get; } = [GoogleLens, YandexImages, TraceMoe, Pinterest];
+
+    // The provider menu keeps Google Lens, so it always has a provider to switch back to.
+    public const string AlwaysInMenu = GoogleLens;
 }
 
 public sealed record SearchProviderDescriptor

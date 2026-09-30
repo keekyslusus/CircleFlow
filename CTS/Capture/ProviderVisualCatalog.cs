@@ -67,12 +67,7 @@ internal static class ProviderVisualCatalog
             VerticalAlignment = VerticalAlignment.Center,
         };
         var mark = CreateMark(descriptor.Id, palette);
-        var label = descriptor.Id switch
-        {
-            SearchProviderIds.GoogleLens => strings.GoogleProviderShortLabel,
-            SearchProviderIds.YandexImages => strings.YandexProviderShortLabel,
-            _ => descriptor.DisplayName,
-        };
+        var label = Label(descriptor, strings);
         row.Children.Add(mark);
         var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         names.Children.Add(new TextBlock
@@ -84,12 +79,7 @@ internal static class ProviderVisualCatalog
             FontSize = includeFullName ? 13 : 13.5,
             FontWeight = FontWeights.Medium,
         });
-        var detail = descriptor.Id switch
-        {
-            SearchProviderIds.TraceMoe => strings.TraceMoeProviderDescription,
-            SearchProviderIds.Pinterest => strings.PinterestProviderDescription,
-            _ => descriptor.DisplayName,
-        };
+        var detail = Detail(descriptor, strings);
         if (includeFullName && !string.Equals(label, detail, StringComparison.Ordinal))
         {
             names.Children.Add(new TextBlock
@@ -106,6 +96,23 @@ internal static class ProviderVisualCatalog
         row.Children.Add(names);
         return row;
     }
+
+    internal static FrameworkElement CreateProviderMark(string providerId, bool lightTheme) =>
+        CreateMark(providerId, PluginPalette.For(lightTheme).Provider);
+
+    internal static string Label(SearchProviderDescriptor descriptor, UiStrings strings) => descriptor.Id switch
+    {
+        SearchProviderIds.GoogleLens => strings.GoogleProviderShortLabel,
+        SearchProviderIds.YandexImages => strings.YandexProviderShortLabel,
+        _ => descriptor.DisplayName,
+    };
+
+    internal static string Detail(SearchProviderDescriptor descriptor, UiStrings strings) => descriptor.Id switch
+    {
+        SearchProviderIds.TraceMoe => strings.TraceMoeProviderDescription,
+        SearchProviderIds.Pinterest => strings.PinterestProviderDescription,
+        _ => descriptor.DisplayName,
+    };
 
     private static FrameworkElement CreateMark(string providerId, ProviderPalette palette, double size = 20) =>
         providerId switch

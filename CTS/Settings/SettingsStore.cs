@@ -89,9 +89,15 @@ internal sealed class SettingsStore(AppPaths paths)
             return fallback;
         }
         var defaults = new AppSettings();
+        var searchProviderId = Text(nameof(AppSettings.SearchProviderId), defaults.SearchProviderId);
+        // A file saved before providers could be hidden keeps its selected provider in the menu.
+        var hiddenByDefault = HiddenSearchProviders.Parse(defaults.HiddenSearchProviderIds)
+            .Where(id => !string.Equals(id, searchProviderId.Trim(), StringComparison.OrdinalIgnoreCase));
         var settings = defaults with
         {
-            SearchProviderId = Text(nameof(AppSettings.SearchProviderId), defaults.SearchProviderId),
+            SearchProviderId = searchProviderId,
+            HiddenSearchProviderIds = Text(nameof(AppSettings.HiddenSearchProviderIds),
+                HiddenSearchProviders.Format(hiddenByDefault)),
             TextSearchEngineId = Text(nameof(AppSettings.TextSearchEngineId), defaults.TextSearchEngineId),
             TextSearchInBuiltInBrowser = Flag(nameof(AppSettings.TextSearchInBuiltInBrowser),
                 defaults.TextSearchInBuiltInBrowser),

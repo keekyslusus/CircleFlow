@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using CircleToSearch.Capture;
+using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.Search;
 using Xunit;
 
@@ -42,6 +44,37 @@ public sealed class ProviderMenuVisualTests
             Assert.Equal(
                 TestUiStrings.English.SelectSearchProvider("Yandex Images"),
                 AutomationProperties.GetName(provider.Button));
+            root.Music.Waveform.Dispose();
+            root.Effects.SceneRipples.Dispose();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void A_chip_with_no_other_provider_has_no_chevron_and_does_not_open_an_empty_menu()
+    {
+        var failure = RunOnSta(() =>
+        {
+            SearchProviderDescriptor[] providers = [new(SearchProviderIds.GoogleLens, "Google Lens")];
+            var root = OverlayVisualFactory.CreateRoot(
+                null,
+                new Size(640, 400),
+                32,
+                lightTheme: false,
+                TestUiStrings.English,
+                providers,
+                SearchProviderIds.GoogleLens);
+            var provider = Assert.IsType<ProviderMenuVisual>(root.Provider);
+            using var controller = new ProviderMenuController(provider, new Grid(), providers,
+                SearchProviderIds.GoogleLens, TestUiStrings.English, lightTheme: false, () => true, _ => { },
+                change => change());
+
+            provider.Button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, provider.Button));
+
+            Assert.False(controller.IsOpen);
+            Assert.Equal(Visibility.Collapsed, provider.Menu.Visibility);
+            Assert.Equal(Visibility.Collapsed, ((FrameworkElement)provider.Chevron.Parent).Visibility);
             root.Music.Waveform.Dispose();
             root.Effects.SceneRipples.Dispose();
         });

@@ -30,6 +30,7 @@ internal sealed class SettingsWindowView
     private readonly SettingsDialogMotion _dialogMotion;
     private readonly SettingsStatusMotion _statusMotion;
     private readonly SettingsMusicHistoryPanel _history;
+    private readonly SettingsProviderMenuPanel _providerMenu;
     private readonly SettingsCollapseMotion _historyRetentionMotion;
     private readonly SettingsCollapseMotion _historyContentMotion;
     private IInputElement? _dialogOwner;
@@ -63,6 +64,8 @@ internal sealed class SettingsWindowView
             Element<FrameworkElement>("DialogMotionSurface"), Element<Border>("DialogScrim"), FinishCloseDialog);
         _history = new SettingsMusicHistoryPanel(Element<FrameworkElement>("HistoryContent"), model, strings,
             createClipboardCopy(toast => ShowStatus(toast.Message)));
+        _providerMenu = new SettingsProviderMenuPanel(Element<FrameworkElement>("ProviderMenuDialog"), model, strings,
+            lightTheme, ShowStatus, ShowProviderMenuSummary);
         _historyRetentionMotion = new SettingsCollapseMotion(Element<FrameworkElement>("HistoryRetentionRow"));
         _historyContentMotion = new SettingsCollapseMotion(Element<FrameworkElement>("HistoryContent"));
         model.MusicHistoryChanged += OnMusicHistoryChanged;
@@ -86,11 +89,6 @@ internal sealed class SettingsWindowView
         Element<TextBlock>("AppVersion").MouseLeftButtonDown += OnVersionClicked;
         if (model.DeveloperSettingsUnlocked) Element<RadioButton>("Nav_developer").Visibility = Visibility.Visible;
 
-        var provider = Element<ComboBox>("Provider");
-        foreach (var descriptor in model.Providers)
-            provider.Items.Add(new ComboBoxItem { Tag = descriptor.Id });
-        provider.SelectionChanged += OnProviderChanged;
-        AddDropdown(provider);
         var textSearch = Element<ComboBox>("TextSearch");
         textSearch.Items.Add(new ComboBoxItem { Tag = TextSearchEngines.MatchImageSearch });
         foreach (var engine in TextSearchEngines.All)
@@ -147,7 +145,7 @@ internal sealed class SettingsWindowView
         AddDropdown(appLanguage);
         ApplyTexts();
         LoadSettings();
-        // The provider can change from the selection toolbar, and the audio output and startup entry from Windows, while this window stays open.
+        // The audio output and startup entry can change from Windows while this window stays open.
         Window.Activated += (_, _) => LoadSettings();
     }
 
@@ -194,7 +192,8 @@ internal sealed class SettingsWindowView
             case "edit": OpenDialog(SettingsDialog.Shortcut); break;
             case "reset": OpenDialog(SettingsDialog.Reset); break;
             case "clear-history": OpenDialog(SettingsDialog.ClearHistory); break;
-            case "cancel": CloseDialog(); break;
+            case "provider-menu": OpenDialog(SettingsDialog.ProviderMenu); break;
+            case "cancel" or "done": CloseDialog(); break;
             case "save" when _pendingShortcut is not null:
                 var saved = _model.ChangeHotkey(_pendingShortcut);
                 LoadSettings();
@@ -272,6 +271,10 @@ internal sealed class SettingsWindowView
         Element<StackPanel>("ShortcutDialog").Visibility = shortcut ? Visibility.Visible : Visibility.Collapsed;
         Element<StackPanel>("ResetDialog").Visibility = Visible(dialog == SettingsDialog.Reset);
         Element<StackPanel>("ClearHistoryDialog").Visibility = Visible(dialog == SettingsDialog.ClearHistory);
+        Element<StackPanel>("ProviderMenuDialog").Visibility = Visible(dialog == SettingsDialog.ProviderMenu);
+        if (dialog == SettingsDialog.ProviderMenu) _providerMenu.Refresh();
+        Element<Button>("CancelDialog").Visibility = Visible(dialog != SettingsDialog.ProviderMenu);
+        Element<Button>("DoneDialog").Visibility = Visible(dialog == SettingsDialog.ProviderMenu);
         Element<Button>("SaveShortcut").Visibility = shortcut ? Visibility.Visible : Visibility.Collapsed;
         Element<Button>("SaveShortcut").IsEnabled = false;
         Element<Button>("ConfirmReset").Visibility = Visible(dialog == SettingsDialog.Reset);
@@ -335,7 +338,7 @@ internal sealed class SettingsWindowView
         _loadingSettings = true;
         try
         {
-            Select(Element<ComboBox>("Provider"), _model.ProviderId);
+            ShowProviderMenuSummary();
             foreach (var item in Items("TextSearch"))
             {
                 var available = TextSearchEngines.IsAvailable((string)item.Tag, _model.TextSearchInBuiltInBrowser,
@@ -390,8 +393,6 @@ internal sealed class SettingsWindowView
     {
         Window.Title = _strings.SettingsWindowTitle;
         Window.DataContext = new PreviewText(_strings);
-        foreach (var (item, descriptor) in Items("Provider").Zip(_model.Providers))
-            item.Content = descriptor.DisplayName;
         foreach (var item in Items("TextSearch"))
             item.Content = _strings.SettingsPreviewText(Equals(item.Tag, TextSearchEngines.MatchImageSearch)
                 ? "match_image_search" : "engine_" + item.Tag);
@@ -402,6 +403,7 @@ internal sealed class SettingsWindowView
             item.Content = _strings.SettingsPreviewText(Equals(item.Tag, MusicHistory.KeepForever)
                 ? "never" : "history_days_" + item.Tag);
         _history.ApplyTexts();
+        _providerMenu.ApplyTexts();
         ApplyOcrTexts();
         Element<TextBlock>("AppVersion").Text = _strings.SettingsVersion(ProjectSupport.Version);
     }
@@ -538,11 +540,8 @@ internal sealed class SettingsWindowView
         ShowStatus(_strings.StorageSaveFailed);
     }
 
-    private void OnProviderChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_loadingSettings || Element<ComboBox>("Provider").SelectedItem is not ComboBoxItem { Tag: string id }) return;
-        if (!_model.SelectProvider(id)) LoadSettings();
-    }
+    private void ShowProviderMenuSummary() => Element<TextBlock>("ProviderMenuSummary").Text =
+        string.Join(" · ", _model.ProvidersShownInMenu.Select(provider => provider.DisplayName));
 
     private void ShowStatus(string text)
     {
@@ -560,7 +559,7 @@ internal sealed class SettingsWindowView
 
     private static Visibility Visible(bool visible) => visible ? Visibility.Visible : Visibility.Collapsed;
 
-    private enum SettingsDialog { Shortcut, Reset, ClearHistory }
+    private enum SettingsDialog { Shortcut, Reset, ClearHistory, ProviderMenu }
 
     private sealed class PreviewText(UiStrings strings)
     {

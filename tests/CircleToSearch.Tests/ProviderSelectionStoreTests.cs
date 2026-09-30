@@ -54,6 +54,58 @@ public sealed class ProviderSelectionStoreTests
         Assert.Equal(TestUiStrings.English.StorageSaveFailed, Assert.Single(harness.Notifier.Errors).Message);
     }
 
+    [Fact]
+    public void Yandex_is_hidden_from_the_menu_by_default_unless_it_is_the_selected_provider()
+    {
+        using var harness = new Harness();
+
+        Assert.False(harness.Store.IsShownInMenu(SearchProviderIds.YandexImages));
+        Assert.Equal([SearchProviderIds.GoogleLens, SearchProviderIds.TraceMoe],
+            harness.Store.MenuProviders(SearchProviderIds.GoogleLens).Select(provider => provider.Id));
+        Assert.Equal([SearchProviderIds.GoogleLens, SearchProviderIds.YandexImages, SearchProviderIds.TraceMoe],
+            harness.Store.MenuProviders(SearchProviderIds.YandexImages).Select(provider => provider.Id));
+    }
+
+    [Fact]
+    public void Providers_are_shown_and_hidden_in_the_menu_but_Google_Lens_always_stays()
+    {
+        using var harness = new Harness();
+
+        Assert.True(harness.Store.ShowInMenu(SearchProviderIds.YandexImages, shown: true));
+        Assert.True(harness.Store.ShowInMenu(SearchProviderIds.TraceMoe, shown: false));
+        Assert.Equal(SearchProviderIds.TraceMoe, harness.Settings.HiddenSearchProviderIds);
+        Assert.Equal([SearchProviderIds.GoogleLens, SearchProviderIds.YandexImages],
+            harness.Store.MenuProviders(SearchProviderIds.GoogleLens).Select(provider => provider.Id));
+
+        Assert.False(ProviderSelectionStore.CanHideFromMenu(SearchProviderIds.GoogleLens));
+        Assert.False(harness.Store.ShowInMenu(SearchProviderIds.GoogleLens, shown: false));
+        Assert.True(harness.Store.IsShownInMenu(SearchProviderIds.GoogleLens));
+        Assert.Equal(2, harness.SaveCalls);
+    }
+
+    [Fact]
+    public void A_failed_save_while_hiding_the_selected_provider_keeps_it_selected_and_visible()
+    {
+        using var harness = new Harness(SearchProviderIds.TraceMoe, saveThrows: true);
+
+        Assert.False(harness.Store.ShowInMenu(SearchProviderIds.TraceMoe, shown: false));
+
+        Assert.Equal(SearchProviderIds.TraceMoe, harness.Settings.SearchProviderId);
+        Assert.True(harness.Store.IsShownInMenu(SearchProviderIds.TraceMoe));
+    }
+
+    [Fact]
+    public void Hiding_the_selected_provider_switches_the_selection_to_Google_Lens()
+    {
+        using var harness = new Harness(SearchProviderIds.TraceMoe);
+
+        Assert.True(harness.Store.ShowInMenu(SearchProviderIds.TraceMoe, shown: false));
+
+        Assert.Equal(SearchProviderIds.GoogleLens, harness.Settings.SearchProviderId);
+        Assert.Equal("yandex-images,trace-moe", harness.Settings.HiddenSearchProviderIds);
+        Assert.Equal([SearchProviderIds.GoogleLens], harness.Store.ShownInMenu.Select(provider => provider.Id));
+    }
+
     private sealed class Harness : IDisposable
     {
         private readonly VisualSearchProviderRouter _router;
@@ -75,6 +127,9 @@ public sealed class ProviderSelectionStoreTests
                         () => { ProviderFactoryCalls++; return new FakeProvider(); }),
                     new VisualSearchProviderRegistration(
                         new SearchProviderDescriptor(SearchProviderIds.YandexImages, "Yandex Images"),
+                        () => { ProviderFactoryCalls++; return new FakeProvider(); }),
+                    new VisualSearchProviderRegistration(
+                        new SearchProviderDescriptor(SearchProviderIds.TraceMoe, "trace.moe"),
                         () => { ProviderFactoryCalls++; return new FakeProvider(); }),
                 ],
                 SearchProviderIds.GoogleLens,

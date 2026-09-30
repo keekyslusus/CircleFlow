@@ -163,6 +163,7 @@ public sealed class ControlRippleHost : IDisposable
         private DispatcherTimer? _fallbackTimer;
         private Action? _completed;
         private Matrix? _placement;
+        private Rect? _ancestorClip;
         private bool _releaseRequested;
         private bool _finished;
 
@@ -214,6 +215,7 @@ public sealed class ControlRippleHost : IDisposable
         {
             _completed = completed;
             _elapsed.Start();
+            FollowAncestors();
             CompositionTarget.Rendering += OnRendering;
             var scale = (ScaleTransform)_ellipse.RenderTransform;
             scale.BeginAnimation(
@@ -285,9 +287,41 @@ public sealed class ControlRippleHost : IDisposable
         // only while arranging itself, so both must be invalidated.
         private void OnRendering(object? sender, EventArgs e)
         {
+            FollowAncestors();
             if (CurrentPlacement() == _placement) return;
             InvalidateArrange();
             (VisualTreeHelper.GetParent(this) as UIElement)?.InvalidateArrange();
+        }
+
+        // The adorner layer is not inside the control's ancestors, so a row that fades or folds away
+        // would leave the ripple drawn on its own. Copy the fade and clip of every ancestor below the layer.
+        private void FollowAncestors()
+        {
+            if (VisualTreeHelper.GetParent(this) is not Visual layer) return;
+            var shared = VisualTreeHelper.GetParent(layer);
+            var opacity = 1.0;
+            Rect? clip = null;
+            try
+            {
+                for (var current = (DependencyObject)_surface;
+                     current is not null && !ReferenceEquals(current, shared);
+                     current = VisualTreeHelper.GetParent(current))
+                {
+                    if (current is not UIElement element) continue;
+                    opacity *= element.Opacity;
+                    if (!element.ClipToBounds || ReferenceEquals(element, _surface)) continue;
+                    var bounds = element.TransformToVisual(_surface).TransformBounds(new Rect(element.RenderSize));
+                    clip = clip is { } previous ? Rect.Intersect(previous, bounds) : bounds;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                return;
+            }
+            Opacity = opacity;
+            if (clip == _ancestorClip) return;
+            _ancestorClip = clip;
+            InvalidateArrange();
         }
 
         private Matrix? CurrentPlacement()
@@ -342,10 +376,15 @@ public sealed class ControlRippleHost : IDisposable
 
         protected override Size ArrangeOverride(Size finalSize)
         {
-            Clip = new RectangleGeometry(
+            Geometry clip = new RectangleGeometry(
                 new Rect(finalSize),
                 Math.Min(_cornerRadius, finalSize.Width / 2),
                 Math.Min(_cornerRadius, finalSize.Height / 2));
+            if (_ancestorClip is { } ancestors)
+                clip = ancestors.IsEmpty
+                    ? Geometry.Empty
+                    : new CombinedGeometry(GeometryCombineMode.Intersect, clip, new RectangleGeometry(ancestors));
+            Clip = clip;
             _layer.Arrange(new Rect(finalSize));
             return finalSize;
         }

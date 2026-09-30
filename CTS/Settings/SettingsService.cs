@@ -64,6 +64,11 @@ public sealed class SettingsService
         lock (_gate) return Commit(_current with { SearchProviderId = providerId });
     }
 
+    public SettingsChangeResult SetHiddenSearchProviders(IEnumerable<string> providerIds)
+    {
+        lock (_gate) return Commit(_current with { HiddenSearchProviderIds = HiddenSearchProviders.Format(providerIds) });
+    }
+
     public SettingsChangeResult SetTextSearchEngine(string engineId)
     {
         lock (_gate) return Commit(_current with { TextSearchEngineId = engineId });
