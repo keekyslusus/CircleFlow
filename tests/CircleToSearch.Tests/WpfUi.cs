@@ -30,6 +30,13 @@ internal static class WpfUi
 
     public static void Pump() => Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
 
+    public static void PumpUntil(Func<bool> condition, string timeoutMessage)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        while (!condition() && DateTime.UtcNow < deadline) Pump();
+        Assert.True(condition(), timeoutMessage);
+    }
+
     public static RenderTargetBitmap Render(FrameworkElement root)
     {
         var bitmap = new RenderTargetBitmap((int)root.ActualWidth, (int)root.ActualHeight, 96, 96, PixelFormats.Pbgra32);

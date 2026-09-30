@@ -36,7 +36,6 @@ public enum OverlayExitFade
 
 public sealed class OverlayWindow : Window
 {
-    private const double ChipEdgeMarginDips = 32;
     private static readonly TimeSpan ForegroundCheckInterval = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan ExitFadeDuration = TimeSpan.FromMilliseconds(160);
     private const string InputLanguageSwitcherWindowClass = "Shell_InputSwitchTopLevelWindow";
@@ -121,17 +120,16 @@ public sealed class OverlayWindow : Window
         var frameSource = CreateFrozenFrame(frame);
         _capturedImage = frameSource;
         var visualSize = new Size(Width, Height);
-        var bottomMargin = ChipBottomMargin(monitor, workArea, scale) + (overscan ? 1 : 0);
-        _visual = availableProviders.Count == 0
-            ? OverlayVisualFactory.CreateRoot(frameSource, visualSize, bottomMargin, strings)
-            : OverlayVisualFactory.CreateRoot(
-                frameSource,
-                visualSize,
-                bottomMargin,
-                SystemTheme.IsLight(),
-                strings,
-                availableProviders,
-                selectedProviderId);
+        var taskbarInsets = TaskbarInsets(monitor, workArea, scale, overscan);
+        _visual = OverlayVisualFactory.CreateRoot(
+            frameSource,
+            visualSize,
+            taskbarInsets.Bottom + FloatingToolbarLayout.BottomActionsMargin,
+            SystemTheme.IsLight(),
+            strings,
+            availableProviders,
+            availableProviders.Count == 0 ? null : selectedProviderId,
+            taskbarInsets);
         if (overscan) _visual.Selection.Screenshot.Margin = new Thickness(1);
         Content = new AdornerDecorator { Child = _visual.Root };
 
@@ -365,6 +363,9 @@ public sealed class OverlayWindow : Window
         else if (_translation.HandleEscape())
         {
         }
+        else if (TryDismissImageSelection())
+        {
+        }
         else if (_textSelection.IsActionMenuOpen)
         {
             _textSelection.Dismiss();
@@ -385,7 +386,6 @@ public sealed class OverlayWindow : Window
             _provider.SetOpen(false);
             return false;
         }
-        if (_textSelection.HasSelection && !actionInteraction) _textSelection.Dismiss();
         return CanAcceptPointerInput() && !actionInteraction;
     }
 
@@ -450,7 +450,7 @@ public sealed class OverlayWindow : Window
     private void OnSelectionRejected()
     {
         if (_interaction.IsFinished || Mode != OverlayInteractionMode.Selecting) return;
-        _actionTray.Restore();
+        if (_imageSelection.Bounds is null) _actionTray.Restore();
         _toast.Show(new ToastNotification(_strings.SelectionTooSmall, ToastTone.Error));
     }
 
@@ -625,18 +625,29 @@ public sealed class OverlayWindow : Window
 
     private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (_imageSelection.Bounds is not null && !IsOverlayChromeInteraction(e.OriginalSource, e.GetPosition(this)))
+        if (_imageSelection.Bounds is not null &&
+            !IsOverlayChromeInteraction(e.OriginalSource, e.GetPosition(this)) &&
+            !TryDismissImageSelection())
         {
-            if (!CanAcceptPointerInput()) { e.Handled = true; return; }
-            _imageSelection.Dismiss();
-            _selection.Cancel();
-            if (Mode == OverlayInteractionMode.TranslationShown)
-                ApplyModeTransition(OverlayInteractionMode.Selecting);
-            _actionTray.Restore();
+            e.Handled = true;
+            return;
         }
         if (!_textSelection.HasSelection) return;
         if (IsWithin(e.OriginalSource as DependencyObject, _visual.TextSelection.Toolbar.Surface)) return;
         _textSelection.Dismiss();
+    }
+
+    private bool TryDismissImageSelection()
+    {
+        if (_imageSelection.Bounds is null || !CanAcceptPointerInput()) return false;
+        _imageSelection.Dismiss();
+        // Esc can arrive while a right press is still pending; the router must drop it along with the capture.
+        _pointer.Cancel();
+        _selection.Cancel();
+        if (Mode == OverlayInteractionMode.TranslationShown)
+            ApplyModeTransition(OverlayInteractionMode.Selecting);
+        _actionTray.Restore();
+        return true;
     }
 
     private void SetConflictingControlsEnabled(bool enabled)
@@ -826,6 +837,13 @@ public sealed class OverlayWindow : Window
         return brush;
     }
 
-    private static double ChipBottomMargin(GdiRectangle monitor, GdiRectangle workArea, double scale) =>
-        (monitor.Bottom - workArea.Bottom) / scale + ChipEdgeMarginDips;
+    private static Thickness TaskbarInsets(GdiRectangle monitor, GdiRectangle workArea, double scale, bool overscan)
+    {
+        var edge = overscan ? 1 : 0;
+        return new Thickness(
+            Math.Max(0, workArea.Left - monitor.Left) / scale + edge,
+            Math.Max(0, workArea.Top - monitor.Top) / scale + edge,
+            Math.Max(0, monitor.Right - workArea.Right) / scale + edge,
+            Math.Max(0, monitor.Bottom - workArea.Bottom) / scale + edge);
+    }
 }

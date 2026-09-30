@@ -96,9 +96,10 @@ public sealed class FloatingToolbarTests
                 Assert.Same(visual.AskPrompt.Root, visual.Toolbar.Surface.Child);
                 Assert.True(visual.AskPrompt.Input.IsKeyboardFocused);
                 var left = Canvas.GetLeft(visual.Toolbar.Surface);
-                Assert.InRange(left, 0, width);
-                Assert.InRange(left + visual.Toolbar.Surface.ActualWidth, 0, width + 0.01);
-                Assert.InRange(visual.Toolbar.Surface.ActualWidth, Math.Min(380, width - 12), width);
+                var available = FloatingToolbarLayout.AvailableWidth(width, default);
+                Assert.InRange(left, 16, width);
+                Assert.InRange(left + visual.Toolbar.Surface.ActualWidth, 0, width - 16 + 0.01);
+                Assert.InRange(visual.Toolbar.Surface.ActualWidth, Math.Min(380, available - 12), available);
                 Assert.Equal(42, visual.Toolbar.Surface.ActualHeight);
                 var send = visual.AskPrompt.SendButton;
                 var bounds = send.TransformToAncestor(visual.Toolbar.Layer).TransformBounds(new Rect(send.RenderSize));

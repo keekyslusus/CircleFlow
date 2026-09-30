@@ -31,12 +31,13 @@ public static class OverlayVisualFactory
         bool lightTheme,
         UiStrings strings,
         IReadOnlyList<SearchProviderDescriptor> providers,
-        string? selectedProviderId)
+        string? selectedProviderId,
+        Thickness toolbarSafeInsets = default)
     {
         var palette = PluginPalette.For(lightTheme);
         var selection = SelectionOverlayVisualFactory.Create(frame, size);
-        var textSelection = TextSelectionVisualFactory.Create(lightTheme, strings);
-        var imageSelection = ImageSelectionVisualFactory.Create(lightTheme, strings);
+        var textSelection = TextSelectionVisualFactory.Create(lightTheme, strings, toolbarSafeInsets);
+        var imageSelection = ImageSelectionVisualFactory.Create(lightTheme, strings, toolbarSafeInsets);
         var translationAction = TextTranslationVisualFactory.CreateTranslationAction(lightTheme, strings);
         var translationOverlay = TextTranslationVisualFactory.CreateTranslationOverlay();
         var activityHost = new Grid

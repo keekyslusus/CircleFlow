@@ -1,12 +1,13 @@
+using System.Windows;
 using CircleToSearch.Ui;
 
 namespace CircleToSearch.Capture;
 
 internal static class ImageSelectionVisualFactory
 {
-    internal static ImageSelectionVisual Create(bool lightTheme, UiStrings strings)
+    internal static ImageSelectionVisual Create(bool lightTheme, UiStrings strings, Thickness toolbarSafeInsets = default)
     {
-        var toolbar = new FloatingToolbar(PluginPalette.For(lightTheme).FloatingToolbar);
+        var toolbar = new FloatingToolbar(PluginPalette.For(lightTheme).FloatingToolbar, safeInsets: toolbarSafeInsets);
         var search = toolbar.AddAction(strings.TextSearch);
         toolbar.AddDivider();
         var ask = toolbar.AddAction(strings.Ask, PluginIcons.SparkleOutlined);

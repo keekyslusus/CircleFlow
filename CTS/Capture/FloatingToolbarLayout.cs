@@ -4,13 +4,33 @@ namespace CircleToSearch.Capture;
 
 public static class FloatingToolbarLayout
 {
-    public static Point Place(Rect selection, Size toolbar, Size viewport, double gap = 8)
+    private const double EdgeMargin = 16;
+    // Shared with the bottom chips: a toolbar inside a full-screen selection sits on their row, where actions
+    // usually appear, instead of blending into the taskbar.
+    internal const double BottomActionsMargin = 32;
+
+    public static double AvailableWidth(double viewportWidth, Thickness safeInsets) =>
+        Math.Max(0, viewportWidth - safeInsets.Left - safeInsets.Right - 2 * EdgeMargin);
+
+    public static Point Place(Rect selection, Size toolbar, Size viewport, Thickness safeInsets = default, double gap = 8)
     {
+        var safeTop = safeInsets.Top;
+        var safeBottom = viewport.Height - safeInsets.Bottom;
         var x = selection.Left + (selection.Width - toolbar.Width) / 2;
-        var y = selection.Top - toolbar.Height - gap;
-        if (y < 0) y = selection.Bottom + gap;
-        x = Math.Clamp(x, 0, Math.Max(0, viewport.Width - toolbar.Width));
-        y = Math.Clamp(y, 0, Math.Max(0, viewport.Height - toolbar.Height));
-        return new Point(x, y);
+        var above = selection.Top - gap - toolbar.Height;
+        var below = selection.Bottom + gap;
+        var y = above >= safeTop + EdgeMargin ? above
+            : below + toolbar.Height <= safeBottom - EdgeMargin ? below
+            : Math.Min(selection.Bottom, safeBottom) - BottomActionsMargin - toolbar.Height;
+        return new Point(
+            Clamp(x, toolbar.Width, safeInsets.Left, viewport.Width - safeInsets.Right, viewport.Width),
+            Clamp(y, toolbar.Height, safeTop, safeBottom, viewport.Height));
+    }
+
+    private static double Clamp(double value, double size, double start, double end, double extent)
+    {
+        var min = start + EdgeMargin;
+        var max = end - EdgeMargin - size;
+        return max < min ? Math.Max(0, (extent - size) / 2) : Math.Clamp(value, min, max);
     }
 }

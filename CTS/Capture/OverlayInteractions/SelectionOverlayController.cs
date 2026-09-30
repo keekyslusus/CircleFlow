@@ -105,6 +105,14 @@ internal sealed class SelectionOverlayController : IDisposable
         CompleteGesture();
     }
 
+    // A right click without a drag never starts the lasso, so it only reports the selection as too small
+    // and leaves an open selection or a shown translation alone.
+    internal void RejectClick()
+    {
+        if (_disposed || !_canAcceptInput()) return;
+        _selectionRejected();
+    }
+
     internal void Cancel()
     {
         StopInput();

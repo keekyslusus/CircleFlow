@@ -9,16 +9,21 @@ using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.Search;
+using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
 using Xunit;
 using GdiBitmap = System.Drawing.Bitmap;
 using GdiRectangle = System.Drawing.Rectangle;
+using GdiSize = System.Drawing.Size;
 
 namespace CircleToSearch.Tests;
 
 [Trait("Category", "Slow")]
 public sealed class ImageSelectionTests
 {
+    // Far from the default selection and its toolbar.
+    private static readonly Point EmptyPoint = new(600, 380);
+
     [Fact]
     public void Renders_image_action_previews()
     {
@@ -69,13 +74,15 @@ public sealed class ImageSelectionTests
     }
 
     [Fact]
-    public void Right_click_does_nothing_and_drag_keeps_frame_with_five_actions() => Run(() =>
+    public void Right_click_is_rejected_as_too_small_and_drag_keeps_frame_with_five_actions() => Run(() =>
     {
         using var h = new Harness();
         h.RightClick();
         Assert.Equal(OverlayInteractionMode.Selecting, h.Window.Mode);
         Assert.Empty(h.Commands);
         Assert.False(h.Actions.Toolbar.IsOpen);
+        Assert.False(h.Window.VisualState.Selection.InputSurface.IsMouseCaptured);
+        Assert.Equal(TestUiStrings.English.SelectionTooSmall, h.ToastText());
         h.Select();
         Assert.Empty(h.Commands);
         Assert.True(h.Actions.Toolbar.IsOpen);
@@ -84,9 +91,73 @@ public sealed class ImageSelectionTests
             new[] { h.Actions.SearchButton, h.Actions.CopyButton, h.Actions.SaveButton, h.Actions.TranslateButton,
                     h.Actions.AskButton }
                 .Select(AutomationProperties.GetName));
-        h.RightClick();
+        h.RightClick(h.ToolbarCenter());
         Assert.True(h.Actions.Toolbar.IsOpen);
         Assert.Empty(h.Commands);
+    });
+
+    [Fact]
+    public void Right_click_outside_an_open_selection_only_warns_and_keeps_it() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        Click(h.Actions.AskButton);
+
+        h.RightClick(EmptyPoint);
+
+        Assert.True(h.Actions.Toolbar.IsOpen);
+        Assert.True(h.Actions.Toolbar.IsPromptOpen);
+        Assert.False(h.Window.VisualState.Actions.Tray.IsHitTestVisible);
+        Assert.Equal(TestUiStrings.English.SelectionTooSmall, h.ToastText());
+        Assert.Equal([typeof(AskDraftStarted)], h.Commands.Select(command => command.GetType()));
+    });
+
+    [Fact]
+    public void Right_click_outside_a_text_selection_only_warns_and_keeps_it() => Run(() =>
+    {
+        var word = new GdiRectangle(300, 200, 60, 20);
+        using var h = new Harness(ocr: new ImmediateRecognizer(new OcrDocument("en", new GdiSize(640, 400),
+            [new OcrLine(0, 0, word, [new OcrWord(0, 0, 0, "hello", word)])])));
+        WpfUi.PumpUntil(() => h.HoverShowsText(new Point(310, 210)), "OCR delivery timed out.");
+        h.LeftDrag(new Point(310, 210), new Point(350, 210));
+        Assert.True(h.Window.VisualState.TextSelection.Toolbar.IsOpen);
+
+        h.RightClick(EmptyPoint);
+
+        Assert.True(h.Window.VisualState.TextSelection.Toolbar.IsOpen);
+        Assert.Equal(TestUiStrings.English.SelectionTooSmall, h.ToastText());
+    });
+
+    [Fact]
+    public void Right_click_keeps_a_shown_translation() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Translate();
+        var mode = h.Window.Mode;
+        var translated = h.Window.VisualState.Selection.Screenshot.Source;
+
+        h.RightClick(EmptyPoint);
+
+        Assert.Equal(mode, h.Window.Mode);
+        Assert.Same(translated, h.Window.VisualState.Selection.Screenshot.Source);
+        Assert.True(h.Actions.Toolbar.IsOpen);
+    });
+
+    [Fact]
+    public void Escape_during_a_pending_right_press_releases_the_pointer() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.RightDown(EmptyPoint);
+        Assert.True(h.Window.VisualState.Selection.InputSurface.IsMouseCaptured);
+
+        h.Escape();
+
+        Assert.False(h.Actions.Toolbar.IsOpen);
+        Assert.False(h.Window.VisualState.Selection.InputSurface.IsMouseCaptured);
+        h.LeftDrag(new Point(300, 200), new Point(420, 300));
+        Assert.Single(h.Commands.OfType<VisualSelection>());
     });
 
     [Fact]
@@ -154,6 +225,26 @@ public sealed class ImageSelectionTests
         Assert.Equal(OverlayInteractionMode.Selecting, h.Window.Mode);
         Assert.Equal([typeof(AskDraftStarted), typeof(AskImageAttached), typeof(AskDraftCanceled)],
             h.Commands.Select(command => command.GetType()));
+        h.Escape();
+        Assert.False(h.Actions.Toolbar.IsOpen);
+        h.Escape();
+        Assert.Single(h.Commands.OfType<CancelSession>());
+    });
+
+    [Fact]
+    public void Escape_dismisses_image_selection_and_restores_action_tray() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        Assert.False(h.Window.VisualState.Actions.Tray.IsHitTestVisible);
+
+        h.Escape();
+
+        Assert.False(h.Actions.Toolbar.IsOpen);
+        Assert.True(h.Window.VisualState.Selection.SelectionFrame.Data.IsEmpty());
+        Assert.True(h.Window.VisualState.Actions.Tray.IsHitTestVisible);
+        Assert.Equal(OverlayInteractionMode.Selecting, h.Window.Mode);
+        Assert.Empty(h.Commands);
         h.Escape();
         Assert.Single(h.Commands.OfType<CancelSession>());
     });
@@ -446,6 +537,13 @@ public sealed class ImageSelectionTests
         Assert.Null(error);
     }
 
+    private sealed class ImmediateRecognizer(OcrDocument document) : IOcrRecognizer
+    {
+        public Task<OcrRecognitionOutcome> RecognizeAsync(
+            BitmapSource source, string? requestedLanguageTag, CancellationToken cancellationToken) =>
+            Task.FromResult(OcrRecognitionOutcome.Success(document));
+    }
+
     private sealed class Harness : IDisposable
     {
         private readonly GdiBitmap _frame = new(640, 400);
@@ -459,7 +557,7 @@ public sealed class ImageSelectionTests
 
         internal Harness(string provider = SearchProviderIds.GoogleLens, bool copyFails = false,
             double scale = 1, bool overscan = false, bool consent = true,
-            SelectionToolbarAction hiddenActions = SelectionToolbarAction.None)
+            SelectionToolbarAction hiddenActions = SelectionToolbarAction.None, IOcrRecognizer? ocr = null)
         {
             Consent = consent;
             using (var graphics = System.Drawing.Graphics.FromImage(_frame)) graphics.Clear(System.Drawing.Color.Black);
@@ -469,7 +567,7 @@ public sealed class ImageSelectionTests
                     [new(provider, provider)], provider, new SearchSessionOptions(HiddenToolbarActions: hiddenActions)),
                 Commands.Add,
                 TestOverlayControllers.CreateFactory(animationsEnabled: () => false, pointerPosition: _ => _point,
-                    translationConsentAccepted: () => Consent,
+                    translationConsentAccepted: () => Consent, ocrRecognizer: ocr,
                     setImageClipboard: image =>
                     {
                         if (copyFails) throw new InvalidOperationException("clipboard busy");
@@ -490,11 +588,49 @@ public sealed class ImageSelectionTests
             Window.UpdateLayout();
         }
 
-        internal void RightClick()
+        internal void RightClick(Point? point = null)
         {
-            _point = new Point(10, 10);
-            Raise(UIElement.MouseRightButtonDownEvent);
+            RightDown(point ?? EmptyPoint);
             Raise(UIElement.MouseRightButtonUpEvent);
+        }
+
+        internal void RightDown(Point point)
+        {
+            _point = point;
+            Raise(UIElement.MouseRightButtonDownEvent);
+        }
+
+        internal void LeftDrag(Point start, Point end)
+        {
+            var input = Window.VisualState.Selection.InputSurface;
+            _point = start;
+            Raise(UIElement.MouseLeftButtonDownEvent, MouseButton.Left);
+            _point = end;
+            input.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = UIElement.MouseMoveEvent, Source = input });
+            Raise(UIElement.MouseLeftButtonUpEvent, MouseButton.Left);
+        }
+
+        // Hovering has no side effects, so it can be retried until the OCR document arrives.
+        internal bool HoverShowsText(Point point)
+        {
+            var input = Window.VisualState.Selection.InputSurface;
+            _point = point;
+            input.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = UIElement.MouseMoveEvent, Source = input });
+            return Window.Cursor == Cursors.IBeam;
+        }
+
+        internal Point ToolbarCenter()
+        {
+            var surface = Actions.Toolbar.Surface;
+            return new Point(
+                Canvas.GetLeft(surface) + surface.ActualWidth / 2,
+                Canvas.GetTop(surface) + surface.ActualHeight / 2);
+        }
+
+        internal string ToastText()
+        {
+            var toastSlot = Assert.IsType<Grid>(Window.VisualState.Bottom.Stack.Children[0]);
+            return Assert.IsType<TextBlock>(Assert.IsType<Border>(Assert.Single(toastSlot.Children)).Child).Text;
         }
 
         internal void Translate()
@@ -511,10 +647,10 @@ public sealed class ImageSelectionTests
             target.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(Window)!, 0, key)
             { RoutedEvent = routedEvent });
 
-        private void Raise(RoutedEvent routedEvent)
+        private void Raise(RoutedEvent routedEvent, MouseButton button = MouseButton.Right)
         {
             var input = Window.VisualState.Selection.InputSurface;
-            input.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Right)
+            input.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button)
             { RoutedEvent = routedEvent, Source = input });
         }
 

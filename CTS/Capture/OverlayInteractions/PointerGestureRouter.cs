@@ -144,6 +144,7 @@ internal sealed class PointerGestureRouter : IDisposable
         e.Handled = true;
         if (_disposed || !IsActionSelection) return;
         if (ActiveGesture == ActivePointerGesture.Lasso) _lasso.Complete(_pointerPosition(e));
+        else _lasso.RejectClick();
         ActiveGesture = ActivePointerGesture.None;
         IsActionSelection = false;
         if (ReferenceEquals(Mouse.Captured, _visual.InputSurface)) Mouse.Capture(null);
