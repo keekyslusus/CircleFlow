@@ -144,6 +144,12 @@ internal static class NativeMethods
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     public static extern IntPtr GetModuleHandleW(string? moduleName);
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool GetNamedPipeServerProcessId(SafeHandle pipe, out uint processId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool AllowSetForegroundWindow(uint processId);
+
     [DllImport("user32.dll")]
     public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
 

@@ -4,6 +4,7 @@ using System.IO.Pipes;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
+using CircleToSearch.Interop;
 
 namespace CircleToSearch.Shell;
 
@@ -56,6 +57,10 @@ internal sealed class SingleInstanceCoordinator : IDisposable
         try
         {
             await client.ConnectAsync(deadline.Token).ConfigureAwait(false);
+            // The launcher (e.g. Explorer) gave this process the foreground right; without passing it on,
+            // the owner's overlay opens behind the foreground lock and keyboard input such as Esc misses it.
+            if (NativeMethods.GetNamedPipeServerProcessId(client.SafePipeHandle, out var owner))
+                NativeMethods.AllowSetForegroundWindow(owner);
             sent = true;
             await client.WriteAsync("Open"u8.ToArray(), deadline.Token).ConfigureAwait(false);
             var acknowledgement = new byte[1];
