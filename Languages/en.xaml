@@ -123,7 +123,7 @@
     <system:String x:Key="plugin_circletosearch_text_search_too_long">The selected text is too long to search in a browser.</system:String>
     <system:String x:Key="plugin_circletosearch_text_search_open_failed">The text search could not be opened in the default browser.</system:String>
     <system:String x:Key="plugin_circletosearch_translate">Translate</system:String>
-    <system:String x:Key="plugin_circletosearch_qr_open">Open {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_link_open">Open {0}</system:String>
     <system:String x:Key="plugin_circletosearch_qr_copy_text">Copy text</system:String>
     <system:String x:Key="plugin_circletosearch_qr_copy_password">Copy password</system:String>
     <system:String x:Key="plugin_circletosearch_qr_wifi_network">Wi-Fi network {0}</system:String>

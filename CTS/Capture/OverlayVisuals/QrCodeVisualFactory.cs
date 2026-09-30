@@ -11,8 +11,6 @@ internal sealed record QrCodeChip(
 
 internal static class QrCodeVisualFactory
 {
-    private const int LabelTextElementLimit = 40;
-
     internal static QrCodeVisual Create(bool lightTheme, Color accent, Thickness toolbarSafeInsets)
     {
         var viewfinders = new Canvas { IsHitTestVisible = false };
@@ -25,13 +23,11 @@ internal static class QrCodeVisualFactory
     {
         var palette = PluginPalette.For(visual.LightTheme);
         var toolbar = new FloatingToolbar(palette.FloatingToolbar, safeInsets: visual.ToolbarSafeInsets, preferBelow: true);
-        var label = link.Kind == ScreenLinkKind.Web
-            ? ShortenHost(link.Label)
-            : ClipboardCopyService.Preview(link.Label, LabelTextElementLimit);
+        var label = LinkActionContent.Label(link);
         var (primary, hasCopy) = link.Kind switch
         {
-            ScreenLinkKind.Web => (Action(toolbar, label, PluginIcons.LinkOutlined, strings.QrOpen(link.Label)), true),
-            ScreenLinkKind.Email => (Action(toolbar, label, PluginIcons.MailOutlined, strings.QrOpen(link.Label)), true),
+            ScreenLinkKind.Web or ScreenLinkKind.Email =>
+                (Action(toolbar, label, LinkActionContent.Icon(link), strings.LinkOpen(link.Label)), true),
             ScreenLinkKind.Wifi => (Action(toolbar, strings.QrCopyPassword, PluginIcons.WifiOutlined,
                 strings.QrWifiNetwork(link.Label)), false),
             _ => (Action(toolbar, strings.QrCopyText, PluginIcons.CopyOutlined, label), false),
@@ -42,16 +38,6 @@ internal static class QrCodeVisualFactory
         visual.Viewfinders.Children.Add(viewfinder.Element);
         visual.Layer.Children.Add(toolbar.Layer);
         return new QrCodeChip(link, viewfinder, toolbar, primary, copy);
-    }
-
-    // The registrable domain sits at the right end of a host, so a long host keeps that end; cutting from the
-    // right would let login.microsoft.com.evil.example pass for Microsoft.
-    internal static string ShortenHost(string host)
-    {
-        if (host.Length <= LabelTextElementLimit) return host;
-        var tail = host[^LabelTextElementLimit..];
-        var boundary = tail.IndexOf('.');
-        return "..." + (boundary >= 0 && boundary < tail.Length - 1 ? tail[(boundary + 1)..] : tail);
     }
 
     private static Button Action(FloatingToolbar toolbar, string label, Geometry icon, string toolTip)

@@ -200,6 +200,9 @@ public sealed class FloatingToolbar
         if (IsOpen) UpdatePlacement();
     }
 
+    internal void SetActionContent(Button button, string label, Geometry icon) =>
+        SetActionContent(button, label, OutlinedIcon(icon));
+
     internal void SetActionContent(Button button, string label, FrameworkElement? icon = null)
     {
         if (!_actions.Children.Contains(button))

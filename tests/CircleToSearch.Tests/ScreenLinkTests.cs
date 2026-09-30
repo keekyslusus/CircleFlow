@@ -60,6 +60,108 @@ public sealed class ScreenLinkTests
         Assert.False(ScreenLink.CanOpen(new Uri(uri)));
     }
 
+    [Theory]
+    [InlineData("https://github.com/keekyslusus", "github.com", "https://github.com/keekyslusus")]
+    [InlineData("github.com", "github.com", "https://github.com/")]
+    [InlineData("Example.com/path?q=1", "example.com", "https://example.com/path?q=1")]
+    [InlineData("www.example.org", "example.org", "https://www.example.org/")]
+    [InlineData("t.me/durov", "t.me", "https://t.me/durov")]
+    [InlineData("docs.rs/serde", "docs.rs", "https://docs.rs/serde")]
+    [InlineData("amazon.in/deals", "amazon.in", "https://amazon.in/deals")]
+    [InlineData("notion.so/templates", "notion.so", "https://notion.so/templates")]
+    [InlineData("example. com", "example.com", "https://example.com/")]
+    [InlineData("https: //example.com / docs", "example.com", "https://example.com/docs")]
+    [InlineData("https://example.com/very/long/\r\npath", "example.com", "https://example.com/very/long/path")]
+    [InlineData("(example.com).", "example.com", "https://example.com/")]
+    [InlineData("«ya.ru»,", "ya.ru", "https://ya.ru/")]
+    [InlineData("https://en.wikipedia.org/wiki/Foo_(bar).", "en.wikipedia.org", "https://en.wikipedia.org/wiki/Foo_(bar)")]
+    public void Recognized_link_opens_its_host(string text, string host, string target)
+    {
+        var link = ScreenLink.FromRecognizedText(text);
+
+        Assert.NotNull(link);
+        Assert.Equal(ScreenLinkKind.Web, link.Kind);
+        Assert.Equal(host, link.Label);
+        Assert.Equal(target, link.Target!.AbsoluteUri);
+        Assert.True(ScreenLink.CanOpen(link.Target));
+    }
+
+    [Theory]
+    [InlineData("hello@example.com", "hello@example.com")]
+    [InlineData("john . doe @ example . com", "john.doe@example.com")]
+    [InlineData("<support@example.co.uk>.", "support@example.co.uk")]
+    [InlineData("mailto:hello@example.com", "hello@example.com")]
+    public void Recognized_address_opens_as_mail(string text, string address)
+    {
+        var link = ScreenLink.FromRecognizedText(text);
+
+        Assert.NotNull(link);
+        Assert.Equal(ScreenLinkKind.Email, link.Kind);
+        Assert.Equal(address, link.Label);
+        Assert.Equal(Uri.UriSchemeMailto, link.Target!.Scheme);
+        Assert.Equal("mailto:" + address, link.Target.OriginalString);
+    }
+
+    [Fact]
+    public void Recognized_non_ascii_host_is_shown_in_punycode()
+    {
+        var link = ScreenLink.FromRecognizedText("пример.рф");
+
+        Assert.Equal("xn--e1afmkfd.xn--p1ai", link?.Label);
+    }
+
+    [Theory]
+    [InlineData("examp1e.com", "examp1e.com")]
+    [InlineData("rnicrosoft.com", "rnicrosoft.com")]
+    [InlineData("g00gle.com", "g00gle.com")]
+    public void Recognized_look_alike_characters_are_shown_as_read(string text, string host)
+    {
+        Assert.Equal(host, ScreenLink.FromRecognizedText(text)?.Label);
+    }
+
+    [Theory]
+    [InlineData("report.pdf")]
+    [InlineData("main.cs")]
+    [InlineData("Program.cs")]
+    [InlineData("README.md")]
+    [InlineData("script.py")]
+    [InlineData("main.rs")]
+    [InlineData("install.sh")]
+    [InlineData("libc.so")]
+    [InlineData("Makefile.in")]
+    [InlineData("archive.zip")]
+    [InlineData("video.mov")]
+    [InlineData("index.html")]
+    [InlineData("app.js")]
+    [InlineData("1.2.3")]
+    [InlineData("v2.0")]
+    [InlineData("3.14")]
+    [InlineData("10.0.19041")]
+    [InlineData("192.168.1.1")]
+    [InlineData("e.g.")]
+    [InlineData("i.e.")]
+    [InlineData("U.S.")]
+    [InlineData("etc.")]
+    [InlineData("Hello. World")]
+    [InlineData("Done. Co")]
+    [InlineData("Hello world. This is fine.")]
+    [InlineData("Visit example.com")]
+    [InlineData("example.com and more")]
+    [InlineData("Contact: hello@example.com")]
+    [InlineData("admin@server")]
+    [InlineData("localhost:3000")]
+    [InlineData(@"C:\Windows\notepad.exe")]
+    [InlineData("tg://login?token=abc")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("WIFI:T:WPA;S:Home;P:secret;;")]
+    [InlineData("just some words")]
+    [InlineData("...")]
+    [InlineData("   ")]
+    public void Recognized_text_that_is_not_one_link_is_not_opened(string text)
+    {
+        Assert.Null(ScreenLink.FromRecognizedText(text));
+    }
+
     [Fact]
     public void Mailto_opens_and_copies_the_address()
     {
@@ -112,7 +214,7 @@ public sealed class ScreenLinkTests
     [InlineData("a1234567890123456789012345678901234567890123456789.example", "...example")]
     public void Long_host_keeps_its_registrable_end(string host, string label)
     {
-        Assert.Equal(label, CircleToSearch.Capture.QrCodeVisualFactory.ShortenHost(host));
+        Assert.Equal(label, CircleToSearch.Capture.LinkActionContent.ShortenHost(host));
     }
 
     [Fact]

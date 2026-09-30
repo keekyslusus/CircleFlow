@@ -159,7 +159,7 @@ public sealed class UiStrings
     public string TextSearchTooLong => Get("plugin_circletosearch_text_search_too_long");
     public string TextSearchOpenFailed => Get("plugin_circletosearch_text_search_open_failed");
     public string Translate => Get("plugin_circletosearch_translate");
-    public string QrOpen(string target) => Get("plugin_circletosearch_qr_open", target);
+    public string LinkOpen(string target) => Get("plugin_circletosearch_link_open", target);
     public string QrCopyText => Get("plugin_circletosearch_qr_copy_text");
     public string QrCopyPassword => Get("plugin_circletosearch_qr_copy_password");
     public string QrWifiNetwork(string network) => Get("plugin_circletosearch_qr_wifi_network", network);

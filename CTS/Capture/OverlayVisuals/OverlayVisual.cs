@@ -69,7 +69,8 @@ public sealed record TextSelectionVisual(
     Canvas HighlightLayer,
     FloatingToolbar Toolbar,
     Button CopyButton,
-    Button SearchButton);
+    Button SearchButton,
+    Button OpenLinkButton);
 
 public sealed record TranslationActionVisual(
     Button Button,

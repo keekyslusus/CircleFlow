@@ -10,11 +10,15 @@ internal static class TextSelectionVisualFactory
     {
         var toolbar = new FloatingToolbar(PluginPalette.For(lightTheme).FloatingToolbar, safeInsets: toolbarSafeInsets);
         var search = toolbar.AddAction(strings.TextSearch);
+        // Shown only while the selection is a link; its label is the host it would open.
+        var openLink = toolbar.AddAction(string.Empty, PluginIcons.LinkOutlined);
+        openLink.Visibility = Visibility.Collapsed;
         var copy = toolbar.AddAction(strings.TextCopy, PluginIcons.CopyOutlined);
         return new TextSelectionVisual(
             new Canvas { IsHitTestVisible = false },
             toolbar,
             copy,
-            search);
+            search,
+            openLink);
     }
 }
