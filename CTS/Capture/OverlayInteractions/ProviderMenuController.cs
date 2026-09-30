@@ -71,7 +71,8 @@ internal sealed class ProviderMenuController : IDisposable
 
     private void OnProviderButtonClick(object sender, RoutedEventArgs e)
     {
-        if (_disposed || !_canInteract()) return;
+        // Every other provider can be hidden from the menu, leaving nothing to switch to.
+        if (_disposed || !_canInteract() || _menuItems.Count == 0) return;
         SetOpen(!IsOpen);
         e.Handled = true;
     }

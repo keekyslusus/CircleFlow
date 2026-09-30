@@ -120,6 +120,21 @@
             <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource SettingsText}"/></Trigger>
         </Style.Triggers>
     </Style>
+    <Style x:Key="TextButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Foreground" Value="{DynamicResource SettingsMuted}"/>
+        <Setter Property="Background" Value="{DynamicResource SettingsTransparent}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource SettingsText}"/></Trigger>
+        </Style.Triggers>
+    </Style>
+    <!-- The padding gives up the border's width, so it lines up with a TextButton of the same text. -->
+    <Style x:Key="OutlinedTextButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Padding" Value="9,5,9,4"/>
+        <Setter Property="MinHeight" Value="0"/>
+    </Style>
     <Style x:Key="Feature" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="{DynamicResource SettingsCard}"/>
         <Setter Property="BorderThickness" Value="1"/>

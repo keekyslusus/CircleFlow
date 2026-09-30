@@ -22,7 +22,7 @@ public sealed class SettingsStoreTests
         Assert.False(File.Exists(paths.SettingsBackupFilePath));
         var updated = new AppSettings
         {
-            SearchProviderId = SearchProviderIds.TraceMoe, TextSearchEngineId = "qwant", TextSearchInBuiltInBrowser = true, HotkeyGesture = "Win+Ctrl+Shift+F7",
+            SearchProviderId = SearchProviderIds.TraceMoe, HiddenSearchProviderIds = "trace-moe,pinterest", TextSearchEngineId = "qwant", TextSearchInBuiltInBrowser = true, HotkeyGesture = "Win+Ctrl+Shift+F7",
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
             OcrLanguageTag = "ru-RU", AppLanguageTag = "ru", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
             HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save, BrowserDataCleanupDays = 0, OnboardingCompleted = true,
@@ -138,6 +138,42 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
+    public void Hidden_search_providers_default_to_Yandex_and_are_normalized_on_load()
+    {
+        var (paths, store) = Create();
+        Assert.Equal(SearchProviderIds.YandexImages, store.Load().Settings.HiddenSearchProviderIds);
+
+        File.WriteAllText(paths.SettingsFilePath, """{"HiddenSearchProviderIds":" Pinterest, YANDEX-IMAGES ,"}""");
+        var cased = store.Load();
+        Assert.Empty(cased.ResetFields);
+        Assert.Equal("yandex-images,pinterest", cased.Settings.HiddenSearchProviderIds);
+
+        File.WriteAllText(paths.SettingsFilePath, """{"HiddenSearchProviderIds":"google-lens,missing,trace-moe"}""");
+        var invalid = store.Load();
+        Assert.Equal([nameof(AppSettings.HiddenSearchProviderIds)], invalid.ResetFields);
+        Assert.Equal(SearchProviderIds.TraceMoe, invalid.Settings.HiddenSearchProviderIds);
+
+        File.WriteAllText(paths.SettingsFilePath, """{"HiddenSearchProviderIds":""}""");
+        Assert.Equal(string.Empty, store.Load().Settings.HiddenSearchProviderIds);
+    }
+
+    [Theory]
+    [InlineData("google-lens", "yandex-images")]
+    [InlineData("yandex-images", "")]
+    [InlineData(" Yandex-Images ", "")]
+    public void A_file_saved_before_providers_could_be_hidden_keeps_its_selected_provider_in_the_menu(
+        string providerId, string hidden)
+    {
+        var (paths, store) = Create();
+        File.WriteAllText(paths.SettingsFilePath, $$"""{"SearchProviderId":"{{providerId}}"}""");
+
+        var result = store.Load();
+
+        Assert.Empty(result.ResetFields);
+        Assert.Equal(hidden, result.Settings.HiddenSearchProviderIds);
+    }
+
+    [Fact]
     public void Invalid_JSON_field_types_reset_only_the_affected_values()
     {
         var (paths, store) = Create();
@@ -148,7 +184,10 @@ public sealed class SettingsStoreTests
         var result = store.Load();
         Assert.False(result.Recovered);
         Assert.Equal(6, result.ResetFields.Count);
-        Assert.Equal(new AppSettings { SearchProviderId = SearchProviderIds.YandexImages, OnboardingCompleted = true }, result.Settings);
+        Assert.Equal(new AppSettings
+        {
+            SearchProviderId = SearchProviderIds.YandexImages, HiddenSearchProviderIds = string.Empty, OnboardingCompleted = true,
+        }, result.Settings);
         Assert.True(result.Settings.IgnoreHotkeyInFullscreen);
         Assert.Equal(SelectionToolbarAction.None, result.Settings.HiddenToolbarActions);
         Assert.Equal(result.Settings, Read(paths.SettingsFilePath));

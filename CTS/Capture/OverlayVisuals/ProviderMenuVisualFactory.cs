@@ -46,6 +46,7 @@ internal static class ProviderMenuVisualFactory
             Height = 14,
             Margin = new Thickness(7, 0, 0, 0),
             IsHitTestVisible = false,
+            Visibility = providers.Count > 1 ? Visibility.Visible : Visibility.Collapsed,
         };
         chevronSlot.Children.Add(chevron);
         var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };

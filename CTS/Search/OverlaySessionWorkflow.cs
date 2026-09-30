@@ -32,7 +32,7 @@ internal sealed class OverlaySessionWorkflow(
         var launch = new OverlayLaunchOptions(
             new OverlayOptions(options.PaddingPx, options.LassoMinDiagonalPx),
             strings,
-            providerSelection.Providers,
+            providerSelection.MenuProviders(effective.Id),
             effective.Id,
             options);
         var overlay = await overlaySessionFactory.OpenAsync(launch, cancellationToken).ConfigureAwait(false);

@@ -84,6 +84,44 @@
                     </Border>
                 </StackPanel>
             </DataTemplate>
+            <DataTemplate x:Key="ProviderMenuRow">
+                <Border x:Name="Row" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="16,8,12,8" MinHeight="53">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ContentControl x:Name="Mark" Content="{Binding Mark}" Focusable="False" IsTabStop="False" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock x:Name="Label" Text="{Binding Label}" Style="{StaticResource RowTitle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding Detail}" Style="{StaticResource RowSubtitle}" Margin="0,1,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <Border x:Name="AlwaysShown" Grid.Column="3" Visibility="Collapsed" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="5" Padding="8,2" Margin="12,0,4,0" VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource ProviderAlwaysShownLabel}" Style="{StaticResource Muted}"/>
+                        </Border>
+                        <Button x:Name="Hide" Grid.Column="3" Tag="provider-hide" Style="{StaticResource TextButton}" Margin="12,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="{Binding HideLabel}">
+                            <TextBlock Text="{DynamicResource ProviderHideLabel}"/>
+                        </Button>
+                        <Button x:Name="Show" Grid.Column="3" Tag="provider-show" Style="{StaticResource OutlinedTextButton}" Visibility="Collapsed" Margin="12,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="{Binding ShowLabel}">
+                            <TextBlock Text="{DynamicResource ProviderShowLabel}"/>
+                        </Button>
+                    </Grid>
+                </Border>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding Shown}" Value="False">
+                        <Setter TargetName="Mark" Property="Opacity" Value="0.45"/>
+                        <Setter TargetName="Label" Property="Foreground" Value="{DynamicResource SettingsMuted}"/>
+                        <Setter TargetName="Hide" Property="Visibility" Value="Collapsed"/>
+                        <Setter TargetName="Show" Property="Visibility" Value="Visible"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding CanHide}" Value="False">
+                        <Setter TargetName="Hide" Property="Visibility" Value="Collapsed"/>
+                        <Setter TargetName="AlwaysShown" Property="Visibility" Value="Visible"/>
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
         </ResourceDictionary>
     </Window.Resources>
     <Grid Background="{DynamicResource SettingsPaper}">
@@ -627,10 +665,12 @@
                                             </Viewbox>
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
                                                 <TextBlock Text="{Binding [provider]}" Style="{StaticResource RowTitle}"/>
-                                                <TextBlock Text="{Binding [provider_sub]}" Style="{StaticResource RowSubtitle}"/>
+                                                <TextBlock x:Name="ProviderMenuSummary" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <ComboBox x:Name="Provider" Width="160" AutomationProperties.Name="{Binding [provider]}"/>
+                                                <Button Tag="provider-menu" ToolTip="{Binding [edit_provider_menu]}" AutomationProperties.Name="{Binding [edit_provider_menu]}">
+                                                    <TextBlock Text="{Binding [edit]}"/>
+                                                </Button>
                                             </ContentControl>
                                         </Grid>
                                     </Border>
@@ -1251,9 +1291,6 @@
                 </ScrollViewer>
             </Border>
         </Grid>
-        <Border x:Name="StatusBanner" Visibility="Collapsed" VerticalAlignment="Bottom" HorizontalAlignment="Center" MaxWidth="540" Background="{DynamicResource SettingsCard}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="7" Padding="16,12" Margin="240,0,16,24">
-            <TextBlock x:Name="StatusText" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
-        </Border>
         <Border x:Name="DialogLayer" Background="{DynamicResource SettingsTransparent}" Visibility="Collapsed" Focusable="True">
             <Grid>
             <Border x:Name="DialogScrim" Background="{DynamicResource SettingsScrim}" IsHitTestVisible="False"/>
@@ -1281,8 +1318,27 @@
                         <TextBlock Text="{Binding [clear_history_title]}" FontSize="20" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding [clear_history_description]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
                     </StackPanel>
+                    <StackPanel x:Name="ProviderMenuDialog" Visibility="Collapsed">
+                        <TextBlock Text="{Binding [provider_menu_title]}" FontSize="20" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding [provider_menu_description]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        <TextBlock Text="{Binding [provider_menu_shown]}" FontWeight="SemiBold" Margin="0,16,0,9"/>
+                        <Border Style="{StaticResource Card}">
+                            <!-- Every row has a top divider; the clip hides the first one, whichever row that is mid-animation. -->
+                            <Border ClipToBounds="True">
+                                <StackPanel x:Name="ShownProviders" Margin="0,-1,0,0"/>
+                            </Border>
+                        </Border>
+                        <StackPanel x:Name="HiddenProviderSection">
+                            <TextBlock Text="{Binding [provider_menu_hidden]}" FontWeight="SemiBold" Margin="0,16,0,9"/>
+                            <Border Style="{StaticResource Card}">
+                                <Border ClipToBounds="True">
+                                    <StackPanel x:Name="HiddenProviders" Margin="0,-1,0,0"/>
+                                </Border>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
-                        <Button Tag="cancel">
+                        <Button Tag="cancel" x:Name="CancelDialog">
                             <TextBlock Text="{Binding [cancel]}"/>
                         </Button>
                         <Button Tag="save" x:Name="SaveShortcut" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0">
@@ -1294,11 +1350,18 @@
                         <Button Tag="confirm-clear-history" x:Name="ConfirmClearHistory" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Visibility="Collapsed">
                             <TextBlock Text="{Binding [clear]}"/>
                         </Button>
+                        <Button Tag="done" x:Name="DoneDialog" Style="{StaticResource PrimaryButton}" Visibility="Collapsed">
+                            <TextBlock Text="{Binding [done]}"/>
+                        </Button>
                     </StackPanel>
                 </StackPanel>
             </Border>
             </AdornerDecorator>
             </Grid>
+        </Border>
+        <!-- Above the dialog layer, so a save that fails inside a dialog is not dimmed by its scrim. -->
+        <Border x:Name="StatusBanner" Visibility="Collapsed" VerticalAlignment="Bottom" HorizontalAlignment="Center" MaxWidth="540" Background="{DynamicResource SettingsCard}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="7" Padding="16,12" Margin="240,0,16,24">
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
         </Border>
     </Grid>
 </Window>

@@ -174,7 +174,7 @@ public sealed class SettingsPreviewTests
             window.Show();
             window.Top = 20;
             Pump();
-            var combo = Find<ComboBox>(window, "Provider");
+            var combo = Find<ComboBox>(window, "TextSearch");
             var popup = (Popup)combo.Template.FindName("PART_Popup", combo);
             var surface = (FrameworkElement)combo.Template.FindName("DropdownSurface", combo);
             var arrow = (FrameworkElement)combo.Template.FindName("DropdownArrow", combo);
@@ -821,22 +821,17 @@ public sealed class SettingsPreviewTests
     {
         var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings
         {
-            SearchProviderId = SearchProviderIds.YandexImages,
+            HiddenSearchProviderIds = string.Empty,
             HotkeyGesture = "Win+Shift+A",
         }));
         var window = harness.CreateView().Window;
         try
         {
             window.Show();
-            var provider = Find<ComboBox>(window, "Provider");
-            Assert.Equal(["Google Lens", "Yandex Images", "trace.moe"],
-                provider.Items.OfType<ComboBoxItem>().Select(item => (string)item.Content));
-            Assert.Equal(SearchProviderIds.YandexImages, ((ComboBoxItem)provider.SelectedItem).Tag);
+            var summary = Find<TextBlock>(window, "ProviderMenuSummary");
+            Assert.Equal("Google Lens · Yandex Images · trace.moe", summary.Text);
             Assert.Equal(["Win", "Shift", "A"], ShortcutLabels(window, "ShortcutKeys"));
             Assert.Equal(["Win", "Shift", "A"], ShortcutLabels(window, "HeroShortcutKeys"));
-
-            provider.SelectedIndex = 2;
-            Assert.Equal(SearchProviderIds.TraceMoe, harness.Settings.Snapshot.SearchProviderId);
 
             var textSearch = Find<ComboBox>(window, "TextSearch");
             Assert.Equal(["Match image search", "Bing", "DuckDuckGo", "Google", "Kagi", "Qwant", "Startpage"],
@@ -846,11 +841,11 @@ public sealed class SettingsPreviewTests
             Assert.Equal("qwant", harness.Settings.Snapshot.TextSearchEngineId);
             harness.Settings.SetTextSearchEngine("kagi");
 
-            harness.Settings.SetProvider(SearchProviderIds.GoogleLens);
+            harness.Settings.SetHiddenSearchProviders([SearchProviderIds.YandexImages]);
             harness.Settings.ChangeHotkey("Ctrl+Shift+K");
             typeof(Window).GetMethod("OnActivated", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(window, [EventArgs.Empty]);
-            Assert.Equal(0, provider.SelectedIndex);
+            Assert.Equal("Google Lens · trace.moe", summary.Text);
             Assert.Equal(4, textSearch.SelectedIndex);
             Assert.Equal(["Ctrl", "Shift", "K"], ShortcutLabels(window, "ShortcutKeys"));
             Assert.Empty(harness.Notifier.Errors);
@@ -970,11 +965,17 @@ public sealed class SettingsPreviewTests
         try
         {
             window.Show();
-            var provider = Find<ComboBox>(window, "Provider");
-            provider.SelectedIndex = 1;
-            Assert.Equal(0, provider.SelectedIndex);
-            Assert.Equal(SearchProviderIds.GoogleLens, harness.Settings.Snapshot.SearchProviderId);
-            Assert.Equal([TestUiStrings.English.StorageSaveFailed], harness.Notifier.Errors.Select(error => error.Message));
+            Find<RadioButton>(window, "Nav_search").IsChecked = true;
+            CompletePageTransition(window, time);
+            Click(window, "provider-menu");
+            CompleteDialogTransition(window, time, open: true);
+            var hide = ProviderRowButton(window, "ShownProviders", SearchProviderIds.TraceMoe, "Hide");
+            hide.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, hide));
+            Assert.Equal(["Google", "trace.moe"], ProviderRows(window, "ShownProviders", "Label"));
+            Assert.Equal(SearchProviderIds.YandexImages, harness.Settings.Snapshot.HiddenSearchProviderIds);
+            Assert.Equal(TestUiStrings.English.StorageSaveFailed, Find<TextBlock>(window, "StatusText").Text);
+            Click(window, "done");
+            CompleteDialogTransition(window, time, open: false);
 
             var textSearch = Find<ComboBox>(window, "TextSearch");
             textSearch.SelectedIndex = 2;
@@ -1006,6 +1007,7 @@ public sealed class SettingsPreviewTests
         var harness = new TestSettingsWindow(TestSettings.Create(new AppSettings
         {
             SearchProviderId = SearchProviderIds.YandexImages,
+            HiddenSearchProviderIds = SearchProviderIds.TraceMoe,
             TextSearchEngineId = "bing",
             TextSearchInBuiltInBrowser = true,
             OcrLanguageTag = "de-DE",
@@ -1021,7 +1023,6 @@ public sealed class SettingsPreviewTests
         try
         {
             window.Show();
-            var provider = Find<ComboBox>(window, "Provider");
             var launch = Find<CheckBox>(window, "Launch");
             var textSearch = Find<ComboBox>(window, "TextSearch");
             Assert.Equal(1, textSearch.SelectedIndex);
@@ -1061,7 +1062,8 @@ public sealed class SettingsPreviewTests
             Assert.Equal(defaults.AppLanguageTag, harness.Settings.Snapshot.AppLanguageTag);
             Assert.Equal(0, Find<ComboBox>(window, "AppLanguage").SelectedIndex);
             Assert.Equal(defaults.HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
-            Assert.Equal(0, provider.SelectedIndex);
+            Assert.Equal(defaults.HiddenSearchProviderIds, harness.Settings.Snapshot.HiddenSearchProviderIds);
+            Assert.Equal("Google Lens · trace.moe", Find<TextBlock>(window, "ProviderMenuSummary").Text);
             Assert.Equal(["Ctrl", "Alt", "Space"], ShortcutLabels(window, "ShortcutKeys"));
             Assert.False(launch.IsChecked);
             Assert.False(harness.Startup.Registration.IsEnabled);
@@ -1086,7 +1088,7 @@ public sealed class SettingsPreviewTests
 
         var fresh = harness.CreateView().Window;
         Assert.False(Find<CheckBox>(fresh, "Launch").IsChecked);
-        Assert.Equal(0, Find<ComboBox>(fresh, "Provider").SelectedIndex);
+        Assert.Equal("Google Lens · trace.moe", Find<TextBlock>(fresh, "ProviderMenuSummary").Text);
         fresh.Close();
     });
 
@@ -1676,6 +1678,131 @@ public sealed class SettingsPreviewTests
         Assert.Equal(Visibility.Collapsed, Find<FrameworkElement>(off, "HistoryContent").Visibility);
         off.Close();
     });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Provider_menu_dialog_moves_providers_between_shown_and_hidden_and_always_keeps_Google_Lens(bool light) =>
+        OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView(light).Window;
+        try
+        {
+            window.Show();
+            Find<RadioButton>(window, "Nav_search").IsChecked = true;
+            CompletePageTransition(window, time);
+            Click(window, "provider-menu");
+            CompleteDialogTransition(window, time, open: true);
+            window.UpdateLayout();
+            Assert.True(Find<StackPanel>(window, "ProviderMenuDialog").IsVisible);
+            Assert.False(Find<StackPanel>(window, "ShortcutDialog").IsVisible);
+            Assert.True(Find<Button>(window, "DoneDialog").IsVisible);
+            Assert.False(Find<Button>(window, "CancelDialog").IsVisible);
+            Assert.Equal(["Google", "trace.moe"], ProviderRows(window, "ShownProviders", "Label"));
+            Assert.Equal(["Google Lens", "Anime scene search engine"], ProviderRows(window, "ShownProviders", "Detail"));
+            Assert.Equal(["Yandex"], ProviderRows(window, "HiddenProviders", "Label"));
+            Assert.Equal(["Yandex Images"], ProviderRows(window, "HiddenProviders", "Detail"));
+            Assert.False(ProviderRowButton(window, "ShownProviders", SearchProviderIds.GoogleLens, "Hide").IsVisible);
+            Assert.True(ProviderRowElement(window, "ShownProviders", SearchProviderIds.GoogleLens, "AlwaysShown").IsVisible);
+            var dialog = Find<Border>(window, "DialogCard");
+            Assert.True(dialog.ActualHeight < dialog.MaxHeight, $"The dialog is {dialog.ActualHeight}px high.");
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                Capture(window, $"settings-{(light ? "light" : "dark")}-provider-menu.png");
+
+            var hide = ProviderRowButton(window, "ShownProviders", SearchProviderIds.TraceMoe, "Hide");
+            var showYandex = ProviderRowButton(window, "HiddenProviders", SearchProviderIds.YandexImages, "Show");
+            Assert.Equal(hide.ActualHeight, showYandex.ActualHeight, 1);
+            Assert.Equal("Hide trace.moe", System.Windows.Automation.AutomationProperties.GetName(hide));
+            var leaving = ProviderRow(window, "ShownProviders", SearchProviderIds.TraceMoe);
+            var arriving = ProviderRow(window, "HiddenProviders", SearchProviderIds.TraceMoe);
+            var rowHeight = leaving.ActualHeight;
+            hide.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, hide));
+            Assert.Equal("yandex-images,trace-moe", harness.Settings.Snapshot.HiddenSearchProviderIds);
+            if (UiAnimationPolicy.Enabled)
+            {
+                time.Advance(100);
+                window.UpdateLayout();
+                Assert.InRange(leaving.ActualHeight, 1, rowHeight - 1);
+                Assert.InRange(arriving.ActualHeight, 1, rowHeight - 1);
+                if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                    Capture(window, $"settings-{(light ? "light" : "dark")}-provider-menu-moving.png");
+            }
+            SettleProviderMenu(window, time);
+            Assert.Equal(rowHeight, arriving.ActualHeight, 1);
+            Assert.Equal(["Google"], ProviderRows(window, "ShownProviders", "Label"));
+            Assert.Equal(["Yandex", "trace.moe"], ProviderRows(window, "HiddenProviders", "Label"));
+            Assert.Equal("Google Lens", Find<TextBlock>(window, "ProviderMenuSummary").Text);
+            Assert.Same(ProviderRowButton(window, "HiddenProviders", SearchProviderIds.TraceMoe, "Show"),
+                FocusManager.GetFocusedElement(window));
+
+            var tallDialog = dialog.ActualHeight;
+            foreach (var id in new[] { SearchProviderIds.YandexImages, SearchProviderIds.TraceMoe })
+            {
+                var show = ProviderRowButton(window, "HiddenProviders", id, "Show");
+                show.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, show));
+            }
+            var midDialog = double.NaN;
+            if (UiAnimationPolicy.Enabled)
+            {
+                time.Advance(100);
+                window.UpdateLayout();
+                midDialog = dialog.ActualHeight;
+            }
+            SettleProviderMenu(window, time);
+            Assert.True(dialog.ActualHeight < tallDialog - 20, $"The dialog stayed {dialog.ActualHeight}px high.");
+            if (UiAnimationPolicy.Enabled) Assert.InRange(midDialog, dialog.ActualHeight + 1, tallDialog - 1);
+            Assert.Equal(string.Empty, harness.Settings.Snapshot.HiddenSearchProviderIds);
+            Assert.Equal(["Google", "Yandex", "trace.moe"], ProviderRows(window, "ShownProviders", "Label"));
+            Assert.False(Find<FrameworkElement>(window, "HiddenProviderSection").IsVisible);
+            Assert.Equal(Visibility.Visible, Find<Border>(window, "DialogLayer").Visibility);
+
+            Click(window, "done");
+            CompleteDialogTransition(window, time, open: false);
+            Assert.True(Find<Grid>(window, "Workspace").IsEnabled);
+            Click(window, "reset");
+            Assert.True(Find<Button>(window, "CancelDialog").IsVisible);
+            Assert.False(Find<Button>(window, "DoneDialog").IsVisible);
+            Click(window, "confirm-reset");
+            CompleteDialogTransition(window, time, open: false);
+            Assert.Equal(new AppSettings().HiddenSearchProviderIds, harness.Settings.Snapshot.HiddenSearchProviderIds);
+        }
+        finally { window.Close(); }
+    });
+
+    private static string[] ProviderRows(Window window, string list, string property) =>
+    [
+        .. Find<Panel>(window, list).Children.OfType<ContentPresenter>()
+            .Where(row => row.Visibility == Visibility.Visible)
+            .Select(row => (string)row.Content.GetType().GetProperty(property)!.GetValue(row.Content)!),
+    ];
+
+    private static ContentPresenter ProviderRow(Window window, string list, string providerId) =>
+        Find<Panel>(window, list).Children.OfType<ContentPresenter>()
+            .Single(row => Equals(row.Content.GetType().GetProperty("Id")!.GetValue(row.Content), providerId));
+
+    private static FrameworkElement ProviderRowElement(Window window, string list, string providerId, string name)
+    {
+        var row = ProviderRow(window, list, providerId);
+        row.ApplyTemplate();
+        return (FrameworkElement)row.ContentTemplate.FindName(name, row);
+    }
+
+    private static void SettleProviderMenu(Window window, ManualAnimationClock time)
+    {
+        FrameworkElement[] folding =
+        [
+            .. new[] { "ShownProviders", "HiddenProviders" }
+                .SelectMany(list => Find<Panel>(window, list).Children.OfType<FrameworkElement>()),
+            Find<FrameworkElement>(window, "HiddenProviderSection"),
+        ];
+        Assert.True(time.AdvanceUntil(() => folding.All(element => double.IsNaN(element.Height))),
+            "The provider rows did not settle.");
+        window.UpdateLayout();
+    }
+
+    private static Button ProviderRowButton(Window window, string list, string providerId, string name) =>
+        (Button)ProviderRowElement(window, list, providerId, name);
 
     [Fact]
     public void Clearing_the_music_history_asks_first_and_new_tracks_appear_while_the_window_is_open() => OnSta(time =>

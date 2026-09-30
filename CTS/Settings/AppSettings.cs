@@ -7,6 +7,8 @@ public sealed record AppSettings
 {
     public string SearchProviderId { get; init; } = SearchProviderIds.GoogleLens;
 
+    public string HiddenSearchProviderIds { get; init; } = SearchProviderIds.YandexImages;
+
     public string TextSearchEngineId { get; init; } = TextSearchEngines.MatchImageSearch;
 
     public bool TextSearchInBuiltInBrowser { get; init; }

@@ -48,6 +48,8 @@ public sealed class UiStrings
     public string SettingsRuntimeMissing => Get("app_settings_runtime_missing");
     public string SettingsVersion(string version) => Get("app_settings_version_value", version);
     internal string SettingsMusicHistoryNoMatch(string query) => Get("app_settings_history_no_match", query);
+    internal string SettingsHideProvider(string provider) => Get("app_settings_hide_named_provider", provider);
+    internal string SettingsShowProvider(string provider) => Get("app_settings_show_named_provider", provider);
     public string StartupFailed => Get("app_startup_failed");
     public string StartupLanguageFailed => Get("app_startup_language_failed");
     public string StartupDataFailed(string path) => Get("app_startup_data_failed", path);

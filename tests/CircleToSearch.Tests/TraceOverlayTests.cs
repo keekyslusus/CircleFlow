@@ -278,7 +278,8 @@ public sealed class TraceOverlayTests
             var commands = new List<IOverlayCommand>();
             var overlay = new OverlayWindow(frame, monitor, monitor, 1,
                 new OverlayLaunchOptions(new OverlayOptions(8, 12), TestUiStrings.English,
-                    [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe),
+                    [new(SearchProviderIds.TraceMoe, "trace.moe"), new(SearchProviderIds.GoogleLens, "Google Lens")],
+                    SearchProviderIds.TraceMoe),
                 commands.Add, TestOverlayControllers.CreateFactory(), overscan: false);
             overlay.Show();
             overlay.UpdateLayout();

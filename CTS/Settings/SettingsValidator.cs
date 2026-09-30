@@ -31,9 +31,15 @@ internal static class SettingsValidator
             return string.Empty;
         }
 
-        var provider = new[] { SearchProviderIds.GoogleLens, SearchProviderIds.YandexImages, SearchProviderIds.TraceMoe, SearchProviderIds.Pinterest }
+        var provider = SearchProviderIds.All
             .FirstOrDefault(id => string.Equals(id, settings.SearchProviderId?.Trim(), StringComparison.OrdinalIgnoreCase));
         if (provider is null) invalid.Add(nameof(AppSettings.SearchProviderId));
+        var hiddenIds = HiddenSearchProviders.Parse(settings.HiddenSearchProviderIds);
+        var hiddenProviders = SearchProviderIds.All
+            .Where(id => id != SearchProviderIds.AlwaysInMenu && hiddenIds.Contains(id, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+        if (settings.HiddenSearchProviderIds is null || hiddenIds.Count != hiddenProviders.Length)
+            invalid.Add(nameof(AppSettings.HiddenSearchProviderIds));
         var engine = settings.TextSearchEngineId switch
         {
             null => null,
@@ -60,6 +66,7 @@ internal static class SettingsValidator
         var normalized = settings with
         {
             SearchProviderId = provider ?? defaults.SearchProviderId,
+            HiddenSearchProviderIds = HiddenSearchProviders.Format(hiddenProviders),
             TextSearchEngineId = engine ?? defaults.TextSearchEngineId,
             HotkeyGesture = gesture,
             HiddenToolbarActions = settings.HiddenToolbarActions & SelectionToolbarAction.All,

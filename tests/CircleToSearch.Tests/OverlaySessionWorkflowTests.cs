@@ -525,6 +525,22 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
+    public async Task Overlay_offers_only_providers_shown_in_the_menu_plus_the_selected_one()
+    {
+        using var defaults = new Harness();
+        defaults.Overlay.Enqueue(new CancelSession());
+        await defaults.RunAsync();
+        Assert.Equal([SearchProviderIds.GoogleLens, SearchProviderIds.TraceMoe, SearchProviderIds.Pinterest],
+            defaults.Factory.Options!.Providers.Select(provider => provider.Id));
+
+        using var hiddenSelected = new Harness(providerId: SearchProviderIds.YandexImages);
+        hiddenSelected.Overlay.Enqueue(new CancelSession());
+        await hiddenSelected.RunAsync();
+        Assert.Equal(SearchProviderIds.YandexImages, hiddenSelected.Factory.Options!.InitialProviderId);
+        Assert.Contains(hiddenSelected.Factory.Options.Providers, provider => provider.Id == SearchProviderIds.YandexImages);
+    }
+
+    [Fact]
     public async Task Coordinator_opens_a_fresh_overlay_after_the_previous_session_finishes()
     {
         var first = new FakeOverlay();
