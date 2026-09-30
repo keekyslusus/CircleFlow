@@ -31,16 +31,19 @@ public sealed class FloatingToolbar
     private readonly Func<bool> _animationsEnabled;
     private CardTransitions.ExitHandle? _exit;
     private readonly Thickness _safeInsets;
+    private readonly bool _preferBelow;
     private Rect _anchor;
     private Size _viewport;
 
     internal FloatingToolbar(
         FloatingToolbarPalette palette,
         Func<bool>? animationsEnabled = null,
-        Thickness safeInsets = default)
+        Thickness safeInsets = default,
+        bool preferBelow = false)
     {
         _palette = palette;
         _safeInsets = safeInsets;
+        _preferBelow = preferBelow;
         _animationsEnabled = animationsEnabled ?? OverlayVisualResources.AnimationsEnabled;
         _actions = new WrapPanel { Orientation = Orientation.Horizontal };
         Surface = new Border
@@ -263,7 +266,8 @@ public sealed class FloatingToolbar
     {
         UpdateDividers();
         MeasureWithin(FloatingToolbarLayout.AvailableWidth(_viewport.Width, _safeInsets));
-        var placement = FloatingToolbarLayout.Place(_anchor, Surface.DesiredSize, _viewport, _safeInsets);
+        var placement = FloatingToolbarLayout.Place(_anchor, Surface.DesiredSize, _viewport, _safeInsets,
+            preferBelow: _preferBelow);
         Canvas.SetLeft(Surface, placement.X);
         Canvas.SetTop(Surface, placement.Y);
     }

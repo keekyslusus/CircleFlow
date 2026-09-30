@@ -20,7 +20,7 @@ Just press a shortcut. No screenshots to save, no tabs to open.
 ### Visual Search
 <img src=".github/feature_visual-search.png" width="600">
 
-- Circle or select any area and search it with Google Lens, Yandex Images or trace.moe
+- Circle or select any area and search it with Google Lens ,Yandex Images, Pinterest or trace.moe
 - [trace.moe](https://trace.moe/) finds the anime, episode and timestamp of a scene
 - Switch the provider right from the selection toolbar
 
@@ -31,6 +31,7 @@ Just press a shortcut. No screenshots to save, no tabs to open.
 - Select text anywhere on screen to copy it or search it with [Google](https://www.google.com/), [Bing](https://www.bing.com/), [DuckDuckGo](https://duckduckgo.com/), [Kagi](https://kagi.com/), [Qwant](https://www.qwant.com/) or [Startpage](https://www.startpage.com/)
 - Translate on-screen text with Google Translate
 - Text recognition uses the OCR languages installed in Windows
+- QR codes on screen get a chip to open the link, copy the content
 
 
 ### Music Recognition

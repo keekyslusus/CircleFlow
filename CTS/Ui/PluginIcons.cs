@@ -152,6 +152,19 @@ internal static class PluginIcons
     public static Geometry LinkOutlined { get; } = Group(
         Geometry.Parse("M14 3h7v7m0-7L10 14m0-9H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"));
 
+    public static Geometry QrCodeOutlined { get; } = Group(
+        new RectangleGeometry(new Rect(3, 3, 7, 7), 1.5, 1.5),
+        new RectangleGeometry(new Rect(14, 3, 7, 7), 1.5, 1.5),
+        new RectangleGeometry(new Rect(3, 14, 7, 7), 1.5, 1.5),
+        Geometry.Parse("M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01M14 14h3v3m4-3v.01M14 21h7v-4m-4 0v4"));
+
+    public static Geometry WifiOutlined { get; } = Group(
+        Geometry.Parse("M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0m-10.5 3.5a5 5 0 0 1 7 0M12 19h.01"));
+
+    public static Geometry MailOutlined { get; } = Group(
+        new RectangleGeometry(new Rect(3, 5, 18, 14), 2, 2),
+        Geometry.Parse("m3 7 9 6 9-6"));
+
     public static Geometry CopyOutlined { get; } = Group(
         new RectangleGeometry(new Rect(8, 8, 13, 13), 2, 2),
         Geometry.Parse("M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"));

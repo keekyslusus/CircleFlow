@@ -1011,6 +1011,7 @@ public sealed class SettingsPreviewTests
             OcrLanguageTag = "de-DE",
             AppLanguageTag = "ru",
             IgnoreHotkeyInFullscreen = false,
+            ScanQrCodes = false,
             BrowserDataCleanupDays = 0,
             HotkeyGesture = "Ctrl+Shift+K",
             SaveMusicHistory = false,
@@ -1052,6 +1053,8 @@ public sealed class SettingsPreviewTests
             Assert.Equal(defaults.OcrLanguageTag, harness.Settings.Snapshot.OcrLanguageTag);
             Assert.True(harness.Settings.Snapshot.IgnoreHotkeyInFullscreen);
             Assert.True(Find<CheckBox>(window, "IgnoreFullscreen").IsChecked);
+            Assert.True(harness.Settings.Snapshot.ScanQrCodes);
+            Assert.True(Find<CheckBox>(window, "ScanQrCodes").IsChecked);
             Assert.Equal(28, harness.Settings.Snapshot.BrowserDataCleanupDays);
             Assert.Equal(0, Find<ComboBox>(window, "Cleanup").SelectedIndex);
             Assert.Equal(0, Find<ComboBox>(window, "OcrLanguage").SelectedIndex);
@@ -1215,6 +1218,30 @@ public sealed class SettingsPreviewTests
             harness.Settings.SetIgnoreHotkeyInFullscreen(true).ThrowIfFailed("test update failed");
             Activate(window);
             Assert.True(ignoreFullscreen.IsChecked);
+            Assert.Empty(harness.Notifier.Errors);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Scan_qr_codes_is_on_by_default_saves_changes_and_reloads_on_activation() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var scan = Find<CheckBox>(window, "ScanQrCodes");
+            Assert.True(scan.IsChecked);
+            scan.IsChecked = false;
+            Assert.False(harness.Settings.Snapshot.ScanQrCodes);
+            Assert.False(SearchSessionOptions.From(harness.Settings.Snapshot,
+                new CircleToSearch.TextRecognition.OcrLanguageCatalog([]),
+                System.Globalization.CultureInfo.InvariantCulture).ScanQrCodes);
+
+            harness.Settings.SetScanQrCodes(true).ThrowIfFailed("test update failed");
+            Activate(window);
+            Assert.True(scan.IsChecked);
             Assert.Empty(harness.Notifier.Errors);
         }
         finally { window.Close(); }

@@ -84,6 +84,11 @@ public sealed class SettingsService
         lock (_gate) return Commit(_current with { HiddenToolbarActions = hidden });
     }
 
+    public SettingsChangeResult SetScanQrCodes(bool scan)
+    {
+        lock (_gate) return Commit(_current with { ScanQrCodes = scan });
+    }
+
     public SettingsChangeResult SetBrowserDataCleanupDays(int days)
     {
         lock (_gate) return Commit(_current with { BrowserDataCleanupDays = days });

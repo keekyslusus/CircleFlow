@@ -41,7 +41,10 @@ internal sealed class ClipboardCopyService
         return true;
     }
 
-    internal bool TryCopy(string text)
+    internal bool TryCopy(string text) => TryCopy(text, _strings.CopiedText(Preview(text)));
+
+    // For secrets such as passwords, whose preview must not appear on screen.
+    internal bool TryCopy(string text, string successMessage)
     {
         try
         {
@@ -53,15 +56,15 @@ internal sealed class ClipboardCopyService
             return false;
         }
 
-        _showToast(new ToastNotification(_strings.CopiedText(BuildPreview(text)), ToastTone.Success));
+        _showToast(new ToastNotification(successMessage, ToastTone.Success));
         return true;
     }
 
-    private static string BuildPreview(string text)
+    internal static string Preview(string text, int limit = PreviewTextElementLimit)
     {
         var normalized = Regex.Replace(text.Trim(), @"\s+", " ");
         var elementIndexes = StringInfo.ParseCombiningCharacters(normalized);
-        if (elementIndexes.Length <= PreviewTextElementLimit) return normalized;
-        return normalized[..elementIndexes[PreviewTextElementLimit]].TrimEnd() + "...";
+        if (elementIndexes.Length <= limit) return normalized;
+        return normalized[..elementIndexes[limit]].TrimEnd() + "...";
     }
 }

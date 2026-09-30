@@ -19,7 +19,15 @@ public sealed record OverlayVisual(
     DebugOverlayVisual Debug,
     BottomOverlayVisual Bottom,
     OverlayEffectsVisual Effects,
-    ImageSelectionVisual ImageSelection);
+    ImageSelectionVisual ImageSelection,
+    QrCodeVisual QrCodes);
+
+public sealed record QrCodeVisual(
+    Grid Layer,
+    Canvas Viewfinders,
+    bool LightTheme,
+    Color Accent,
+    System.Windows.Thickness ToolbarSafeInsets);
 
 public sealed record ImageSelectionVisual(
     FloatingToolbar Toolbar,

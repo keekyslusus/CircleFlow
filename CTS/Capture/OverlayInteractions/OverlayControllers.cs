@@ -16,7 +16,8 @@ internal sealed class OverlayControllers(
     DebugOverlayController debug,
     OverlayActivityPresenter activityPresenter,
     ImageSelectionOverlayController imageSelection,
-    SelectionHintOverlayController selectionHint) : IDisposable
+    SelectionHintOverlayController selectionHint,
+    QrCodeOverlayController qrCodes) : IDisposable
 {
     private bool _disposed;
 
@@ -35,6 +36,7 @@ internal sealed class OverlayControllers(
     internal ToastOverlayController Toast { get; } = toast;
     internal DebugOverlayController Debug { get; } = debug;
     internal SelectionHintOverlayController SelectionHint { get; } = selectionHint;
+    internal QrCodeOverlayController QrCodes { get; } = qrCodes;
     private OverlayActivityPresenter ActivityPresenter { get; } = activityPresenter;
 
     public void Dispose()
@@ -42,6 +44,7 @@ internal sealed class OverlayControllers(
         if (_disposed) return;
         _disposed = true;
         ImageSelection.Dispose();
+        QrCodes.Dispose();
         Widget.Dispose();
         ActionTray.Dispose();
         SelectionHint.Dispose();

@@ -35,9 +35,14 @@ public static class OverlayVisualFactory
         Thickness toolbarSafeInsets = default)
     {
         var palette = PluginPalette.For(lightTheme);
-        var selection = SelectionOverlayVisualFactory.Create(frame, size);
+        // One read per overlay, so the lasso and the QR brackets share the same pastel accent.
+        var accent = SystemAccentColor.Read();
+        var selection = SelectionOverlayVisualFactory.Create(frame, size, accent);
         var textSelection = TextSelectionVisualFactory.Create(lightTheme, strings, toolbarSafeInsets);
         var imageSelection = ImageSelectionVisualFactory.Create(lightTheme, strings, toolbarSafeInsets);
+        // Chips for codes near the bottom go above them rather than onto the action row.
+        var qrCodes = QrCodeVisualFactory.Create(lightTheme, accent,
+            toolbarSafeInsets with { Bottom = chipBottomMargin + ActionTrayVisualFactory.ChipMinHeight });
         var translationAction = TextTranslationVisualFactory.CreateTranslationAction(lightTheme, strings);
         var translationOverlay = TextTranslationVisualFactory.CreateTranslationOverlay();
         var activityHost = new Grid
@@ -74,6 +79,7 @@ public static class OverlayVisualFactory
         root.Children.Add(selection.InputSurface);
         root.Children.Add(effects.SceneRippleLayer);
         root.Children.Add(activityHost);
+        root.Children.Add(qrCodes.Layer);
         root.Children.Add(textSelection.Toolbar.Layer);
         root.Children.Add(imageSelection.Toolbar.Layer);
         root.Children.Add(bottom.Root);
@@ -93,6 +99,7 @@ public static class OverlayVisualFactory
             debug,
             bottom,
             effects,
-            imageSelection);
+            imageSelection,
+            qrCodes);
     }
 }

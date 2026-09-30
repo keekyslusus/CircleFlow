@@ -54,6 +54,7 @@
     <PackageReference Include="NAudio" Version="3.0.1" />
     <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
     <PackageReference Include="Velopack" Version="1.2.158" />
+    <PackageReference Include="ZXing.Net" Version="0.16.11" />
   </ItemGroup>
 
   <ItemGroup>
