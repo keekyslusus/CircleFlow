@@ -10,7 +10,7 @@ internal sealed class OverlayControllers(
     ScreenTranslationOverlayController translation,
     ProviderMenuController provider,
     MusicOverlayController music,
-    TraceOverlayController trace,
+    WidgetOverlayController widget,
     ActionTrayOverlayController actionTray,
     ToastOverlayController toast,
     DebugOverlayController debug,
@@ -30,7 +30,7 @@ internal sealed class OverlayControllers(
     internal ScreenTranslationOverlayController Translation { get; } = translation;
     internal ProviderMenuController Provider { get; } = provider;
     internal MusicOverlayController Music { get; } = music;
-    internal TraceOverlayController Trace { get; } = trace;
+    internal WidgetOverlayController Widget { get; } = widget;
     internal ActionTrayOverlayController ActionTray { get; } = actionTray;
     internal ToastOverlayController Toast { get; } = toast;
     internal DebugOverlayController Debug { get; } = debug;
@@ -42,7 +42,7 @@ internal sealed class OverlayControllers(
         if (_disposed) return;
         _disposed = true;
         ImageSelection.Dispose();
-        Trace.Dispose();
+        Widget.Dispose();
         ActionTray.Dispose();
         SelectionHint.Dispose();
         Music.Dispose();

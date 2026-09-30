@@ -79,7 +79,7 @@ public sealed class FeatureLifetimeOwnershipTests
         var visualScope = outer.Own(new ResourceRollbackScope(log));
         var visual = visualScope.TransferAllTo(new VisualSearchLifetime(
             () => { routerStarted.SetResult(); return router.Task; },
-            visualScope.Own(new Resource("trace-http", events)), log));
+            visualScope.Own(new Resource("provider-http", events)), log));
         var lifetime = new PluginRuntimeLifetime(() => session.Task,
             () => Task.CompletedTask, () => Task.CompletedTask,
             music.StopAsync, translation.StopAsync, visual.StopAsync, log);
@@ -94,7 +94,7 @@ public sealed class FeatureLifetimeOwnershipTests
         lock (events)
         {
             Assert.DoesNotContain("translation-http", events);
-            Assert.DoesNotContain("trace-http", events);
+            Assert.DoesNotContain("provider-http", events);
         }
         signer.SetResult();
         router.SetResult();
@@ -108,7 +108,7 @@ public sealed class FeatureLifetimeOwnershipTests
             Assert.Equal(1, events.Count(name => name == "music-http"));
             Assert.Equal(1, events.Count(name => name == "translation-http"));
             Assert.Equal(1, events.Count(name => name == "profiler"));
-            Assert.Equal(1, events.Count(name => name == "trace-http"));
+            Assert.Equal(1, events.Count(name => name == "provider-http"));
             Assert.True(events.IndexOf("throttle") < events.IndexOf("music-http"));
             Assert.True(events.IndexOf("translation-http") < events.IndexOf("profiler"));
         }

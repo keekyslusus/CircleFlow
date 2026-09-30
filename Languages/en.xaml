@@ -145,6 +145,15 @@
     <system:String x:Key="plugin_circletosearch_trace_open">Open in AniList</system:String>
     <system:String x:Key="plugin_circletosearch_trace_copy">Copy anime info</system:String>
     <system:String x:Key="plugin_circletosearch_trace_episode">Episode {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_provider_name">Pinterest</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_provider_description">Visually similar pins</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_searching">Searching...</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_summary">Similar pins · {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_no_match">No similar pins found</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_open">Open in Pinterest</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_show_all">Show all pins</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_more">+{0}</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_back">Back</system:String>
     <system:String x:Key="app_settings_general">General</system:String>
     <system:String x:Key="app_settings_hotkeys">Shortcuts</system:String>
     <system:String x:Key="app_settings_search">Search</system:String>

@@ -15,7 +15,7 @@ internal sealed class OverlaySessionWorkflow(
     VisualSearchWorkflow visualSearch,
     Func<IOverlaySession, CancellationToken, OverlayMusicSession> createMusicSession,
     Func<IOverlaySession, CancellationToken, OverlayTranslationSession>? createTranslationSession,
-    Func<IOverlaySession, int, CancellationToken, OverlayTraceSession> createTraceSession,
+    Func<IOverlaySession, int, CancellationToken, OverlayWidgetSession> createWidgetSession,
     ProviderSelectionStore providerSelection,
     UiStrings strings,
     PluginLog log,
@@ -41,7 +41,7 @@ internal sealed class OverlaySessionWorkflow(
         var operations = new List<IOverlaySessionOperation>(3);
         OverlayMusicSession? music = null;
         OverlayTranslationSession? translation = null;
-        OverlayTraceSession? trace = null;
+        OverlayWidgetSession? widget = null;
         OverlayAskSession? ask = null;
         OverlayLensSession? lens = null;
         OverlayTextSearchSession? textWarm = null;
@@ -58,8 +58,8 @@ internal sealed class OverlaySessionWorkflow(
             if (textWarm is not null) operations.Add(textWarm);
             translation = createTranslationSession?.Invoke(overlay, cancellationToken);
             if (translation is not null) operations.Add(translation);
-            trace = createTraceSession(overlay, options.MaxLongSidePx, cancellationToken);
-            operations.Add(trace);
+            widget = createWidgetSession(overlay, options.MaxLongSidePx, cancellationToken);
+            operations.Add(widget);
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -103,13 +103,13 @@ internal sealed class OverlaySessionWorkflow(
                             music.SelectDebugScenario(selected.Scenario);
                             break;
 
-                        case VisualSelection visual when trace.CanStart(visual):
-                            trace.Start(visual);
+                        case VisualSelection visual when widget.CanStart(visual):
+                            widget.Start(visual);
                             commandOwnershipTransferred = true;
                             break;
 
-                        case OpenTraceResult:
-                            if (await trace.OpenResultAsync().ConfigureAwait(false) ==
+                        case OpenWidgetResult open:
+                            if (await widget.OpenResultAsync(open.Url).ConfigureAwait(false) ==
                                 OverlaySessionContinuation.EndSession)
                                 return;
                             break;

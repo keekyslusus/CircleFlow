@@ -349,7 +349,7 @@ public sealed class ImageSelectionTests
         Assert.Equal(provider, searched.ProviderId);
         var bounds = searched.Selection.Bounds;
         Assert.Equal(original ? 0 : 255, searched.Selection.FrozenFrame.GetPixel(bounds.X, bounds.Y).R);
-        Assert.Equal(provider == SearchProviderIds.TraceMoe ? OverlayInteractionMode.TraceLoading : OverlayInteractionMode.Closing,
+        Assert.Equal(provider == SearchProviderIds.TraceMoe ? OverlayInteractionMode.WidgetLoading : OverlayInteractionMode.Closing,
             h.Window.Mode);
     });
 
@@ -393,7 +393,7 @@ public sealed class ImageSelectionTests
         h.Select();
         h.Translate();
         Click(h.Actions.SearchButton);
-        Assert.Equal(OverlayInteractionMode.TraceLoading, h.Window.Mode);
+        Assert.Equal(OverlayInteractionMode.WidgetLoading, h.Window.Mode);
 
         h.Escape();
 
@@ -412,7 +412,7 @@ public sealed class ImageSelectionTests
         var visible = (BitmapSource)h.Window.VisualState.Selection.Screenshot.Source;
         Click(h.Actions.SearchButton);
         Assert.Same(visible, h.Window.VisualState.Selection.Screenshot.Source);
-        h.Window.ShowTraceResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(null)));
+        h.Window.ShowWidgetResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(null)));
         var close = Descendants(h.Window.VisualState.Bottom.Stack).OfType<Button>()
             .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.Close);
         // The result becomes interactive after thread-pool continuations, not after a fixed delay.

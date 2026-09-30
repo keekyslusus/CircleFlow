@@ -4,9 +4,9 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 
-namespace CircleToSearch.Shell.SettingsPreview;
+namespace CircleToSearch.Ui;
 
-internal sealed class SettingsScrollMotionController : IDisposable
+internal sealed class SmoothScrollMotionController : IDisposable
 {
     private const double MaximumDisplacement = 64;
     private const double SpringFrequency = 12;
@@ -24,7 +24,7 @@ internal sealed class SettingsScrollMotionController : IDisposable
     private bool _animating;
     private bool _disposed;
 
-    internal SettingsScrollMotionController(ScrollViewer scroll, TranslateTransform translation)
+    internal SmoothScrollMotionController(ScrollViewer scroll, TranslateTransform translation)
     {
         _scroll = scroll;
         _translation = translation;

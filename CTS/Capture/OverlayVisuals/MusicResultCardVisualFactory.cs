@@ -142,38 +142,14 @@ internal static class MusicResultCardVisualFactory
         cover.Children.Add(OverlayVisualResources.Icon(PluginIcons.MusicFilled, 30, palette.Primary));
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
         {
-            var image = new Image { Stretch = Stretch.UniformToFill, Opacity = 0 };
-            image.ImageFailed += (_, _) =>
-            {
-                image.BeginAnimation(UIElement.OpacityProperty, null);
-                image.Source = null;
-                image.Opacity = 0;
-            };
             try
             {
                 var bitmap = new BitmapImage();
-                var revealed = false;
-                void Reveal()
-                {
-                    if (revealed || !image.IsLoaded || bitmap.IsDownloading || image.Source is null) return;
-                    revealed = true;
-                    image.Opacity = 1;
-                    if (!OverlayVisualResources.AnimationsEnabled()) return;
-                    var fade = OverlayVisualResources.Animate(0, 1, TimeSpan.FromMilliseconds(300));
-                    fade.FillBehavior = FillBehavior.Stop;
-                    image.BeginAnimation(UIElement.OpacityProperty, fade);
-                }
-
-                // Cached artwork can be ready before the card joins the visual tree.
-                image.Loaded += (_, _) => Reveal();
-                bitmap.DownloadCompleted += (_, _) => Reveal();
-                image.Unloaded += (_, _) => image.BeginAnimation(UIElement.OpacityProperty, null);
                 bitmap.BeginInit();
                 bitmap.UriSource = uri;
                 bitmap.DecodePixelWidth = 196;
                 bitmap.EndInit();
-                image.Source = bitmap;
-                cover.Children.Add(image);
+                cover.Children.Add(OverlayVisualResources.FadeInImage(bitmap));
             }
             catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or System.IO.IOException or NotSupportedException)
             {

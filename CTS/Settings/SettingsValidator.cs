@@ -31,7 +31,7 @@ internal static class SettingsValidator
             return string.Empty;
         }
 
-        var provider = new[] { SearchProviderIds.GoogleLens, SearchProviderIds.YandexImages, SearchProviderIds.TraceMoe }
+        var provider = new[] { SearchProviderIds.GoogleLens, SearchProviderIds.YandexImages, SearchProviderIds.TraceMoe, SearchProviderIds.Pinterest }
             .FirstOrDefault(id => string.Equals(id, settings.SearchProviderId?.Trim(), StringComparison.OrdinalIgnoreCase));
         if (provider is null) invalid.Add(nameof(AppSettings.SearchProviderId));
         var engine = settings.TextSearchEngineId switch

@@ -39,7 +39,7 @@ public sealed record MusicDebugScenarioSelected(MusicDebugScenario Scenario) : I
 public sealed record CancelSession : IOverlayCommand;
 public sealed record DismissMusicResult : IOverlayCommand;
 public sealed record RetryMusicRecognition : IOverlayCommand;
-public sealed record OpenTraceResult : IOverlayCommand;
+public sealed record OpenWidgetResult(Uri Url) : IOverlayCommand;
 public sealed record OpenMusicResult : IOverlayCommand;
 
 public sealed record SaveSelectedImage(System.Windows.Media.Imaging.BitmapSource Image) : IOverlayCommand;

@@ -5,7 +5,7 @@ using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Capture.OverlayInteractions;
 
-internal sealed class TraceOverlayController : IDisposable
+internal sealed class WidgetOverlayController : IDisposable
 {
     private readonly Grid _root;
     private readonly OverlayActivityPresenter _activityPresenter;
@@ -18,11 +18,11 @@ internal sealed class TraceOverlayController : IDisposable
     private readonly Action<OverlayInteractionMode> _transitionMode;
     private readonly Action<IOverlayCommand>? _publishCommand;
     private readonly Func<GdiRectangle, SelectionOutcome> _createSelectionCopy;
-    private readonly Func<Uri, ITraceVideoPreview>? _createVideo;
-    private TraceOverlayVisual? _visual;
+    private readonly IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> _visuals;
+    private IOverlayWidgetVisual? _visual;
     private bool _disposed;
 
-    internal TraceOverlayController(
+    internal WidgetOverlayController(
         Grid root,
         OverlayActivityPresenter activityPresenter,
         BottomOverlayVisual bottom,
@@ -34,7 +34,7 @@ internal sealed class TraceOverlayController : IDisposable
         Action<OverlayInteractionMode> transitionMode,
         Action<IOverlayCommand>? publishCommand,
         Func<GdiRectangle, SelectionOutcome> createSelectionCopy,
-        Func<Uri, ITraceVideoPreview>? createVideo = null)
+        IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> visuals)
     {
         _root = root;
         _activityPresenter = activityPresenter;
@@ -47,35 +47,34 @@ internal sealed class TraceOverlayController : IDisposable
         _transitionMode = transitionMode;
         _publishCommand = publishCommand;
         _createSelectionCopy = createSelectionCopy;
-        _createVideo = createVideo;
+        _visuals = visuals;
     }
 
     internal bool TryStart(string providerId, GdiRectangle bounds)
     {
-        if (_disposed || _publishCommand is null || providerId != SearchProviderIds.TraceMoe)
+        if (_disposed || _publishCommand is null || !_visuals.TryGetValue(providerId, out var createVisual))
             return false;
 
-        _transitionMode(OverlayInteractionMode.TraceLoading);
+        _transitionMode(OverlayInteractionMode.WidgetLoading);
         _visual?.Dispose();
 
-        TraceOverlayVisual? visual = null;
-        visual = TraceOverlayVisual.Create(
+        IOverlayWidgetVisual? visual = null;
+        visual = createVisual(new OverlayWidgetContext(
             _root,
             _activityPresenter,
             _bottom,
             _effects,
             _strings,
             _isLightTheme(),
-            () => OpenResult(visual),
+            url => OpenResult(visual, url),
             () => CloseResult(visual),
-            _clipboardCopy,
-            _createVideo);
+            _clipboardCopy));
         _visual = visual;
 
         var selection = _createSelectionCopy(bounds);
         try
         {
-            _publishCommand(new VisualSelection(selection, SearchProviderIds.TraceMoe));
+            _publishCommand(new VisualSelection(selection, providerId));
         }
         catch
         {
@@ -87,10 +86,10 @@ internal sealed class TraceOverlayController : IDisposable
 
     internal void ShowResult(VisualSearchPreparationOutcome outcome)
     {
-        if (_disposed || _getMode() != OverlayInteractionMode.TraceLoading) return;
+        if (_disposed || _getMode() != OverlayInteractionMode.WidgetLoading) return;
         var visual = _visual;
         if (visual is null) return;
-        _transitionMode(OverlayInteractionMode.TraceResult);
+        _transitionMode(OverlayInteractionMode.WidgetResult);
         if (!_disposed && ReferenceEquals(_visual, visual)) visual.ShowResult(outcome);
     }
 
@@ -109,16 +108,16 @@ internal sealed class TraceOverlayController : IDisposable
         visual?.Dispose();
     }
 
-    private void OpenResult(TraceOverlayVisual? visual)
+    private void OpenResult(IOverlayWidgetVisual? visual, Uri url)
     {
         if (_disposed || !ReferenceEquals(_visual, visual)) return;
-        _publishCommand?.Invoke(new OpenTraceResult());
+        _publishCommand?.Invoke(new OpenWidgetResult(url));
     }
 
-    private void CloseResult(TraceOverlayVisual? visual)
+    private void CloseResult(IOverlayWidgetVisual? visual)
     {
         if (_disposed || !ReferenceEquals(_visual, visual) ||
-            _getMode() != OverlayInteractionMode.TraceResult) return;
+            _getMode() != OverlayInteractionMode.WidgetResult) return;
         _transitionMode(OverlayInteractionMode.Selecting);
     }
 }

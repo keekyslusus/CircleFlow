@@ -13,7 +13,7 @@ using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Tests;
 
-public sealed class TraceOverlayControllerTests
+public sealed class WidgetOverlayControllerTests
 {
     [Fact]
     public void Legacy_trace_selection_uses_the_terminal_visual_selection_path()
@@ -67,11 +67,40 @@ public sealed class TraceOverlayControllerTests
 
             Assert.True(controller.TryStart(SearchProviderIds.TraceMoe, new GdiRectangle(4, 5, 20, 18)));
 
-            Assert.Equal(OverlayInteractionMode.TraceLoading, state.Mode);
+            Assert.Equal(OverlayInteractionMode.WidgetLoading, state.Mode);
             Assert.NotNull(published);
             Assert.NotSame(source, published.Selection.FrozenFrame);
             published.Selection.Dispose();
             Assert.Equal(64, source.Width);
+            controller.Dispose();
+            DisposeVisual(visual);
+        });
+    }
+
+    [Fact]
+    public void Pinterest_selection_starts_its_widget_and_shows_the_result()
+    {
+        RunSta(() =>
+        {
+            using var source = new GdiBitmap(64, 48);
+            var visual = CreateVisual();
+            var state = new OverlayInteractionState();
+            VisualSelection? published = null;
+            using var controller = CreateController(
+                visual,
+                state,
+                command => published = Assert.IsType<VisualSelection>(command),
+                bounds => new SelectionOutcome(bounds, (GdiBitmap)source.Clone()));
+
+            Assert.True(controller.TryStart(SearchProviderIds.Pinterest, new GdiRectangle(4, 5, 20, 18)));
+            Assert.Equal(OverlayInteractionMode.WidgetLoading, state.Mode);
+            Assert.Equal(SearchProviderIds.Pinterest, published!.ProviderId);
+            published.Selection.Dispose();
+
+            controller.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForPinterest([])));
+            Assert.Equal(OverlayInteractionMode.WidgetResult, state.Mode);
+            Assert.Contains(Descendants(visual.Bottom.Stack).OfType<TextBlock>(),
+                text => text.Text == TestUiStrings.English.PinterestNoMatch);
             controller.Dispose();
             DisposeVisual(visual);
         });
@@ -151,7 +180,7 @@ public sealed class TraceOverlayControllerTests
 
             Assert.Equal(initialChildren, visual.Root.Children.Count);
             Assert.Equal(Visibility.Collapsed, visual.ActivityHost.Visibility);
-            Assert.Equal(OverlayInteractionMode.TraceLoading, state.Mode);
+            Assert.Equal(OverlayInteractionMode.WidgetLoading, state.Mode);
             DisposeVisual(visual);
         });
     }
@@ -201,7 +230,7 @@ public sealed class TraceOverlayControllerTests
                     new GdiRectangle(10, 10, 120, 90)));
                 controller.ShowResult(VisualSearchPreparationOutcome.Ready(
                     PreparedVisualSearch.ForTraceMoe(match)));
-                Assert.Equal(OverlayInteractionMode.TraceResult, state.Mode);
+                Assert.Equal(OverlayInteractionMode.WidgetResult, state.Mode);
 
                 var close = Descendants(visual.Bottom.Stack)
                     .OfType<Button>()
@@ -223,7 +252,7 @@ public sealed class TraceOverlayControllerTests
 
                 Assert.True(preview.Disposed);
                 Assert.Equal(2, published.Count);
-                Assert.Equal(OverlayInteractionMode.TraceResult, state.Mode);
+                Assert.Equal(OverlayInteractionMode.WidgetResult, state.Mode);
                 Assert.Same(replacement, Descendants(visual.Bottom.Stack)
                     .OfType<Border>()
                     .Single(card => AutomationProperties.GetName(card) == TestUiStrings.English.TraceMoeProviderName));
@@ -244,7 +273,7 @@ public sealed class TraceOverlayControllerTests
         });
     }
 
-    private static TraceOverlayController CreateController(
+    private static WidgetOverlayController CreateController(
         OverlayVisual visual,
         OverlayInteractionState state,
         Action<IOverlayCommand>? publish,
@@ -262,7 +291,8 @@ public sealed class TraceOverlayControllerTests
             mode => state.TransitionTo(mode),
             publish,
             createSelectionCopy,
-            createVideo);
+            CompositionRoot.CreateWidgetVisuals(createVideo));
+
 
     private static OverlayVisual CreateVisual() => OverlayVisualFactory.CreateRoot(
         null,

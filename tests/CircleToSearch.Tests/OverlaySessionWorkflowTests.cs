@@ -904,9 +904,9 @@ public sealed class OverlaySessionWorkflowTests
         var selection = NewSelection();
         harness.Overlay.Enqueue(new VisualSelection(selection, SearchProviderIds.TraceMoe));
         await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
-        Assert.NotNull(harness.Overlay.TraceResult);
-        Assert.Equal(PreparedVisualSearchKind.TraceMoe, harness.Overlay.TraceResult!.PreparedSearch!.Kind);
-        Assert.Equal(new[] { "trace", "close" }, harness.Events);
+        Assert.NotNull(harness.Overlay.WidgetResult);
+        Assert.Equal(PreparedVisualSearchKind.TraceMoe, harness.Overlay.WidgetResult!.PreparedSearch!.Kind);
+        Assert.Equal(new[] { "widget", "close" }, harness.Events);
         Assert.Equal(0, harness.UploadStartedCalls);
         Assert.Equal(0, harness.Google.Calls);
         Assert.Throws<ObjectDisposedException>(() => _ = selection.FrozenFrame);
@@ -918,10 +918,10 @@ public sealed class OverlaySessionWorkflowTests
         using var harness = new Harness(SearchProviderIds.TraceMoe);
         harness.Trace.Match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
             "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")));
-        harness.Overlay.CommandsAfterResult.Add(new OpenTraceResult());
+        harness.Overlay.CommandsAfterResult.Add(new OpenWidgetResult(new Uri(harness.Trace.Match!.AnilistUrl)));
         harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.TraceMoe));
         await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
-        Assert.Equal(new[] { "trace", "close", "trace-open", "close" }, harness.Events);
+        Assert.Equal(new[] { "widget", "close", "widget-open", "close" }, harness.Events);
         Assert.Equal(harness.Trace.Match!.AnilistUrl, Assert.Single(harness.Opened));
         Assert.Empty(harness.Errors);
     }
@@ -939,7 +939,7 @@ public sealed class OverlaySessionWorkflowTests
         harness.Notifier.OnError = () => harness.Events.Add("error");
         harness.Trace.Match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
             "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")));
-        harness.Overlay.CommandsAfterResult.Add(new OpenTraceResult());
+        harness.Overlay.CommandsAfterResult.Add(new OpenWidgetResult(new Uri(harness.Trace.Match!.AnilistUrl)));
         harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.TraceMoe));
 
         var run = harness.RunAsync();
@@ -949,7 +949,7 @@ public sealed class OverlaySessionWorkflowTests
             Assert.False(run.IsCompleted);
             Assert.Equal(0, harness.TraceOpenCalls);
             Assert.Empty(harness.Errors);
-            Assert.Equal(new[] { "trace", "close" }, harness.Events);
+            Assert.Equal(new[] { "widget", "close" }, harness.Events);
         }
         finally { closed.TrySetResult(); }
         await run.WaitAsync(TimeSpan.FromSeconds(2));
@@ -957,7 +957,7 @@ public sealed class OverlaySessionWorkflowTests
         Assert.Equal(1, harness.TraceOpenCalls);
         Assert.Equal(harness.Trace.Match!.AnilistUrl, Assert.Single(harness.Opened));
         Assert.Equal(TestUiStrings.English.ResultsUrlOpenFailed, Assert.Single(harness.Errors));
-        Assert.Equal(new[] { "trace", "close", "trace-open", "error", "close" }, harness.Events);
+        Assert.Equal(new[] { "widget", "close", "widget-open", "error", "close" }, harness.Events);
         Assert.Equal(1, harness.Overlay.DisposeCalls);
     }
 
@@ -968,7 +968,7 @@ public sealed class OverlaySessionWorkflowTests
         harness.Trace.Match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
             "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")));
         harness.Overlay.CloseException = new InvalidOperationException("close failed");
-        harness.Overlay.CommandsAfterResult.Add(new OpenTraceResult());
+        harness.Overlay.CommandsAfterResult.Add(new OpenWidgetResult(new Uri(harness.Trace.Match!.AnilistUrl)));
         harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.TraceMoe));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => harness.RunAsync());
@@ -991,7 +991,7 @@ public sealed class OverlaySessionWorkflowTests
 
         Assert.Equal(2, harness.Trace.Calls);
         Assert.Equal(1, harness.UploadStartedCalls);
-        Assert.Null(harness.Overlay.TraceResult);
+        Assert.Null(harness.Overlay.WidgetResult);
         Assert.Throws<ObjectDisposedException>(() => _ = first.FrozenFrame);
         Assert.Throws<ObjectDisposedException>(() => _ = second.FrozenFrame);
     }
@@ -1005,26 +1005,60 @@ public sealed class OverlaySessionWorkflowTests
         using var cancellation = new CancellationTokenSource();
 
         var run = harness.RunAsync(cancellation.Token);
-        Assert.Null(harness.Overlay.TraceResult);
+        Assert.Null(harness.Overlay.WidgetResult);
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
 
-        Assert.Null(harness.Overlay.TraceResult);
+        Assert.Null(harness.Overlay.WidgetResult);
     }
 
     [Fact]
     public async Task Opening_trace_without_a_match_keeps_the_overlay_open()
     {
         using var harness = new Harness(SearchProviderIds.TraceMoe);
-        harness.Overlay.CommandsAfterResult.Add(new OpenTraceResult());
+        harness.Overlay.CommandsAfterResult.Add(new OpenWidgetResult(new Uri("https://anilist.co/anime/1")));
         harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.TraceMoe));
 
         await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
 
         Assert.Empty(harness.Opened);
         Assert.Empty(harness.Errors);
-        Assert.Equal(new[] { "trace", "close" }, harness.Events);
+        Assert.Equal(new[] { "widget", "close" }, harness.Events);
     }
+
+    [Fact]
+    public async Task Pinterest_search_shows_pins_in_overlay_and_opens_the_chosen_pin()
+    {
+        using var harness = new Harness(SearchProviderIds.Pinterest);
+        harness.Pinterest.Pins = [Pin("11"), Pin("22")];
+        harness.Overlay.CommandsAfterResult.Add(new OpenWidgetResult(new Uri(harness.Pinterest.Pins[1].PinUrl)));
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.Pinterest));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(PreparedVisualSearchKind.Pinterest, harness.Overlay.WidgetResult!.PreparedSearch!.Kind);
+        Assert.Equal(1, harness.Pinterest.Calls);
+        Assert.Equal(0, harness.UploadStartedCalls);
+        Assert.Equal("https://www.pinterest.com/pin/22/", Assert.Single(harness.Opened));
+        Assert.Equal(new[] { "widget", "close", "widget-open", "close" }, harness.Events);
+    }
+
+    [Fact]
+    public async Task Opening_a_url_the_widget_did_not_offer_keeps_the_overlay_open()
+    {
+        using var harness = new Harness(SearchProviderIds.Pinterest);
+        harness.Pinterest.Pins = [Pin("11")];
+        harness.Overlay.CommandsAfterResult.Add(new OpenWidgetResult(new Uri("https://example.com/pin/11/")));
+        harness.Overlay.Enqueue(new VisualSelection(NewSelection(), SearchProviderIds.Pinterest));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Empty(harness.Opened);
+        Assert.Equal(new[] { "widget", "close" }, harness.Events);
+    }
+
+    private static PinterestPin Pin(string id) =>
+        new(id, "", "", null, new Uri("https://i.pinimg.com/474x/" + id + ".jpg"), 474, 474);
 
     [Fact]
     public async Task Trace_encoding_failure_disposes_selection_and_overlay()
@@ -1097,6 +1131,9 @@ public sealed class OverlaySessionWorkflowTests
                     new VisualSearchProviderRegistration(
                         new SearchProviderDescriptor(SearchProviderIds.YandexImages, "Yandex Images"),
                         () => Yandex),
+                    new VisualSearchProviderRegistration(
+                        new SearchProviderDescriptor(SearchProviderIds.Pinterest, "Pinterest"),
+                        () => Pinterest),
                 ],
                 SearchProviderIds.GoogleLens,
                 Log);
@@ -1199,9 +1236,10 @@ public sealed class OverlaySessionWorkflowTests
                 (overlay, maxLongSidePx, cancellation) =>
                 {
                     if (traceFactoryThrows) throw new InvalidOperationException("trace factory failed");
-                    return new OverlayTraceSession(
+                    return new OverlayWidgetSession(
                         overlay,
                         visualSearch,
+                        CompositionRoot.CreateWidgetVisuals(null).Keys.ToHashSet(),
                         maxLongSidePx,
                         new UrlOpeningService(OpenTrace, Notifier, TestUiStrings.English, Log),
                         cancellation);
@@ -1238,6 +1276,7 @@ public sealed class OverlaySessionWorkflowTests
         public FakeOverlay Overlay { get; }
         public FakeOverlayFactory Factory { get; }
         public FakeTraceProvider Trace { get; } = new();
+        public FakePinterestProvider Pinterest { get; } = new();
         public FakeProvider Google { get; } = new();
         public FakeProvider Yandex { get; } = new();
         public FakeMusicRecognizer Music { get; } = new();
@@ -1259,7 +1298,7 @@ public sealed class OverlaySessionWorkflowTests
         private bool OpenTrace(string url)
         {
             TraceOpenCalls++;
-            Events.Add("trace-open");
+            Events.Add("widget-open");
             Opened.Add(url);
             if (TraceOpenThrows) throw new InvalidOperationException("open failed");
             return TraceOpenResult;
@@ -1351,11 +1390,11 @@ public sealed class OverlaySessionWorkflowTests
             AudioFrames++;
             return Task.CompletedTask;
         }
-        public VisualSearchPreparationOutcome? TraceResult { get; private set; }
-        public Task ShowTraceResultAsync(VisualSearchPreparationOutcome outcome, CancellationToken cancellationToken)
+        public VisualSearchPreparationOutcome? WidgetResult { get; private set; }
+        public Task ShowWidgetResultAsync(VisualSearchPreparationOutcome outcome, CancellationToken cancellationToken)
         {
-            TraceResult = outcome;
-            Events.Add("trace");
+            WidgetResult = outcome;
+            Events.Add("widget");
             foreach (var command in CommandsAfterResult) Enqueue(command);
             Enqueue(new CancelSession());
             return Task.CompletedTask;
@@ -1429,6 +1468,17 @@ public sealed class OverlaySessionWorkflowTests
                 CanceledCalls++;
                 throw;
             }
+        }
+    }
+
+    private sealed class FakePinterestProvider : IVisualSearchProvider
+    {
+        public IReadOnlyList<PinterestPin> Pins { get; set; } = [];
+        public int Calls { get; private set; }
+        public Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] png, CancellationToken cancel)
+        {
+            Calls++;
+            return Task.FromResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForPinterest(Pins)));
         }
     }
 

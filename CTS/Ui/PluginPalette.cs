@@ -6,6 +6,12 @@ internal static class PluginPalette
 {
     internal static Color AniListBlue { get; } = Color.FromRgb(0x02, 0xA9, 0xFF);
     internal static Color AniListWhite { get; } = Color.FromRgb(0xFE, 0xFE, 0xFE);
+    internal static Color PinterestRed { get; } = Color.FromRgb(0xE6, 0x00, 0x23);
+    // Pin previews are arbitrary photos, so their overlays stay dark in both themes.
+    internal static Color PinterestTileScrim { get; } = Color.FromArgb(0xC7, 0x00, 0x00, 0x00);
+    internal static Color PinterestMoreScrim { get; } = Color.FromArgb(0x99, 0x00, 0x00, 0x00);
+    internal static Color PinterestTileText { get; } = Color.FromRgb(0xFF, 0xFF, 0xFF);
+    internal static Color PinterestTileMutedText { get; } = Color.FromArgb(0xBF, 0xFF, 0xFF, 0xFF);
     internal static Color BingTeal { get; } = Color.FromRgb(0x00, 0xCA, 0xCC);
     internal static Color BingBlue { get; } = Color.FromRgb(0x04, 0x8F, 0xCE);
     internal static Color BingSky { get; } = Color.FromRgb(0x00, 0xBB, 0xEC);

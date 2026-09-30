@@ -19,6 +19,15 @@ public sealed class UiStrings
     public string TraceOpen => Get("plugin_circletosearch_trace_open");
     public string TraceCopy => Get("plugin_circletosearch_trace_copy");
     public string TraceEpisode => Get("plugin_circletosearch_trace_episode");
+    public string PinterestProviderName => Get("plugin_circletosearch_pinterest_provider_name");
+    public string PinterestProviderDescription => Get("plugin_circletosearch_pinterest_provider_description");
+    public string PinterestSearching => Get("plugin_circletosearch_pinterest_searching");
+    public string PinterestSummary(int count) => Get("plugin_circletosearch_pinterest_summary", count);
+    public string PinterestNoMatch => Get("plugin_circletosearch_pinterest_no_match");
+    public string PinterestOpen => Get("plugin_circletosearch_pinterest_open");
+    public string PinterestShowAll => Get("plugin_circletosearch_pinterest_show_all");
+    public string PinterestMore(int count) => Get("plugin_circletosearch_pinterest_more", count);
+    public string PinterestBack => Get("plugin_circletosearch_pinterest_back");
     public string PluginTitle => Get("plugin_circletosearch_plugin_name");
     public string TrayOpen => Get("app_tray_open");
     public string TrayOpenWithHotkey(string gesture) => Get("app_tray_open_hotkey", gesture);

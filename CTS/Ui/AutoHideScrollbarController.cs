@@ -4,11 +4,10 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
-using CircleToSearch.Ui;
 
-namespace CircleToSearch.Shell.SettingsPreview;
+namespace CircleToSearch.Ui;
 
-internal sealed class SettingsScrollController : IDisposable
+internal sealed class AutoHideScrollbarController : IDisposable
 {
     private readonly ScrollViewer _scroll;
     private readonly ScrollBar _bar;
@@ -18,7 +17,7 @@ internal sealed class SettingsScrollController : IDisposable
     private bool _disposed;
     private double _dragOffset;
 
-    internal SettingsScrollController(ScrollViewer scroll)
+    internal AutoHideScrollbarController(ScrollViewer scroll)
     {
         _scroll = scroll;
         scroll.ApplyTemplate();

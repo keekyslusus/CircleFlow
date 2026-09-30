@@ -45,11 +45,20 @@ public static class CompositionRoot
         Action? ResetTranslationConsent,
         PluginLog? Log,
         TranslationMemoryProfiler? MemoryProfiler,
-        Func<Uri, ITraceVideoPreview>? CreateTraceVideo,
-        Func<bool> TraceTheme,
+        IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> WidgetVisuals,
+        Func<bool> WidgetTheme,
         OcrLanguageCatalog? OcrLanguages = null,
         Action<BitmapSource>? SetImageClipboard = null,
         Func<SelectionHint>? NextSelectionHint = null);
+
+    // The one place that decides which providers answer inside the overlay instead of in a browser.
+    internal static IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> CreateWidgetVisuals(
+        Func<Uri, ITraceVideoPreview>? createTraceVideo) =>
+        new Dictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>>
+        {
+            [SearchProviderIds.TraceMoe] = context => TraceOverlayVisual.Create(context, createTraceVideo),
+            [SearchProviderIds.Pinterest] = PinterestOverlayVisual.Create,
+        };
 
     public static int Run(string[] args)
     {
@@ -250,7 +259,7 @@ public static class CompositionRoot
             (content, anchor, lightTheme) => CreateSearchBrowserWindowView(
                 strings, content, anchor, lightTheme)));
         var visualSearchRollback = rollback.Own(new ResourceRollbackScope(log));
-        var traceHttpClient = visualSearchRollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
+        var providerHttpClient = visualSearchRollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
         var providerRouter = visualSearchRollback.Own(new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(
@@ -262,12 +271,15 @@ public static class CompositionRoot
                     () => new YandexImagesProvider(log)),
                 new VisualSearchProviderRegistration(
                     new SearchProviderDescriptor(SearchProviderIds.TraceMoe, () => strings.TraceMoeProviderName),
-                    () => new TraceMoeProvider(traceHttpClient)),
+                    () => new TraceMoeProvider(providerHttpClient)),
+                new VisualSearchProviderRegistration(
+                    new SearchProviderDescriptor(SearchProviderIds.Pinterest, () => strings.PinterestProviderName),
+                    () => new PinterestProvider(providerHttpClient)),
             ],
             SearchProviderIds.GoogleLens,
             log));
         var visualSearchLifetime = visualSearchRollback.TransferAllTo(
-            new VisualSearchLifetime(providerRouter.StopAsync, traceHttpClient, log));
+            new VisualSearchLifetime(providerRouter.StopAsync, providerHttpClient, log));
         var visualSearchPresenter = new VisualSearchResultPresenter(
             searchBrowserHost,
             urlOpening,
@@ -366,6 +378,8 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
+        var widgetVisuals = CreateWidgetVisuals(video => new TraceVideoPreview(video,
+            () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log));
         var overlayControllerDependencies = new OverlayControllerDependencies(
             Clipboard.SetText,
             OverlayVisualResources.AnimationsEnabled,
@@ -377,8 +391,7 @@ public static class CompositionRoot
             () => settings.SetTranslationConsent(false).ThrowIfFailed(strings.StorageSaveFailed),
             log,
             translationMemory,
-            video => new TraceVideoPreview(video,
-                () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log),
+            widgetVisuals,
             SystemTheme.IsLight,
             ocrLanguages,
             Clipboard.SetImage,
@@ -395,8 +408,8 @@ public static class CompositionRoot
                 overlay, musicRecognition, musicResultPresenter, log, cancellation),
             (overlay, cancellation) => new OverlayTranslationSession(
                 overlay, screenTranslation, cancellation),
-            (overlay, maxLongSidePx, cancellation) => new OverlayTraceSession(
-                overlay, visualSearch, maxLongSidePx, urlOpening, cancellation),
+            (overlay, maxLongSidePx, cancellation) => new OverlayWidgetSession(
+                overlay, visualSearch, widgetVisuals.Keys.ToHashSet(), maxLongSidePx, urlOpening, cancellation),
             providerSelection,
             strings,
             log,
@@ -657,19 +670,19 @@ public static class CompositionRoot
                 context.MusicResultCommandRequested,
                 clipboardCopy,
                 dependencies.AnimationsEnabled));
-            var trace = Track(new TraceOverlayController(
+            var widget = Track(new WidgetOverlayController(
                 context.Visual.Root,
                 activityPresenter,
                 context.Visual.Bottom,
                 context.Visual.Effects,
                 context.Strings,
-                dependencies.TraceTheme,
+                dependencies.WidgetTheme,
                 clipboardCopy,
                 context.GetMode,
                 context.TransitionMode,
                 context.PublishCommand,
                 context.CreateSelectionCopy,
-                dependencies.CreateTraceVideo));
+                dependencies.WidgetVisuals));
             var controllers = new OverlayControllers(
                 selection,
                 textSelection,
@@ -680,7 +693,7 @@ public static class CompositionRoot
                 translation,
                 provider,
                 music,
-                trace,
+                widget,
                 actionTray,
                 toast,
                 debug,

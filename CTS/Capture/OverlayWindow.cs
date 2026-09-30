@@ -61,7 +61,7 @@ public sealed class OverlayWindow : Window
     private readonly ScreenTranslationOverlayController _translation;
     private readonly ProviderMenuController _provider;
     private readonly MusicOverlayController _music;
-    private readonly TraceOverlayController _trace;
+    private readonly WidgetOverlayController _widget;
     private readonly ActionTrayOverlayController _actionTray;
     private readonly ToastOverlayController _toast;
     private readonly DebugOverlayController _debug;
@@ -186,7 +186,7 @@ public sealed class OverlayWindow : Window
         _translation = _controllers.Translation;
         _provider = _controllers.Provider;
         _music = _controllers.Music;
-        _trace = _controllers.Trace;
+        _widget = _controllers.Widget;
         _actionTray = _controllers.ActionTray;
         _toast = _controllers.Toast;
         _debug = _controllers.Debug;
@@ -273,8 +273,8 @@ public sealed class OverlayWindow : Window
 
     internal void ReportAudio(MusicVisualizationFrame frame) => _music.ReportAudio(frame);
 
-    internal void ShowTraceResult(VisualSearchPreparationOutcome outcome)
-        => _trace.ShowResult(outcome);
+    internal void ShowWidgetResult(VisualSearchPreparationOutcome outcome)
+        => _widget.ShowResult(outcome);
 
     internal void ShowMusicResult(MusicRecognitionOutcome outcome)
     {
@@ -420,7 +420,7 @@ public sealed class OverlayWindow : Window
             _imageSelection.Select(bounds);
             return;
         }
-        if (_trace.TryStart(_provider.SelectedProviderId, bounds)) return;
+        if (_widget.TryStart(_provider.SelectedProviderId, bounds)) return;
         var waitForSelectionHold = _pointer.ActiveGesture == ActivePointerGesture.Lasso;
         var usesCapturedImage = ReferenceEquals(_visual.Selection.Screenshot.Source, _capturedImage);
         var selection = usesCapturedImage ? new SelectionOutcome(bounds, _frame) : CreateSelectionCopy(bounds);
@@ -441,7 +441,7 @@ public sealed class OverlayWindow : Window
 
     private void OnSelectionHoldCompleted()
     {
-        if (Mode is OverlayInteractionMode.TraceLoading or OverlayInteractionMode.TraceResult)
+        if (Mode is OverlayInteractionMode.WidgetLoading or OverlayInteractionMode.WidgetResult)
             _selection.FadeSelectionVisuals();
         else if (Mode == OverlayInteractionMode.Closing)
             FinishShutdown();
@@ -516,7 +516,7 @@ public sealed class OverlayWindow : Window
 
     private void StartMusicRecognition()
     {
-        if (Mode == OverlayInteractionMode.TraceResult)
+        if (Mode == OverlayInteractionMode.WidgetResult)
             ApplyModeTransition(OverlayInteractionMode.Selecting);
         SetDebugPanelOpen(false);
         if (_publishCommand is null)
@@ -554,17 +554,17 @@ public sealed class OverlayWindow : Window
             _imageText.SetAvailable(false);
         switch (target)
         {
-            case OverlayInteractionMode.TraceLoading:
-            case OverlayInteractionMode.TraceResult:
+            case OverlayInteractionMode.WidgetLoading:
+            case OverlayInteractionMode.WidgetResult:
                 _imageSelection.Dismiss();
                 _pointer.Cancel();
                 _textSelection.Dismiss();
                 _provider.SetOpen(false);
                 _debug.SetOpen(false);
                 _visual.Bottom.Root.Visibility = Visibility.Visible;
-                SetConflictingControlsEnabled(target == OverlayInteractionMode.TraceResult);
+                SetConflictingControlsEnabled(target == OverlayInteractionMode.WidgetResult);
                 _translation.SetActionEnabled(false);
-                if (target == OverlayInteractionMode.TraceLoading)
+                if (target == OverlayInteractionMode.WidgetLoading)
                     _actionTray.Restore();
                 _selection.FadeSelectionVisuals();
                 Cursor = Cursors.Arrow;
@@ -584,7 +584,7 @@ public sealed class OverlayWindow : Window
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Selecting:
-                _trace.DismissResult();
+                _widget.DismissResult();
                 _music.DismissResult();
                 _translation.DismissStateCard();
                 _selection.RestoreSelectionVisuals();
