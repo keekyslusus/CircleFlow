@@ -70,6 +70,50 @@ public sealed class YandexImagesProviderTests
     }
 
     [Theory]
+    [InlineData("[]")]
+    [InlineData("\"text\"")]
+    [InlineData("""{"cbir_id":123}""")]
+    [InlineData("""{"cbir_id":null}""")]
+    [InlineData("""{"cbir_id":{"id":"x"}}""")]
+    public async Task Unexpected_json_shape_maps_to_bad_response(string body)
+    {
+        var provider = new YandexImagesProvider(JsonHandler(body));
+
+        var outcome = await provider.PrepareAsync([1], CancellationToken.None);
+
+        Assert.Equal(UploadFailure.BadResponse, outcome.Failure);
+    }
+
+    [Theory]
+    [InlineData("""{"cbir_id":"1/abc","sizes":null}""")]
+    [InlineData("""{"cbir_id":"1/abc","sizes":[]}""")]
+    [InlineData("""{"cbir_id":"1/abc","sizes":{"orig":"x"}}""")]
+    [InlineData("""{"cbir_id":"1/abc","sizes":{"orig":{"path":5}}}""")]
+    public async Task Unexpected_sizes_shape_falls_back_to_the_cbir_image_path(string body)
+    {
+        var provider = new YandexImagesProvider(JsonHandler(body));
+
+        var outcome = await provider.PrepareAsync([1], CancellationToken.None);
+
+        Assert.True(outcome.Success);
+        Assert.Contains(
+            "url=https%3A%2F%2Favatars.mds.yandex.net%2Fget-images-cbir%2F1%2Fabc%2Forig",
+            outcome.PreparedSearch!.RequireResultsUrl().AbsoluteUri);
+    }
+
+    [Fact]
+    public async Task Stalled_response_body_maps_to_timeout()
+    {
+        var provider = new YandexImagesProvider(
+            new FakeHandler(() => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StalledContent() }),
+            TimeSpan.FromMilliseconds(100));
+
+        var outcome = await provider.PrepareAsync([1], CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(UploadFailure.Timeout, outcome.Failure);
+    }
+
+    [Theory]
     [InlineData(HttpStatusCode.NotFound)]
     [InlineData(HttpStatusCode.TooManyRequests)]
     [InlineData(HttpStatusCode.Forbidden)]
@@ -137,6 +181,24 @@ public sealed class YandexImagesProviderTests
             LastRequest = request;
             LastBody = request.Content is null ? null : await request.Content.ReadAsByteArrayAsync(cancellationToken);
             return responder();
+        }
+    }
+
+    private sealed class StalledContent : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+            => SerializeToStreamAsync(stream, context, CancellationToken.None);
+
+        protected override Task SerializeToStreamAsync(
+            Stream stream,
+            TransportContext? context,
+            CancellationToken cancellationToken)
+            => Task.Delay(Timeout.Infinite, cancellationToken);
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
         }
     }
 

@@ -12,6 +12,7 @@ public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
     public const string UploadQuery = "cbird=111&images_avatars_size=preview&images_avatars_namespace=images-cbir";
 
     private readonly HttpClient _client;
+    private readonly TimeSpan _timeout;
     private readonly PluginLog? _log;
     private int _disposed;
 
@@ -27,7 +28,10 @@ public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
 
     public YandexImagesProvider(HttpMessageHandler handler, TimeSpan? timeout = null, PluginLog? log = null)
     {
-        _client = new HttpClient(handler) { Timeout = timeout ?? TimeSpan.FromSeconds(10) };
+        // HttpClient.Timeout stops at the response headers under ResponseHeadersRead, so the deadline
+        // is enforced by a token that also covers reading the body.
+        _client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        _timeout = timeout ?? TimeSpan.FromSeconds(10);
         _log = log;
     }
 
@@ -38,16 +42,18 @@ public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
             Content = new ByteArrayContent(jpeg),
         };
         request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+        deadline.CancelAfter(_timeout);
 
         try
         {
             using var response = await _client
-                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancel)
+                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token)
                 .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 return VisualSearchPreparationOutcome.Fail(UploadFailure.UnexpectedStatus, (int)response.StatusCode);
 
-            var body = await response.Content.ReadAsStringAsync(cancel).ConfigureAwait(false);
+            var body = await response.Content.ReadAsStringAsync(deadline.Token).ConfigureAwait(false);
             var parsed = Parse(body);
             if (parsed is null)
             {
@@ -88,15 +94,20 @@ public sealed class YandexImagesProvider : IVisualSearchProvider, IDisposable
         {
             using var json = JsonDocument.Parse(body);
             var root = json.RootElement;
-            if (!root.TryGetProperty("cbir_id", out var cbirIdElement)) return null;
+            if (root.ValueKind != JsonValueKind.Object
+                || !root.TryGetProperty("cbir_id", out var cbirIdElement)
+                || cbirIdElement.ValueKind != JsonValueKind.String) return null;
 
             var cbirId = cbirIdElement.GetString();
             if (string.IsNullOrWhiteSpace(cbirId)) return null;
 
             var imagePath = "https://avatars.mds.yandex.net/get-images-cbir/" + cbirId + "/orig";
             if (root.TryGetProperty("sizes", out var sizes)
+                && sizes.ValueKind == JsonValueKind.Object
                 && sizes.TryGetProperty("orig", out var orig)
-                && orig.TryGetProperty("path", out var pathElement))
+                && orig.ValueKind == JsonValueKind.Object
+                && orig.TryGetProperty("path", out var pathElement)
+                && pathElement.ValueKind == JsonValueKind.String)
             {
                 var path = pathElement.GetString();
                 if (!string.IsNullOrWhiteSpace(path)) imagePath = path;

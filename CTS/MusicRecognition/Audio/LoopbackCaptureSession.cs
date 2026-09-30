@@ -81,10 +81,21 @@ public sealed class LoopbackCaptureSession : IAudioCaptureSession
             catch (OperationCanceledException) when (_captureCancellation?.IsCancellationRequested == true)
             {
             }
+            catch (Exception exception)
+            {
+                // Snapshot() already surfaces capture failures; rethrowing here would replace the caller's outcome.
+                _log?.Warn(nameof(LoopbackCaptureSession), $"audio capture failed: {exception.Message}");
+            }
         }
         _captureCancellation?.Dispose();
-        await _recorder.DisposeAsync().ConfigureAwait(false);
-        _buffer.Dispose();
+        try
+        {
+            await _recorder.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _buffer.Dispose();
+        }
     }
 
     private async Task CaptureAsync(Action<AudioLevelFrame>? progress, CancellationToken cancellationToken)
