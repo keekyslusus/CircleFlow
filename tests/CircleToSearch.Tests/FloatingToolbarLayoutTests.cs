@@ -18,6 +18,18 @@ public sealed class FloatingToolbarLayoutTests
     }
 
     [Fact]
+    public void Toolbar_that_prefers_below_goes_above_only_without_room_below()
+    {
+        var viewport = new Size(400, 300);
+        var toolbar = new Size(80, 30);
+
+        Assert.Equal(new Point(60, 148),
+            FloatingToolbarLayout.Place(new Rect(50, 40, 100, 100), toolbar, viewport, preferBelow: true));
+        Assert.Equal(new Point(60, 132),
+            FloatingToolbarLayout.Place(new Rect(50, 170, 100, 100), toolbar, viewport, preferBelow: true));
+    }
+
+    [Fact]
     public void Selection_filling_the_screen_puts_the_toolbar_inside_above_the_taskbar()
     {
         var viewport = new Size(1920, 1080);

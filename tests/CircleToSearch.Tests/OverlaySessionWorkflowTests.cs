@@ -18,6 +18,36 @@ namespace CircleToSearch.Tests;
 public sealed class OverlaySessionWorkflowTests
 {
     [Fact]
+    public async Task Open_link_closes_the_overlay_before_opening_and_ends_the_session()
+    {
+        using var harness = new Harness();
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        harness.Overlay.CloseAsyncCompletion = closed.Task;
+        harness.Overlay.Enqueue(new OpenLink(new Uri("https://example.com/menu")));
+        var run = harness.RunAsync();
+        try
+        {
+            await harness.Overlay.CloseStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.Empty(harness.Opened);
+            Assert.False(run.IsCompleted);
+        }
+        finally { closed.TrySetResult(); }
+        await run.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Equal("https://example.com/menu", Assert.Single(harness.Opened));
+        Assert.Equal(new[] { "close", "link-open", "close" }, harness.Events);
+        Assert.Equal(1, harness.Overlay.DisposeCalls);
+    }
+
+    [Theory]
+    [InlineData("tg://login?token=abc")]
+    [InlineData("file:///C:/Windows/System32/calc.exe")]
+    public void Open_link_rejects_links_that_are_only_copied(string url)
+    {
+        Assert.Throws<ArgumentException>(() => new OpenLink(new Uri(url)));
+    }
+
+    [Fact]
     public async Task Save_waits_for_overlay_close_before_showing_dialog_and_does_not_reopen_overlay()
     {
         var saved = new List<BitmapSource>();
@@ -1251,7 +1281,12 @@ public sealed class OverlaySessionWorkflowTests
                 saveImage,
                 (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation),
                 (maxLongSidePx, cancellation) => new OverlayLensSession(lensPrewarm, maxLongSidePx, cancellation),
-                cancellation => new OverlayTextSearchSession(textSearch, cancellation));
+                cancellation => new OverlayTextSearchSession(textSearch, cancellation),
+                url =>
+                {
+                    Events.Add("link-open");
+                    Opened.Add(url.AbsoluteUri);
+                });
             AskHost.Revealed = () => CloseCallsWhenRevealed.Add(Overlay.CloseCalls);
             LensHost.Revealed = () => LensRevealedAfterClose.Add(Overlay.CloseCompletion.IsCompleted);
         }

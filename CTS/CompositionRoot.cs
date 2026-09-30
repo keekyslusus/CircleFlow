@@ -49,7 +49,8 @@ public static class CompositionRoot
         Func<bool> WidgetTheme,
         OcrLanguageCatalog? OcrLanguages = null,
         Action<BitmapSource>? SetImageClipboard = null,
-        Func<SelectionHint>? NextSelectionHint = null);
+        Func<SelectionHint>? NextSelectionHint = null,
+        Func<BitmapSource, CancellationToken, IReadOnlyList<QrCodes.QrCodeMatch>>? ScanQrCodes = null);
 
     // The one place that decides which providers answer inside the overlay instead of in a browser.
     internal static IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> CreateWidgetVisuals(
@@ -395,7 +396,8 @@ public static class CompositionRoot
             SystemTheme.IsLight,
             ocrLanguages,
             Clipboard.SetImage,
-            new SelectionHintRotation().Next);
+            new SelectionHintRotation().Next,
+            QrCodes.QrCodeScanner.Scan);
         var overlayControllerFactory = new OverlayControllerFactory(
             context => CreateOverlayControllers(context, overlayControllerDependencies));
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
@@ -417,7 +419,8 @@ public static class CompositionRoot
             imageSave.SaveAsync,
             (maxLongSidePx, cancellation) => new OverlayAskSession(imageAsk, maxLongSidePx, cancellation),
             (maxLongSidePx, cancellation) => new OverlayLensSession(lensPrewarm, maxLongSidePx, cancellation),
-            cancellation => new OverlayTextSearchSession(textSearch, cancellation));
+            cancellation => new OverlayTextSearchSession(textSearch, cancellation),
+            url => urlOpening.TryOpen(url.AbsoluteUri, strings.LinkOpenFailed));
         var coordinator = new SearchCoordinator(
             workflow,
             hideOwnWindows,
@@ -591,6 +594,17 @@ public static class CompositionRoot
             var actionTray = Track(new ActionTrayOverlayController(
                 context.Visual.Actions,
                 context.Visual.Bottom.Root));
+            var qrCodes = Track(new QrCodeOverlayController(
+                context.Visual.QrCodes,
+                frameSource,
+                context.CoordinateRoot,
+                mapper,
+                context.ScanQrCodes ? dependencies.ScanQrCodes : null,
+                clipboardCopy,
+                publishCommand,
+                context.Strings,
+                dependencies.AnimationsEnabled,
+                dependencies.Log));
             imageText = Track(new OverlayImageTextCoordinator(
                 pointer,
                 textSelection,
@@ -605,7 +619,11 @@ public static class CompositionRoot
                 context.Visual.Effects,
                 context.CoordinateRoot,
                 context.Visual.LightTheme,
-                restoreActionTray: actionTray.Restore,
+                restoreActionTray: () =>
+                {
+                    actionTray.Restore();
+                    qrCodes.SetSuppressed(false);
+                },
                 changeTrayLayout: ChangeTrayLayout));
             var inputLanguage = Track(new KeyboardInputLanguageSource(
                 imageText.OnInputLanguageChanged,
@@ -699,7 +717,8 @@ public static class CompositionRoot
                 debug,
                 activityPresenter,
                 imageSelection,
-                selectionHint);
+                selectionHint,
+                qrCodes);
             rollback.Clear();
             return controllers;
         }

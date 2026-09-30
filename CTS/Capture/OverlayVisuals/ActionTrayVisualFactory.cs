@@ -9,6 +9,7 @@ using CircleToSearch.Ui;
 
 internal static class ActionTrayVisualFactory
 {
+    internal const double ChipMinHeight = 44;
     private const double ChipBorderThicknessDips = 1;
 
     internal static ActionTrayVisual Create(
@@ -109,7 +110,7 @@ internal static class ActionTrayVisualFactory
         var surface = new Border
         {
             Child = row,
-            MinHeight = 44,
+            MinHeight = ChipMinHeight,
             Padding = new Thickness(18, 8, 16, 8),
             Background = background,
             BorderBrush = outline,

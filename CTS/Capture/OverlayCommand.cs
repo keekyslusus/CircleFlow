@@ -42,6 +42,17 @@ public sealed record RetryMusicRecognition : IOverlayCommand;
 public sealed record OpenWidgetResult(Uri Url) : IOverlayCommand;
 public sealed record OpenMusicResult : IOverlayCommand;
 
+public sealed record OpenLink : IOverlayCommand
+{
+    public OpenLink(Uri url)
+    {
+        if (!Links.ScreenLink.CanOpen(url)) throw new ArgumentException("Only web and mail links can be opened.", nameof(url));
+        Url = url;
+    }
+
+    public Uri Url { get; }
+}
+
 public sealed record SaveSelectedImage(System.Windows.Media.Imaging.BitmapSource Image) : IOverlayCommand;
 
 public sealed record AskAboutSelection : IOverlayCommand

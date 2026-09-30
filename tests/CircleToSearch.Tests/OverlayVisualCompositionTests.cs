@@ -42,6 +42,7 @@ public sealed class OverlayVisualCompositionTests
                 visual.Selection.InputSurface,
                 visual.Effects.SceneRippleLayer,
                 visual.ActivityHost,
+                visual.QrCodes.Layer,
                 visual.TextSelection.Toolbar.Layer,
                 visual.ImageSelection.Toolbar.Layer,
                 visual.Bottom.Root,
@@ -52,6 +53,8 @@ public sealed class OverlayVisualCompositionTests
             Assert.All(expected.Take(8), layer => Assert.False(layer.IsHitTestVisible));
             Assert.True(visual.Selection.InputSurface.IsHitTestVisible);
             Assert.Null(visual.TextSelection.Toolbar.Layer.Background);
+            Assert.Null(visual.QrCodes.Layer.Background);
+            Assert.False(visual.QrCodes.Viewfinders.IsHitTestVisible);
             Assert.Equal(Visibility.Collapsed, visual.TextSelection.Toolbar.Surface.Visibility);
             visual.TextSelection.Toolbar.Show(new Rect(100, 100, 40, 20), new Size(640, 400));
             Assert.Equal(Visibility.Visible, visual.TextSelection.Toolbar.Surface.Visibility);

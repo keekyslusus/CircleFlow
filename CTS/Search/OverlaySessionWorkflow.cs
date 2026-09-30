@@ -23,7 +23,8 @@ internal sealed class OverlaySessionWorkflow(
     Func<System.Windows.Media.Imaging.BitmapSource, Task>? saveImage = null,
     Func<int, CancellationToken, OverlayAskSession>? createAskSession = null,
     Func<int, CancellationToken, OverlayLensSession>? createLensSession = null,
-    Func<CancellationToken, OverlayTextSearchSession>? createTextSearchSession = null) : ISearchSessionWorkflow
+    Func<CancellationToken, OverlayTextSearchSession>? createTextSearchSession = null,
+    Action<Uri>? openLink = null) : ISearchSessionWorkflow
 {
     public async Task RunAsync(SearchSessionOptions options, Action onUploadStarted, CancellationToken cancellationToken)
     {
@@ -194,6 +195,11 @@ internal sealed class OverlaySessionWorkflow(
                         case CancelScreenTranslation canceled when translation is not null:
                             await translation.CancelAsync(canceled).ConfigureAwait(false);
                             break;
+
+                        case OpenLink link when openLink is not null:
+                            await overlay.CloseAsync().ConfigureAwait(false);
+                            openLink(link.Url);
+                            return;
 
                         case StartMusicRecognition when !music.IsRunning:
                         case RetryMusicRecognition when !music.IsRunning:

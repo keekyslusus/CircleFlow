@@ -17,6 +17,15 @@
     <system:String x:Key="app_settings_every_56">Каждые 56 дней</system:String>
     <system:String x:Key="app_settings_never">Никогда</system:String>
     <system:String x:Key="app_settings_selection_toolbar">Панель выделения</system:String>
+    <system:String x:Key="app_settings_links_qr_codes">Ссылки и QR-коды</system:String>
+    <system:String x:Key="app_settings_scan_qr_codes">Искать QR-коды</system:String>
+    <system:String x:Key="app_settings_scan_qr_codes_sub">Предлагает открыть или скопировать QR-коды на снимке экрана. Распознавание не покидает этот ПК</system:String>
+    <system:String x:Key="plugin_circletosearch_qr_open">Открыть {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_qr_copy_text">Копировать текст</system:String>
+    <system:String x:Key="plugin_circletosearch_qr_copy_password">Копировать пароль</system:String>
+    <system:String x:Key="plugin_circletosearch_qr_wifi_network">Сеть Wi-Fi {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_qr_password_copied">Пароль Wi-Fi скопирован</system:String>
+    <system:String x:Key="plugin_circletosearch_link_open_failed">Не удалось открыть ссылку.</system:String>
     <system:String x:Key="plugin_circletosearch_selection_prompt">Выделите область</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_action">отмена</system:String>
     <system:String x:Key="plugin_circletosearch_left_mouse_button">Левая кнопка мыши</system:String>

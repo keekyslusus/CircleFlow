@@ -16,7 +16,8 @@ public sealed record SearchSessionOptions(
     string TranslationTargetLanguageTag = "en",
     KeyboardLanguageSnapshot InputLanguage = default,
     string TextSearchEngineId = TextSearchEngines.MatchImageSearch,
-    SelectionToolbarAction HiddenToolbarActions = SelectionToolbarAction.None)
+    SelectionToolbarAction HiddenToolbarActions = SelectionToolbarAction.None,
+    bool ScanQrCodes = false)
 {
     internal static SearchSessionOptions From(AppSettings settings, OcrLanguageCatalog languages, CultureInfo culture,
         KeyboardLanguageSnapshot inputLanguage = default) =>
@@ -25,5 +26,6 @@ public sealed record SearchSessionOptions(
             TranslationTargetLanguage.From(culture),
             inputLanguage,
             settings.TextSearchEngineId,
-            settings.HiddenToolbarActions);
+            settings.HiddenToolbarActions,
+            settings.ScanQrCodes);
 }

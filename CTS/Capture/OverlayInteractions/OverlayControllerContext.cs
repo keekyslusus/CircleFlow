@@ -40,4 +40,5 @@ internal sealed record OverlayControllerContext(
     Action? CloseRequested = null,
     Action? SelectionDrawn = null,
     string TextSearchEngineId = TextSearchEngines.MatchImageSearch,
-    SelectionToolbarAction HiddenToolbarActions = SelectionToolbarAction.None);
+    SelectionToolbarAction HiddenToolbarActions = SelectionToolbarAction.None,
+    bool ScanQrCodes = false);

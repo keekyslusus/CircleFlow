@@ -31,6 +31,7 @@ Just press a shortcut. No screenshots to save, no tabs to open.
 - Select text anywhere on screen to copy it or search it with [Google](https://www.google.com/), [Bing](https://www.bing.com/), [DuckDuckGo](https://duckduckgo.com/), [Kagi](https://kagi.com/), [Qwant](https://www.qwant.com/) or [Startpage](https://www.startpage.com/)
 - Translate on-screen text with Google Translate
 - Text recognition uses the OCR languages installed in Windows
+- QR codes on screen get a chip to open the link, copy the content or copy a Wi-Fi password
 
 
 ### Music Recognition

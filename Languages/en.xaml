@@ -123,6 +123,12 @@
     <system:String x:Key="plugin_circletosearch_text_search_too_long">The selected text is too long to search in a browser.</system:String>
     <system:String x:Key="plugin_circletosearch_text_search_open_failed">The text search could not be opened in the default browser.</system:String>
     <system:String x:Key="plugin_circletosearch_translate">Translate</system:String>
+    <system:String x:Key="plugin_circletosearch_qr_open">Open {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_qr_copy_text">Copy text</system:String>
+    <system:String x:Key="plugin_circletosearch_qr_copy_password">Copy password</system:String>
+    <system:String x:Key="plugin_circletosearch_qr_wifi_network">Wi-Fi network {0}</system:String>
+    <system:String x:Key="plugin_circletosearch_qr_password_copied">Wi-Fi password copied</system:String>
+    <system:String x:Key="plugin_circletosearch_link_open_failed">The link could not be opened.</system:String>
     <system:String x:Key="plugin_circletosearch_translating">Translating…</system:String>
     <system:String x:Key="plugin_circletosearch_show_original">Show original</system:String>
     <system:String x:Key="plugin_circletosearch_translation_consent_title">Translate this screenshot?</system:String>
@@ -224,6 +230,9 @@
     <system:String x:Key="app_settings_target_language_sub">Matches your Windows display language</system:String>
     <system:String x:Key="app_settings_translation_info">What is sent for translation</system:String>
     <system:String x:Key="app_settings_translation_info_text">Google Translate receives the full captured screen, including visible personal information.</system:String>
+    <system:String x:Key="app_settings_links_qr_codes">Links &amp; QR codes</system:String>
+    <system:String x:Key="app_settings_scan_qr_codes">Scan for QR codes</system:String>
+    <system:String x:Key="app_settings_scan_qr_codes_sub">Offers to open or copy QR codes on the captured screen. Scanning stays on this PC</system:String>
     <system:String x:Key="app_settings_audio_source">Audio source</system:String>
     <system:String x:Key="app_settings_audio_output_missing">No output device</system:String>
     <system:String x:Key="app_settings_system_audio">Windows system audio</system:String>

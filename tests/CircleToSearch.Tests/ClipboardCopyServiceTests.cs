@@ -21,6 +21,19 @@ public sealed class ClipboardCopyServiceTests
         Assert.Equal(ToastTone.Success, toast.Tone);
     }
 
+    [Fact]
+    public void Secret_copy_shows_the_given_message_instead_of_a_preview()
+    {
+        var copied = new List<string>();
+        var notifications = new List<ToastNotification>();
+        var service = new ClipboardCopyService(copied.Add, notifications.Add, TestUiStrings.English);
+
+        Assert.True(service.TryCopy("hunter2", "Password copied"));
+
+        Assert.Equal(["hunter2"], copied);
+        Assert.Equal(new ToastNotification("Password copied", ToastTone.Success), Assert.Single(notifications));
+    }
+
     [Theory]
     [InlineData(49)]
     [InlineData(50)]

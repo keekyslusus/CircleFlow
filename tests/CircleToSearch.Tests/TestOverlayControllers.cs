@@ -22,7 +22,9 @@ internal static class TestOverlayControllers
         TranslationMemoryProfiler? memoryProfiler = null,
         Func<Uri, ITraceVideoPreview>? createTraceVideo = null,
         Func<bool>? widgetTheme = null,
-        Action<System.Windows.Media.Imaging.BitmapSource>? setImageClipboard = null) =>
+        Action<System.Windows.Media.Imaging.BitmapSource>? setImageClipboard = null,
+        Func<System.Windows.Media.Imaging.BitmapSource, CancellationToken,
+            IReadOnlyList<CircleToSearch.QrCodes.QrCodeMatch>>? scanQrCodes = null) =>
         new(context => CompositionRoot.CreateOverlayControllers(
             context,
             new CompositionRoot.OverlayControllerDependencies(
@@ -38,5 +40,6 @@ internal static class TestOverlayControllers
                 memoryProfiler,
                 CompositionRoot.CreateWidgetVisuals(createTraceVideo),
                 widgetTheme ?? (() => context.Visual.LightTheme),
-                SetImageClipboard: setImageClipboard)));
+                SetImageClipboard: setImageClipboard,
+                ScanQrCodes: scanQrCodes)));
 }

@@ -66,6 +66,7 @@ CircleFlow binary distributions include the following third-party dependencies:
 - System.Numerics.Tensors 9.0.0 (MIT)
 - Microsoft.Web.WebView2 1.0.4129.50 (3-Clause BSD license and bundled notices)
 - Velopack 1.2.158, including Update.exe and the installer (MIT; Copyright Velopack Ltd.)
+- ZXing.Net 0.16.11 (Apache-2.0; Copyright Michael Jahn and ZXing authors)
 - Microsoft.Windows.SDK.NET.Ref runtime pack 10.0.19041.57, including
   Microsoft.Windows.SDK.NET.dll and WinRT.Runtime.dll (Microsoft Windows SDK terms:
   https://aka.ms/WinSDKLicenseURL)

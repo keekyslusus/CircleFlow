@@ -19,7 +19,7 @@ internal static class SelectionOverlayVisualFactory
     internal const double RevealBleed = 96;
     internal const double FrameCornerRadius = 6;
 
-    internal static SelectionOverlayVisual Create(BitmapSource? frame, Size size)
+    internal static SelectionOverlayVisual Create(BitmapSource? frame, Size size, Color accentColor)
     {
         var screenshot = new Image { Source = frame, Stretch = Stretch.Fill, IsHitTestVisible = false };
         var dim = new Path
@@ -50,7 +50,6 @@ internal static class SelectionOverlayVisualFactory
         if (OverlayVisualResources.HardwareEffectsEnabled())
             sheen.Effect = new BlurEffect { Radius = SheenBlurRadius };
 
-        var accentColor = SystemAccentColor.Read();
         var halo = new Polyline
         {
             Stroke = OverlayVisualResources.Frozen(PluginPalette.SelectionHalo),

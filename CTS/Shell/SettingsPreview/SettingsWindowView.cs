@@ -111,6 +111,9 @@ internal sealed class SettingsWindowView
         var textSearchBrowser = Element<CheckBox>("TextSearchBrowser");
         textSearchBrowser.Checked += OnTextSearchBrowserChanged;
         textSearchBrowser.Unchecked += OnTextSearchBrowserChanged;
+        var scanQrCodes = Element<CheckBox>("ScanQrCodes");
+        scanQrCodes.Checked += OnScanQrCodesChanged;
+        scanQrCodes.Unchecked += OnScanQrCodesChanged;
         var ignoreFullscreen = Element<CheckBox>("IgnoreFullscreen");
         ignoreFullscreen.Checked += OnIgnoreFullscreenChanged;
         ignoreFullscreen.Unchecked += OnIgnoreFullscreenChanged;
@@ -346,6 +349,7 @@ internal sealed class SettingsWindowView
             Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
             Select(Element<ComboBox>("AppLanguage"), _model.AppLanguageTag);
             Element<CheckBox>("IgnoreFullscreen").IsChecked = _model.IgnoreHotkeyInFullscreen;
+            Element<CheckBox>("ScanQrCodes").IsChecked = _model.ScanQrCodes;
             Element<CheckBox>("Launch").IsChecked = _model.LaunchAtStartup;
             var cleanup = Element<ComboBox>("Cleanup");
             cleanup.SelectedItem = cleanup.Items.OfType<ComboBoxItem>()
@@ -475,6 +479,14 @@ internal sealed class SettingsWindowView
     {
         if (_loadingSettings) return;
         if (_model.SelectIgnoreHotkeyInFullscreen(Element<CheckBox>("IgnoreFullscreen").IsChecked == true)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnScanQrCodesChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        if (_model.SelectScanQrCodes(Element<CheckBox>("ScanQrCodes").IsChecked == true)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
     }

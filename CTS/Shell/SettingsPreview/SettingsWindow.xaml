@@ -754,6 +754,33 @@
                                     <TextBlock Text="{Binding [translation_info_text]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
+                            <TextBlock Text="{Binding [links_qr_codes]}" Style="{StaticResource SectionTitle}"/>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,0,0,0" Padding="19,17" MinHeight="77">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="21"/>
+                                                <ColumnDefinition Width="16"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Viewbox Width="21" Height="21" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.QrCodeOutlined}"/>
+                                                </Canvas>
+                                            </Viewbox>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
+                                                <TextBlock Text="{Binding [scan_qr_codes]}" Style="{StaticResource RowTitle}"/>
+                                                <TextBlock Text="{Binding [scan_qr_codes_sub]}" Style="{StaticResource RowSubtitle}"/>
+                                            </StackPanel>
+                                            <ContentControl Grid.Column="3" VerticalAlignment="Center">
+                                                <CheckBox x:Name="ScanQrCodes" Style="{StaticResource Toggle}" AutomationProperties.Name="{Binding [scan_qr_codes]}"/>
+                                            </ContentControl>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                         <StackPanel x:Name="Page_music" Visibility="Collapsed">
                             <TextBlock Text="{Binding [music_title]}" Style="{StaticResource PageTitle}"/>

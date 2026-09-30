@@ -17,6 +17,8 @@ public sealed record AppSettings
 
     public SelectionToolbarAction HiddenToolbarActions { get; init; }
 
+    public bool ScanQrCodes { get; init; } = true;
+
     public int BrowserDataCleanupDays { get; init; } = 28;
 
     public bool SaveMusicHistory { get; init; } = true;

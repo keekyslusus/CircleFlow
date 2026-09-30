@@ -66,6 +66,7 @@ public sealed class OverlayWindow : Window
     private readonly ToastOverlayController _toast;
     private readonly DebugOverlayController _debug;
     private readonly SelectionHintOverlayController _selectionHint;
+    private readonly QrCodeOverlayController _qrCodes;
     private bool _cancelPublished;
     private bool _exitFadeStarted;
     private bool _entranceRipplePending;
@@ -100,7 +101,8 @@ public sealed class OverlayWindow : Window
         string translationTargetLanguageTag = "en",
         KeyboardLanguageSnapshot inputLanguage = default,
         string textSearchEngineId = TextSearchEngines.MatchImageSearch,
-        SelectionToolbarAction hiddenToolbarActions = SelectionToolbarAction.None)
+        SelectionToolbarAction hiddenToolbarActions = SelectionToolbarAction.None,
+        bool scanQrCodes = false)
     {
         _frame = frame;
         _exitFade = exitFade;
@@ -168,7 +170,8 @@ public sealed class OverlayWindow : Window
                 () => CancelInternal(),
                 OnSelectionDrawn,
                 textSearchEngineId,
-                hiddenToolbarActions));
+                hiddenToolbarActions,
+                scanQrCodes));
         }
         catch
         {
@@ -191,6 +194,7 @@ public sealed class OverlayWindow : Window
         _toast = _controllers.Toast;
         _debug = _controllers.Debug;
         _selectionHint = _controllers.SelectionHint;
+        _qrCodes = _controllers.QrCodes;
 
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -234,7 +238,8 @@ public sealed class OverlayWindow : Window
             options.SessionOptions.TranslationTargetLanguageTag,
             options.SessionOptions.InputLanguage,
             options.SessionOptions.TextSearchEngineId,
-            options.SessionOptions.HiddenToolbarActions)
+            options.SessionOptions.HiddenToolbarActions,
+            options.SessionOptions.ScanQrCodes)
     {
     }
 
@@ -254,14 +259,17 @@ public sealed class OverlayWindow : Window
                IsWithin(originalSource as DependencyObject, _visual.Debug.Panel) ||
                IsWithin(originalSource as DependencyObject, _visual.TextSelection.Toolbar.Surface) ||
                IsWithin(originalSource as DependencyObject, _visual.ImageSelection.Toolbar.Surface) ||
+               IsWithin(originalSource as DependencyObject, _visual.QrCodes.Layer) ||
                IsWithin(hit, _visual.Bottom.Root) ||
                IsWithin(hit, _visual.Debug.Panel) ||
                IsWithin(hit, _visual.TextSelection.Toolbar.Surface) ||
                IsWithin(hit, _visual.ImageSelection.Toolbar.Surface) ||
+               IsWithin(hit, _visual.QrCodes.Layer) ||
                _visual.Bottom.Root.IsMouseOver ||
                _visual.Debug.Panel.IsMouseOver ||
                _visual.TextSelection.Toolbar.Surface.IsMouseOver ||
-               _visual.ImageSelection.Toolbar.Surface.IsMouseOver;
+               _visual.ImageSelection.Toolbar.Surface.IsMouseOver ||
+               _visual.QrCodes.Layer.IsMouseOver;
     }
 
     internal void ShowListening()
@@ -332,6 +340,7 @@ public sealed class OverlayWindow : Window
         Activate();
         Keyboard.Focus(this);
         _actionTray.ShowEntrance();
+        _qrCodes.Start();
         QueueEntranceRipple();
         _inputLanguage.Attach(this, _initialInputLanguage);
     }
@@ -403,7 +412,7 @@ public sealed class OverlayWindow : Window
             _translation.CommitVisibleImage();
             ApplyModeTransition(OverlayInteractionMode.Selecting);
         }
-        _actionTray.HideForSelection();
+        HideSelectionChrome();
     }
 
     private void OnSelectionDrawn()
@@ -450,7 +459,7 @@ public sealed class OverlayWindow : Window
     private void OnSelectionRejected()
     {
         if (_interaction.IsFinished || Mode != OverlayInteractionMode.Selecting) return;
-        if (_imageSelection.Bounds is null) _actionTray.Restore();
+        if (_imageSelection.Bounds is null) RestoreSelectionChrome();
         _toast.Show(new ToastNotification(_strings.SelectionTooSmall, ToastTone.Error));
     }
 
@@ -565,7 +574,7 @@ public sealed class OverlayWindow : Window
                 SetConflictingControlsEnabled(target == OverlayInteractionMode.WidgetResult);
                 _translation.SetActionEnabled(false);
                 if (target == OverlayInteractionMode.WidgetLoading)
-                    _actionTray.Restore();
+                    RestoreSelectionChrome();
                 _selection.FadeSelectionVisuals();
                 Cursor = Cursors.Arrow;
                 break;
@@ -620,7 +629,20 @@ public sealed class OverlayWindow : Window
         if (target is OverlayInteractionMode.Selecting or OverlayInteractionMode.TranslationShown)
             _imageText.SetAvailable(!_debug.IsOpen);
         if (target == OverlayInteractionMode.Closing) _inputLanguage.Dispose();
+        _qrCodes.SetAvailable(target == OverlayInteractionMode.Selecting);
         _imageSelection.Refresh(target);
+    }
+
+    private void HideSelectionChrome()
+    {
+        _actionTray.HideForSelection();
+        _qrCodes.SetSuppressed(true);
+    }
+
+    private void RestoreSelectionChrome()
+    {
+        _actionTray.Restore();
+        _qrCodes.SetSuppressed(false);
     }
 
     private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -646,7 +668,7 @@ public sealed class OverlayWindow : Window
         _selection.Cancel();
         if (Mode == OverlayInteractionMode.TranslationShown)
             ApplyModeTransition(OverlayInteractionMode.Selecting);
-        _actionTray.Restore();
+        RestoreSelectionChrome();
         return true;
     }
 

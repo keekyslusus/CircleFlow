@@ -98,6 +98,7 @@ internal sealed class SettingsStore(AppPaths paths)
             HotkeyGesture = Text(nameof(AppSettings.HotkeyGesture), defaults.HotkeyGesture),
             IgnoreHotkeyInFullscreen = Flag(nameof(AppSettings.IgnoreHotkeyInFullscreen), defaults.IgnoreHotkeyInFullscreen),
             HiddenToolbarActions = Actions(nameof(AppSettings.HiddenToolbarActions), defaults.HiddenToolbarActions),
+            ScanQrCodes = Flag(nameof(AppSettings.ScanQrCodes), defaults.ScanQrCodes),
             BrowserDataCleanupDays = Number(nameof(AppSettings.BrowserDataCleanupDays), defaults.BrowserDataCleanupDays),
             SaveMusicHistory = Flag(nameof(AppSettings.SaveMusicHistory), defaults.SaveMusicHistory),
             MusicHistoryRetentionDays = Number(nameof(AppSettings.MusicHistoryRetentionDays),
