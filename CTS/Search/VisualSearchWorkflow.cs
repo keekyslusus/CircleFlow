@@ -13,11 +13,11 @@ internal sealed class VisualSearchWorkflow(
     UiStrings strings,
     PluginLog log)
 {
-    internal async Task<VisualSearchPreparationOutcome> PrepareTraceAsync(
-        SelectionOutcome selection, int maxLongSidePx, CancellationToken cancellationToken)
+    internal async Task<VisualSearchPreparationOutcome> PrepareWidgetAsync(
+        SelectionOutcome selection, string providerId, int maxLongSidePx, CancellationToken cancellationToken)
     {
         var jpeg = selection.Encode(crop, maxLongSidePx);
-        var routed = await providerRouter.PrepareAsync(SearchProviderIds.TraceMoe, jpeg, cancellationToken).ConfigureAwait(false);
+        var routed = await providerRouter.PrepareAsync(providerId, jpeg, cancellationToken).ConfigureAwait(false);
         return routed.Outcome;
     }
 

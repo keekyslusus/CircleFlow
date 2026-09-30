@@ -25,7 +25,7 @@ internal sealed class SettingsWindowView
     private readonly SettingsWindowModel _model;
     private readonly List<(ComboBox ComboBox, SettingsDropdownMotion Motion)> _dropdowns = [];
     private readonly DispatcherTimer _statusTimer;
-    private readonly SettingsScrollMotionController _scrollMotion;
+    private readonly SmoothScrollMotionController _scrollMotion;
     private readonly SettingsPageTransition _pageTransition;
     private readonly SettingsDialogMotion _dialogMotion;
     private readonly SettingsStatusMotion _statusMotion;
@@ -51,10 +51,10 @@ internal sealed class SettingsWindowView
         };
         _statusTimer.Tick += (_, _) => HideStatus();
         _statusMotion = new SettingsStatusMotion(Element<Border>("StatusBanner"));
-        var scrolling = new SettingsScrollController(Element<ScrollViewer>("PageScroll"));
+        var scrolling = new AutoHideScrollbarController(Element<ScrollViewer>("PageScroll"));
         var navigationIndicator = new SettingsNavigationIndicator(Element<Grid>("NavigationHost"),
             Element<StackPanel>("NavigationItems"), Element<Border>("NavigationSelection"));
-        _scrollMotion = new SettingsScrollMotionController(Element<ScrollViewer>("PageScroll"),
+        _scrollMotion = new SmoothScrollMotionController(Element<ScrollViewer>("PageScroll"),
             (TranslateTransform)Element<StackPanel>("PageContent").RenderTransform);
         _pageTransition = new SettingsPageTransition(Element<ScrollViewer>("PageScroll"),
             Element<FrameworkElement>("PageTransitionSurface"),

@@ -48,6 +48,8 @@ internal static class ProviderVisualCatalog
                 OverlayVisualResources.BrandMark(SearchMarkSize,
                     (Frozen(PluginPalette.AniListBlue), PluginIcons.AniListBlue),
                     (Frozen(lightTheme ? palette.Text : PluginPalette.AniListWhite), PluginIcons.AniListLetter)),
+            _ when string.Equals(providerId, SearchProviderIds.Pinterest, StringComparison.OrdinalIgnoreCase) =>
+                CreateMark(SearchProviderIds.GoogleLens, palette, SearchMarkSize),
             _ => CreateSearchMark(providerId, lightTheme),
         };
     }
@@ -85,6 +87,7 @@ internal static class ProviderVisualCatalog
         var detail = descriptor.Id switch
         {
             SearchProviderIds.TraceMoe => strings.TraceMoeProviderDescription,
+            SearchProviderIds.Pinterest => strings.PinterestProviderDescription,
             _ => descriptor.DisplayName,
         };
         if (includeFullName && !string.Equals(label, detail, StringComparison.Ordinal))
@@ -116,6 +119,8 @@ internal static class ProviderVisualCatalog
                 (Frozen(palette.Yandex), PluginIcons.YandexLetter)),
             SearchProviderIds.TraceMoe => OverlayVisualResources.BrandMark(size,
                 (Frozen(palette.Trace), PluginIcons.TraceMoe)),
+            SearchProviderIds.Pinterest => OverlayVisualResources.BrandMark(size,
+                (Frozen(PluginPalette.PinterestRed), PluginIcons.PinterestMark)),
             _ => OverlayVisualResources.BrandMark(size,
                 (Frozen(palette.Neutral), NeutralMark)),
         };

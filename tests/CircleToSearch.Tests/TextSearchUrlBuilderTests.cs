@@ -46,6 +46,7 @@ public sealed class TextSearchUrlBuilderTests
     [Theory]
     [InlineData(SearchProviderIds.GoogleLens, "", "https://www.google.com/", "google.com")]
     [InlineData(SearchProviderIds.TraceMoe, "", "https://anilist.co/", "anilist.co")]
+    [InlineData(SearchProviderIds.Pinterest, "", "https://www.google.com/", "google.com")]
     [InlineData(SearchProviderIds.YandexImages, "startpage", "https://www.startpage.com/", "startpage.com")]
     public void Origin_and_site_name_come_from_the_search_address_without_a_query(
         string provider, string engine, string origin, string site)

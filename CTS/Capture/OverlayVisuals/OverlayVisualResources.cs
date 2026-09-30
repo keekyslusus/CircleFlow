@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
@@ -34,6 +35,76 @@ internal static class OverlayVisualResources
         new(from, to, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
 
     internal static bool AnimationsEnabled() => UiAnimationPolicy.Enabled;
+
+    // Remote artwork stays hidden over the card's placeholder until it is decoded, then fades in; a failed
+    // download leaves the placeholder. A bitmap that is already loaded shows at once, without a second fade.
+    internal static Image FadeInImage(BitmapImage bitmap)
+    {
+        var image = new Image { Stretch = Stretch.UniformToFill, Source = bitmap, Opacity = bitmap.IsDownloading ? 0 : 1 };
+        var revealed = !bitmap.IsDownloading;
+        image.ImageFailed += (_, _) =>
+        {
+            image.BeginAnimation(UIElement.OpacityProperty, null);
+            image.Source = null;
+            image.Opacity = 0;
+        };
+        void Reveal()
+        {
+            if (revealed || !image.IsLoaded || bitmap.IsDownloading || image.Source is null) return;
+            revealed = true;
+            image.Opacity = 1;
+            if (!AnimationsEnabled()) return;
+            var fade = Animate(0, 1, TimeSpan.FromMilliseconds(300));
+            fade.FillBehavior = FillBehavior.Stop;
+            image.BeginAnimation(UIElement.OpacityProperty, fade);
+        }
+        // Artwork can finish downloading before the card joins the visual tree.
+        image.Loaded += (_, _) => Reveal();
+        bitmap.DownloadCompleted += (_, _) => Reveal();
+        image.Unloaded += (_, _) => image.BeginAnimation(UIElement.OpacityProperty, null);
+        return image;
+    }
+
+    // Same thin overlay bar as the settings page, so AutoHideScrollbarController can drive it.
+    internal static void ApplyAutoHideScrollbar(ScrollViewer scroll, Color thumb)
+    {
+        var inset = OverlayScrollbarPolicy.EdgeInsetPixels;
+        scroll.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse($$"""
+            <ControlTemplate TargetType="ScrollViewer"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+              <Grid ClipToBounds="True">
+                <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Content="{TemplateBinding Content}"
+                    CanContentScroll="{TemplateBinding CanContentScroll}"/>
+                <ScrollBar x:Name="PART_VerticalScrollBar" HorizontalAlignment="Right" Margin="0,{{inset}},0,{{inset}}"
+                    OverridesDefaultStyle="True" MinWidth="0" Width="{{OverlayScrollbarPolicy.TrackWidthPixels}}"
+                    Opacity="0" IsHitTestVisible="False" Focusable="False"
+                    Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}"
+                    Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                    Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}">
+                  <ScrollBar.Template>
+                    <ControlTemplate TargetType="ScrollBar">
+                      <Grid Background="{{PluginPalette.Transparent}}">
+                        <Track x:Name="PART_Track" Orientation="Vertical" IsDirectionReversed="True">
+                          <Track.Thumb>
+                            <Thumb OverridesDefaultStyle="True" MinHeight="{{OverlayScrollbarPolicy.MinimumThumbHeightPixels}}">
+                              <Thumb.Template>
+                                <ControlTemplate TargetType="Thumb">
+                                  <Border Background="{{thumb}}" Width="{{OverlayScrollbarPolicy.ThumbWidthPixels}}"
+                                      HorizontalAlignment="Right" CornerRadius="2" Margin="0,0,{{inset}},0"/>
+                                </ControlTemplate>
+                              </Thumb.Template>
+                            </Thumb>
+                          </Track.Thumb>
+                        </Track>
+                      </Grid>
+                    </ControlTemplate>
+                  </ScrollBar.Template>
+                </ScrollBar>
+              </Grid>
+            </ControlTemplate>
+            """);
+    }
 
     internal static bool HardwareEffectsEnabled() => RenderCapability.Tier >> 16 >= 2;
 
@@ -193,8 +264,12 @@ internal static class OverlayVisualResources
         button.FocusVisualStyle = CreateFocusVisualStyle(radius);
     }
 
+    // Scrolling containers are controls too, but a press inside them belongs to the tile under the pointer,
+    // so a ripple on them would flood the whole viewport.
     internal static IReadOnlyList<ControlRippleHost> AttachControlRipples(DependencyObject root) =>
-        Descendants(root).OfType<Control>().Select(ControlRippleHost.Attach).ToArray();
+        Descendants(root).OfType<Control>()
+            .Where(control => control is not (ScrollViewer or ScrollBar) && control.TemplatedParent is not ScrollBar)
+            .Select(ControlRippleHost.Attach).ToArray();
 
     private static Style CreateFocusVisualStyle(double radius)
     {

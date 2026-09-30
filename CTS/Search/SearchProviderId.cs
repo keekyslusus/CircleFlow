@@ -5,6 +5,7 @@ public static class SearchProviderIds
     public const string GoogleLens = "google-lens";
     public const string YandexImages = "yandex-images";
     public const string TraceMoe = "trace-moe";
+    public const string Pinterest = "pinterest";
 }
 
 public sealed record SearchProviderDescriptor

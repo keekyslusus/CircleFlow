@@ -44,6 +44,8 @@ public sealed class TextSearchUrlBuilder(int maximumScalarValues = 2000)
             SearchProviderIds.TraceMoe => "https://anilist.co/search/anime?search=%s",
             SearchProviderIds.GoogleLens => "https://www.google.com/search?q=%s",
             SearchProviderIds.YandexImages => "https://yandex.com/search/?text=%s",
+            // Pinterest search sits behind a login wall, and the built-in browser is never signed in.
+            SearchProviderIds.Pinterest => "https://www.google.com/search?q=%s",
             _ => throw new ArgumentException("Unsupported search provider.", nameof(providerId)),
         };
     }

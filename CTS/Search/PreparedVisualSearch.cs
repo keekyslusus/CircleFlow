@@ -7,6 +7,7 @@ public enum PreparedVisualSearchKind
     Url,
     BrowserOperation,
     TraceMoe,
+    Pinterest,
 }
 
 public sealed class PreparedVisualSearch
@@ -28,6 +29,14 @@ public sealed class PreparedVisualSearch
 
     public static PreparedVisualSearch ForTraceMoe(TraceMoeMatch? match) =>
         new(PreparedVisualSearchKind.TraceMoe, null, null, null) { TraceMatch = match };
+
+    public IReadOnlyList<PinterestPin> PinterestPins { get; private init; } = [];
+
+    public static PreparedVisualSearch ForPinterest(IReadOnlyList<PinterestPin> pins) =>
+        new(PreparedVisualSearchKind.Pinterest, null, null, null) { PinterestPins = pins };
+
+    internal bool OffersResultUrl(Uri url) =>
+        TraceMatch?.AnilistUrl == url.AbsoluteUri || PinterestPins.Any(pin => pin.PinUrl == url.AbsoluteUri);
 
     public Uri? ExternalFallbackUrl { get; }
 

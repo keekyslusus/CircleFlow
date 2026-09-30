@@ -10,7 +10,7 @@ public interface IOverlaySession : IAsyncDisposable
 {
     Task<IOverlayCommand> ReadCommandAsync(CancellationToken cancellationToken);
     Task ShowListeningAsync(CancellationToken cancellationToken);
-    Task ShowTraceResultAsync(Search.VisualSearchPreparationOutcome outcome, CancellationToken cancellationToken);
+    Task ShowWidgetResultAsync(Search.VisualSearchPreparationOutcome outcome, CancellationToken cancellationToken);
     Task ReportAudioAsync(MusicVisualizationFrame frame, CancellationToken cancellationToken);
     Task ShowMusicResultAsync(MusicRecognitionOutcome outcome, CancellationToken cancellationToken);
     Task ShowTranslationAsync(ScreenTranslationResult result, CancellationToken cancellationToken);
@@ -62,8 +62,8 @@ internal sealed class OverlaySession : IOverlaySession
     public Task<IOverlayCommand> ReadCommandAsync(CancellationToken cancellationToken) =>
         _commands.Reader.ReadAsync(cancellationToken).AsTask();
 
-    public Task ShowTraceResultAsync(Search.VisualSearchPreparationOutcome outcome, CancellationToken cancellationToken) =>
-        InvokeAsync(window => window.ShowTraceResult(outcome), cancellationToken);
+    public Task ShowWidgetResultAsync(Search.VisualSearchPreparationOutcome outcome, CancellationToken cancellationToken) =>
+        InvokeAsync(window => window.ShowWidgetResult(outcome), cancellationToken);
 
     public Task ShowListeningAsync(CancellationToken cancellationToken) =>
         InvokeAsync(window => window.ShowListening(), cancellationToken);

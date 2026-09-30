@@ -72,7 +72,7 @@ public sealed class OverlayControllerLifecycleTests
                 null,
                 null,
                 null,
-                null,
+                CompositionRoot.CreateWidgetVisuals(null),
                 () => false);
 
             Assert.Throws<NullReferenceException>(() =>
