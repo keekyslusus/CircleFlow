@@ -145,7 +145,7 @@ public sealed class OnboardingTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void Try_it_applies_the_startup_choice_and_skip_leaves_it_alone(bool launch) => OnSta(() =>
+    public void Try_it_applies_the_startup_choice_and_opens_the_overlay_and_skip_does_neither(bool launch) => OnSta(() =>
     {
         using var harness = new Harness();
         using var controller = harness.CreateController();
@@ -158,6 +158,7 @@ public sealed class OnboardingTests
         Assert.Null(controller.CurrentWindow);
         Assert.True(harness.Settings.Snapshot.OnboardingCompleted);
         Assert.Equal(launch, harness.Startup.Registration.IsEnabled);
+        Assert.Equal([true], harness.OverlayOpens);
 
         using var denied = new Harness();
         using var deniedController = denied.CreateController();
@@ -167,6 +168,7 @@ public sealed class OnboardingTests
         using (denied.Startup.DenyWrites()) Click(deniedWindow, "try");
         Assert.Same(deniedWindow, deniedController.CurrentWindow);
         Assert.False(denied.Settings.Snapshot.OnboardingCompleted);
+        Assert.Empty(denied.OverlayOpens);
         Assert.True(Find<TextBlock>(deniedWindow, "LaunchFailed").IsVisible);
         Assert.False(Find<TextBlock>(deniedWindow, "Step3Text").IsVisible);
         Find<CheckBox>(deniedWindow, "Launch").IsChecked = false;
@@ -175,6 +177,7 @@ public sealed class OnboardingTests
         Assert.True(Find<TextBlock>(deniedWindow, "Step3Text").IsVisible);
         Click(deniedWindow, "try");
         Assert.Null(deniedController.CurrentWindow);
+        Assert.Equal([true], denied.OverlayOpens);
 
         using var skipped = new Harness();
         using var skippedController = skipped.CreateController();
@@ -183,6 +186,7 @@ public sealed class OnboardingTests
         Assert.Null(skippedController.CurrentWindow);
         Assert.True(skipped.Settings.Snapshot.OnboardingCompleted);
         Assert.Null(skipped.Startup.RunValue);
+        Assert.Empty(skipped.OverlayOpens);
     });
 
     [Fact]
@@ -461,8 +465,12 @@ public sealed class OnboardingTests
                 new(hotkeyAvailable, new(gesture ?? string.Empty, hotkeyAvailable && gesture is not null))));
             Settings.InitializeHotkey();
             Strings = strings ?? TestUiStrings.English;
-            Model = new OnboardingModel(Settings, Startup.Registration, Strings);
+            // Completion is saved when the window closes, so it tells whether the overlay opened after the wizard was gone.
+            Model = new OnboardingModel(Settings, Startup.Registration, Strings,
+                () => OverlayOpens.Add(Settings.Snapshot.OnboardingCompleted));
         }
+
+        public List<bool> OverlayOpens { get; } = [];
 
         public SettingsService Settings { get; }
         public TestStartupRegistry Startup { get; } = new();

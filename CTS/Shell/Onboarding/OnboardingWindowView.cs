@@ -3,9 +3,11 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using CircleToSearch.Interop;
 using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.Ui;
 
@@ -111,7 +113,15 @@ internal sealed class OnboardingWindowView
                 break;
             case "try":
                 // The user asked for this explicitly, so a failure keeps the wizard open to say so.
-                if (_model.SelectLaunchAtStartup(Element<CheckBox>("Launch").IsChecked == true)) Window.Close();
+                if (_model.SelectLaunchAtStartup(Element<CheckBox>("Launch").IsChecked == true))
+                {
+                    // The native close fade outlasts the capture's hide delay and would end up in the screenshot.
+                    var disabled = 1;
+                    NativeMethods.DwmSetWindowAttribute(new WindowInteropHelper(Window).Handle,
+                        NativeMethods.DwmwaTransitionsForceDisabled, ref disabled, sizeof(int));
+                    Window.Close();
+                    _model.OpenOverlay();
+                }
                 else _launchFailure.Show(second: true);
                 break;
         }

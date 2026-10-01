@@ -57,6 +57,7 @@ internal struct MONITORINFO
 
 internal static class NativeMethods
 {
+    public const int DwmwaTransitionsForceDisabled = 3;
     public const int DwmwaUseImmersiveDarkModeBefore20H1 = 19;
     public const int DwmwaUseImmersiveDarkMode = 20;
 
