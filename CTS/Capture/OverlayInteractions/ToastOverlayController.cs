@@ -11,6 +11,7 @@ internal sealed class ToastOverlayController : IDisposable
     private readonly BottomOverlayVisual _bottom;
     private readonly bool _lightTheme;
     private readonly Func<bool> _animationsEnabled;
+    private readonly TimeProvider _time;
     private readonly List<ActiveToast> _active = [];
     private long _nextId;
     private bool _closing;
@@ -19,11 +20,13 @@ internal sealed class ToastOverlayController : IDisposable
     internal ToastOverlayController(
         BottomOverlayVisual bottom,
         bool lightTheme,
-        Func<bool> animationsEnabled)
+        Func<bool> animationsEnabled,
+        TimeProvider time)
     {
         _bottom = bottom;
         _lightTheme = lightTheme;
         _animationsEnabled = animationsEnabled;
+        _time = time;
     }
 
     internal int ActiveCount => _active.Count;
@@ -39,7 +42,7 @@ internal sealed class ToastOverlayController : IDisposable
         var existing = _active.FirstOrDefault(entry => entry.Key == key);
         if (existing is not null)
         {
-            StopTimer(existing.Timer);
+            existing.Lifetime?.Dispose();
             existing.Exit?.Dispose();
             ToastTransitions.Settle(existing.Visual.Card);
             _bottom.LayoutTransitions.Apply(() =>
@@ -58,10 +61,7 @@ internal sealed class ToastOverlayController : IDisposable
         if (_closing) return;
         var animationsEnabled = _animationsEnabled();
         var visual = ToastOverlayVisualFactory.Create(notification, _lightTheme);
-        var timer = new DispatcherTimer { Interval = notification.Duration };
-        var entry = new ActiveToast(++_nextId, visual, timer, key);
-        timer.Tick += OnLifetimeElapsed;
-        timer.Tag = entry.Id;
+        var entry = new ActiveToast(++_nextId, visual, key);
 
         _bottom.LayoutTransitions.Apply(() =>
         {
@@ -73,7 +73,14 @@ internal sealed class ToastOverlayController : IDisposable
         }, animationsEnabled);
         ToastOverlayVisualFactory.Announce(visual);
         ToastTransitions.BeginEntrance(visual.Card, animationsEnabled);
-        timer.Start();
+        var dispatcher = visual.Slot.Dispatcher;
+        var id = entry.Id;
+        // Timer callbacks arrive on the thread pool; the id lets a late callback find nothing after removal.
+        entry.Lifetime = _time.CreateTimer(
+            _ => dispatcher.BeginInvoke(DispatcherPriority.Background, () => OnLifetimeElapsed(id)),
+            null,
+            notification.Duration,
+            Timeout.InfiniteTimeSpan);
     }
 
     internal void SettleForClosing()
@@ -90,13 +97,13 @@ internal sealed class ToastOverlayController : IDisposable
         ClearOwnedVisuals();
     }
 
-    private void OnLifetimeElapsed(object? sender, EventArgs e)
+    private void OnLifetimeElapsed(long id)
     {
-        if (sender is not DispatcherTimer timer || timer.Tag is not long id) return;
-        StopTimer(timer);
         if (_disposed) return;
         var entry = _active.FirstOrDefault(candidate => candidate.Id == id);
         if (entry is null || entry.Exit is not null) return;
+        entry.Lifetime?.Dispose();
+        entry.Lifetime = null;
 
         var animationsEnabled = _animationsEnabled();
         var exit = ToastTransitions.BeginExit(
@@ -138,7 +145,7 @@ internal sealed class ToastOverlayController : IDisposable
     {
         foreach (var entry in _active)
         {
-            StopTimer(entry.Timer);
+            entry.Lifetime?.Dispose();
             entry.Exit?.Dispose();
             entry.Exit = null;
             ToastTransitions.Settle(entry.Visual.Card);
@@ -147,19 +154,12 @@ internal sealed class ToastOverlayController : IDisposable
         _active.Clear();
     }
 
-    private void StopTimer(DispatcherTimer timer)
-    {
-        timer.Stop();
-        timer.Tick -= OnLifetimeElapsed;
-        timer.Tag = null;
-    }
-
-    private sealed class ActiveToast(long id, ToastOverlayVisual visual, DispatcherTimer timer, string? key)
+    private sealed class ActiveToast(long id, ToastOverlayVisual visual, string? key)
     {
         internal long Id { get; } = id;
         internal string? Key { get; } = key;
         internal ToastOverlayVisual Visual { get; } = visual;
-        internal DispatcherTimer Timer { get; } = timer;
+        internal ITimer? Lifetime { get; set; }
         internal CardTransitions.ExitHandle? Exit { get; set; }
     }
 }

@@ -14,10 +14,10 @@ namespace CircleToSearch.Tests;
 // Output: tests/temp/toast-preview-{dark,light}-*.png at 150% DPI.
 public sealed class ToastOverlayPreviewTests
 {
-    [Fact]
+    [SkippableFact]
     public void Renders_toast_motion_stacking_and_music_result_states()
     {
-        if (Environment.GetEnvironmentVariable("CTS_TOAST_PREVIEW") != "1") return;
+        TestSwitches.Require("CTS_TOAST_PREVIEW");
         Directory.CreateDirectory(TestOutputPaths.TempDirectory);
         Assert.Null(RunOnSta(() =>
         {
@@ -51,7 +51,7 @@ public sealed class ToastOverlayPreviewTests
         };
         window.Show();
         window.UpdateLayout();
-        using var controller = new ToastOverlayController(visual.Bottom, lightTheme, () => true);
+        using var controller = new ToastOverlayController(visual.Bottom, lightTheme, () => true, TimeProvider.System);
 
         controller.Show(new ToastNotification(
             TestUiStrings.English.SelectionTooSmall,

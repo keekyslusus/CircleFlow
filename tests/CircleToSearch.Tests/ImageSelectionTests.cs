@@ -24,10 +24,10 @@ public sealed class ImageSelectionTests
     // Far from the default selection and its toolbar.
     private static readonly Point EmptyPoint = new(600, 380);
 
-    [Fact]
+    [SkippableFact]
     public void Renders_image_action_previews()
     {
-        if (Environment.GetEnvironmentVariable("CTS_IMAGE_SELECTION_PREVIEW") != "1") return;
+        TestSwitches.Require("CTS_IMAGE_SELECTION_PREVIEW");
         Run(() =>
         {
             using var h = new Harness();

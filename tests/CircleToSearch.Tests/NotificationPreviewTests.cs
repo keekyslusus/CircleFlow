@@ -12,14 +12,17 @@ namespace CircleToSearch.Tests;
 // Output: tests/temp/notification-preview-{dark,light}.png at 150% DPI.
 public sealed class NotificationPreviewTests
 {
-    [Fact]
-    public void Renders_a_plain_message_an_error_and_an_update_offer_in_both_themes() => OnSta(time =>
+    [SkippableFact]
+    public void Renders_a_plain_message_an_error_and_an_update_offer_in_both_themes()
     {
-        if (Environment.GetEnvironmentVariable("CTS_NOTIFICATION_PREVIEW") != "1") return;
-        Directory.CreateDirectory(TestOutputPaths.TempDirectory);
-        Render(time, lightTheme: false, "dark", Color.FromRgb(0x1E, 0x21, 0x27));
-        Render(time, lightTheme: true, "light", Color.FromRgb(0xDD, 0xE3, 0xEA));
-    });
+        TestSwitches.Require("CTS_NOTIFICATION_PREVIEW");
+        OnSta(time =>
+        {
+            Directory.CreateDirectory(TestOutputPaths.TempDirectory);
+            Render(time, lightTheme: false, "dark", Color.FromRgb(0x1E, 0x21, 0x27));
+            Render(time, lightTheme: true, "light", Color.FromRgb(0xDD, 0xE3, 0xEA));
+        });
+    }
 
     private static void Render(ManualAnimationClock time, bool lightTheme, string name, Color backdrop)
     {

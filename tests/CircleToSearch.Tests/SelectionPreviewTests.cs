@@ -16,10 +16,10 @@ namespace CircleToSearch.Tests;
 // Output: tests/temp/selection-preview-{lasso,frame,entrance-1,entrance-2}.png, 150% DPI.
 public sealed class SelectionPreviewTests
 {
-    [Fact]
+    [SkippableFact]
     public void Renders_lasso_and_selection_frame_previews()
     {
-        if (Environment.GetEnvironmentVariable("CTS_SELECTION_PREVIEW") != "1") return;
+        TestSwitches.Require("CTS_SELECTION_PREVIEW");
 
         var directory = TestOutputPaths.TempDirectory;
         Directory.CreateDirectory(directory);

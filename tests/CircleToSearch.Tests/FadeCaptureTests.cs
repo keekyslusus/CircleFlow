@@ -20,10 +20,10 @@ namespace CircleToSearch.Tests;
 // Frames: tests/temp/cts-fade/, ~60+ fps; phases are ~1.1s apart in capture order.
 public sealed class FadeCaptureTests
 {
-    [Fact]
+    [SkippableFact]
     public void Captures_open_close_frames_for_overscan_comparison()
     {
-        if (Environment.GetEnvironmentVariable("CTS_FADE_CAPTURE") != "1") return;
+        TestSwitches.Require("CTS_FADE_CAPTURE");
 
         var dir = TestOutputPaths.NewTempDirectory("cts-fade");
 

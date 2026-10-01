@@ -70,11 +70,11 @@ public sealed class CosmeticFiltersTests
         finally { Directory.Delete(directory, true); }
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Script_hides_matching_elements_by_host_in_a_real_browser()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var script = CosmeticFilters.CreateScript(CosmeticFilters.Parse(
         [
             "example.com##.promo",

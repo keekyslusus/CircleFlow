@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Threading;
 using CircleToSearch.Capture;
 using Xunit;
 
@@ -12,7 +11,7 @@ public sealed class ActionTrayTransitionsTests
     [Fact]
     public void Return_preserves_current_values_then_restores_interaction()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var lift = new TranslateTransform { Y = 7 };
             var tray = new StackPanel
@@ -26,12 +25,12 @@ public sealed class ActionTrayTransitionsTests
             window.Show();
 
             ActionTrayTransitions.BeginReturn(visual, animationsEnabled: true);
-            PumpFor(TimeSpan.FromMilliseconds(15));
+            time.Advance(50);
 
             Assert.True(tray.IsHitTestVisible);
-            Assert.InRange(tray.Opacity, 0.42, 1);
-            Assert.InRange(lift.Y, 0, 7);
-            PumpFor(TimeSpan.FromMilliseconds(230));
+            Assert.InRange(tray.Opacity, 0.43, 0.99);
+            Assert.InRange(lift.Y, 0.01, 6.99);
+            time.Advance((int)OverlayVisualResources.EntranceDuration.TotalMilliseconds);
             Assert.Equal(1, tray.Opacity, 3);
             Assert.Equal(0, lift.Y, 3);
             window.Close();
@@ -41,7 +40,7 @@ public sealed class ActionTrayTransitionsTests
     [Fact]
     public void Disabled_return_is_synchronous_and_installs_no_clocks()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var lift = new TranslateTransform { Y = 7 };
             var tray = new StackPanel { Opacity = 0.42, IsHitTestVisible = false };
@@ -60,7 +59,7 @@ public sealed class ActionTrayTransitionsTests
     [Fact]
     public void Exit_during_return_continues_from_current_opacity_without_a_jump()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var lift = new TranslateTransform();
             var tray = new StackPanel { Opacity = 0.35, RenderTransform = lift };
@@ -70,40 +69,32 @@ public sealed class ActionTrayTransitionsTests
             window.UpdateLayout();
 
             ActionTrayTransitions.BeginReturn(visual, animationsEnabled: true);
-            PumpFor(TimeSpan.FromMilliseconds(55));
+            time.Advance(50);
             var opacityBeforeExit = tray.Opacity;
-            Assert.InRange(opacityBeforeExit, 0.35, 0.99);
+            Assert.InRange(opacityBeforeExit, 0.36, 0.99);
 
             ActionTrayTransitions.BeginExit(visual, animationsEnabled: true);
-            PumpFor(TimeSpan.FromMilliseconds(15));
+            Assert.Equal(opacityBeforeExit, tray.Opacity);
+            time.Advance(50);
 
             Assert.False(tray.IsHitTestVisible);
-            Assert.InRange(tray.Opacity, 0, opacityBeforeExit);
-            PumpFor(TimeSpan.FromMilliseconds(190));
+            Assert.InRange(tray.Opacity, 0.01, opacityBeforeExit - 0.01);
+            time.Advance(200);
             Assert.Equal(0, tray.Opacity, 3);
             window.Close();
         }));
     }
 
-    private static void PumpFor(TimeSpan duration)
-    {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = duration };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            frame.Continue = false;
-        };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-    }
-
-    private static Exception? RunOnSta(Action action)
+    private static Exception? RunOnSta(Action<ManualAnimationClock> action)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
         {
-            try { action(); }
+            try
+            {
+                using var time = ManualAnimationClock.Install();
+                action(time);
+            }
             catch (Exception exception) { failure = exception; }
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);

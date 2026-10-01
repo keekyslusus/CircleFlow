@@ -13,7 +13,9 @@ public sealed class AppLifetimeTests
     {
         var assembly = typeof(AppRuntime).Assembly;
         Assert.Equal("CircleFlow", assembly.GetName().Name);
-        Assert.Equal(new Version(0, 5, 1, 0), assembly.GetName().Version);
+        var project = System.Xml.Linq.XDocument.Load(Path.Combine(TestOutputPaths.RepoDirectory, "CircleFlow.csproj"));
+        var projectVersion = Version.Parse(Assert.Single(project.Descendants("Version")).Value);
+        Assert.Equal(new Version(projectVersion.Major, projectVersion.Minor, projectVersion.Build, 0), assembly.GetName().Version);
         Assert.Equal("CircleFlow", assembly.GetCustomAttribute<AssemblyProductAttribute>()!.Product);
         Assert.NotNull(assembly.EntryPoint!.GetCustomAttribute<STAThreadAttribute>());
         Assert.DoesNotContain(assembly.GetReferencedAssemblies(), name => name.Name!.StartsWith("Flow.Launcher"));

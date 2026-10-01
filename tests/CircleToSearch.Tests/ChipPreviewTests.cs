@@ -14,10 +14,10 @@ public sealed class ChipPreviewTests
     // a selection: CTS_CHIP_PREVIEW=1 dotnet test --filter ChipPreviewTests.
     // Output: tests/temp/chip-preview.png (dark) and chip-preview-light.png, 150% DPI,
     // plus chip-preview-<hint>[-light].png for every selection hint.
-    [Fact]
+    [SkippableFact]
     public void Renders_chip_preview_pngs_for_both_themes()
     {
-        if (Environment.GetEnvironmentVariable("CTS_CHIP_PREVIEW") != "1") return;
+        TestSwitches.Require("CTS_CHIP_PREVIEW");
 
         var directory = TestOutputPaths.TempDirectory;
         Directory.CreateDirectory(directory);

@@ -11,11 +11,11 @@ namespace CircleToSearch.Tests;
 //   dotnet test --filter "Category=Live" -e CTS_LIVE=1
 public sealed class YandexLiveSearchTests
 {
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Upload_returns_a_yandex_results_url()
     {
-        if (Environment.GetEnvironmentVariable("CTS_LIVE") != "1") return;
+        TestSwitches.Require("CTS_LIVE");
 
         using var bitmap = NewGradientBitmap(64, 64);
         var jpeg = ImageCropper.EncodeJpeg(bitmap, new Rectangle(0, 0, bitmap.Width, bitmap.Height), 1600);
@@ -27,12 +27,11 @@ public sealed class YandexLiveSearchTests
         Assert.True(YandexResultUrlPolicy.IsAllowed(outcome.PreparedSearch!.RequireResultsUrl()));
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Uploaded_result_opens_in_the_shared_browser_host()
     {
-        if (Environment.GetEnvironmentVariable("CTS_LIVE") != "1" ||
-            Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_LIVE", "CTS_WEBVIEW2_LIVE");
 
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "CircleFlow.WebView2Live"));
         AppDataDirectory.Initialize(paths);

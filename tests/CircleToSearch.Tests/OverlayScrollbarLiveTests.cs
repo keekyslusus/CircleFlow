@@ -9,11 +9,11 @@ namespace CircleToSearch.Tests;
 [Trait("Category", "Slow")]
 public sealed class OverlayScrollbarLiveTests
 {
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Native_scrollbar_is_hidden_during_parsing_on_every_navigation()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         using var dispatcher = new StaDispatcher("Early scrollbar integration test");
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Assert.True(dispatcher.TryPost(async () =>
@@ -52,11 +52,11 @@ public sealed class OverlayScrollbarLiveTests
         await completion.Task.WaitAsync(TimeSpan.FromMinutes(1));
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Scrollbar_is_overlayed_and_hides_after_idle_delay()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         using var dispatcher = new StaDispatcher("Overlay scrollbar integration test");
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Assert.True(dispatcher.TryPost(async () =>

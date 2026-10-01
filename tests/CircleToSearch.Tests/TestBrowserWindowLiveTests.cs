@@ -14,11 +14,11 @@ public sealed class TestBrowserWindowLiveTests
 {
     private const string PageUrl = "https://circleflow-test.invalid/";
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Extension_popup_acts_on_its_own_page_opens_the_dashboard_and_starts_the_picker()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowTestBrowserLive", Guid.NewGuid().ToString("N"));
         using var dispatcher = new StaDispatcher("Test browser live test");
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

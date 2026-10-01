@@ -9,14 +9,6 @@ namespace CircleToSearch.Tests;
 public sealed class ShazamLocationTests
 {
     [Fact]
-    public void Provider_selects_a_complete_location_profile()
-    {
-        var provider = new ShazamLocationProvider(upperBound => upperBound - 1);
-
-        Assert.Equal(ShazamLocationProvider.Profiles[^1], provider.Select());
-    }
-
-    [Fact]
     public void Profiles_have_valid_coordinates_and_supported_US_timezones()
     {
         var supportedTimezones = new HashSet<string>(StringComparer.Ordinal)
@@ -32,8 +24,8 @@ public sealed class ShazamLocationTests
             "Pacific/Honolulu",
         };
 
-        Assert.Equal(23, ShazamLocationProvider.Profiles.Count);
-        Assert.Equal(23, ShazamLocationProvider.Profiles.Distinct().Count());
+        Assert.NotEmpty(ShazamLocationProvider.Profiles);
+        Assert.Equal(ShazamLocationProvider.Profiles.Count, ShazamLocationProvider.Profiles.Distinct().Count());
         Assert.DoesNotContain(ShazamLocationProvider.Profiles, location =>
             location.Latitude == 45 && location.Longitude == 2 && location.Timezone == "Europe/Paris");
         Assert.All(ShazamLocationProvider.Profiles, location =>

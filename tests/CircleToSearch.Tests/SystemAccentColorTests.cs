@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Windows.Media;
 using CircleToSearch.Ui;
 using Xunit;
@@ -55,5 +56,29 @@ public sealed class SystemAccentColorTests
         var pastel = SystemAccentColor.ToPastel(Color.FromArgb(0x70, 0x42, 0x85, 0xF4));
 
         Assert.Equal(0x70, pastel.A);
+    }
+
+    // The raw accent is too saturated for overlay UI; every other route to it would skip the pastel conversion.
+    [Fact]
+    public void Production_ui_reads_the_accent_only_through_the_pastel_conversion()
+    {
+        var sourceDirectory = Path.Combine(TestOutputPaths.RepoDirectory, "CTS");
+        var rawAccent = new Regex(
+            @"SystemColors\.Accent|WindowGlass(?:Color|Brush)|UISettings|Explorer\\Accent|\\DWM\b|""AccentColor|ReadRaw\(",
+            RegexOptions.CultureInvariant);
+        var violations = Directory
+            .EnumerateFiles(sourceDirectory, "*.*", SearchOption.AllDirectories)
+            .Where(path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ||
+                           path.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.EndsWith("SystemAccentColor.cs", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(path => File.ReadLines(path)
+                .Select((line, index) => new { path, line, number = index + 1 }))
+            .Where(item => rawAccent.IsMatch(item.line))
+            .Select(item => $"{Path.GetRelativePath(TestOutputPaths.RepoDirectory, item.path)}:{item.number}")
+            .ToArray();
+
+        Assert.True(
+            violations.Length == 0,
+            $"Read the accent with SystemAccentColor.Read(): {string.Join(", ", violations)}");
     }
 }

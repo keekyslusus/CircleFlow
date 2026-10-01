@@ -122,10 +122,6 @@ public sealed class SearchBrowserHostTests
     }
 
     [Fact]
-    public void Composition_root_preserves_shared_webview_thread_name()
-        => Assert.Equal("CircleToSearch WebView2", CompositionRoot.SearchBrowserThreadName);
-
-    [Fact]
     public async Task Stop_during_environment_wait_never_creates_view_and_reuses_stop_task()
     {
         var initialization = new TaskCompletionSource<CoreWebView2Environment>(

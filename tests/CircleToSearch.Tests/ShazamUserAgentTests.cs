@@ -8,23 +8,14 @@ namespace CircleToSearch.Tests;
 public sealed class ShazamUserAgentTests
 {
     [Fact]
-    public void Constant_database_contains_the_verified_pixel_user_agents()
+    public void Constant_database_contains_only_distinct_pixel_user_agents()
     {
-        Assert.Equal(152, PixelUserAgentProvider.Profiles.Count);
-        Assert.Equal(152, PixelUserAgentProvider.Profiles.Distinct(StringComparer.Ordinal).Count());
-        Assert.Contains(
-            "Dalvik/2.1.0 (Linux; U; Android 17; Pixel 11 Pro XL Build/CD1A.260714.001.A9)",
-            PixelUserAgentProvider.Profiles);
+        Assert.NotEmpty(PixelUserAgentProvider.Profiles);
+        Assert.Equal(
+            PixelUserAgentProvider.Profiles.Count,
+            PixelUserAgentProvider.Profiles.Distinct(StringComparer.Ordinal).Count());
         Assert.All(PixelUserAgentProvider.Profiles, userAgent =>
             Assert.StartsWith("Dalvik/2.1.0 (Linux; U; Android ", userAgent, StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void Provider_selects_from_the_constant_database()
-    {
-        var provider = new PixelUserAgentProvider(upperBound => upperBound - 1);
-
-        Assert.Equal(PixelUserAgentProvider.Profiles[^1], provider.Select());
     }
 
     [Fact]

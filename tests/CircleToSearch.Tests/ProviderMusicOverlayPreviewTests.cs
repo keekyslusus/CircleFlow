@@ -15,10 +15,10 @@ namespace CircleToSearch.Tests;
 
 public sealed class ProviderMusicOverlayPreviewTests
 {
-    [Fact]
+    [SkippableFact]
     public void Renders_provider_listening_and_result_states()
     {
-        if (Environment.GetEnvironmentVariable("CTS_PROVIDER_MUSIC_PREVIEW") != "1") return;
+        TestSwitches.Require("CTS_PROVIDER_MUSIC_PREVIEW");
         Directory.CreateDirectory(TestOutputPaths.TempDirectory);
         Assert.Null(RunOnSta(() =>
         {

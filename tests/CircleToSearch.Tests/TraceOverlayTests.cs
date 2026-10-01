@@ -212,7 +212,7 @@ public sealed class TraceOverlayTests
             var window = new Window { Content = visual.Root, Width = 640, Height = 400, ShowActivated = false, ShowInTaskbar = false };
             window.Show();
             window.UpdateLayout();
-            var toast = new ToastOverlayController(visual.Bottom, false, () => false);
+            var toast = new ToastOverlayController(visual.Bottom, false, () => false, TimeProvider.System);
             var clipboardCopy = new ClipboardCopyService(_ => { }, toast.Show, TestUiStrings.English);
             using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
             var trace = TraceOverlayVisual.Create(new OverlayWidgetContext(

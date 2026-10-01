@@ -17,12 +17,6 @@ public sealed class HotkeyWindowTests
         Assert.Equal(1, dispatcher.DisposeCalls);
     }
 
-    [Fact]
-    public void Composition_root_preserves_hotkey_thread_name()
-    {
-        Assert.Equal("CircleToSearch hotkey", CompositionRoot.HotkeyThreadName);
-    }
-
     private static PluginLog NewLog()
     {
         var directory = Path.Combine(

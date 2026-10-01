@@ -10,7 +10,7 @@ namespace CircleToSearch.Tests;
 
 public sealed class SearchBrowserHostLifecycleLiveTests
 {
-    [Theory]
+    [SkippableTheory]
     [Trait("Category", "Live")]
     [InlineData("document.querySelector('a').click()", true)]
     [InlineData("window.open('/target.html', '_blank')", true)]
@@ -18,7 +18,7 @@ public sealed class SearchBrowserHostLifecycleLiveTests
     [InlineData("window.open('javascript:alert(1)', '_blank')", false)]
     public async Task Popup_requests_stay_in_the_configured_browser(string script, bool navigates)
     {
-        if (!Enabled()) return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var directory = Path.Combine(TestOutputPaths.TempDirectory,
             "CircleFlow.PopupLinks", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -96,11 +96,11 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Successful_shows_reuse_view_until_close()
     {
-        if (!Enabled()) return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var (host, dispatcher, views) = CreateHost();
         await using (host)
         {
@@ -121,11 +121,11 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Close_cancels_operation_and_stop_waits_for_its_ui_path()
     {
-        if (!Enabled()) return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var (host, dispatcher, views) = CreateHost();
         await using (host)
         {
@@ -143,11 +143,11 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Factory_failure_allows_retry_and_stop()
     {
-        if (!Enabled()) return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var attempts = 0;
         var (host, _, views) = CreateHost(() => ++attempts == 1);
         await using (host)
@@ -164,11 +164,11 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Close_during_entrance_skips_browser_initialization_and_operation()
     {
-        if (!Enabled()) return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var (host, _, views) = CreateHost(closeDuringEntrance: true);
         await using (host)
         {
@@ -184,11 +184,11 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Background_show_runs_hidden_and_activates_only_after_reveal()
     {
-        if (!Enabled()) return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var (host, dispatcher, views) = CreateHost();
         await using (host)
         {
@@ -210,11 +210,11 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Canceled_background_show_closes_only_its_hidden_window()
     {
-        if (!Enabled()) return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var (host, _, views) = CreateHost();
         await using (host)
         {
@@ -233,11 +233,11 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Background_show_that_succeeds_before_reveal_is_shown_once_revealed()
     {
-        if (!Enabled()) return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var (host, dispatcher, views) = CreateHost();
         await using (host)
         {
@@ -260,11 +260,11 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task New_show_replaces_a_background_show_that_was_never_revealed()
     {
-        if (!Enabled()) return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var (host, _, views) = CreateHost();
         await using (host)
         {
@@ -288,13 +288,13 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         }
     }
 
-    [Theory]
+    [SkippableTheory]
     [Trait("Category", "Live")]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Background_show_leaves_an_open_results_window_alone_until_reveal(bool submit)
     {
-        if (!Enabled()) return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var (host, _, views) = CreateHost();
         await using (host)
         {
@@ -327,9 +327,6 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         dispatcher.Send(() => activated = view.Window.ShowActivated);
         return activated;
     }
-
-    private static bool Enabled() =>
-        Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") == "1";
 
     private static SearchProviderDescriptor Descriptor() => new("test", "Test");
 

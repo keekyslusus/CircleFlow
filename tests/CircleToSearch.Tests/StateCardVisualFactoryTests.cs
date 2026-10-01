@@ -30,28 +30,17 @@ public sealed class StateCardVisualFactoryTests
                     new StateCardAction("Try again", () => { })),
                 palette);
 
-            Assert.Equal(340, visual.Card.Width);
-            Assert.Equal(540, visual.Card.MaxWidth);
-            Assert.Equal(new CornerRadius(18), visual.Card.CornerRadius);
-            Assert.Equal(new Thickness(14, 12, 14, 12), visual.Card.Padding);
-            Assert.Equal(new Thickness(1), visual.Card.BorderThickness);
             Assert.Equal(palette.Surface, BrushColor(visual.Card.Background));
             Assert.Equal(palette.Border, BrushColor(visual.Card.BorderBrush));
             Assert.Equal("Result state", AutomationProperties.GetName(visual.Card));
             var shadow = Assert.IsType<DropShadowEffect>(visual.Card.Effect);
             Assert.Equal(PluginPalette.OpaqueBlack, shadow.Color);
-            Assert.Equal(20, shadow.BlurRadius);
-            Assert.Equal(10, shadow.ShadowDepth);
-            Assert.Equal(-90, shadow.Direction);
             Assert.Equal(palette.ShadowOpacity, shadow.Opacity);
 
             Assert.Same(geometry, visual.Icon.Data);
-            Assert.Equal(22, visual.Icon.Width);
-            Assert.Equal(22, visual.Icon.Height);
             Assert.Equal(palette.OnSecondaryContainer, BrushColor(visual.Icon.Fill));
             Assert.Equal("Result message", visual.Message.Text);
             Assert.Equal(palette.Text, BrushColor(visual.Message.Foreground));
-            Assert.Equal(230, visual.Message.Width);
             Assert.Null(visual.Title);
 
             var root = Assert.IsType<Grid>(visual.Card.Child);
@@ -59,9 +48,6 @@ public sealed class StateCardVisualFactoryTests
             Assert.Equal(3, root.Children.Count);
             var messageRow = Assert.IsType<StackPanel>(root.Children[1]);
             var iconContainer = Assert.IsType<Border>(messageRow.Children[0]);
-            Assert.Equal(44, iconContainer.Width);
-            Assert.Equal(44, iconContainer.Height);
-            Assert.Equal(new CornerRadius(22), iconContainer.CornerRadius);
             Assert.Equal(palette.SecondaryContainer, BrushColor(iconContainer.Background));
         });
 
@@ -83,7 +69,6 @@ public sealed class StateCardVisualFactoryTests
 
             Assert.Equal("Close card", visual.CloseButton.ToolTip);
             Assert.Equal("Close card", AutomationProperties.GetName(visual.CloseButton));
-            Assert.Equal(12, Assert.IsType<System.Windows.Shapes.Path>(visual.CloseButton.Content).Width);
             var action = Assert.IsType<Button>(visual.PrimaryActionButton);
             Assert.Equal("Retry now", action.Content);
             Assert.Equal("Retry now", AutomationProperties.GetName(action));

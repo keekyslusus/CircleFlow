@@ -499,7 +499,8 @@ public static class CompositionRoot
             var toast = Track(new ToastOverlayController(
                 context.Visual.Bottom,
                 context.Visual.LightTheme,
-                dependencies.AnimationsEnabled));
+                dependencies.AnimationsEnabled,
+                TimeProvider.System));
             var clipboardCopy = new ClipboardCopyService(
                 dependencies.SetClipboard,
                 toast.Show,

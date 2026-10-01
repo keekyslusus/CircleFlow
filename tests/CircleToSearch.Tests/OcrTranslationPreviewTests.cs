@@ -13,10 +13,10 @@ namespace CircleToSearch.Tests;
 
 public sealed class OcrTranslationPreviewTests
 {
-    [Fact]
+    [SkippableFact]
     public void Renders_text_selection_and_translation_consent_previews()
     {
-        if (Environment.GetEnvironmentVariable("CTS_OCR_TRANSLATION_PREVIEW") != "1") return;
+        TestSwitches.Require("CTS_OCR_TRANSLATION_PREVIEW");
         Assert.Null(RunOnSta(() =>
         {
             var directory = TestOutputPaths.TempDirectory;

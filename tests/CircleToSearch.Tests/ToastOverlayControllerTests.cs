@@ -3,10 +3,10 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.MusicRecognition;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -17,20 +17,20 @@ public sealed class ToastOverlayControllerTests
     [Fact]
     public void Keyed_language_toast_replaces_only_its_own_message_and_renews_lifetime()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var visual = CreateVisual();
             var window = ShowVisual(visual);
-            using var controller = new ToastOverlayController(visual.Bottom, false, () => true);
+            using var controller = new ToastOverlayController(visual.Bottom, false, () => true, time.Toasts);
             controller.Show(new ToastNotification("Copied", ToastTone.Success, TimeSpan.FromSeconds(2)));
             controller.ShowOrUpdate("ocr-language", new ToastNotification("English", ToastTone.Neutral,
                 TimeSpan.FromMilliseconds(30)));
-            PumpFor(TimeSpan.FromMilliseconds(70));
+            time.Advance(70);
             controller.ShowOrUpdate("ocr-language", new ToastNotification("Russian", ToastTone.Neutral,
                 TimeSpan.FromSeconds(1)));
             Assert.Equal(2, controller.ActiveCount);
             Assert.Equal(["Copied", "Russian"], controller.ActiveVisuals.Select(v => v.Message.Text));
-            PumpFor(TimeSpan.FromMilliseconds(220));
+            time.Advance(220);
             Assert.Equal(2, controller.ActiveCount);
             visual.Effects.SceneRipples.Dispose();
             window.Content = null;
@@ -41,14 +41,15 @@ public sealed class ToastOverlayControllerTests
     [Fact]
     public void Multiple_toasts_keep_creation_order_spacing_and_independent_lifetimes()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var visual = CreateVisual();
             var window = ShowVisual(visual);
             using var controller = new ToastOverlayController(
                 visual.Bottom,
                 lightTheme: false,
-                () => false);
+                () => false,
+                time.Toasts);
             controller.Show(new ToastNotification(
                 "First",
                 ToastTone.Neutral,
@@ -68,11 +69,11 @@ public sealed class ToastOverlayControllerTests
             Assert.IsType<TranslateTransform>(active[0].Slot.RenderTransform);
             Assert.NotSame(active[0].Slot.RenderTransform, active[0].Card.RenderTransform);
 
-            PumpFor(TimeSpan.FromMilliseconds(80));
+            time.Advance(80);
             Assert.Single(controller.ActiveVisuals);
             Assert.Equal("Second", controller.ActiveVisuals[0].Message.Text);
             Assert.Equal(new Thickness(0, 0, 0, 16), controller.ActiveVisuals[0].Slot.Margin);
-            PumpFor(TimeSpan.FromMilliseconds(100));
+            time.Advance(100);
             Assert.Equal(0, controller.ActiveCount);
             Assert.Equal(
                 [visual.Bottom.ResultSlot, visual.Bottom.ActionSlot],
@@ -87,21 +88,21 @@ public sealed class ToastOverlayControllerTests
     [Fact]
     public void Animated_expiry_keeps_slot_until_exit_finishes_and_dispose_cancels_callbacks()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var visual = CreateVisual();
             var window = ShowVisual(visual);
-            var controller = new ToastOverlayController(visual.Bottom, false, () => true);
+            var controller = new ToastOverlayController(visual.Bottom, false, () => true, time.Toasts);
             controller.Show(new ToastNotification(
                 "Expiring",
                 ToastTone.Success,
                 TimeSpan.FromMilliseconds(30)));
             var slot = Assert.Single(controller.ActiveVisuals).Slot;
 
-            PumpFor(TimeSpan.FromMilliseconds(70));
+            time.Advance(70);
             Assert.Contains(slot, visual.Bottom.Stack.Children.Cast<UIElement>());
             Assert.Equal(1, controller.ActiveCount);
-            PumpFor(TimeSpan.FromMilliseconds(180));
+            time.Advance(180);
             Assert.DoesNotContain(slot, visual.Bottom.Stack.Children.Cast<UIElement>());
             Assert.Equal(0, controller.ActiveCount);
 
@@ -114,7 +115,7 @@ public sealed class ToastOverlayControllerTests
             Assert.Equal(
                 [visual.Bottom.ResultSlot, visual.Bottom.ActionSlot],
                 visual.Bottom.Stack.Children.Cast<UIElement>());
-            PumpFor(TimeSpan.FromMilliseconds(220));
+            time.Advance(220);
 
             visual.Effects.SceneRipples.Dispose();
             window.Content = null;
@@ -125,13 +126,13 @@ public sealed class ToastOverlayControllerTests
     [Fact]
     public void Visible_toast_uses_flip_when_a_music_result_appears_below_it()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var visual = CreateVisual();
             var window = ShowVisual(visual);
-            using var controller = new ToastOverlayController(visual.Bottom, false, () => true);
+            using var controller = new ToastOverlayController(visual.Bottom, false, () => true, time.Toasts);
             controller.Show(new ToastNotification("Persistent", ToastTone.Error, TimeSpan.FromSeconds(5)));
-            PumpFor(TimeSpan.FromMilliseconds(220));
+            time.Advance(220);
             var toast = Assert.Single(controller.ActiveVisuals);
             var cardTransform = toast.Card.RenderTransform;
             var oldVisualY = toast.Slot.TransformToAncestor(visual.Root).Transform(new Point()).Y;
@@ -149,7 +150,7 @@ public sealed class ToastOverlayControllerTests
             Assert.Same(cardTransform, toast.Card.RenderTransform);
             Assert.Equal(oldVisualY, toast.Slot.TransformToAncestor(visual.Root).Transform(new Point()).Y, 1);
             Assert.True(offset.HasAnimatedProperties);
-            PumpFor(TimeSpan.FromMilliseconds(240));
+            time.Advance(240);
             Assert.True(toast.Slot.TransformToAncestor(visual.Root).Transform(new Point()).Y < oldVisualY);
 
             visual.Effects.SceneRipples.Dispose();
@@ -161,11 +162,11 @@ public sealed class ToastOverlayControllerTests
     [Fact]
     public void Showing_toast_raises_live_region_changed_from_a_real_automation_peer()
     {
-        Assert.Null(RunOnSta(() =>
+        Assert.Null(RunOnSta(time =>
         {
             var visual = CreateVisual();
             var window = ShowVisual(visual);
-            using var controller = new ToastOverlayController(visual.Bottom, false, () => false);
+            using var controller = new ToastOverlayController(visual.Bottom, false, () => false, time.Toasts);
             var root = AutomationElement.FromHandle(new WindowInteropHelper(window).Handle);
             var raised = false;
             AutomationEventHandler handler = (_, args) =>
@@ -181,8 +182,8 @@ public sealed class ToastOverlayControllerTests
             try
             {
                 controller.Show(new ToastNotification("Announce me", ToastTone.Neutral));
-                PumpFor(TimeSpan.FromMilliseconds(100));
-                Assert.True(Volatile.Read(ref raised));
+                // UI Automation delivers the event from another process, so only real time can bring it.
+                Assert.True(DispatcherPump.Until(() => Volatile.Read(ref raised)));
                 var message = Assert.Single(controller.ActiveVisuals).Message;
                 Assert.NotNull(System.Windows.Automation.Peers.UIElementAutomationPeer.FromElement(message));
             }
@@ -215,25 +216,16 @@ public sealed class ToastOverlayControllerTests
         return window;
     }
 
-    private static void PumpFor(TimeSpan duration)
-    {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = duration };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            frame.Continue = false;
-        };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-    }
-
-    private static Exception? RunOnSta(Action action)
+    private static Exception? RunOnSta(Action<ManualTime> action)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
         {
-            try { action(); }
+            try
+            {
+                using var animations = ManualAnimationClock.Install();
+                action(new ManualTime(animations, new FakeTimeProvider()));
+            }
             catch (Exception exception) { failure = exception; }
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);
@@ -241,5 +233,23 @@ public sealed class ToastOverlayControllerTests
         thread.Join(TimeSpan.FromSeconds(10));
         Assert.False(thread.IsAlive);
         return failure;
+    }
+
+    // Toast lifetimes and their animations advance together, so no assertion depends on machine load.
+    private sealed class ManualTime(ManualAnimationClock animations, FakeTimeProvider toasts)
+    {
+        private const int StepMilliseconds = 10;
+
+        public TimeProvider Toasts => toasts;
+
+        public void Advance(int milliseconds)
+        {
+            for (var remaining = milliseconds; remaining > 0; remaining -= StepMilliseconds)
+            {
+                var step = Math.Min(StepMilliseconds, remaining);
+                toasts.Advance(TimeSpan.FromMilliseconds(step));
+                animations.Advance(step);
+            }
+        }
     }
 }

@@ -10,11 +10,11 @@ namespace CircleToSearch.Tests;
 
 public sealed class GoogleLensLiveSearchTests
 {
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Google_lens_opens_results_for_an_in_memory_jpeg()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
 
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "CircleFlow.WebView2Live"));
         AppDataDirectory.Initialize(paths);
@@ -48,11 +48,11 @@ public sealed class GoogleLensLiveSearchTests
             await Task.Delay(TimeSpan.FromSeconds(45));
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Google_ai_mode_answers_a_question_about_an_in_memory_jpeg()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
 
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "CircleFlow.WebView2Live"));
         AppDataDirectory.Initialize(paths);
@@ -85,11 +85,11 @@ public sealed class GoogleLensLiveSearchTests
             await Task.Delay(TimeSpan.FromSeconds(45));
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Google_ai_mode_prewarms_hidden_and_submits_right_after_the_question()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
 
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "CircleFlow.WebView2Live"));
         AppDataDirectory.Initialize(paths);
@@ -134,11 +134,11 @@ public sealed class GoogleLensLiveSearchTests
             await Task.Delay(TimeSpan.FromSeconds(30));
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Google_lens_prewarms_hidden_and_logs_results_timing_against_a_cold_browser()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
 
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "CircleFlow.WebView2Live"));
         AppDataDirectory.Initialize(paths);

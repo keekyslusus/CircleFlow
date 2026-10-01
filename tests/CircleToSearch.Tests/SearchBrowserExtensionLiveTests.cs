@@ -13,11 +13,11 @@ public sealed class SearchBrowserExtensionLiveTests
     // uBO Lite redirects doubleclick requests to stubs, so the probe needs a host its rules block outright.
     private const string BlockedAdUrl = "https://adservice.google.com/adsid/google/ui";
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Extension_blocks_ad_requests_but_allows_normal_resources_and_can_be_disabled()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         using var dispatcher = new StaDispatcher("Extension integration test");
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Assert.True(dispatcher.TryPost(async () =>
@@ -58,11 +58,11 @@ public sealed class SearchBrowserExtensionLiveTests
         await completion.Task.WaitAsync(TimeSpan.FromMinutes(1));
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Remembered_extension_blocks_ads_in_a_new_browser_process_without_being_added_again()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
         var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
         var id = await RunInBrowser(profile, async (view, _) =>
@@ -85,11 +85,11 @@ public sealed class SearchBrowserExtensionLiveTests
         Assert.Equal("blocked", outcome);
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task First_window_adds_the_annoyance_lists_to_the_lists_uBO_Lite_chose()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
         var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
 
@@ -102,11 +102,11 @@ public sealed class SearchBrowserExtensionLiveTests
         Assert.DoesNotContain("annoyances-social", enabled);
     }
 
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Annoyance_lists_are_enabled_again_after_the_browser_data_is_cleared()
     {
-        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_LIVE") != "1") return;
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
         var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
         await RunInBrowser(profile, (view, _) => EnableAndReadListsAsync(view, profile, directory));

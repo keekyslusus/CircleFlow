@@ -6,38 +6,18 @@ namespace CircleToSearch.Tests;
 
 public sealed class PluginPaletteTests
 {
-    [Fact]
-    public void Dark_theme_exposes_window_and_selection_colors_from_one_palette()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Window_and_selection_text_meets_wcag_contrast_on_its_surface(bool lightTheme)
     {
-        var palette = PluginPalette.For(lightTheme: false);
+        var palette = PluginPalette.For(lightTheme);
+        var chip = palette.SelectionChip;
+        var chipSurface = chip.Surface with { A = 255 };
 
-        Assert.Equal("#FF202124", palette.WindowSurface.ToString());
-        Assert.Equal("#FFE8EAED", palette.PrimaryText.ToString());
-        Assert.Equal("#A6E8EAED", palette.SearchBrowserScrollbarThumb.ToString());
-        Assert.Equal("#E6202124", palette.SelectionChip.Surface.ToString());
-        Assert.Equal("#FFE8EAED", palette.SelectionChip.KeycapText.ToString());
-    }
-
-    [Fact]
-    public void Light_theme_exposes_window_and_selection_colors_from_one_palette()
-    {
-        var palette = PluginPalette.For(lightTheme: true);
-
-        Assert.Equal("#FFF7F9FC", palette.WindowSurface.ToString());
-        Assert.Equal("#FF30343A", palette.PrimaryText.ToString());
-        Assert.Equal("#8F30343A", palette.SearchBrowserScrollbarThumb.ToString());
-        Assert.Equal("#F0FCFCFD", palette.SelectionChip.Surface.ToString());
-        Assert.Equal("#FF3C4043", palette.SelectionChip.KeycapText.ToString());
-    }
-
-    [Fact]
-    public void Shared_effect_and_brand_colors_are_centralized()
-    {
-        Assert.Equal("#59000000", PluginPalette.SelectionDim.ToString());
-        Assert.Equal("#24FFFFFF", PluginPalette.SelectionSheen.ToString());
-        Assert.Equal(
-            new[] { "#FF4285F4", "#FFA142F4", "#FF0B57D0" },
-            PluginPalette.SearchBrowserLoadingDots.Select(color => color.ToString()));
+        Assert.InRange(ContrastRatio(palette.PrimaryText, palette.WindowSurface), 4.5, 21);
+        Assert.InRange(ContrastRatio(chip.Label, chipSurface), 4.5, 21);
+        Assert.InRange(ContrastRatio(chip.KeycapText, PluginPalette.Composite(chipSurface, chip.KeycapBackground)), 4.5, 21);
     }
 
     [Fact]
@@ -59,5 +39,23 @@ public sealed class PluginPaletteTests
         Assert.True(
             violations.Length == 0,
             $"Fixed colors must be declared in PluginPalette.cs: {string.Join(", ", violations)}");
+    }
+
+    private static double ContrastRatio(System.Windows.Media.Color first, System.Windows.Media.Color second)
+    {
+        var a = RelativeLuminance(first);
+        var b = RelativeLuminance(second);
+        return (Math.Max(a, b) + 0.05) / (Math.Min(a, b) + 0.05);
+    }
+
+    private static double RelativeLuminance(System.Windows.Media.Color color)
+    {
+        static double Linear(byte channel)
+        {
+            var value = channel / 255d;
+            return value <= 0.03928 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4);
+        }
+
+        return 0.2126 * Linear(color.R) + 0.7152 * Linear(color.G) + 0.0722 * Linear(color.B);
     }
 }

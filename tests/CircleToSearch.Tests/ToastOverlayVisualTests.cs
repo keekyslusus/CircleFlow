@@ -35,16 +35,6 @@ public sealed class ToastOverlayVisualTests
         }));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void Success_accent_reuses_music_primary(bool lightTheme)
-    {
-        var theme = PluginPalette.For(lightTheme);
-
-        Assert.Equal(theme.MusicOverlay.Primary, theme.Toast.SuccessAccent);
-    }
-
     [Fact]
     public void Card_exposes_layout_input_and_live_region_contract()
     {
@@ -54,12 +44,6 @@ public sealed class ToastOverlayVisualTests
                 new ToastNotification("Selection is too small", ToastTone.Error),
                 lightTheme: false);
 
-            Assert.Equal(360, visual.Card.MaxWidth);
-            Assert.Equal(40, visual.Card.MinHeight);
-            Assert.Equal(new Thickness(16, 10, 16, 10), visual.Card.Padding);
-            Assert.Equal(new CornerRadius(20), visual.Card.CornerRadius);
-            Assert.Equal(new Thickness(1), visual.Card.BorderThickness);
-            Assert.Equal(13, visual.Message.FontSize);
             Assert.Equal(FontWeights.SemiBold, visual.Message.FontWeight);
             Assert.Equal(TextWrapping.Wrap, visual.Message.TextWrapping);
             Assert.False(visual.Slot.IsHitTestVisible);

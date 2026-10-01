@@ -25,8 +25,11 @@ public sealed class OverlayScrollbarScriptTests
     {
         var script = OverlayScrollbarScript.Create();
 
-        Assert.Contains("#30343A8F", script);
-        Assert.Contains("#E8EAEDA6", script);
+        Assert.Contains(CssColor(PluginPalette.For(lightTheme: true).SearchBrowserScrollbarThumb), script);
+        Assert.Contains(CssColor(PluginPalette.For(lightTheme: false).SearchBrowserScrollbarThumb), script);
         Assert.Contains("prefers-color-scheme: dark", script);
     }
+
+    private static string CssColor(System.Windows.Media.Color color) =>
+        $"#{color.R:X2}{color.G:X2}{color.B:X2}{color.A:X2}";
 }

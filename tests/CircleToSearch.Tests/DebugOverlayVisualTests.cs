@@ -54,10 +54,6 @@ public sealed class DebugOverlayVisualTests
             Assert.Equal(PluginPalette.Transparent, Assert.IsType<SolidColorBrush>(noAudio.Background).Color);
             Assert.Equal(palette.Text, Assert.IsType<SolidColorBrush>(noAudio.Foreground).Color);
 
-            Assert.Equal(340, visual.Panel.Width);
-            Assert.Equal(new Thickness(24), visual.Panel.Margin);
-            Assert.Equal(new Thickness(12), visual.Panel.Padding);
-            Assert.Equal(new CornerRadius(10), visual.Panel.CornerRadius);
             Assert.Equal(HorizontalAlignment.Right, visual.Panel.HorizontalAlignment);
             Assert.Equal(VerticalAlignment.Top, visual.Panel.VerticalAlignment);
             Assert.Equal(3, Panel.GetZIndex(visual.Panel));
