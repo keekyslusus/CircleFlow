@@ -163,7 +163,8 @@ public static class CompositionRoot
                 cancellation.ThrowIfCancellationRequested();
                 var support = new ProjectSupport(urlOpening);
                 var startup = new WindowsStartupRegistration(paths.ExecutablePath, log);
-                var onboardingModel = new OnboardingModel(runtime.Settings, startup, strings);
+                var onboardingModel = new OnboardingModel(runtime.Settings, startup, strings,
+                    () => activation.TryRequestOpen());
                 var onboarding = new OnboardingWindowController(application.Dispatcher, onboardingModel,
                     () => new OnboardingWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, onboardingModel).Window);
                 lifetime.AddCleanup("close-onboarding", () => { onboarding.Dispose(); return Task.CompletedTask; });

@@ -18,7 +18,6 @@ internal sealed class BottomResultsPanel
     private const uint AbmGetAutoHideBarEx = 0xB;
     private const uint BottomEdge = 3;
     private const int DwmwaWindowCornerPreference = 33;
-    private const int DwmwaTransitionsForceDisabled = 3;
     private const int DwmwaCloak = 13;
     private const uint SwpNoZOrderOrActivate = 0x14;
     private const int WmSettingChange = 0x001A;
@@ -226,7 +225,7 @@ internal sealed class BottomResultsPanel
     {
         if (_hwnd == IntPtr.Zero) return;
         var disabled = enabled ? 0 : 1;
-        NativeMethods.DwmSetWindowAttribute(_hwnd, DwmwaTransitionsForceDisabled, ref disabled, sizeof(int));
+        NativeMethods.DwmSetWindowAttribute(_hwnd, NativeMethods.DwmwaTransitionsForceDisabled, ref disabled, sizeof(int));
     }
 
     private void OnClosing(object? sender, CancelEventArgs args) => FinishEntrance();
