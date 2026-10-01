@@ -117,6 +117,142 @@ public sealed class FloatingToolbarTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void Ask_prompt_shows_keyboard_layout_tag_and_fills_send_once_text_is_entered(bool lightTheme)
+    {
+        RunOnSta(_ =>
+        {
+            var palette = PluginPalette.For(lightTheme).FloatingToolbar;
+            var visual = ImageSelectionVisualFactory.Create(lightTheme, TestUiStrings.English);
+            var prompt = visual.AskPrompt;
+            var window = new Window
+            {
+                Width = 640, Height = 240, WindowStyle = WindowStyle.None, Content = visual.Toolbar.Layer,
+            };
+            try
+            {
+                window.Show();
+                visual.Toolbar.Show(new Rect(100, 180, 60, 40), new Size(640, 240));
+                visual.Toolbar.SetPromptOpen(true);
+                Assert.Equal(Visibility.Collapsed, prompt.LanguageTag.Root.Visibility);
+
+                visual.Toolbar.SetPromptLanguage("ru-RU");
+                window.UpdateLayout();
+                Assert.Equal(Visibility.Visible, prompt.LanguageTag.Root.Visibility);
+                Assert.Equal("RU", prompt.LanguageTag.Label);
+                var tag = prompt.LanguageTag.Root.TransformToAncestor(visual.Toolbar.Layer)
+                    .TransformBounds(new Rect(prompt.LanguageTag.Root.RenderSize));
+                var send = prompt.SendButton.TransformToAncestor(visual.Toolbar.Layer)
+                    .TransformBounds(new Rect(prompt.SendButton.RenderSize));
+                Assert.True(tag.Right <= send.Left);
+                Assert.Equal(42, visual.Toolbar.Surface.ActualHeight);
+                Assert.False(prompt.SendButton.IsEnabled);
+
+                prompt.Input.Text = "Что это за здание?";
+                Assert.True(prompt.SendButton.IsEnabled);
+                Assert.Equal(palette.Accent, Assert.IsType<SolidColorBrush>(prompt.SendButton.Background).Color);
+                Assert.Equal(palette.OnAccent, Assert.IsType<SolidColorBrush>(prompt.SendButton.Foreground).Color);
+
+                prompt.Input.Clear();
+                Assert.Equal(PluginPalette.Transparent, Assert.IsType<SolidColorBrush>(prompt.SendButton.Background).Color);
+                visual.Toolbar.SetPromptLanguage(null);
+                Assert.Equal(Visibility.Collapsed, prompt.LanguageTag.Root.Visibility);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void Keyboard_layout_switch_rolls_the_tag_to_the_new_code_and_settles()
+    {
+        RunOnSta(time =>
+        {
+            var palette = PluginPalette.For(false).FloatingToolbar;
+            var toolbar = new FloatingToolbar(palette, () => true);
+            var prompt = toolbar.AddPrompt(TestUiStrings.English.AskPlaceholder, TestUiStrings.English.AskSend,
+                PluginIcons.SparkleOutlined);
+            var tag = prompt.LanguageTag;
+            toolbar.SetPromptLanguage("en-US");
+            Assert.Equal(1, tag.Root.Opacity);
+            var window = new Window { Width = 640, Height = 240, WindowStyle = WindowStyle.None, Content = toolbar.Layer };
+            try
+            {
+                window.Show();
+                toolbar.Show(new Rect(100, 180, 60, 40), new Size(640, 240));
+                toolbar.SetPromptOpen(true);
+                time.Advance(260);
+
+                toolbar.SetPromptLanguage("ru-RU");
+                time.Advance(100);
+                Assert.Equal("RU", tag.Label);
+                Assert.Equal("EN", tag.OutgoingLabel);
+                var scale = (ScaleTransform)tag.Root.RenderTransform;
+                Assert.True(scale.ScaleX > 1);
+                Assert.NotEqual(palette.Tag, ((SolidColorBrush)tag.Root.Background).Color);
+
+                time.Advance(400);
+                Assert.Equal("RU", tag.Label);
+                Assert.Equal(string.Empty, tag.OutgoingLabel);
+                Assert.Equal(1, scale.ScaleX, 3);
+                Assert.Equal(palette.Tag, ((SolidColorBrush)tag.Root.Background).Color);
+
+                toolbar.SetPromptLanguage(null);
+                Assert.Equal(Visibility.Collapsed, tag.Root.Visibility);
+                toolbar.SetPromptLanguage("en-US");
+                time.Advance(60);
+                Assert.InRange(tag.Root.Opacity, 0.01, 0.99);
+                time.Advance(240);
+                Assert.Equal(1, tag.Root.Opacity, 3);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void Tag_width_follows_a_shorter_code_smoothly_and_does_not_jump_when_the_roll_ends()
+    {
+        RunOnSta(time =>
+        {
+            var toolbar = new FloatingToolbar(PluginPalette.For(false).FloatingToolbar, () => true);
+            var prompt = toolbar.AddPrompt(TestUiStrings.English.AskPlaceholder, TestUiStrings.English.AskSend,
+                PluginIcons.SparkleOutlined);
+            var tag = prompt.LanguageTag;
+            toolbar.SetPromptLanguage("haw-US");
+            var window = new Window { Width = 640, Height = 240, WindowStyle = WindowStyle.None, Content = toolbar.Layer };
+            try
+            {
+                window.Show();
+                toolbar.Show(new Rect(100, 180, 60, 40), new Size(640, 240));
+                toolbar.SetPromptOpen(true);
+                time.Advance(260);
+                window.UpdateLayout();
+                Assert.Equal("HAW", tag.Label);
+                var wide = tag.Root.ActualWidth;
+
+                toolbar.SetPromptLanguage("en-US");
+                var widths = new List<double>();
+                for (var elapsed = 0; elapsed < 256; elapsed += 16)
+                {
+                    time.Advance(16);
+                    window.UpdateLayout();
+                    widths.Add(tag.Root.ActualWidth);
+                }
+                time.Advance(200);
+                window.UpdateLayout();
+                var settled = tag.Root.ActualWidth;
+
+                Assert.Equal(string.Empty, tag.OutgoingLabel);
+                Assert.True(settled < wide - 4);
+                Assert.Contains(widths, width => width < wide - 1 && width > settled + 1);
+                Assert.All(widths.Zip(widths.Skip(1)), step => Assert.InRange(step.First - step.Second, -0.01, (wide - settled) / 2));
+                Assert.InRange(widths[^1] - settled, -0.5, 0.5);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void Updating_search_icon_keeps_open_toolbar_inside_viewport_and_preserves_button(bool lightTheme)
     {
         RunOnSta(time =>

@@ -15,6 +15,6 @@ internal static class ImageSelectionVisualFactory
         var save = toolbar.AddAction(strings.ImageSave, PluginIcons.DownloadOutlined);
         var translate = toolbar.AddAction(strings.Translate, PluginIcons.TranslateOutlined);
         return new ImageSelectionVisual(toolbar, search, copy, save, translate, ask,
-            toolbar.AddPrompt(strings.AskPlaceholder, strings.AskSend));
+            toolbar.AddPrompt(strings.AskPlaceholder, strings.AskSend, PluginIcons.SparkleOutlined));
     }
 }

@@ -30,6 +30,8 @@ internal static class PluginPalette
     internal static Color StartpageViolet { get; } = Color.FromRgb(0x65, 0x63, 0xFF);
     private static Color DarkMusicPrimary { get; } = Color.FromRgb(0xD0, 0xBC, 0xFF);
     private static Color LightMusicPrimary { get; } = Color.FromRgb(0x67, 0x50, 0xA4);
+    private static Color DarkOnPrimary { get; } = Color.FromRgb(0x38, 0x1E, 0x72);
+    private static Color LightOnPrimary { get; } = Colors.White;
     private static Color DarkDockSurface { get; } = Color.FromArgb(0xE6, 0x20, 0x21, 0x24);
     private static Color DarkDockHoverOverlay { get; } = Color.FromArgb(0x12, 0x00, 0x00, 0x00);
     private static Color LightDockSurface { get; } = Color.FromArgb(0xF0, 0xFC, 0xFC, 0xFD);
@@ -90,7 +92,7 @@ internal static class PluginPalette
         var text = theme.StateCard.Text;
         return new OnboardingPalette(
             InactiveStep: WithAlpha(text, 0.25),
-            OnAccent: lightTheme ? Colors.White : Color.FromRgb(0x38, 0x1E, 0x72),
+            OnAccent: lightTheme ? LightOnPrimary : DarkOnPrimary,
             ToolbarSurface: theme.FloatingToolbar.Surface,
             ToolbarText: theme.FloatingToolbar.Text,
             ToolbarBorder: theme.FloatingToolbar.Border,
@@ -219,6 +221,12 @@ internal static class PluginPalette
             ButtonHover: Color.FromRgb(0x4A, 0x44, 0x58),
             Border: Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF),
             Divider: Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF),
+            Accent: DarkMusicPrimary,
+            OnAccent: DarkOnPrimary,
+            AccentHover: Composite(DarkMusicPrimary, WithAlpha(DarkOnPrimary, 0.08)),
+            Tag: DarkStateCard.SecondaryContainer,
+            TagText: DarkStateCard.OnSecondaryContainer,
+            TagHighlight: Composite(DarkStateCard.SecondaryContainer, WithAlpha(DarkMusicPrimary, 0.35)),
             ShadowOpacity: 0.35),
         Translation: new TranslationPalette(
             Surface: DarkDockSurface,
@@ -296,6 +304,12 @@ internal static class PluginPalette
             ButtonHover: Color.FromRgb(0xE8, 0xDE, 0xF8),
             Border: Color.FromArgb(0x1A, 0x20, 0x21, 0x24),
             Divider: Color.FromArgb(0x1F, 0x20, 0x21, 0x24),
+            Accent: LightMusicPrimary,
+            OnAccent: LightOnPrimary,
+            AccentHover: Composite(LightMusicPrimary, WithAlpha(LightOnPrimary, 0.08)),
+            Tag: LightStateCard.SecondaryContainer,
+            TagText: LightStateCard.OnSecondaryContainer,
+            TagHighlight: Composite(LightStateCard.SecondaryContainer, WithAlpha(LightMusicPrimary, 0.25)),
             ShadowOpacity: 0.14),
         Translation: new TranslationPalette(
             Surface: LightDockSurface,
@@ -360,6 +374,12 @@ internal sealed record FloatingToolbarPalette(
     Color ButtonHover,
     Color Border,
     Color Divider,
+    Color Accent,
+    Color OnAccent,
+    Color AccentHover,
+    Color Tag,
+    Color TagText,
+    Color TagHighlight,
     double ShadowOpacity);
 
 internal sealed record TranslationPalette(

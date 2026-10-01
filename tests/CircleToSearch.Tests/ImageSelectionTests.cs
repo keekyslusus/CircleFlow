@@ -1,13 +1,17 @@
+using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
+using CircleToSearch.Interop;
 using CircleToSearch.Search;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
@@ -247,6 +251,105 @@ public sealed class ImageSelectionTests
         Assert.Empty(h.Commands);
         h.Escape();
         Assert.Single(h.Commands.OfType<CancelSession>());
+    });
+
+    [Fact]
+    public void Keyboard_layout_reaches_the_ask_prompt_tag_at_start_and_on_switch() => Run(() =>
+    {
+        var actual = PromptLanguageTag.CodeFor(KeyboardInputLanguageSource.TagFromLayout(NativeMethods.GetKeyboardLayout(0)));
+        var initialTag = actual == "DE" ? "fr-FR" : "de-DE";
+        using var h = new Harness(inputLanguage: new KeyboardLanguageSnapshot(0, initialTag));
+        var tag = h.Actions.AskPrompt.LanguageTag;
+        Assert.Equal(PromptLanguageTag.CodeFor(initialTag), tag.Label);
+        if (actual is null) return;
+
+        SendMessage(new WindowInteropHelper(h.Window).Handle, NativeMethods.WM_INPUTLANGCHANGE, 0, 0);
+
+        Assert.Equal(actual, tag.Label);
+    });
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr window, uint message, nint wParam, nint lParam);
+
+    // The overlay starts on this machine's real keyboard layout, so each test first moves OCR to a known one.
+    [Theory]
+    [InlineData("de-DE", true)]
+    [InlineData("en-US", false)]
+    public void Layout_switch_in_ask_prompt_reaches_ocr_only_after_closing_it_with_a_new_layout(
+        string finalTag, bool feedbackExpected) => Run(() =>
+    {
+        using var h = new Harness();
+        var languageChanged = TestUiStrings.English.OcrLanguageChanged(CultureInfo.GetCultureInfo("de-DE").NativeName);
+        h.Controllers!.ImageText.OnInputLanguageChanged("en-US");
+        h.Select();
+        Click(h.Actions.AskButton);
+
+        h.Controllers.ImageText.OnInputLanguageChanged("de-DE");
+        if (finalTag != "de-DE") h.Controllers.ImageText.OnInputLanguageChanged(finalTag);
+        Assert.DoesNotContain(languageChanged, h.ToastTexts());
+
+        h.Escape();
+        Assert.False(h.Actions.Toolbar.IsPromptOpen);
+        Assert.Equal(feedbackExpected, h.ToastTexts().Contains(languageChanged));
+    });
+
+    [Fact]
+    public void New_lasso_from_an_ask_prompt_with_a_switched_layout_still_completes() => Run(() =>
+    {
+        using var h = new Harness();
+        var languageChanged = TestUiStrings.English.OcrLanguageChanged(CultureInfo.GetCultureInfo("de-DE").NativeName);
+        h.Controllers!.ImageText.OnInputLanguageChanged("en-US");
+        h.Select();
+        Click(h.Actions.AskButton);
+        h.Controllers.ImageText.OnInputLanguageChanged("de-DE");
+
+        h.Select(new Point(20, 200), new Point(45, 225));
+
+        Assert.False(h.Actions.Toolbar.IsPromptOpen);
+        Assert.True(h.Actions.Toolbar.IsOpen);
+        Assert.Contains(languageChanged, h.ToastTexts());
+    });
+
+    [Fact]
+    public void Layout_switch_before_sending_a_question_does_not_reach_ocr() => Run(() =>
+    {
+        using var h = new Harness();
+        var languageChanged = TestUiStrings.English.OcrLanguageChanged(CultureInfo.GetCultureInfo("de-DE").NativeName);
+        h.Controllers!.ImageText.OnInputLanguageChanged("en-US");
+        h.Select();
+        Click(h.Actions.AskButton);
+        h.Controllers.ImageText.OnInputLanguageChanged("de-DE");
+        h.Actions.AskPrompt.Input.Text = "Что это?";
+
+        h.Key(h.Actions.AskPrompt.Input, Key.Enter, Keyboard.KeyDownEvent);
+        Assert.Single(h.Commands.OfType<AskAboutSelection>());
+        Assert.DoesNotContain(languageChanged, h.ToastTexts());
+        h.Window.CloseFromSession();
+
+        Assert.DoesNotContain(languageChanged, h.ToastTexts());
+    });
+
+    // Sending normally closes the overlay; if it stays open, OCR must not keep holding the old language.
+    [Fact]
+    public void Layout_switched_for_a_sent_question_reaches_ocr_once_the_prompt_closes_in_an_open_overlay() => Run(() =>
+    {
+        using var h = new Harness();
+        var german = TestUiStrings.English.OcrLanguageChanged(CultureInfo.GetCultureInfo("de-DE").NativeName);
+        var french = TestUiStrings.English.OcrLanguageChanged(CultureInfo.GetCultureInfo("fr-FR").NativeName);
+        h.Controllers!.ImageText.OnInputLanguageChanged("en-US");
+        h.Select();
+        Click(h.Actions.AskButton);
+        h.Controllers.ImageText.OnInputLanguageChanged("de-DE");
+        h.Actions.AskPrompt.Input.Text = "Что это?";
+        h.Key(h.Actions.AskPrompt.Input, Key.Enter, Keyboard.KeyDownEvent);
+        Assert.DoesNotContain(german, h.ToastTexts());
+
+        h.Escape();
+        Assert.False(h.Actions.Toolbar.IsPromptOpen);
+        Assert.Contains(german, h.ToastTexts());
+
+        h.Controllers.ImageText.OnInputLanguageChanged("fr-FR");
+        Assert.Contains(french, h.ToastTexts());
     });
 
     [Fact]
@@ -551,28 +654,35 @@ public sealed class ImageSelectionTests
         internal bool Consent;
         internal List<IOverlayCommand> Commands { get; } = [];
         internal OverlayWindow Window { get; }
+        internal OverlayControllers? Controllers { get; private set; }
         internal ImageSelectionVisual Actions => Window.VisualState.ImageSelection;
+
+        internal IEnumerable<string> ToastTexts() => Window.VisualState.Bottom.Stack.Children.OfType<Grid>()
+            .Select(toast => toast.Children.OfType<Border>().FirstOrDefault()?.Child)
+            .OfType<TextBlock>().Select(text => text.Text);
         internal BitmapSource? Copied;
         internal ScreenTranslationRequested? Request;
 
         internal Harness(string provider = SearchProviderIds.GoogleLens, bool copyFails = false,
             double scale = 1, bool overscan = false, bool consent = true,
-            SelectionToolbarAction hiddenActions = SelectionToolbarAction.None, IOcrRecognizer? ocr = null)
+            SelectionToolbarAction hiddenActions = SelectionToolbarAction.None, IOcrRecognizer? ocr = null,
+            KeyboardLanguageSnapshot inputLanguage = default)
         {
             Consent = consent;
             using (var graphics = System.Drawing.Graphics.FromImage(_frame)) graphics.Clear(System.Drawing.Color.Black);
             var monitor = new GdiRectangle(0, 0, 640, 400);
+            var factory = TestOverlayControllers.CreateFactory(animationsEnabled: () => false, pointerPosition: _ => _point,
+                translationConsentAccepted: () => Consent, ocrRecognizer: ocr,
+                setImageClipboard: image =>
+                {
+                    if (copyFails) throw new InvalidOperationException("clipboard busy");
+                    Copied = image;
+                });
             Window = new OverlayWindow(_frame, monitor, monitor, scale,
                 new OverlayLaunchOptions(new OverlayOptions(0, 12), TestUiStrings.English,
-                    [new(provider, provider)], provider, new SearchSessionOptions(HiddenToolbarActions: hiddenActions)),
+                    [new(provider, provider)], provider, new SearchSessionOptions(InputLanguage: inputLanguage, HiddenToolbarActions: hiddenActions)),
                 Commands.Add,
-                TestOverlayControllers.CreateFactory(animationsEnabled: () => false, pointerPosition: _ => _point,
-                    translationConsentAccepted: () => Consent, ocrRecognizer: ocr,
-                    setImageClipboard: image =>
-                    {
-                        if (copyFails) throw new InvalidOperationException("clipboard busy");
-                        Copied = image;
-                    }), overscan: overscan);
+                new OverlayControllerFactory(context => Controllers = factory.Create(context)), overscan: overscan);
             Window.Show();
             Window.UpdateLayout();
         }

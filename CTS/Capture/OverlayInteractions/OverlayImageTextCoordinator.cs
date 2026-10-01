@@ -37,6 +37,9 @@ internal sealed class OverlayImageTextCoordinator : IDisposable
     private long _runningRevision;
     private bool _available = true;
     private bool _switchFeedback;
+    private bool _languageDeferred;
+    private bool _hasDeferredTag;
+    private string? _deferredTag;
     private bool _disposed;
     private OverlayActivityPresenter.ActivityPresentation? _activity;
 
@@ -88,9 +91,32 @@ internal sealed class OverlayImageTextCoordinator : IDisposable
         _effectiveTag = Resolve(tag);
     }
 
+    // While the Ask prompt is open a layout switch is for typing the question, not for recognizing text,
+    // so OCR keeps its language until the prompt closes and then catches up with the layout.
+    internal void DeferInputLanguageChanges()
+    {
+        if (_disposed) return;
+        _languageDeferred = true;
+    }
+
+    internal void ApplyDeferredInputLanguage()
+    {
+        if (_disposed || !_languageDeferred) return;
+        _languageDeferred = false;
+        if (!_hasDeferredTag) return;
+        _hasDeferredTag = false;
+        OnInputLanguageChanged(_deferredTag);
+    }
+
     internal void OnInputLanguageChanged(string? tag)
     {
         if (_disposed) return;
+        if (_languageDeferred)
+        {
+            _deferredTag = tag;
+            _hasDeferredTag = true;
+            return;
+        }
         var effective = Resolve(tag);
         if (string.Equals(_effectiveTag, effective, StringComparison.OrdinalIgnoreCase) &&
             (effective is not null || string.Equals(_requestedTag, tag, StringComparison.OrdinalIgnoreCase)))
