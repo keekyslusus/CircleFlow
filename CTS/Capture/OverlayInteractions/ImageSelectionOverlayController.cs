@@ -26,6 +26,8 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     private readonly UiStrings _strings;
     private readonly DispatcherTimer _copyTimer;
     private readonly List<IDisposable> _ripples;
+    private readonly Action? _askPromptOpened;
+    private readonly Action? _askPromptClosed;
     private bool _askDraftStarted;
     private bool _askImageAttached;
     private bool _disposed;
@@ -35,8 +37,11 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         ScreenTranslationOverlayController translation, ClipboardCopyService clipboard,
         Func<BitmapSource> visibleImage, Func<GdiRectangle, SelectionOutcome> createSelection,
         Action<GdiRectangle> search, Action<IOverlayCommand> publish, Action close, UiStrings strings,
-        SelectionToolbarAction hiddenActions = SelectionToolbarAction.None)
+        SelectionToolbarAction hiddenActions = SelectionToolbarAction.None,
+        Action? askPromptOpened = null, Action? askPromptClosed = null)
     {
+        _askPromptOpened = askPromptOpened;
+        _askPromptClosed = askPromptClosed;
         _visual = visual;
         _root = root;
         _mapper = mapper;
@@ -114,13 +119,24 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         return true;
     }
 
+    internal void SetInputLanguage(string? tag)
+    {
+        if (_disposed) return;
+        _visual.Toolbar.SetPromptLanguage(tag);
+    }
+
     private void ResetAskPrompt()
     {
-        if (_askDraftStarted && !_disposed) _publish(new AskDraftCanceled());
+        // A submitted question keeps the prompt shown until the overlay moves on, so closing is the one place
+        // where every opened prompt ends, whether it was sent or not.
+        var closed = _visual.Toolbar.IsPromptOpen && !_disposed;
+        var canceled = _askDraftStarted && !_disposed;
         _askDraftStarted = false;
         _askImageAttached = false;
         _visual.Toolbar.SetPromptOpen(false);
         _visual.AskPrompt.Input.Clear();
+        if (closed) _askPromptClosed?.Invoke();
+        if (canceled) _publish(new AskDraftCanceled());
     }
 
     private bool CanAct => !_disposed && !IsCompleting && Bounds is not null && _visual.Toolbar.IsOpen;
@@ -166,6 +182,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     {
         if (!CanAct) return;
         _visual.Toolbar.SetPromptOpen(true);
+        _askPromptOpened?.Invoke();
         // Warming the browser now hides its startup behind typing; the image waits for the first character.
         _askDraftStarted = true;
         _publish(new AskDraftStarted());

@@ -76,6 +76,76 @@ public sealed class OverlayImageTextCoordinatorTests
     }
 
     [Fact]
+    public void Deferred_layout_switch_reaches_ocr_only_when_applied_with_a_new_layout()
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var source = Source(100, 40);
+            var visual = OverlayVisualFactory.CreateRoot(
+                source, new Size(100, 40), 0, false, TestUiStrings.English);
+            var lasso = new SelectionOverlayController(
+                visual.Selection, visual.Root, new GdiRectangle(0, 0, 100, 40), 1, 0, 12,
+                false, () => true, (_, _) => true, () => { }, _ => { }, () => { }, () => { },
+                subscribeInput: false);
+            var text = new TextSelectionOverlayController(
+                visual.TextSelection, visual.Root, visual.Selection.InputSurface,
+                new OverlayCoordinateMapper(1, false, new GdiSize(100, 40)),
+                new OcrTextHitTester(),
+                new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English),
+                () => "google-lens", _ => { }, TestUiStrings.English, false);
+            var pointer = new PointerGestureRouter(
+                visual.Selection, visual.Root, lasso, text,
+                () => true, (_, _) => true, _ => new Point(20, 20));
+            var recognizer = new GestureObservingRecognizer(() => pointer.ActiveGesture);
+            var ocr = new OcrOverlayController(source, visual.Root.Dispatcher, recognizer,
+                "en-US", _ => { });
+            var clock = DateTime.UtcNow;
+            var scheduled = new List<Action>();
+            try
+            {
+                using var coordinator = new OverlayImageTextCoordinator(
+                    pointer, text, ocr, null, TestUiStrings.English, "en-US",
+                    source, new OcrLanguageCatalog([new("en-US", "English"), new("ru-RU", "Russian")]),
+                    now: () => clock,
+                    scheduleDelay: (_, callback) => scheduled.Add(callback));
+                coordinator.Start();
+
+                coordinator.DeferInputLanguageChanges();
+                coordinator.OnInputLanguageChanged("ru-RU");
+                coordinator.OnInputLanguageChanged("en-US");
+                coordinator.ApplyDeferredInputLanguage();
+                Assert.Empty(scheduled);
+
+                coordinator.DeferInputLanguageChanges();
+                coordinator.OnInputLanguageChanged("ru-RU");
+                Assert.Empty(scheduled);
+                Assert.Equal(["en-US"], recognizer.Languages);
+                coordinator.ApplyDeferredInputLanguage();
+                clock += TimeSpan.FromMilliseconds(300);
+                Assert.Single(scheduled).Invoke();
+                Assert.Equal(["en-US", "ru-RU"], recognizer.Languages);
+
+                coordinator.DeferInputLanguageChanges();
+                coordinator.OnInputLanguageChanged("en-US");
+                Assert.Single(scheduled);
+                Assert.Equal(["en-US", "ru-RU"], recognizer.Languages);
+            }
+            finally
+            {
+                ocr.Dispose();
+                pointer.Dispose();
+                text.Dispose();
+                lasso.Dispose();
+                visual.TranslationAction.LoadingIndicator.Dispose();
+                visual.Music.LoadingIndicator.Dispose();
+                visual.Music.Waveform.Dispose();
+                visual.Bottom.LayoutTransitions.Dispose();
+                visual.Effects.SceneRipples.Dispose();
+            }
+        }));
+    }
+
+    [Fact]
     public void Image_change_cancels_active_gesture_before_restarting_ocr()
     {
         var failure = RunOnSta(() =>

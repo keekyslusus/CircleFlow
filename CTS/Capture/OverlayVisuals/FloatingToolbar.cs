@@ -8,7 +8,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using CircleToSearch.Ui;
 
-public sealed record FloatingToolbarPrompt(Grid Root, TextBox Input, Button SendButton);
+public sealed record FloatingToolbarPrompt(Grid Root, TextBox Input, Button SendButton, PromptLanguageTag LanguageTag);
 
 public sealed class FloatingToolbar
 {
@@ -71,17 +71,31 @@ public sealed class FloatingToolbar
     internal bool IsOpen { get; private set; }
     internal bool IsPromptOpen => _prompt is not null && ReferenceEquals(Surface.Child, _prompt.Root);
 
-    internal FloatingToolbarPrompt AddPrompt(string placeholder, string sendLabel)
+    internal FloatingToolbarPrompt AddPrompt(string placeholder, string sendLabel, Geometry icon)
     {
         if (_prompt is not null) throw new InvalidOperationException("The toolbar already has a prompt.");
         var text = OverlayVisualResources.Frozen(_palette.Text);
+        var transparent = OverlayVisualResources.Frozen(PluginPalette.Transparent);
+        var accent = OverlayVisualResources.Frozen(_palette.Accent);
+        var onAccent = OverlayVisualResources.Frozen(_palette.OnAccent);
+        var leading = new ContentControl
+        {
+            Content = OutlinedIcon(icon),
+            Width = ActionHeight,
+            Height = ActionHeight,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Foreground = accent,
+            Focusable = false,
+            IsHitTestVisible = false,
+        };
         var input = new TextBox
         {
             Foreground = text,
             CaretBrush = text,
-            Background = OverlayVisualResources.Frozen(PluginPalette.Transparent),
+            Background = transparent,
             BorderThickness = new Thickness(),
-            Padding = new Thickness(8, 0, 8, 0),
+            Padding = new Thickness(4, 0, 8, 0),
             VerticalContentAlignment = VerticalAlignment.Center,
             FontFamily = OverlayVisualResources.Font,
             FontSize = 14,
@@ -95,13 +109,14 @@ public sealed class FloatingToolbar
             Text = placeholder,
             Foreground = text,
             Opacity = 0.6,
-            Margin = new Thickness(12, 0, 12, 0),
+            Margin = new Thickness(8, 0, 12, 0),
             VerticalAlignment = VerticalAlignment.Center,
             FontFamily = OverlayVisualResources.Font,
             FontSize = 14,
             TextTrimming = TextTrimming.CharacterEllipsis,
             IsHitTestVisible = false,
         };
+        var language = new PromptLanguageTag(_palette);
         var send = new Button
         {
             Content = OutlinedIcon(PluginIcons.ArrowUpOutlined),
@@ -109,14 +124,14 @@ public sealed class FloatingToolbar
             Height = ActionHeight,
             Margin = new Thickness(4, 0, 0, 0),
             Foreground = text,
-            Background = OverlayVisualResources.Frozen(_palette.Surface),
+            Background = transparent,
             BorderThickness = new Thickness(),
             Cursor = Cursors.Hand,
             ToolTip = sendLabel,
             IsEnabled = false,
             Opacity = DisabledSendOpacity,
         };
-        OverlayVisualResources.ApplyButtonTemplate(send, ActionRadius, _palette.ButtonHover, _palette.Text);
+        OverlayVisualResources.ApplyButtonTemplate(send, ActionRadius, _palette.AccentHover, _palette.OnAccent);
         AutomationProperties.SetName(send, sendLabel);
         input.TextChanged += (_, _) =>
         {
@@ -124,17 +139,32 @@ public sealed class FloatingToolbar
             hint.Visibility = input.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
             send.IsEnabled = hasText;
             send.Opacity = hasText ? 1 : DisabledSendOpacity;
+            send.Background = hasText ? accent : transparent;
+            send.Foreground = hasText ? onAccent : text;
         };
 
         var root = new Grid { VerticalAlignment = VerticalAlignment.Center };
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        root.Children.Add(leading);
+        Grid.SetColumn(input, 1);
         root.Children.Add(input);
+        Grid.SetColumn(hint, 1);
         root.Children.Add(hint);
-        Grid.SetColumn(send, 1);
+        Grid.SetColumn(language.Root, 2);
+        root.Children.Add(language.Root);
+        Grid.SetColumn(send, 3);
         root.Children.Add(send);
-        _prompt = new FloatingToolbarPrompt(root, input, send);
+        _prompt = new FloatingToolbarPrompt(root, input, send, language);
         return _prompt;
+    }
+
+    internal void SetPromptLanguage(string? languageTag)
+    {
+        if (_prompt is null) throw new InvalidOperationException("The toolbar has no prompt.");
+        _prompt.LanguageTag.Set(languageTag, animate: IsOpen && IsPromptOpen && _animationsEnabled());
     }
 
     internal void SetPromptOpen(bool open)

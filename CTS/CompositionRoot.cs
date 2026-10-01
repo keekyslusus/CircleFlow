@@ -629,13 +629,6 @@ public static class CompositionRoot
                     qrCodes.SetSuppressed(false);
                 },
                 changeTrayLayout: ChangeTrayLayout));
-            var inputLanguage = Track(new KeyboardInputLanguageSource(
-                imageText.OnInputLanguageChanged,
-                tag =>
-                {
-                    imageText.SetInitialInputLanguage(tag);
-                    imageText.Start();
-                }));
             var translation = Track(new ScreenTranslationOverlayController(
                 context.Visual.TranslationAction,
                 activityPresenter,
@@ -677,7 +670,21 @@ public static class CompositionRoot
                 publishCommand,
                 context.CloseRequested ?? (() => publishCommand(new CancelSession())),
                 context.Strings,
-                context.HiddenToolbarActions));
+                context.HiddenToolbarActions,
+                imageText.DeferInputLanguageChanges,
+                imageText.ApplyDeferredInputLanguage));
+            var inputLanguage = Track(new KeyboardInputLanguageSource(
+                tag =>
+                {
+                    imageText.OnInputLanguageChanged(tag);
+                    imageSelection.SetInputLanguage(tag);
+                },
+                tag =>
+                {
+                    imageText.SetInitialInputLanguage(tag);
+                    imageSelection.SetInputLanguage(tag);
+                    imageText.Start();
+                }));
             var music = Track(new MusicOverlayController(
                 context.Visual.Music,
                 activityPresenter,
