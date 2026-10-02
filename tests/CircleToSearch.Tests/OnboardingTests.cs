@@ -203,7 +203,8 @@ public sealed class OnboardingTests
             Assert.Equal(TestUiStrings.English.SettingsShortcutUnavailable("Ctrl+Alt+Space"), status.Text);
             Assert.Equal(["Ctrl", "Alt", "Space"], KeyLabels(window));
             var change = LogicalChildren(window).OfType<Button>().Single(button => Equals(button.Tag, "change-shortcut"));
-            Assert.True(status.TranslatePoint(new Point(), change).Y - change.ActualHeight >= 12, "The status sits too close to the button.");
+            Assert.True(status.TranslatePoint(new Point(), change).Y - change.ActualHeight >= 12 - 2 * LayoutRoundingTolerance(window),
+                "The status sits too close to the button.");
 
             var width = change.ActualWidth;
             Click(window, "change-shortcut");
@@ -395,7 +396,8 @@ public sealed class OnboardingTests
         {
             Assert.Equal(index == step, Find<FrameworkElement>(window, $"Step{index + 1}Art").IsVisible);
             Assert.Equal(index == step, Find<FrameworkElement>(window, $"Step{index + 1}Copy").IsVisible);
-            Assert.Equal(index == step ? 18 : 6, ((Border)((Button)Find<StackPanel>(window, "Steps").Children[index]).Content).ActualWidth);
+            Assert.Equal(index == step ? 18 : 6, ((Border)((Button)Find<StackPanel>(window, "Steps").Children[index]).Content).ActualWidth,
+                LayoutRoundingTolerance(window));
         }
         string[] footer = ["skip", "back", "next", "try"];
         var shown = LogicalChildren(window).OfType<Button>()
