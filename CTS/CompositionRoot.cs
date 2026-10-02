@@ -20,6 +20,7 @@ using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.Shell.TestBrowser;
 using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
+using CircleToSearch.Ui.Emoji;
 using CircleToSearch.TextRecognition;
 using CircleToSearch.Translation;
 using CircleToSearch.Updates;
@@ -54,11 +55,11 @@ public static class CompositionRoot
 
     // The one place that decides which providers answer inside the overlay instead of in a browser.
     internal static IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> CreateWidgetVisuals(
-        Func<Uri, ITraceVideoPreview>? createTraceVideo) =>
+        Func<Uri, ITraceVideoPreview>? createTraceVideo, EmojiText? emoji = null) =>
         new Dictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>>
         {
             [SearchProviderIds.TraceMoe] = context => TraceOverlayVisual.Create(context, createTraceVideo),
-            [SearchProviderIds.Pinterest] = PinterestOverlayVisual.Create,
+            [SearchProviderIds.Pinterest] = context => PinterestOverlayVisual.Create(context, emoji),
         };
 
     public static int Run(string[] args)
@@ -383,7 +384,7 @@ public static class CompositionRoot
             strings,
             log);
         var widgetVisuals = CreateWidgetVisuals(video => new TraceVideoPreview(video,
-            () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log));
+            () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log), new EmojiText(paths.EmojiArchivePath));
         var overlayControllerDependencies = new OverlayControllerDependencies(
             Clipboard.SetText,
             OverlayVisualResources.AnimationsEnabled,
