@@ -10,6 +10,7 @@
 - No XML docs (`/// <summary>`) and no comments that restate the code; comment only non-obvious why.
 - Before adding an icon, check `CTS/Ui/PluginIcons.cs` and reuse existing geometry when available.
 - Use `CTS/Ui/PluginPalette.cs` for all fixed UI colors; do not hardcode colors elsewhere.
+  Theme colors come from `ColorRoles` (`Surface`, `OnSurface`, `Primary`, `Outline`, `Dock`, ...): build component palettes from roles instead of repeating values, and read a role directly (e.g. `Roles.Primary`) rather than borrowing another feature's component palette. Add a literal only for brand colors or values that are genuinely specific to one component.
 - Use Material-style outlined SVG icons: `viewBox="0 0 24 24"`, `fill="none"`, `stroke="currentColor"`, `stroke-width="1.65"`, round line caps and joins; size 20px (21px in settings rows). No filled icons; Material Symbols weight/grade axes do not apply to these custom SVGs.
 - Put all user-visible strings in `Languages/*.xaml`; do not hardcode them in C#.
 - Do not use em dashes (U+2014); use hyphens (-) instead.
