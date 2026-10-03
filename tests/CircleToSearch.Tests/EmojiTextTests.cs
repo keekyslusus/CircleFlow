@@ -57,6 +57,54 @@ public sealed class EmojiTextTests
         });
     }
 
+    [Fact]
+    public void Locked_archive_is_read_again_once_released()
+    {
+        var path = Path.Combine(TestOutputPaths.TempDirectory, $"locked-emoji-{Guid.NewGuid():N}.zip");
+        File.Copy(new AppPaths().EmojiArchivePath, path);
+        try
+        {
+            RunSta(() =>
+            {
+                var emoji = new EmojiText(path);
+                var block = new TextBlock();
+                using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+                    emoji.SetText(block, $"Band {Trombone}");
+                Assert.DoesNotContain(block.Inlines, inline => inline is InlineUIContainer);
+
+                emoji.SetText(block, $"Band {Trombone}");
+                Assert.IsType<InlineUIContainer>(block.Inlines.LastInline);
+            });
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Broken_image_keeps_the_text()
+    {
+        var path = Path.Combine(TestOutputPaths.TempDirectory, $"broken-emoji-{Guid.NewGuid():N}.zip");
+        using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
+        using (var stream = archive.CreateEntry("1fa8a.png").Open())
+            stream.Write([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4, 5, 6, 7, 8]);
+        try
+        {
+            RunSta(() =>
+            {
+                var block = new TextBlock();
+                new EmojiText(path).SetText(block, $"Band {Trombone}");
+                Assert.Equal($"Band {Trombone}", string.Concat(block.Inlines.OfType<Run>().Select(run => run.Text)));
+                Assert.DoesNotContain(block.Inlines, inline => inline is InlineUIContainer);
+            });
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static void RunSta(Action action)
     {
         Exception? failure = null;

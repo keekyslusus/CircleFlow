@@ -66,14 +66,23 @@ internal sealed class EmojiText(string archivePath)
                 _sequences = new EmojiSequences(keys.Concat(_aliases.Keys), textDefault);
             }
             // Without the archive emoji keep the system font's rendering instead of breaking the text.
-            catch (Exception exception) when (exception is IOException or InvalidDataException
-                or UnauthorizedAccessException)
+            catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException
+                or InvalidDataException)
             {
                 _sequences = EmojiSequences.Empty;
+            }
+            // A briefly locked archive, e.g. while an antivirus scans it, is read again for the next text.
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                _aliases.Clear();
+                return EmojiSequences.Empty;
             }
             return _sequences;
         }
     }
+
+    // Reading the index takes tens of milliseconds, so it is done off the UI thread while a search runs.
+    internal void Preload() => _ = Task.Run(Sequences);
 
     private Dictionary<string, BitmapSource?> Images(IEnumerable<string> keys)
     {
@@ -122,7 +131,7 @@ internal sealed class EmojiText(string archivePath)
             image.Freeze();
             return image;
         }
-        catch (NotSupportedException)
+        catch (Exception exception) when (exception is NotSupportedException or FileFormatException)
         {
             return null;
         }

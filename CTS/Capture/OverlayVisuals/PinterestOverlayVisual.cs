@@ -62,6 +62,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
 
     internal static PinterestOverlayVisual Create(OverlayWidgetContext context, EmojiText? emoji = null)
     {
+        emoji?.Preload();
         var visual = new PinterestOverlayVisual(context, emoji);
         visual._host.ShowLoading(context.Strings.PinterestSearching, PluginPalette.For(context.LightTheme).MusicOverlay.Primary);
         return visual;
