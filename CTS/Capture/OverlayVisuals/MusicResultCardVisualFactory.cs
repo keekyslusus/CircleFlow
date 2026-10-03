@@ -52,17 +52,17 @@ internal static class MusicResultCardVisualFactory
             Margin = new Thickness(14, 0, 6, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var title = Text(recognition.Title, 17, palette.Text);
+        var title = Text(recognition.Title, PluginTypography.Subtitle, palette.Text);
         title.FontWeight = FontWeights.SemiBold;
         // Reserve the corner actions even when a short title determines the card width.
         title.Margin = new Thickness(0, 0, 52, 0);
         info.Children.Add(title);
-        var artist = Text(recognition.Artist, 13, palette.Text);
+        var artist = Text(recognition.Artist, PluginTypography.Body, palette.Text);
         artist.Margin = new Thickness(0, 4, 0, 0);
         info.Children.Add(artist);
         if (!string.IsNullOrWhiteSpace(recognition.Album))
         {
-            var album = Text(recognition.Album, 12, palette.MutedText);
+            var album = Text(recognition.Album, PluginTypography.Caption, palette.MutedText);
             album.Margin = new Thickness(0, 9, 0, 0);
             info.Children.Add(album);
         }
@@ -123,7 +123,7 @@ internal static class MusicResultCardVisualFactory
     {
         Text = value,
         ToolTip = value,
-        FontFamily = OverlayVisualResources.Font,
+        FontFamily = PluginTypography.Font,
         FontSize = size,
         Foreground = OverlayVisualResources.Frozen(color),
         TextWrapping = TextWrapping.NoWrap,

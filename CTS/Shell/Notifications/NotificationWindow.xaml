@@ -1,4 +1,4 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize" ShowInTaskbar="False" ShowActivated="False" Topmost="True" Background="{DynamicResource SettingsTransparent}" Foreground="{DynamicResource SettingsText}" FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:CircleToSearch.Ui" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize" ShowInTaskbar="False" ShowActivated="False" Topmost="True" Background="{DynamicResource SettingsTransparent}" Foreground="{DynamicResource SettingsText}" FontFamily="{x:Static ui:PluginTypography.Font}" FontSize="{x:Static ui:PluginTypography.Body}" UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -19,16 +19,16 @@
                 <Setter Property="MinHeight" Value="0"/>
             </Style>
             <Style x:Key="NotificationTitle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontSize" Value="{x:Static ui:PluginTypography.Body}"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Setter Property="TextWrapping" Value="Wrap"/>
             </Style>
             <Style x:Key="NotificationMessage" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="LineHeight" Value="19"/>
+                <Setter Property="FontSize" Value="{x:Static ui:PluginTypography.Body}"/>
+                <Setter Property="LineHeight" Value="20"/>
                 <Setter Property="TextWrapping" Value="Wrap"/>
                 <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                <Setter Property="MaxHeight" Value="228"/>
+                <Setter Property="MaxHeight" Value="240"/>
             </Style>
         </ResourceDictionary>
     </Window.Resources>

@@ -157,10 +157,10 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         DockPanel.SetDock(mark, Dock.Left);
         header.Children.Add(mark);
         var titles = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        var title = Text(_strings.PinterestProviderName, 15, palette.Text);
+        var title = Text(_strings.PinterestProviderName, PluginTypography.Subtitle, palette.Text);
         title.FontWeight = FontWeights.SemiBold;
         titles.Children.Add(title);
-        titles.Children.Add(Text(_strings.PinterestSummary(_pins.Count), 12, palette.MutedText));
+        titles.Children.Add(Text(_strings.PinterestSummary(_pins.Count), PluginTypography.Caption, palette.MutedText));
         header.Children.Add(titles);
         return header;
     }
@@ -297,7 +297,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         };
         if (pin.Title.Length > 0)
         {
-            var title = Text(pin.Title, 12, PluginPalette.PinterestTileText);
+            var title = Text(pin.Title, PluginTypography.Caption, PluginPalette.PinterestTileText);
             title.FontWeight = FontWeights.SemiBold;
             title.TextWrapping = TextWrapping.Wrap;
             title.MaxHeight = 32;
@@ -305,7 +305,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
             _emoji?.SetText(title, pin.Title);
             texts.Children.Add(title);
         }
-        if (pin.Domain.Length > 0) texts.Children.Add(Text(pin.Domain, 11, PluginPalette.PinterestTileMutedText));
+        if (pin.Domain.Length > 0) texts.Children.Add(Text(pin.Domain, PluginTypography.Caption, PluginPalette.PinterestTileMutedText));
         details.Children.Add(texts);
         return details;
     }
@@ -322,7 +322,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         _stripImages.Add(image);
         surface.Children.Add(OverlayVisualResources.FadeInImage(image));
         surface.Children.Add(new Border { Background = OverlayVisualResources.Frozen(PluginPalette.PinterestMoreScrim) });
-        var count = Text(_strings.PinterestMore(remaining), 20, PluginPalette.PinterestTileText);
+        var count = Text(_strings.PinterestMore(remaining), PluginTypography.Title, PluginPalette.PinterestTileText);
         count.FontWeight = FontWeights.SemiBold;
         count.HorizontalAlignment = HorizontalAlignment.Center;
         count.VerticalAlignment = VerticalAlignment.Center;
@@ -419,7 +419,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
 
     private static TextBlock Text(string value, double size, Color color) => new()
     {
-        Text = value, FontFamily = OverlayVisualResources.Font, FontSize = size,
+        Text = value, FontFamily = PluginTypography.Font, FontSize = size,
         Foreground = OverlayVisualResources.Frozen(color), TextTrimming = TextTrimming.CharacterEllipsis,
     };
 

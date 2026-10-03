@@ -97,8 +97,8 @@ public sealed class FloatingToolbar
             BorderThickness = new Thickness(),
             Padding = new Thickness(4, 0, 8, 0),
             VerticalContentAlignment = VerticalAlignment.Center,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 14,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Body,
             MinHeight = ActionHeight,
             MaxLength = 1000,
             FocusVisualStyle = null,
@@ -111,8 +111,8 @@ public sealed class FloatingToolbar
             Opacity = 0.6,
             Margin = new Thickness(8, 0, 12, 0),
             VerticalAlignment = VerticalAlignment.Center,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 14,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Body,
             TextTrimming = TextTrimming.CharacterEllipsis,
             IsHitTestVisible = false,
         };
@@ -193,8 +193,8 @@ public sealed class FloatingToolbar
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
             Cursor = Cursors.Hand,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 13,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Body,
             FontWeight = FontWeights.Medium,
         };
         OverlayVisualResources.ApplyButtonTemplate(button, ActionRadius, _palette.ButtonHover, _palette.Text);

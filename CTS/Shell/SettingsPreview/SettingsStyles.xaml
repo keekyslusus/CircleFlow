@@ -14,11 +14,11 @@
     </Style>
     <Style x:Key="Muted" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource SettingsMuted}"/>
-        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontSize" Value="{x:Static ui:PluginTypography.Caption}"/>
         <Setter Property="LineHeight" Value="17"/>
     </Style>
     <Style x:Key="RowTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontSize" Value="{x:Static ui:PluginTypography.Body}"/>
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
@@ -27,12 +27,12 @@
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
     <Style x:Key="PageTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="29"/>
+        <Setter Property="FontSize" Value="{x:Static ui:PluginTypography.Display}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Margin" Value="0,0,0,24"/>
     </Style>
     <Style x:Key="SectionTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontSize" Value="{x:Static ui:PluginTypography.Body}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Margin" Value="0,23,0,9"/>
     </Style>
@@ -81,7 +81,7 @@
         <Setter Property="Background" Value="{DynamicResource SettingsSurface}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SettingsLine}"/>
         <Setter Property="BorderThickness" Value="1,1,1,2"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="{x:Static ui:PluginTypography.Caption}"/>
         <Setter Property="Padding" Value="13,7"/>
         <Setter Property="MinHeight" Value="33"/>
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
@@ -247,7 +247,7 @@
         <Setter Property="BorderThickness" Value="1,1,1,2"/>
         <Setter Property="Padding" Value="10,6"/>
         <Setter Property="MinHeight" Value="33"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="{x:Static ui:PluginTypography.Caption}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -314,7 +314,7 @@
     </Style>
     <Style TargetType="ComboBox">
         <Setter Property="Foreground" Value="{DynamicResource SettingsText}"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="{x:Static ui:PluginTypography.Caption}"/>
         <Setter Property="MinHeight" Value="33"/>
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -353,9 +353,9 @@
             <Setter.Value>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="Plus" Text="{Binding Plus}" FontSize="11" Foreground="{DynamicResource SettingsMuted}" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBlock x:Name="Plus" Text="{Binding Plus}" FontSize="{x:Static ui:PluginTypography.Caption}" Foreground="{DynamicResource SettingsMuted}" VerticalAlignment="Center" Margin="0,0,5,0"/>
                     <Border Background="{DynamicResource SettingsSurface}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1,1,1,2" CornerRadius="5" MinWidth="31" Height="30" Padding="8,0" Margin="0,0,5,0">
-                        <TextBlock Text="{Binding Label}" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding Label}" FontSize="{x:Static ui:PluginTypography.Caption}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     </StackPanel>
                     <DataTemplate.Triggers>
@@ -378,9 +378,9 @@
             <Setter.Value>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="Plus" Text="{Binding Plus}" FontSize="18" Foreground="{DynamicResource SettingsMuted}" Margin="10,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="Plus" Text="{Binding Plus}" FontSize="{x:Static ui:PluginTypography.Subtitle}" Foreground="{DynamicResource SettingsMuted}" Margin="10,0" VerticalAlignment="Center"/>
                         <Border Style="{StaticResource Keycap}" BorderThickness="1,1,1,3" CornerRadius="10" Padding="18,0" Height="55" MinWidth="55">
-                            <TextBlock Text="{Binding Label}" FontSize="22" FontWeight="Medium" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Label}" FontSize="{x:Static ui:PluginTypography.Title}" FontWeight="Medium" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </StackPanel>
                     <DataTemplate.Triggers>

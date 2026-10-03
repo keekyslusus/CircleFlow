@@ -1,8 +1,9 @@
 <ContextMenu xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="clr-namespace:CircleToSearch.Ui"
              Placement="MousePoint" StaysOpen="False" HasDropShadow="False"
              Background="{DynamicResource TraySurface}" Foreground="{DynamicResource TrayText}"
-             FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True"
+             FontFamily="{x:Static ui:PluginTypography.Font}" FontSize="{x:Static ui:PluginTypography.Body}" UseLayoutRounding="True" SnapsToDevicePixels="True"
              KeyboardNavigation.DirectionalNavigation="Cycle">
     <ContextMenu.Resources>
         <Style TargetType="MenuItem">

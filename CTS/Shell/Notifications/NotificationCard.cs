@@ -53,7 +53,7 @@ internal sealed class NotificationCard
         // The shared Muted style fixes a taller line height, which would lift the name above the icon's center.
         header.Children.Add(new TextBlock
         {
-            Text = chrome.AppName, FontSize = 12, VerticalAlignment = VerticalAlignment.Center,
+            Text = chrome.AppName, FontSize = PluginTypography.Caption, VerticalAlignment = VerticalAlignment.Center,
             Foreground = (Brush)styles.FindResource("SettingsMuted"),
         });
 

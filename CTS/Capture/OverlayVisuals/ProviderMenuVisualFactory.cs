@@ -123,7 +123,7 @@ internal static class ProviderMenuVisualFactory
             {
                 Tag = descriptor.Id,
                 Content = ProviderVisualCatalog.Create(descriptor, strings, lightTheme, includeFullName: true),
-                Padding = new Thickness(12, 5, 12, 5),
+                Padding = new Thickness(12, 4, 12, 4),
                 MinWidth = 206,
                 MinHeight = 36,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
@@ -132,7 +132,7 @@ internal static class ProviderMenuVisualFactory
                 BorderThickness = new Thickness(0),
                 Cursor = Cursors.Hand,
                 ToolTip = descriptor.DisplayName,
-                FontFamily = OverlayVisualResources.Font,
+                FontFamily = PluginTypography.Font,
             };
             OverlayVisualResources.ApplyButtonTemplate(item, 12, palette.MenuHover, palette.MenuHoverText);
             AutomationProperties.SetName(item, descriptor.DisplayName);

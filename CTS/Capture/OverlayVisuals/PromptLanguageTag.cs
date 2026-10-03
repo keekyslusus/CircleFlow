@@ -173,8 +173,8 @@ public sealed class PromptLanguageTag
     private static TextBlock CreateLabel(FloatingToolbarPalette palette, TranslateTransform shift) => new()
     {
         Foreground = OverlayVisualResources.Frozen(palette.TagText),
-        FontFamily = OverlayVisualResources.Font,
-        FontSize = 12,
+        FontFamily = PluginTypography.Font,
+        FontSize = PluginTypography.Caption,
         FontWeight = FontWeights.SemiBold,
         HorizontalAlignment = HorizontalAlignment.Center,
         VerticalAlignment = VerticalAlignment.Center,
