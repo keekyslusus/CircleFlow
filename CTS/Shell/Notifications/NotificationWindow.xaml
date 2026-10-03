@@ -28,7 +28,7 @@
                 <Setter Property="LineHeight" Value="20"/>
                 <Setter Property="TextWrapping" Value="Wrap"/>
                 <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                <Setter Property="MaxHeight" Value="228"/>
+                <Setter Property="MaxHeight" Value="240"/>
             </Style>
         </ResourceDictionary>
     </Window.Resources>

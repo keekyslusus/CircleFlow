@@ -181,7 +181,7 @@ public sealed class NotificationPresenterTests
         Pump();
         time.Advance(300);
         var card = Assert.Single(presenter.Cards);
-        Assert.InRange(card.MessageText.ActualHeight, 1, 228);
+        Assert.InRange(card.MessageText.ActualHeight, 1, 240);
         Assert.Equal(TextTrimming.CharacterEllipsis, card.MessageText.TextTrimming);
         Assert.Equal(message, card.MessageText.ToolTip);
         Assert.True(card.Card.ActualHeight < presenter.Window!.ActualHeight / 2);

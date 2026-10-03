@@ -67,7 +67,7 @@ internal static class StateCardVisualFactory
             Text = options.Message,
             FontFamily = PluginTypography.Font,
             FontSize = PluginTypography.Body,
-            LineHeight = 19,
+            LineHeight = 20,
             TextWrapping = TextWrapping.Wrap,
             Foreground = OverlayVisualResources.Frozen(palette.Text),
             Width = textWidth,

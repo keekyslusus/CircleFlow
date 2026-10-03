@@ -2,6 +2,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using CircleToSearch.Ui;
 using CircleToSearch.Ui.Emoji;
 using Xunit;
 
@@ -18,7 +19,7 @@ public sealed class EmojiTextTests
     {
         RunSta(() =>
         {
-            var block = new TextBlock { FontFamily = new("Segoe UI Variable Text"), FontSize = 12 };
+            var block = new TextBlock { FontFamily = PluginTypography.Font, FontSize = PluginTypography.Caption };
             new EmojiText(new AppPaths().EmojiArchivePath).SetText(block, $"Band {Trombone}{Couple} {England}!");
 
             var inlines = block.Inlines.ToList();

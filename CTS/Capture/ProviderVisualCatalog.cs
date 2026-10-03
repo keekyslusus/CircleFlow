@@ -132,7 +132,6 @@ internal static class ProviderVisualCatalog
                 (Frozen(palette.Neutral), NeutralMark)),
         };
 
-
     // Gradient geometry comes from the Bing SVG, scaled and centered with the mark in its 24x24 frame.
     private static readonly Brush BingUpperFill = RadialGradient(PluginPalette.BingTeal, PluginPalette.BingBlue,
         new Matrix(-7.26468, -5.61925, 11.6517, -6.76684, 7.41528, -11.509));

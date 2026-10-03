@@ -378,7 +378,7 @@
             <Setter.Value>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="Plus" Text="{Binding Plus}" FontSize="{x:Static ui:PluginTypography.Title}" Foreground="{DynamicResource SettingsMuted}" Margin="10,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="Plus" Text="{Binding Plus}" FontSize="{x:Static ui:PluginTypography.Subtitle}" Foreground="{DynamicResource SettingsMuted}" Margin="10,0" VerticalAlignment="Center"/>
                         <Border Style="{StaticResource Keycap}" BorderThickness="1,1,1,3" CornerRadius="10" Padding="18,0" Height="55" MinWidth="55">
                             <TextBlock Text="{Binding Label}" FontSize="{x:Static ui:PluginTypography.Title}" FontWeight="Medium" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
