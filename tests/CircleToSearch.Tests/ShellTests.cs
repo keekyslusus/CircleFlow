@@ -38,7 +38,7 @@ public sealed class ShellTests
             foreach (MenuItem item in menu.Items)
             {
                 Assert.Null(item.Icon);
-                Assert.Equal(34, item.ActualHeight);
+                Assert.Equal(34, item.ActualHeight, WpfUi.LayoutRoundingTolerance(item));
                 var highlight = (Border)item.Template.FindName("Highlight", item);
                 var presenter = Assert.IsType<ContentPresenter>(highlight.Child);
                 Assert.InRange(presenter.TranslatePoint(new Point(), item).X, 11, 13);

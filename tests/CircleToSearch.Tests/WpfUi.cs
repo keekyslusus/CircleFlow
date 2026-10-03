@@ -28,6 +28,10 @@ internal static class WpfUi
         }
     }
 
+    // UseLayoutRounding snaps every edge to a whole device pixel, so at 125% scale an 18 DIP element lays out
+    // as 17.6 or 18.4. One snapped value may drift by half a pixel, a distance between two snapped edges by a whole one.
+    public static double LayoutRoundingTolerance(Visual visual) => 0.5 / VisualTreeHelper.GetDpi(visual).DpiScaleX + 1e-6;
+
     public static void Pump() => Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
 
     public static void PumpUntil(Func<bool> condition, string timeoutMessage)

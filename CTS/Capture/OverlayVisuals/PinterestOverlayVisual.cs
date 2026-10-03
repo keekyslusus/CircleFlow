@@ -7,6 +7,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
+using CircleToSearch.Ui.Emoji;
 
 namespace CircleToSearch.Capture;
 
@@ -33,6 +34,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     private readonly bool _light;
     private readonly Action<Uri> _open;
     private readonly Action _close;
+    private readonly EmojiText? _emoji;
     private readonly List<BitmapImage> _stripImages = [];
     private IReadOnlyList<PinterestPin> _pins = [];
     private IReadOnlyDictionary<string, BitmapImage> _previews = new Dictionary<string, BitmapImage>();
@@ -44,8 +46,9 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     private SmoothScrollMotionController? _scrollMotion;
     private double _contentWidth;
 
-    private PinterestOverlayVisual(OverlayWidgetContext context)
+    private PinterestOverlayVisual(OverlayWidgetContext context, EmojiText? emoji)
     {
+        _emoji = emoji;
         _host = new OverlayWidgetCardHost(context);
         _strings = context.Strings;
         _light = context.LightTheme;
@@ -57,9 +60,10 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
 
     internal bool IsExpanded { get; private set; }
 
-    internal static PinterestOverlayVisual Create(OverlayWidgetContext context)
+    internal static PinterestOverlayVisual Create(OverlayWidgetContext context, EmojiText? emoji = null)
     {
-        var visual = new PinterestOverlayVisual(context);
+        emoji?.Preload();
+        var visual = new PinterestOverlayVisual(context, emoji);
         visual._host.ShowLoading(context.Strings.PinterestSearching, PluginPalette.For(context.LightTheme).MusicOverlay.Primary);
         return visual;
     }
@@ -298,6 +302,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
             title.TextWrapping = TextWrapping.Wrap;
             title.MaxHeight = 32;
             title.MaxWidth = width - 20;
+            _emoji?.SetText(title, pin.Title);
             texts.Children.Add(title);
         }
         if (pin.Domain.Length > 0) texts.Children.Add(Text(pin.Domain, 11, PluginPalette.PinterestTileMutedText));

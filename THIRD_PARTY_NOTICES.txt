@@ -56,6 +56,16 @@ Copyright 2024 Google LLC.
 Licensed under the Apache License, Version 2.0. The complete license text is distributed
 in THIRD_PARTY_LICENSES/Apache-2.0.txt.
 
+Noto Color Emoji
+----------------
+
+The emoji images in Emoji/NotoColorEmoji.zip are extracted and scaled from the Noto Color Emoji
+font: https://github.com/googlefonts/noto-emoji
+
+Copyright 2013 Google LLC.
+Licensed under the SIL Open Font License, Version 1.1. The complete license text is distributed
+in THIRD_PARTY_LICENSES/OFL-1.1.txt.
+
 Bundled .NET dependencies
 -------------------------
 

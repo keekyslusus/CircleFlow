@@ -1,11 +1,13 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CircleToSearch.Capture;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
+using CircleToSearch.Ui.Emoji;
 using Xunit;
 
 namespace CircleToSearch.Tests;
@@ -161,6 +163,32 @@ public sealed class PinterestOverlayTests
                 Assert.Equal(2, PinButtons(harness.Visual.Bottom.Stack).Count);
                 Assert.DoesNotContain(Descendants(harness.Visual.Bottom.Stack).OfType<Button>(),
                     button => AutomationProperties.GetName(button) == TestUiStrings.English.PinterestShowAll);
+            }
+            finally
+            {
+                harness.Dispose();
+            }
+        });
+    }
+
+    [Fact]
+    public void Pin_titles_show_emoji_as_images()
+    {
+        RunSta(time =>
+        {
+            var pins = Pins().Take(2).Select(pin => pin with { Title = "Cozy room ✨" }).ToArray();
+            var harness = Harness.Create(960, 600, light: false);
+            using var pinterest = PinterestOverlayVisual.Create(harness.Context(_ => { }, () => { }),
+                new EmojiText(new AppPaths().EmojiArchivePath));
+            try
+            {
+                pinterest.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForPinterest(pins)));
+                Reveal(time, pinterest);
+                var title = Descendants(PinButtons(harness.Visual.Bottom.Stack)[0]).OfType<TextBlock>()
+                    .Single(text => text.FontWeight == FontWeights.SemiBold);
+                Assert.Equal("Cozy room ", Assert.IsType<Run>(title.Inlines.FirstInline).Text);
+                var emoji = Assert.IsType<InlineUIContainer>(title.Inlines.LastInline);
+                Assert.NotNull(Assert.IsType<Image>(emoji.Child).Source);
             }
             finally
             {

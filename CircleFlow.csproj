@@ -32,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Extensions\uBlockOriginLite.zip;Extensions\CircleFlowFilters.txt">
+    <Content Include="Extensions\uBlockOriginLite.zip;Extensions\CircleFlowFilters.txt;Emoji\NotoColorEmoji.zip">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
@@ -111,7 +111,7 @@
     <Error Condition="'PublishSingleFile' == 'true'" Text="The deps layout requires PublishSingleFile=false." />
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.xml' and Exists('%(RootDir)%(Directory)%(Filename).dll')" />
-      <ResolvedFileToPublish Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(RelativePath)', '^(Images|Languages|Extensions|THIRD_PARTY_LICENSES)[/\\]|^(CircleFlow\.exe|LICENSE|THIRD_PARTY_NOTICES\.txt)$'))">
+      <ResolvedFileToPublish Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(RelativePath)', '^(Images|Languages|Extensions|Emoji|THIRD_PARTY_LICENSES)[/\\]|^(CircleFlow\.exe|LICENSE|THIRD_PARTY_NOTICES\.txt)$'))">
         <RelativePath>deps\%(RelativePath)</RelativePath>
       </ResolvedFileToPublish>
     </ItemGroup>

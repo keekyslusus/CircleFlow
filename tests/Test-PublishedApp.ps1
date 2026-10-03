@@ -33,13 +33,13 @@ try {
     }
     foreach ($name in $entries) {
         if ($velopackEntries -ccontains $name) { continue }
-        if ($name -match '\.xml$' -or $name -notmatch '^current/(deps/|Images/|Languages/|Extensions/|THIRD_PARTY_LICENSES/|CircleFlow\.exe$|LICENSE$|THIRD_PARTY_NOTICES\.txt$)') {
+        if ($name -match '\.xml$' -or $name -notmatch '^current/(deps/|Images/|Languages/|Extensions/|Emoji/|THIRD_PARTY_LICENSES/|CircleFlow\.exe$|LICENSE$|THIRD_PARTY_NOTICES\.txt$)') {
             throw "Unexpected release layout: $name"
         }
     }
     $required = @('CircleFlow.exe', 'deps/CircleFlow.dll', 'deps/CircleFlow.runtimeconfig.json', 'deps/CircleFlow.deps.json',
         'deps/WinRT.Runtime.dll', 'deps/coreclr.dll', 'deps/System.Private.CoreLib.dll', 'deps/hostfxr.dll', 'deps/hostpolicy.dll',
-        'Languages/en.xaml', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip', 'Extensions/CircleFlowFilters.txt',
+        'Languages/en.xaml', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip', 'Extensions/CircleFlowFilters.txt', 'Emoji/NotoColorEmoji.zip',
         'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.LICENSE.txt',
         'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.NOTICE.txt', 'THIRD_PARTY_LICENSES/System.Numerics.Tensors.NOTICE.txt')
     foreach ($asset in $velopackEntries) {
@@ -59,6 +59,7 @@ $assetSources = [ordered]@{
     'Languages/en.xaml' = 'Languages/en.xaml'; 'Images/app.ico' = 'CTS/app.ico'
     'Extensions/uBlockOriginLite.zip' = 'Extensions/uBlockOriginLite.zip'; 'LICENSE' = 'LICENSE'
     'Extensions/CircleFlowFilters.txt' = 'Extensions/CircleFlowFilters.txt'
+    'Emoji/NotoColorEmoji.zip' = 'Emoji/NotoColorEmoji.zip'
     'THIRD_PARTY_NOTICES.txt' = 'THIRD_PARTY_NOTICES.txt'
 }
 foreach ($asset in $assetSources.Keys) {

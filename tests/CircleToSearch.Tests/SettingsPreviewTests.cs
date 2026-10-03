@@ -778,7 +778,7 @@ public sealed class SettingsPreviewTests
             Assert.True(bar.IsHitTestVisible);
             time.Advance(OverlayScrollbarPolicy.FadeInMilliseconds + 40);
             Assert.True(bar.Opacity > 0.9);
-            Assert.Equal(OverlayScrollbarPolicy.TrackWidthPixels, bar.ActualWidth);
+            Assert.Equal(OverlayScrollbarPolicy.TrackWidthPixels, bar.ActualWidth, LayoutRoundingTolerance(window));
             Assert.Equal(pageWidth, Find<StackPanel>(window, "PageContent").ActualWidth);
             if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
                 Capture(window, $"settings-{(light ? "light" : "dark")}-general-middle.png");
@@ -1566,8 +1566,9 @@ public sealed class SettingsPreviewTests
             var placeholder = (TextBlock)search.Template.FindName("Placeholder", search);
             var caret = search.GetRectFromCharacterIndex(0);
             var hint = placeholder.TranslatePoint(new Point(placeholder.Padding.Left, 0), search);
-            Assert.Equal(hint.X, caret.X, 0.5);
-            Assert.Equal(hint.Y, caret.Y, 0.5);
+            // The caret is not snapped to device pixels, the placeholder is.
+            Assert.Equal(hint.X, caret.X, 0.5 + LayoutRoundingTolerance(window));
+            Assert.Equal(hint.Y, caret.Y, 0.5 + LayoutRoundingTolerance(window));
             search.Text = "KAVIN";
             Assert.Equal(["Saturday, September 26"], DayHeaders(days));
             search.Text = "zzz";
@@ -1712,7 +1713,7 @@ public sealed class SettingsPreviewTests
 
             var hide = ProviderRowButton(window, "ShownProviders", SearchProviderIds.TraceMoe, "Hide");
             var showYandex = ProviderRowButton(window, "HiddenProviders", SearchProviderIds.YandexImages, "Show");
-            Assert.Equal(hide.ActualHeight, showYandex.ActualHeight, 1);
+            Assert.Equal(hide.ActualHeight, showYandex.ActualHeight, 2 * LayoutRoundingTolerance(window));
             Assert.Equal("Hide trace.moe", System.Windows.Automation.AutomationProperties.GetName(hide));
             var leaving = ProviderRow(window, "ShownProviders", SearchProviderIds.TraceMoe);
             var arriving = ProviderRow(window, "HiddenProviders", SearchProviderIds.TraceMoe);
