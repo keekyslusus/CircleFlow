@@ -65,8 +65,8 @@ internal static class StateCardVisualFactory
         var message = new TextBlock
         {
             Text = options.Message,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 13,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Body,
             LineHeight = 19,
             TextWrapping = TextWrapping.Wrap,
             Foreground = OverlayVisualResources.Frozen(palette.Text),
@@ -91,8 +91,8 @@ internal static class StateCardVisualFactory
             title = new TextBlock
             {
                 Text = titleText,
-                FontFamily = OverlayVisualResources.Font,
-                FontSize = 14,
+                FontFamily = PluginTypography.Font,
+                FontSize = PluginTypography.Body,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = OverlayVisualResources.Frozen(palette.Text),
                 TextWrapping = TextWrapping.Wrap,
@@ -162,8 +162,8 @@ internal static class StateCardVisualFactory
             Content = label,
             Height = 34,
             Padding = new Thickness(14, 0, 14, 0),
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 12.5,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Caption,
             FontWeight = FontWeights.Medium,
             Foreground = OverlayVisualResources.Frozen(palette.OnPrimaryContainer),
             Background = OverlayVisualResources.Frozen(palette.PrimaryContainer),

@@ -51,8 +51,8 @@ internal static class ActionTrayVisualFactory
         var label = new TextBlock
         {
             Text = strings.SelectionPrompt,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 14,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Body,
             FontWeight = FontWeights.Medium,
             VerticalAlignment = VerticalAlignment.Center,
             Foreground = OverlayVisualResources.Frozen(palette.Label),
@@ -68,8 +68,8 @@ internal static class ActionTrayVisualFactory
         var hintKeys = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         var hintAction = new TextBlock
         {
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 12,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Caption,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 0, 0),
             Foreground = OverlayVisualResources.Frozen(palette.Hint),

@@ -82,7 +82,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
             Grid.SetColumn(info, 1);
             if (compact) Grid.SetRow(info, 1);
             var titleRow = new DockPanel { Margin = new Thickness(0, 0, compact ? 0 : 56, 0) };
-            var percentText = Text(match.Similarity.ToString("P1", CultureInfo.CurrentCulture), 11);
+            var percentText = Text(match.Similarity.ToString("P1", CultureInfo.CurrentCulture), PluginTypography.Caption);
             percentText.FontWeight = FontWeights.SemiBold;
             percentText.Foreground = OverlayVisualResources.Frozen(palette.OnSecondaryContainer);
             percentText.LineHeight = 16.5;
@@ -97,16 +97,16 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
             percent.SizeChanged += (_, _) => percent.CornerRadius = new CornerRadius(percent.ActualHeight / 2);
             DockPanel.SetDock(percent, Dock.Left);
             titleRow.Children.Add(percent);
-            var title = Text(match.Title, 17);
+            var title = Text(match.Title, PluginTypography.Subtitle);
             title.FontWeight = FontWeights.SemiBold;
             title.VerticalAlignment = VerticalAlignment.Center;
             titleRow.Children.Add(title);
             info.Children.Add(titleRow);
-            var native = Text(match.NativeTitle, 12, muted: true);
+            var native = Text(match.NativeTitle, PluginTypography.Caption, muted: true);
             native.Margin = new Thickness(0, 3, 0, 0);
             info.Children.Add(native);
             var episode = string.IsNullOrEmpty(match.Episode) ? "" : string.Format(CultureInfo.CurrentCulture, _strings.TraceEpisode, match.Episode);
-            var metadata = Text(string.Join(" · ", new[] { episode, match.Format, match.Year, match.Studio }.Where(s => !string.IsNullOrEmpty(s))), 12, muted: true);
+            var metadata = Text(string.Join(" · ", new[] { episode, match.Format, match.Year, match.Studio }.Where(s => !string.IsNullOrEmpty(s))), PluginTypography.Caption, muted: true);
             metadata.Margin = new Thickness(0, 4, 0, 0);
             info.Children.Add(metadata);
             info.Children.Add(CreateTimeline(match));
@@ -241,8 +241,8 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
         };
         panel.Children.Add(track);
         var scale = new Grid { Margin = new Thickness(0, 5, 0, 0) };
-        scale.Children.Add(Text(TraceMoeMatch.Timestamp(0), 11, muted: true));
-        var end = Text(TraceMoeMatch.Timestamp(match.Duration), 11, muted: true);
+        scale.Children.Add(Text(TraceMoeMatch.Timestamp(0), PluginTypography.Caption, muted: true));
+        var end = Text(TraceMoeMatch.Timestamp(match.Duration), PluginTypography.Caption, muted: true);
         end.HorizontalAlignment = HorizontalAlignment.Right;
         scale.Children.Add(end);
         panel.Children.Add(scale);
@@ -252,7 +252,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
     private TextBlock Text(string value, double size, bool muted = false, bool primary = false)
     {
         var palette = PluginPalette.For(_light).Card;
-        return new TextBlock { Text = value, FontFamily = OverlayVisualResources.Font, FontSize = size,
+        return new TextBlock { Text = value, FontFamily = PluginTypography.Font, FontSize = size,
             Foreground = OverlayVisualResources.Frozen(primary ? palette.Primary : muted ? palette.MutedText : palette.Text),
             TextTrimming = TextTrimming.CharacterEllipsis };
     }

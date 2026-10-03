@@ -31,9 +31,9 @@ internal sealed class OverlayActivityPresenter : IDisposable
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            FontSize = 14,
+            FontSize = PluginTypography.Body,
             FontWeight = FontWeights.Medium,
-            FontFamily = OverlayVisualResources.Font,
+            FontFamily = PluginTypography.Font,
             Margin = new Thickness(0, 10, 0, 0),
             Effect = new DropShadowEffect
             {

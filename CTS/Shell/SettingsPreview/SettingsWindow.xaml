@@ -1,4 +1,4 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:CircleToSearch.Ui" Width="960" Height="590" MinWidth="960" MinHeight="590" WindowStartupLocation="CenterScreen" WindowStyle="SingleBorderWindow" ResizeMode="CanResize" Background="{DynamicResource SettingsPaper}" Foreground="{DynamicResource SettingsText}" FontFamily="Segoe UI" FontSize="13" UseLayoutRounding="True" SnapsToDevicePixels="True">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:CircleToSearch.Ui" Width="960" Height="590" MinWidth="960" MinHeight="590" WindowStartupLocation="CenterScreen" WindowStyle="SingleBorderWindow" ResizeMode="CanResize" Background="{DynamicResource SettingsPaper}" Foreground="{DynamicResource SettingsText}" FontFamily="{x:Static ui:PluginTypography.Font}" FontSize="{x:Static ui:PluginTypography.Body}" UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -78,7 +78,7 @@
             </DataTemplate>
             <DataTemplate x:Key="HistoryDay">
                 <StackPanel>
-                    <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold" Margin="2,16,0,8"/>
+                    <TextBlock Text="{Binding Label}" FontSize="{x:Static ui:PluginTypography.Caption}" FontWeight="SemiBold" Margin="2,16,0,8"/>
                     <Border Style="{StaticResource Card}">
                         <ItemsControl ItemsSource="{Binding Tracks}" ItemTemplate="{StaticResource HistoryTrack}" Focusable="False"/>
                     </Border>
@@ -147,7 +147,7 @@
                                 </Viewbox>
                             </ContentControl>
                         </Border>
-                        <TextBlock Text="{Binding [brand]}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding [brand]}" FontSize="{x:Static ui:PluginTypography.Subtitle}" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                     </StackPanel>
                     <Grid x:Name="NavigationHost" Grid.Row="1">
                         <Border x:Name="NavigationSelection" IsHitTestVisible="False" Visibility="Hidden" VerticalAlignment="Top" CornerRadius="5" Background="{DynamicResource SettingsSelected}">
@@ -247,7 +247,7 @@
                                         <ColumnDefinition Width="150"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding [brand]}" FontSize="19" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding [brand]}" FontSize="{x:Static ui:PluginTypography.Title}" FontWeight="SemiBold"/>
                                         <TextBlock Text="{Binding [hero_description]}" Style="{StaticResource Muted}" MaxWidth="340" HorizontalAlignment="Left" TextWrapping="Wrap" Margin="0,6,0,15"/>
                                         <ItemsControl x:Name="HeroShortcutKeys" Style="{StaticResource Keys}"/>
                                     </StackPanel>
@@ -978,7 +978,7 @@
                                             </Viewbox>
                                         </ContentControl>
                                     </Border>
-                                    <TextBlock Text="{Binding [brand]}" FontSize="29" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding [brand]}" FontSize="{x:Static ui:PluginTypography.Display}" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,17,0,0">
                                         <Button Tag="github">
                                             <StackPanel Orientation="Horizontal">
@@ -1090,7 +1090,7 @@
                                                 <TextBlock Text="{Binding [runtime_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <TextBlock x:Name="RuntimeVersion" Foreground="{DynamicResource SettingsMuted}" FontSize="12"/>
+                                                <TextBlock x:Name="RuntimeVersion" Foreground="{DynamicResource SettingsMuted}" FontSize="{x:Static ui:PluginTypography.Caption}"/>
                                             </ContentControl>
                                         </Grid>
                                     </Border>
@@ -1298,28 +1298,28 @@
             <Border x:Name="DialogCard" Width="440" MaxHeight="480" VerticalAlignment="Center" HorizontalAlignment="Center" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="9" KeyboardNavigation.TabNavigation="Cycle">
                 <StackPanel Margin="24">
                     <StackPanel x:Name="ShortcutDialog">
-                        <TextBlock Text="{Binding [new_shortcut]}" FontSize="20" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding [new_shortcut]}" FontSize="{x:Static ui:PluginTypography.Title}" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding [open_selection]}" Style="{StaticResource Muted}" Margin="0,8,0,16"/>
                         <Border x:Name="ShortcutInput" Style="{StaticResource ShortcutRecorder}" Height="84" AutomationProperties.Name="{Binding [press_shortcut]}">
                             <Grid Margin="16,0">
                                 <Viewbox StretchDirection="DownOnly" Height="39">
                                     <ItemsControl x:Name="ShortcutDraftKeys" Style="{StaticResource LargeKeys}" Focusable="False"/>
                                 </Viewbox>
-                                <TextBlock x:Name="ShortcutPrompt" FontSize="15" Foreground="{DynamicResource SettingsMuted}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" AutomationProperties.LiveSetting="Polite"/>
+                                <TextBlock x:Name="ShortcutPrompt" FontSize="{x:Static ui:PluginTypography.Subtitle}" Foreground="{DynamicResource SettingsMuted}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" AutomationProperties.LiveSetting="Polite"/>
                             </Grid>
                         </Border>
                         <TextBlock Text="{Binding [shortcut_instructions]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
                     </StackPanel>
                     <StackPanel x:Name="ResetDialog" Visibility="Collapsed">
-                        <TextBlock Text="{Binding [reset_title]}" FontSize="20" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding [reset_title]}" FontSize="{x:Static ui:PluginTypography.Title}" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding [reset_description]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
                     </StackPanel>
                     <StackPanel x:Name="ClearHistoryDialog" Visibility="Collapsed">
-                        <TextBlock Text="{Binding [clear_history_title]}" FontSize="20" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding [clear_history_title]}" FontSize="{x:Static ui:PluginTypography.Title}" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding [clear_history_description]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
                     </StackPanel>
                     <StackPanel x:Name="ProviderMenuDialog" Visibility="Collapsed">
-                        <TextBlock Text="{Binding [provider_menu_title]}" FontSize="20" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding [provider_menu_title]}" FontSize="{x:Static ui:PluginTypography.Title}" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding [provider_menu_description]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                         <TextBlock Text="{Binding [provider_menu_shown]}" FontWeight="SemiBold" Margin="0,16,0,9"/>
                         <Border Style="{StaticResource Card}">

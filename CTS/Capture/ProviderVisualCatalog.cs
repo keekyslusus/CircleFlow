@@ -75,8 +75,8 @@ internal static class ProviderVisualCatalog
             Text = label,
             Foreground = Frozen(includeFullName ? palette.MenuText : palette.Text),
             VerticalAlignment = VerticalAlignment.Center,
-            FontFamily = OverlayFont,
-            FontSize = includeFullName ? 13 : 13.5,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Body,
             FontWeight = FontWeights.Medium,
         });
         var detail = Detail(descriptor, strings);
@@ -86,8 +86,8 @@ internal static class ProviderVisualCatalog
             {
                 Text = detail,
                 Foreground = Frozen(palette.MenuMutedText),
-                FontFamily = OverlayFont,
-                FontSize = 11,
+                FontFamily = PluginTypography.Font,
+                FontSize = PluginTypography.Caption,
                 FontWeight = FontWeights.Normal,
                 Opacity = 0.64,
             });
@@ -132,7 +132,6 @@ internal static class ProviderVisualCatalog
                 (Frozen(palette.Neutral), NeutralMark)),
         };
 
-    private static readonly FontFamily OverlayFont = new("Segoe UI Variable Text");
 
     // Gradient geometry comes from the Bing SVG, scaled and centered with the mark in its 24x24 frame.
     private static readonly Brush BingUpperFill = RadialGradient(PluginPalette.BingTeal, PluginPalette.BingBlue,

@@ -120,7 +120,7 @@ public sealed class StateCardVisualFactoryTests
             Assert.Same(visual.Message, column.Children[1]);
             Assert.Equal("Privacy consent", title.Text);
             Assert.Equal(FontWeights.SemiBold, title.FontWeight);
-            Assert.Equal(OverlayVisualResources.Font, title.FontFamily);
+            Assert.Equal(PluginTypography.Font, title.FontFamily);
             Assert.Equal(palette.Text, BrushColor(title.Foreground));
             Assert.Equal(TextWrapping.Wrap, title.TextWrapping);
             Assert.Equal(TextWrapping.Wrap, visual.Message.TextWrapping);

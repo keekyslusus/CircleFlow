@@ -21,7 +21,6 @@ internal static class OverlayVisualResources
         typeof(Effect),
         typeof(OverlayVisualResources));
 
-    internal static readonly FontFamily Font = new("Segoe UI Variable Text");
     internal static readonly TimeSpan EntranceDuration = TimeSpan.FromMilliseconds(200);
 
     internal static SolidColorBrush Frozen(Color color)

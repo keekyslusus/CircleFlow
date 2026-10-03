@@ -46,8 +46,8 @@ internal static class DebugOverlayVisualFactory
         {
             Text = strings.DebugOverlayTitle,
             Foreground = OverlayVisualResources.Frozen(palette.Text),
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 13,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Body,
             FontWeight = FontWeights.SemiBold,
             Margin = new Thickness(0, 0, 0, 10),
         });
@@ -107,8 +107,8 @@ internal static class DebugOverlayVisualFactory
             Padding = new Thickness(10, 6, 10, 6),
             Margin = new Thickness(0, 1, 0, 1),
             HorizontalContentAlignment = HorizontalAlignment.Left,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 12,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Caption,
             Cursor = Cursors.Hand,
         };
         OverlayVisualResources.ApplyButtonTemplate(
@@ -123,8 +123,8 @@ internal static class DebugOverlayVisualFactory
         {
             Text = text,
             Foreground = OverlayVisualResources.Frozen(palette.MutedText),
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 11,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Caption,
             FontWeight = FontWeights.SemiBold,
             Margin = new Thickness(0, 0, 0, 4),
         };

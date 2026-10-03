@@ -57,6 +57,7 @@ internal sealed class SearchBrowserWindowView
             ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.Manual,
             Background = background,
+            FontFamily = PluginTypography.Font,
             Content = _content,
         };
         try
@@ -93,7 +94,7 @@ internal sealed class SearchBrowserWindowView
             {
                 Foreground = Frozen(palette.Roles.OnBackground),
                 VerticalAlignment = VerticalAlignment.Center,
-                FontSize = 14,
+                FontSize = PluginTypography.Body,
             };
             header.Children.Add(_titleText);
             _content.Children.Add(header);
@@ -274,8 +275,7 @@ internal sealed class SearchBrowserWindowView
         loadingText = new TextBlock
         {
             Margin = new Thickness(0, 18, 0, 0),
-            FontFamily = new FontFamily("Segoe UI Variable Text"),
-            FontSize = 16,
+            FontSize = PluginTypography.Subtitle,
             Foreground = Frozen(palette.Roles.OnBackground),
             HorizontalAlignment = HorizontalAlignment.Center,
         };

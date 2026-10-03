@@ -56,8 +56,8 @@ internal static class SelectionHintVisualPresenter
         new TextBlock
         {
             Text = text,
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 11,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Caption,
             FontWeight = FontWeights.SemiBold,
             Foreground = visual.KeycapText,
         });

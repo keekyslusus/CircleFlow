@@ -24,8 +24,8 @@ internal static class ToastOverlayVisualFactory
         var message = new TextBlock
         {
             Foreground = OverlayVisualResources.Frozen(theme.Toast.Text),
-            FontFamily = OverlayVisualResources.Font,
-            FontSize = 13,
+            FontFamily = PluginTypography.Font,
+            FontSize = PluginTypography.Body,
             FontWeight = FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap,
             VerticalAlignment = VerticalAlignment.Center,

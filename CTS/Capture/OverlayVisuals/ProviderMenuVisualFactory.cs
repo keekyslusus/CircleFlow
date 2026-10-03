@@ -132,7 +132,7 @@ internal static class ProviderMenuVisualFactory
                 BorderThickness = new Thickness(0),
                 Cursor = Cursors.Hand,
                 ToolTip = descriptor.DisplayName,
-                FontFamily = OverlayVisualResources.Font,
+                FontFamily = PluginTypography.Font,
             };
             OverlayVisualResources.ApplyButtonTemplate(item, 12, palette.MenuHover, palette.MenuHoverText);
             AutomationProperties.SetName(item, descriptor.DisplayName);
