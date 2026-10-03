@@ -15,9 +15,25 @@ public sealed class PluginPaletteTests
         var chip = palette.SelectionChip;
         var chipSurface = chip.Surface with { A = 255 };
 
-        Assert.InRange(ContrastRatio(palette.PrimaryText, palette.WindowSurface), 4.5, 21);
+        Assert.InRange(ContrastRatio(palette.Roles.OnBackground, palette.Roles.Background), 4.5, 21);
         Assert.InRange(ContrastRatio(chip.Label, chipSurface), 4.5, 21);
         Assert.InRange(ContrastRatio(chip.KeycapText, PluginPalette.Composite(chipSurface, chip.KeycapBackground)), 4.5, 21);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Components_share_surface_and_accent_roles(bool lightTheme)
+    {
+        var palette = PluginPalette.For(lightTheme);
+        var roles = palette.Roles;
+
+        Assert.All(
+            new[] { palette.Card.Surface, palette.Toast.Surface, palette.FloatingToolbar.Surface, palette.Provider.MenuSurface },
+            surface => Assert.Equal(roles.Surface, surface));
+        Assert.All(
+            new[] { palette.Card.Primary, palette.Toast.SuccessAccent, palette.FloatingToolbar.Accent, PluginPalette.Settings(lightTheme).Accent },
+            accent => Assert.Equal(roles.Primary, accent));
     }
 
     [Fact]

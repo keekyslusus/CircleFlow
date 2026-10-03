@@ -64,7 +64,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     {
         emoji?.Preload();
         var visual = new PinterestOverlayVisual(context, emoji);
-        visual._host.ShowLoading(context.Strings.PinterestSearching, PluginPalette.For(context.LightTheme).MusicOverlay.Primary);
+        visual._host.ShowLoading(context.Strings.PinterestSearching, PluginPalette.For(context.LightTheme).Roles.Primary);
         return visual;
     }
 
@@ -89,11 +89,11 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
                 _strings.PinterestProviderName,
                 _strings.Close,
                 CloseResult);
-            _host.Present(StateCardVisualFactory.Create(options, theme.StateCard).Card, matched: false);
+            _host.Present(StateCardVisualFactory.Create(options, theme.Card).Card, matched: false);
             return;
         }
 
-        var palette = theme.MusicOverlay;
+        var palette = theme.Card;
         var width = _host.CardWidth;
         const double padding = 16;
         _contentWidth = width - 2 - padding * 2;
@@ -118,7 +118,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
 
     private FrameworkElement CreateHeader()
     {
-        var palette = PluginPalette.For(_light).MusicOverlay;
+        var palette = PluginPalette.For(_light).Card;
         var header = new DockPanel();
         var close = OverlayVisualResources.IconButton(
             PluginIcons.CloseFilled,
@@ -241,7 +241,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     private Button CreatePinTile(PinterestPin pin, double width, double height, Thickness margin, double radius,
         List<BitmapImage>? previews)
     {
-        var palette = PluginPalette.For(_light).MusicOverlay;
+        var palette = PluginPalette.For(_light).Card;
         var image = _previews[pin.Id];
         previews?.Add(image);
         var surface = new Grid
@@ -315,7 +315,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         var surface = new Grid
         {
             Width = width, Height = StripHeight,
-            Background = OverlayVisualResources.Frozen(PluginPalette.For(_light).MusicOverlay.SecondaryContainer),
+            Background = OverlayVisualResources.Frozen(PluginPalette.For(_light).Card.SecondaryContainer),
             Clip = new RectangleGeometry(new Rect(0, 0, width, StripHeight), 14, 14),
         };
         var image = _previews[preview.Id];
@@ -345,7 +345,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
             VerticalAlignment = VerticalAlignment.Top, Cursor = Cursors.Hand,
         };
         OverlayVisualResources.ApplyButtonTemplate(button, radius, PluginPalette.Transparent,
-            PluginPalette.For(_light).MusicOverlay.Primary);
+            PluginPalette.For(_light).Card.Primary);
         AutomationProperties.SetName(button, name);
         return button;
     }

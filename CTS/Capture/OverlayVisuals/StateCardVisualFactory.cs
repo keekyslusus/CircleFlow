@@ -27,7 +27,7 @@ internal static class StateCardVisualFactory
 {
     internal static StateCardVisual Create(
         StateCardOptions options,
-        StateCardPalette palette)
+        CardPalette palette)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(options.Message);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.AccessibleName);
@@ -155,7 +155,7 @@ internal static class StateCardVisualFactory
         return new StateCardVisual(card, icon, message, close, primaryActionButton, title);
     }
 
-    private static Button TextPillButton(string label, StateCardPalette palette)
+    private static Button TextPillButton(string label, CardPalette palette)
     {
         var button = new Button
         {

@@ -19,7 +19,7 @@ public sealed class DebugOverlayVisualTests
         var failure = RunOnSta(() =>
         {
             var visual = DebugOverlayVisualFactory.Create(lightTheme, TestUiStrings.English);
-            var palette = PluginPalette.For(lightTheme).MusicOverlay;
+            var palette = PluginPalette.For(lightTheme).Card;
 
             Assert.Equal(Visibility.Collapsed, visual.Panel.Visibility);
             Assert.Equal(

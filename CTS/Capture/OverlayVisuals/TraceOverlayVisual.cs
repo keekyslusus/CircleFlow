@@ -39,7 +39,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
     internal static TraceOverlayVisual Create(OverlayWidgetContext context, Func<Uri, ITraceVideoPreview>? createVideo = null)
     {
         var visual = new TraceOverlayVisual(context, createVideo);
-        visual._host.ShowLoading(context.Strings.TraceSearching, PluginPalette.For(context.LightTheme).MusicOverlay.Primary);
+        visual._host.ShowLoading(context.Strings.TraceSearching, PluginPalette.For(context.LightTheme).Roles.Primary);
         return visual;
     }
 
@@ -47,7 +47,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
     {
         if (!_host.IsActive || _host.HasCard) return;
         var theme = PluginPalette.For(_light);
-        var palette = theme.MusicOverlay;
+        var palette = theme.Card;
         var match = outcome.PreparedSearch?.TraceMatch;
 
         if (match is not null)
@@ -185,7 +185,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
                 _strings.TraceMoeProviderName,
                 _strings.Close,
                 CloseResult);
-            _card = StateCardVisualFactory.Create(options, theme.StateCard).Card;
+            _card = StateCardVisualFactory.Create(options, theme.Card).Card;
         }
         _host.Present(_card, match is not null, _media is null ? null : WaitForMediaAsync);
     }
@@ -228,7 +228,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
         var segment = new Border { Height = 15, CornerRadius = new CornerRadius(7.5), HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(3),
             Child = new Border { CornerRadius = new CornerRadius(4.5),
-                Background = OverlayVisualResources.Frozen(PluginPalette.For(_light).MusicOverlay.Primary) } };
+                Background = OverlayVisualResources.Frozen(PluginPalette.For(_light).Card.Primary) } };
         // The cutout must follow the actual card surface, including its hover state.
         segment.SetBinding(Border.BackgroundProperty, new Binding(nameof(Border.Background)) { Source = _card });
         track.Children.Add(segment);
@@ -251,7 +251,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
 
     private TextBlock Text(string value, double size, bool muted = false, bool primary = false)
     {
-        var palette = PluginPalette.For(_light).MusicOverlay;
+        var palette = PluginPalette.For(_light).Card;
         return new TextBlock { Text = value, FontFamily = OverlayVisualResources.Font, FontSize = size,
             Foreground = OverlayVisualResources.Frozen(primary ? palette.Primary : muted ? palette.MutedText : palette.Text),
             TextTrimming = TextTrimming.CharacterEllipsis };

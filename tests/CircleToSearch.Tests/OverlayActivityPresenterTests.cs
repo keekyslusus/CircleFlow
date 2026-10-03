@@ -87,7 +87,7 @@ public sealed class OverlayActivityPresenterTests
             using var presenter = new OverlayActivityPresenter(host, () => true);
             using (var loading = presenter.ShowLoading(
                 "Loading",
-                OverlayVisualResources.Frozen(PluginPalette.For(false).MusicOverlay.Primary)))
+                OverlayVisualResources.Frozen(PluginPalette.For(false).Roles.Primary)))
             {
                 Assert.True(presenter.LoadingIndicator.IsRendering);
                 loading.Dispose();
@@ -115,7 +115,7 @@ public sealed class OverlayActivityPresenterTests
             using var presenter = new OverlayActivityPresenter(host, () => false);
             using var loading = presenter.ShowLoading(
                 "Loading",
-                OverlayVisualResources.Frozen(PluginPalette.For(false).MusicOverlay.Primary));
+                OverlayVisualResources.Frozen(PluginPalette.For(false).Roles.Primary));
 
             Assert.False(presenter.LoadingIndicator.IsRendering);
             Assert.True(presenter.LoadingIndicator.IsRequestedActive);

@@ -21,7 +21,7 @@ internal static class MusicResultCardVisualFactory
         double availableWidth)
     {
         var theme = PluginPalette.For(lightTheme);
-        var palette = theme.MusicOverlay;
+        var palette = theme.Card;
         var content = new Grid();
         var card = new Border
         {
@@ -130,7 +130,7 @@ internal static class MusicResultCardVisualFactory
         TextTrimming = TextTrimming.CharacterEllipsis,
     };
 
-    private static FrameworkElement CreateCover(string? url, MusicOverlayPalette palette)
+    private static FrameworkElement CreateCover(string? url, CardPalette palette)
     {
         var cover = new Grid
         {

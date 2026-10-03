@@ -49,7 +49,7 @@ public sealed class OcrTranslationPreviewTests
                 TestUiStrings.English.ConsentCancel,
                 () => { },
                 new StateCardAction(TestUiStrings.English.Continue, () => { }),
-                TestUiStrings.English.TranslationConsentTitle), PluginPalette.For(false).StateCard);
+                TestUiStrings.English.TranslationConsentTitle), PluginPalette.For(false).Card);
             visual.TranslationOverlay.StateHost.Children.Add(consent.Card);
             visual.TranslationOverlay.StateHost.Visibility = Visibility.Visible;
             visual.Bottom.Stack.Children.Insert(0, visual.TranslationOverlay.StateHost);

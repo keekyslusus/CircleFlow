@@ -99,7 +99,7 @@ public sealed class TraceOverlayTests
                 {
                     card.SetValue(mouseOverKey, hovered);
                     time.Advance(20);
-                    var surface = hovered ? PluginPalette.TraceCardHover(light) : PluginPalette.For(light).MusicOverlay.Surface;
+                    var surface = hovered ? PluginPalette.TraceCardHover(light) : PluginPalette.For(light).Card.Surface;
                     Assert.Equal(surface, Assert.IsType<SolidColorBrush>(card.Background).Color);
                     Assert.Equal(surface, Assert.IsType<SolidColorBrush>(segment.Background).Color);
                     if (hovered) Capture(visual.Root, $"trace-{light}-hover.png");

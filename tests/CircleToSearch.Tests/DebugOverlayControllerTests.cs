@@ -67,7 +67,7 @@ public sealed class DebugOverlayControllerTests
             var visual = CreateVisual();
             var selected = new List<MusicDebugScenario>();
             using var controller = CreateController(visual, selected.Add);
-            var palette = PluginPalette.For(lightTheme: false).MusicOverlay;
+            var palette = PluginPalette.For(lightTheme: false).Card;
 
             foreach (var button in visual.MusicScenarioButtons.Children.OfType<Button>())
             {

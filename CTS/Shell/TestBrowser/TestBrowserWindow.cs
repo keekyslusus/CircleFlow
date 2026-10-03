@@ -38,13 +38,13 @@ internal sealed class TestBrowserWindow
         _userDataFolder = userDataFolder;
         _log = log;
         var palette = PluginPalette.For(lightTheme);
-        var background = new SolidColorBrush(palette.WindowSurface);
-        var foreground = new SolidColorBrush(palette.PrimaryText);
+        var background = new SolidColorBrush(palette.Roles.Background);
+        var foreground = new SolidColorBrush(palette.Roles.OnBackground);
         background.Freeze();
         foreground.Freeze();
 
         _webView = new WebView2 { DefaultBackgroundColor = System.Drawing.Color.FromArgb(
-            palette.WindowSurface.A, palette.WindowSurface.R, palette.WindowSurface.G, palette.WindowSurface.B) };
+            palette.Roles.Background.A, palette.Roles.Background.R, palette.Roles.Background.G, palette.Roles.Background.B) };
         _address = new TextBox { VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 0) };
         _address.KeyDown += OnAddressKeyDown;
         _status = new TextBlock

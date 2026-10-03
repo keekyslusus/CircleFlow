@@ -34,7 +34,7 @@ internal sealed class SearchBrowserWindowView
         _strings = strings;
         _browserContent = browserContent;
         var palette = PluginPalette.For(lightTheme);
-        var background = Frozen(palette.WindowSurface);
+        var background = Frozen(palette.Roles.Background);
         _content = new Grid { Background = background };
         _content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _content.RowDefinitions.Add(new RowDefinition());
@@ -68,7 +68,7 @@ internal sealed class SearchBrowserWindowView
                 Height = 28,
                 Padding = new Thickness(0),
                 Background = background,
-                Foreground = Frozen(palette.PrimaryText),
+                Foreground = Frozen(palette.Roles.OnBackground),
                 BorderThickness = new Thickness(0),
                 Template = CreateCloseButtonTemplate(),
             };
@@ -91,7 +91,7 @@ internal sealed class SearchBrowserWindowView
             header.Children.Add(_closeButton);
             _titleText = new TextBlock
             {
-                Foreground = Frozen(palette.PrimaryText),
+                Foreground = Frozen(palette.Roles.OnBackground),
                 VerticalAlignment = VerticalAlignment.Center,
                 FontSize = 14,
             };
@@ -128,14 +128,14 @@ internal sealed class SearchBrowserWindowView
     {
         _lightTheme = lightTheme;
         var palette = PluginPalette.For(lightTheme);
-        var background = Frozen(palette.WindowSurface);
+        var background = Frozen(palette.Roles.Background);
         Window.Background = background;
         _content.Background = background;
         if (_loadingOverlay is not null) _loadingOverlay.Background = background;
-        if (_loadingText is not null) _loadingText.Foreground = Frozen(palette.PrimaryText);
-        _titleText.Foreground = Frozen(palette.PrimaryText);
+        if (_loadingText is not null) _loadingText.Foreground = Frozen(palette.Roles.OnBackground);
+        _titleText.Foreground = Frozen(palette.Roles.OnBackground);
         _closeButton.Background = background;
-        _closeButton.Foreground = Frozen(palette.PrimaryText);
+        _closeButton.Foreground = Frozen(palette.Roles.OnBackground);
         _closeButton.BorderBrush = Frozen(SystemAccentColor.Read());
         ApplyWindowChromeTheme(Window, lightTheme);
     }
@@ -276,7 +276,7 @@ internal sealed class SearchBrowserWindowView
             Margin = new Thickness(0, 18, 0, 0),
             FontFamily = new FontFamily("Segoe UI Variable Text"),
             FontSize = 16,
-            Foreground = Frozen(palette.PrimaryText),
+            Foreground = Frozen(palette.Roles.OnBackground),
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         var center = new StackPanel
@@ -288,7 +288,7 @@ internal sealed class SearchBrowserWindowView
         center.Children.Add(loadingText);
         var overlay = new Grid
         {
-            Background = Frozen(palette.WindowSurface),
+            Background = Frozen(palette.Roles.Background),
             IsHitTestVisible = true,
         };
         overlay.Children.Add(center);
