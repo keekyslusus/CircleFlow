@@ -72,7 +72,7 @@ internal static class DebugOverlayVisualFactory
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(24),
             Padding = new Thickness(12),
-            CornerRadius = new CornerRadius(10),
+            CornerRadius = PluginShapes.MediumCorners,
             Background = OverlayVisualResources.Frozen(palette.Surface),
             BorderBrush = OverlayVisualResources.Frozen(palette.Border),
             BorderThickness = new Thickness(1),
@@ -112,7 +112,7 @@ internal static class DebugOverlayVisualFactory
             Cursor = Cursors.Hand,
         };
         OverlayVisualResources.ApplyButtonTemplate(
-            button, 6, palette.SecondaryContainer, palette.OnSecondaryContainer);
+            button, PluginShapes.Small, palette.SecondaryContainer, palette.OnSecondaryContainer);
         AutomationProperties.SetName(button, label);
         return button;
     }

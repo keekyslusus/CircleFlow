@@ -130,8 +130,8 @@ internal static class ActionTrayVisualFactory
             shadow.CornerRadius = radius;
             surface.CornerRadius = radius;
         }
-        shadow.CornerRadius = new CornerRadius(22);
-        surface.CornerRadius = new CornerRadius(22);
+        shadow.CornerRadius = new CornerRadius(ChipMinHeight / 2);
+        surface.CornerRadius = new CornerRadius(ChipMinHeight / 2);
         chip.SizeChanged += (_, _) => UpdateRadius();
         return (chip, label, hint);
     }

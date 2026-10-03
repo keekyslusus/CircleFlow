@@ -240,8 +240,8 @@ internal sealed class TextSelectionOverlayController : IDisposable
                 Width = dips.Width,
                 Height = dips.Height,
                 Fill = OverlayVisualResources.Frozen(color),
-                RadiusX = 2,
-                RadiusY = 2,
+                RadiusX = PluginShapes.Small,
+                RadiusY = PluginShapes.Small,
             };
             Canvas.SetLeft(rectangle, dips.Left);
             Canvas.SetTop(rectangle, dips.Top);

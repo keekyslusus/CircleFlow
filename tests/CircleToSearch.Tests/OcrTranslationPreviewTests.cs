@@ -68,8 +68,8 @@ public sealed class OcrTranslationPreviewTests
         {
             Width = bounds.Width,
             Height = bounds.Height,
-            RadiusX = 2,
-            RadiusY = 2,
+            RadiusX = PluginShapes.Small,
+            RadiusY = PluginShapes.Small,
             Fill = OverlayVisualResources.Frozen(PluginPalette.For(false).TextInteraction.Selection),
         };
         Canvas.SetLeft(rectangle, bounds.Left);

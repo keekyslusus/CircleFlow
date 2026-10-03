@@ -31,7 +31,7 @@ public sealed class ShellTests
             Pump();
             menu.UpdateLayout();
             var surface = (Border)menu.Template.FindName("MenuSurface", menu);
-            Assert.Equal(new CornerRadius(9), surface.CornerRadius);
+            Assert.Equal(PluginShapes.MediumCorners, surface.CornerRadius);
             Assert.True(surface.ActualWidth >= 200);
             var first = (MenuItem)menu.Items[0];
             var second = (MenuItem)menu.Items[1];

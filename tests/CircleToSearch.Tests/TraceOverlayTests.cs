@@ -314,7 +314,7 @@ public sealed class TraceOverlayTests
                 var stateCard = Descendants(overlay.VisualState.Bottom.Stack).OfType<Border>()
                     .Single(x => AutomationProperties.GetName(x) == TestUiStrings.English.TraceMoeProviderName);
                 Assert.Equal(340, stateCard.Width);
-                Assert.Equal(new CornerRadius(18), stateCard.CornerRadius);
+                Assert.Equal(PluginShapes.LargeCorners, stateCard.CornerRadius);
                 Assert.Contains(Descendants(stateCard).OfType<System.Windows.Shapes.Path>(),
                     icon => ReferenceEquals(icon.Data, PluginIcons.TraceMoe));
             }

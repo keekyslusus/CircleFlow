@@ -16,6 +16,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     internal const double StripHeight = 132;
     internal const double MasonryMaxHeight = 340;
     private const double TileGap = 8;
+    private const double TileRadius = PluginShapes.Medium;
     private const double MinTileWidth = 96;
     private const double MaxTileWidth = 220;
     // Twice the widest tile keeps previews sharp on high-DPI screens; Pinterest's previews are 474 px wide anyway.
@@ -109,7 +110,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
             Child = content, Width = width,
             Background = OverlayVisualResources.Frozen(palette.Surface),
             BorderBrush = OverlayVisualResources.Frozen(theme.SelectionChip.Divider),
-            BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(24),
+            BorderThickness = new Thickness(1), CornerRadius = PluginShapes.ExtraLargeCorners,
             Padding = new Thickness(padding), Effect = OverlayVisualResources.DockShadow(10, palette.ShadowOpacity),
         };
         AutomationProperties.SetName(card, _strings.PinterestProviderName);
@@ -177,7 +178,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
             var width = Math.Clamp(StripHeight * AspectRatio(pin), MinTileWidth, MaxTileWidth);
             var reserve = shown + 1 < _pins.Count ? TileGap + MoreTileMinWidth : 0;
             if (used + gap + width + reserve > _contentWidth) break;
-            row.Children.Add(CreatePinTile(pin, width, StripHeight, new Thickness(gap, 0, 0, 0), 14, _stripImages));
+            row.Children.Add(CreatePinTile(pin, width, StripHeight, new Thickness(gap, 0, 0, 0), _stripImages));
             used += gap + width;
             shown++;
         }
@@ -207,7 +208,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
             var column = Array.IndexOf(heights, heights.Min());
             var height = Math.Clamp(columnWidth / AspectRatio(pin), columnWidth / 2, columnWidth * 2);
             var top = stacks[column].Children.Count == 0 ? 0 : TileGap;
-            stacks[column].Children.Add(CreatePinTile(pin, columnWidth, height, new Thickness(0, top, 0, 0), 12, null));
+            stacks[column].Children.Add(CreatePinTile(pin, columnWidth, height, new Thickness(0, top, 0, 0), null));
             heights[column] += top + height;
         }
         var translation = new TranslateTransform();
@@ -238,7 +239,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         return scroll;
     }
 
-    private Button CreatePinTile(PinterestPin pin, double width, double height, Thickness margin, double radius,
+    private Button CreatePinTile(PinterestPin pin, double width, double height, Thickness margin,
         List<BitmapImage>? previews)
     {
         var palette = PluginPalette.For(_light).Card;
@@ -248,20 +249,20 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         {
             Width = width, Height = height,
             Background = OverlayVisualResources.Frozen(palette.SecondaryContainer),
-            Clip = new RectangleGeometry(new Rect(0, 0, width, height), radius, radius),
+            Clip = new RectangleGeometry(new Rect(0, 0, width, height), TileRadius, TileRadius),
         };
         surface.Children.Add(OverlayVisualResources.FadeInImage(image));
         var details = CreateHoverDetails(pin, width);
         if (details is not null) surface.Children.Add(details);
         var outline = new Border
         {
-            CornerRadius = new CornerRadius(radius), BorderThickness = new Thickness(2),
+            CornerRadius = new CornerRadius(TileRadius), BorderThickness = new Thickness(2),
             BorderBrush = OverlayVisualResources.Frozen(palette.Primary), Opacity = 0, IsHitTestVisible = false,
         };
         surface.Children.Add(outline);
         var name = pin.Title.Length > 0 ? $"{_strings.PinterestOpen}: {pin.Title}" : _strings.PinterestOpen;
         // No tooltip: the hover caption already shows the title and a tooltip would cover the next tile.
-        var button = TileButton(surface, margin, radius, name);
+        var button = TileButton(surface, margin, name);
         void ShowHover(bool visible)
         {
             var duration = visible ? HoverIn : HoverOut;
@@ -316,7 +317,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         {
             Width = width, Height = StripHeight,
             Background = OverlayVisualResources.Frozen(PluginPalette.For(_light).Card.SecondaryContainer),
-            Clip = new RectangleGeometry(new Rect(0, 0, width, StripHeight), 14, 14),
+            Clip = new RectangleGeometry(new Rect(0, 0, width, StripHeight), TileRadius, TileRadius),
         };
         var image = _previews[preview.Id];
         _stripImages.Add(image);
@@ -327,7 +328,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         count.HorizontalAlignment = HorizontalAlignment.Center;
         count.VerticalAlignment = VerticalAlignment.Center;
         surface.Children.Add(count);
-        var button = TileButton(surface, new Thickness(gap, 0, 0, 0), 14, _strings.PinterestShowAll);
+        var button = TileButton(surface, new Thickness(gap, 0, 0, 0), _strings.PinterestShowAll);
         button.Click += (_, e) =>
         {
             e.Handled = true;
@@ -336,7 +337,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         return button;
     }
 
-    private Button TileButton(FrameworkElement content, Thickness margin, double radius, string name)
+    private Button TileButton(FrameworkElement content, Thickness margin, string name)
     {
         var button = new Button
         {
@@ -344,7 +345,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
             Background = OverlayVisualResources.Frozen(PluginPalette.Transparent),
             VerticalAlignment = VerticalAlignment.Top, Cursor = Cursors.Hand,
         };
-        OverlayVisualResources.ApplyButtonTemplate(button, radius, PluginPalette.Transparent,
+        OverlayVisualResources.ApplyButtonTemplate(button, TileRadius, PluginPalette.Transparent,
             PluginPalette.For(_light).Card.Primary);
         AutomationProperties.SetName(button, name);
         return button;

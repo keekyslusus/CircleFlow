@@ -23,7 +23,7 @@ internal sealed class QrCodeViewfinder
     private const double MinCorner = 12;
     private const double MaxCorner = 28;
     private const double CornerShare = 0.25;
-    private const double MaxRadius = 7;
+    private const double MaxRadius = PluginShapes.Medium;
     private static readonly TimeSpan EntranceDuration = TimeSpan.FromMilliseconds(360);
     private static readonly TimeSpan FadeInDuration = TimeSpan.FromMilliseconds(200);
     private static readonly TimeSpan FadeOutDuration = TimeSpan.FromMilliseconds(150);

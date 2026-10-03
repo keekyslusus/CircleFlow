@@ -22,7 +22,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding Time}" Style="{StaticResource Muted}" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
-                        <Border Grid.Column="1" Width="32" Height="32" CornerRadius="5" Background="{DynamicResource SettingsHeroStart}" BorderBrush="{DynamicResource SettingsAccentLine}" BorderThickness="1">
+                        <Border Grid.Column="1" Width="32" Height="32" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}" Background="{DynamicResource SettingsHeroStart}" BorderBrush="{DynamicResource SettingsAccentLine}" BorderThickness="1">
                             <ContentControl Foreground="{DynamicResource SettingsAccent}" Focusable="False" IsTabStop="False" HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <Viewbox Width="20" Height="20">
                                     <Canvas Width="24" Height="24">
@@ -31,7 +31,7 @@
                                 </Viewbox>
                             </ContentControl>
                         </Border>
-                        <Border x:Name="Cover" Grid.Column="1" Width="32" Height="32" CornerRadius="5">
+                        <Border x:Name="Cover" Grid.Column="1" Width="32" Height="32" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}">
                             <Border.Background>
                                 <ImageBrush ImageSource="{Binding Cover}" Stretch="UniformToFill"/>
                             </Border.Background>
@@ -40,7 +40,7 @@
                             <TextBlock Text="{Binding Title}" ToolTip="{Binding Title}" Style="{StaticResource RowTitle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Text="{Binding Artist}" ToolTip="{Binding Artist}" Style="{StaticResource RowSubtitle}" Margin="0,1,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
-                        <Border x:Name="Genre" Grid.Column="5" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="5" Padding="8,2" Margin="8,0,0,0" VerticalAlignment="Center">
+                        <Border x:Name="Genre" Grid.Column="5" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" Padding="8,2" Margin="8,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Genre}" Style="{StaticResource Muted}" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel x:Name="Actions" Grid.Column="4" Orientation="Horizontal" Margin="12,0,0,0" Opacity="0">
@@ -98,7 +98,7 @@
                             <TextBlock x:Name="Label" Text="{Binding Label}" Style="{StaticResource RowTitle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Text="{Binding Detail}" Style="{StaticResource RowSubtitle}" Margin="0,1,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
-                        <Border x:Name="AlwaysShown" Grid.Column="3" Visibility="Collapsed" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="5" Padding="8,2" Margin="12,0,4,0" VerticalAlignment="Center">
+                        <Border x:Name="AlwaysShown" Grid.Column="3" Visibility="Collapsed" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" Padding="8,2" Margin="12,0,4,0" VerticalAlignment="Center">
                             <TextBlock Text="{DynamicResource ProviderAlwaysShownLabel}" Style="{StaticResource Muted}"/>
                         </Border>
                         <Button x:Name="Hide" Grid.Column="3" Tag="provider-hide" Style="{StaticResource TextButton}" Margin="12,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="{Binding HideLabel}">
@@ -138,7 +138,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Border Style="{StaticResource AppLogo}" CornerRadius="14" Width="48" Height="48" Margin="0,0,0,10">
+                        <Border Style="{StaticResource AppLogo}" CornerRadius="{x:Static ui:PluginShapes.LargeCorners}" Width="48" Height="48" Margin="0,0,0,10">
                             <ContentControl Foreground="{DynamicResource SettingsAccent}" HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <Viewbox Width="29" Height="29">
                                     <Canvas Width="24" Height="24">
@@ -150,7 +150,7 @@
                         <TextBlock Text="{Binding [brand]}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                     </StackPanel>
                     <Grid x:Name="NavigationHost" Grid.Row="1">
-                        <Border x:Name="NavigationSelection" IsHitTestVisible="False" Visibility="Hidden" VerticalAlignment="Top" CornerRadius="5" Background="{DynamicResource SettingsSelected}">
+                        <Border x:Name="NavigationSelection" IsHitTestVisible="False" Visibility="Hidden" VerticalAlignment="Top" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" Background="{DynamicResource SettingsSelected}">
                             <Border.RenderTransform>
                                 <TranslateTransform/>
                             </Border.RenderTransform>
@@ -231,7 +231,7 @@
                     </Grid>
                 </Grid>
             </Border>
-            <Border x:Name="ContentSurface" Grid.Column="1" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1,1,0,0" CornerRadius="9,0,0,0">
+            <Border x:Name="ContentSurface" Grid.Column="1" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1,1,0,0" CornerRadius="8,0,0,0">
                 <ScrollViewer x:Name="PageScroll" Style="{StaticResource PageScrollViewer}" BorderThickness="0" Background="{DynamicResource SettingsTransparent}" FocusVisualStyle="{x:Null}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
                     <AdornerDecorator x:Name="PageTransitionSurface">
                     <StackPanel x:Name="PageContent" Margin="38,34,38,26">
@@ -252,12 +252,12 @@
                                         <ItemsControl x:Name="HeroShortcutKeys" Style="{StaticResource Keys}"/>
                                     </StackPanel>
                                     <Grid Grid.Column="1" Height="110">
-                                        <Border Width="92" Height="92" CornerRadius="27" BorderThickness="1" BorderBrush="{DynamicResource SettingsAccentLine}" RenderTransformOrigin="0.5,0.5">
+                                        <Border Width="92" Height="92" CornerRadius="{x:Static ui:PluginShapes.ExtraLargeCorners}" BorderThickness="1" BorderBrush="{DynamicResource SettingsAccentLine}" RenderTransformOrigin="0.5,0.5">
                                             <Border.RenderTransform>
                                                 <RotateTransform Angle="-14"/>
                                             </Border.RenderTransform>
                                         </Border>
-                                        <Border Width="68" Height="68" CornerRadius="19" Background="{DynamicResource SettingsSurface}" BorderBrush="{DynamicResource SettingsAccentLine}" BorderThickness="1" RenderTransformOrigin="0.5,0.5">
+                                        <Border Width="68" Height="68" CornerRadius="{x:Static ui:PluginShapes.LargeCorners}" Background="{DynamicResource SettingsSurface}" BorderBrush="{DynamicResource SettingsAccentLine}" BorderThickness="1" RenderTransformOrigin="0.5,0.5">
                                             <Border.RenderTransform>
                                                 <RotateTransform Angle="8"/>
                                             </Border.RenderTransform>
@@ -281,7 +281,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="14"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Width="37" Height="37" CornerRadius="10" Background="{DynamicResource SettingsHeroStart}">
+                                        <Border Width="37" Height="37" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}" Background="{DynamicResource SettingsHeroStart}">
                                             <ContentControl Foreground="{DynamicResource SettingsAccent}" VerticalAlignment="Center" HorizontalAlignment="Center">
                                                 <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                     <Canvas Width="24" Height="24">
@@ -310,7 +310,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="14"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Width="37" Height="37" CornerRadius="10" Background="{DynamicResource SettingsHeroStart}">
+                                        <Border Width="37" Height="37" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}" Background="{DynamicResource SettingsHeroStart}">
                                             <ContentControl Foreground="{DynamicResource SettingsAccent}" VerticalAlignment="Center" HorizontalAlignment="Center">
                                                 <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                     <Canvas Width="24" Height="24">
@@ -339,7 +339,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="14"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Width="37" Height="37" CornerRadius="10" Background="{DynamicResource SettingsHeroStart}">
+                                        <Border Width="37" Height="37" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}" Background="{DynamicResource SettingsHeroStart}">
                                             <ContentControl Foreground="{DynamicResource SettingsAccent}" VerticalAlignment="Center" HorizontalAlignment="Center">
                                                 <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                     <Canvas Width="24" Height="24">
@@ -368,7 +368,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="14"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Width="37" Height="37" CornerRadius="10" Background="{DynamicResource SettingsHeroStart}">
+                                        <Border Width="37" Height="37" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}" Background="{DynamicResource SettingsHeroStart}">
                                             <ContentControl Foreground="{DynamicResource SettingsAccent}" VerticalAlignment="Center" HorizontalAlignment="Center">
                                                 <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                     <Canvas Width="24" Height="24">
@@ -780,7 +780,7 @@
                                                 <TextBlock Text="{Binding [target_language_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="5" Padding="9,4">
+                                                <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" Padding="9,4">
                                                     <TextBlock x:Name="TranslationLanguage" Style="{StaticResource Muted}"/>
                                                 </Border>
                                             </ContentControl>
@@ -845,7 +845,7 @@
                                                 <TextBlock Text="{Binding [system_audio_sub]}" Style="{StaticResource RowSubtitle}"/>
                                             </StackPanel>
                                             <ContentControl Grid.Column="3" VerticalAlignment="Center">
-                                                <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="5" Padding="9,4" MaxWidth="240">
+                                                <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" Padding="9,4" MaxWidth="240">
                                                     <TextBlock x:Name="AudioOutput" Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/>
                                                 </Border>
                                             </ContentControl>
@@ -950,7 +950,7 @@
                                 </Border>
                                 <Border x:Name="HistoryEmpty" Style="{StaticResource Card}" Margin="0,16,0,0" Padding="20,28" Visibility="Collapsed">
                                     <StackPanel HorizontalAlignment="Center">
-                                        <Border Style="{StaticResource AppLogo}" CornerRadius="13" Width="44" Height="44" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                        <Border Style="{StaticResource AppLogo}" CornerRadius="{x:Static ui:PluginShapes.LargeCorners}" Width="44" Height="44" HorizontalAlignment="Center" Margin="0,0,0,12">
                                             <ContentControl Foreground="{DynamicResource SettingsAccent}" Focusable="False" IsTabStop="False" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                 <Viewbox Width="20" Height="20">
                                                     <Canvas Width="24" Height="24">
@@ -969,7 +969,7 @@
                             <TextBlock Text="{Binding [about_title]}" Style="{StaticResource PageTitle}"/>
                             <Border Style="{StaticResource Hero}">
                                 <StackPanel>
-                                    <Border Style="{StaticResource AppLogo}" CornerRadius="21" Width="72" Height="72" HorizontalAlignment="Center" Margin="0,0,0,14">
+                                    <Border Style="{StaticResource AppLogo}" CornerRadius="{x:Static ui:PluginShapes.ExtraLargeCorners}" Width="72" Height="72" HorizontalAlignment="Center" Margin="0,0,0,14">
                                         <ContentControl Foreground="{DynamicResource SettingsAccent}" HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <Viewbox Width="43" Height="43" VerticalAlignment="Center">
                                                 <Canvas Width="24" Height="24">
@@ -1295,7 +1295,7 @@
             <Grid>
             <Border x:Name="DialogScrim" Background="{DynamicResource SettingsScrim}" IsHitTestVisible="False"/>
             <AdornerDecorator x:Name="DialogMotionSurface" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
-            <Border x:Name="DialogCard" Width="440" MaxHeight="480" VerticalAlignment="Center" HorizontalAlignment="Center" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="9" KeyboardNavigation.TabNavigation="Cycle">
+            <Border x:Name="DialogCard" Width="440" MaxHeight="480" VerticalAlignment="Center" HorizontalAlignment="Center" Background="{DynamicResource SettingsPaper}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}" KeyboardNavigation.TabNavigation="Cycle">
                 <StackPanel Margin="24">
                     <StackPanel x:Name="ShortcutDialog">
                         <TextBlock Text="{Binding [new_shortcut]}" FontSize="20" FontWeight="SemiBold"/>
@@ -1360,7 +1360,7 @@
             </Grid>
         </Border>
         <!-- Above the dialog layer, so a save that fails inside a dialog is not dimmed by its scrim. -->
-        <Border x:Name="StatusBanner" Visibility="Collapsed" VerticalAlignment="Bottom" HorizontalAlignment="Center" MaxWidth="540" Background="{DynamicResource SettingsCard}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="7" Padding="16,12" Margin="240,0,16,24">
+        <Border x:Name="StatusBanner" Visibility="Collapsed" VerticalAlignment="Bottom" HorizontalAlignment="Center" MaxWidth="540" Background="{DynamicResource SettingsCard}" BorderBrush="{DynamicResource SettingsLine}" BorderThickness="1" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}" Padding="16,12" Margin="240,0,16,24">
             <TextBlock x:Name="StatusText" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
         </Border>
     </Grid>

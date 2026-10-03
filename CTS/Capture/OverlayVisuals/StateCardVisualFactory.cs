@@ -147,7 +147,7 @@ internal static class StateCardVisualFactory
             Background = OverlayVisualResources.Frozen(palette.Surface),
             BorderBrush = OverlayVisualResources.Frozen(palette.Border),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(18),
+            CornerRadius = PluginShapes.LargeCorners,
             Padding = new Thickness(14, 12, 14, 12),
             Effect = OverlayVisualResources.DockShadow(10, palette.ShadowOpacity),
         };
@@ -171,7 +171,7 @@ internal static class StateCardVisualFactory
             Cursor = Cursors.Hand,
         };
         OverlayVisualResources.ApplyButtonTemplate(
-            button, 17, palette.SecondaryContainer, palette.OnSecondaryContainer);
+            button, button.Height / 2, palette.SecondaryContainer, palette.OnSecondaryContainer);
         AutomationProperties.SetName(button, label);
         return button;
     }

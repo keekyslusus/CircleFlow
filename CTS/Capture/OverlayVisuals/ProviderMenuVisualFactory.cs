@@ -68,7 +68,7 @@ internal static class ProviderMenuVisualFactory
                 palette.Surface.A == 0xF0 ? 8 : 6,
                 palette.Surface.A == 0xF0 ? 0.3 : 0.35),
         };
-        OverlayVisualResources.ApplyButtonTemplate(button, 22, palette.Hover, palette.Text);
+        OverlayVisualResources.ApplyButtonTemplate(button, button.Height / 2, palette.Hover, palette.Text);
         AutomationProperties.SetName(button, strings.SelectSearchProvider(selected.DisplayName));
 
         var panel = new StackPanel();
@@ -79,7 +79,7 @@ internal static class ProviderMenuVisualFactory
             Visibility = Visibility.Collapsed,
             Padding = new Thickness(6),
             Width = 220,
-            CornerRadius = new CornerRadius(16),
+            CornerRadius = PluginShapes.LargeCorners,
             Background = OverlayVisualResources.Frozen(palette.MenuSurface),
             BorderBrush = OverlayVisualResources.Frozen(palette.MenuBorder),
             BorderThickness = new Thickness(1),
@@ -134,7 +134,7 @@ internal static class ProviderMenuVisualFactory
                 ToolTip = descriptor.DisplayName,
                 FontFamily = OverlayVisualResources.Font,
             };
-            OverlayVisualResources.ApplyButtonTemplate(item, 12, palette.MenuHover, palette.MenuHoverText);
+            OverlayVisualResources.ApplyButtonTemplate(item, PluginShapes.Medium, palette.MenuHover, palette.MenuHoverText);
             AutomationProperties.SetName(item, descriptor.DisplayName);
             panel.Children.Add(item);
         }

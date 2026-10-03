@@ -52,8 +52,8 @@ public sealed class SelectionOverlayVisualTests
 
             var frame = Assert.IsType<RectangleGeometry>(
                 SelectionOverlayTransitions.BuildSelectionFrameGeometry(new Rect(10, 20, 80, 60)));
-            Assert.Equal(6, frame.RadiusX);
-            Assert.Equal(6, frame.RadiusY);
+            Assert.Equal(SelectionOverlayVisualFactory.FrameCornerRadius, frame.RadiusX);
+            Assert.Equal(SelectionOverlayVisualFactory.FrameCornerRadius, frame.RadiusY);
         });
 
         Assert.Null(failure);

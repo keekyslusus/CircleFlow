@@ -59,7 +59,7 @@ internal static class MusicOverlayVisualFactory
                 palette.MusicButton.Surface.A == 0xF0 ? 0.3 : 0.35),
         };
         OverlayVisualResources.ApplyButtonTemplate(
-            button, 22, palette.MusicButton.Hover, palette.MusicButton.Foreground);
+            button, button.Height / 2, palette.MusicButton.Hover, palette.MusicButton.Foreground);
         AutomationProperties.SetName(button, strings.MusicRecognitionAction);
 
         var waveform = new AudioWaveformVisual(lightTheme);

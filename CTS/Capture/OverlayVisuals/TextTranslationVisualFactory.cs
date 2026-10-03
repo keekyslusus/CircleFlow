@@ -55,7 +55,7 @@ internal static class TextTranslationVisualFactory
                 palette.Surface.A == 0xF0 ? 8 : 6,
                 palette.Surface.A == 0xF0 ? 0.3 : 0.35),
         };
-        OverlayVisualResources.ApplyButtonTemplate(button, 22, palette.Hover, palette.Text);
+        OverlayVisualResources.ApplyButtonTemplate(button, button.Height / 2, palette.Hover, palette.Text);
         AutomationProperties.SetName(button, strings.Translate);
         return new TranslationActionVisual(button, icon, loading);
     }

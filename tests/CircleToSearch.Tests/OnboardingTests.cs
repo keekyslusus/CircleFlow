@@ -344,7 +344,7 @@ public sealed class OnboardingTests
             {
                 control.ApplyTemplate();
                 var chrome = Assert.IsType<Border>(control.Template.FindName("Chrome", control));
-                Assert.Equal(7, chrome.CornerRadius.TopLeft);
+                Assert.Equal(PluginShapes.SmallCorners, chrome.CornerRadius);
             });
         }
         finally { window.Close(); }

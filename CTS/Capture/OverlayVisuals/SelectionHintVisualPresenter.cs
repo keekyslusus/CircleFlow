@@ -94,7 +94,7 @@ internal static class SelectionHintVisualPresenter
         Background = visual.KeycapBackground,
         BorderBrush = visual.KeycapBorder,
         BorderThickness = new Thickness(1),
-        CornerRadius = new CornerRadius(8),
+        CornerRadius = PluginShapes.MediumCorners,
         Padding = padding,
         VerticalAlignment = VerticalAlignment.Center,
         Child = child,

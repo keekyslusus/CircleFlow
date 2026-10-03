@@ -17,7 +17,7 @@ public sealed class FloatingToolbar
     // A round icon edge reads as farther from the pill edge than a text stem at the same distance.
     private const double IconSidePaddingReduction = 2;
     private const double ActionHeight = 32;
-    private const double ActionRadius = 16;
+    private const double ActionRadius = ActionHeight / 2;
     private const double SurfacePadding = 4;
     private const double SurfaceBorder = 1;
     private const double PromptWidth = 380;

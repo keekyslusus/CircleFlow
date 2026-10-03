@@ -17,8 +17,8 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="7">
-                                <Border x:Name="Hover" CornerRadius="7" Padding="{TemplateBinding Padding}">
+                            <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}">
+                                <Border x:Name="Hover" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" Padding="{TemplateBinding Padding}">
                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                             </Border>
@@ -49,11 +49,11 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="CheckBox">
-                            <Border x:Name="Chrome" CornerRadius="7" Background="{DynamicResource SettingsTransparent}" Padding="{TemplateBinding Padding}">
+                            <Border x:Name="Chrome" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" Background="{DynamicResource SettingsTransparent}" Padding="{TemplateBinding Padding}">
                                 <StackPanel Orientation="Horizontal">
                                     <Grid Width="18" Height="18">
-                                        <Border x:Name="Outline" CornerRadius="4" BorderThickness="1.5" BorderBrush="{DynamicResource SettingsMuted}"/>
-                                        <Border x:Name="Fill" CornerRadius="4" Background="{DynamicResource SettingsAccent}" Visibility="Hidden">
+                                        <Border x:Name="Outline" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" BorderThickness="1.5" BorderBrush="{DynamicResource SettingsMuted}"/>
+                                        <Border x:Name="Fill" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" Background="{DynamicResource SettingsAccent}" Visibility="Hidden">
                                             <Viewbox Width="14" Height="14">
                                                 <Canvas Width="24" Height="24">
                                                     <Path Data="{x:Static ui:PluginIcons.CheckOutlined}" Stroke="{DynamicResource OnboardingOnAccent}" StrokeThickness="1.65" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
@@ -93,7 +93,7 @@
                 <Setter Property="Background" Value="{DynamicResource OnboardingScreenSurface}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource OnboardingScreenBorder}"/>
                 <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="10"/>
+                <Setter Property="CornerRadius" Value="{x:Static ui:PluginShapes.MediumCorners}"/>
             </Style>
             <Style x:Key="Floating" TargetType="Border">
                 <Setter Property="Background" Value="{DynamicResource OnboardingToolbarSurface}"/>
@@ -142,14 +142,14 @@
                     <Border Style="{StaticResource ScreenBar}" Canvas.Left="115" Canvas.Top="57" Width="60"/>
                     <Border Style="{StaticResource ScreenBar}" Canvas.Left="13" Canvas.Top="115" Width="184"/>
                     <Border Style="{StaticResource ScreenBar}" Canvas.Left="13" Canvas.Top="127" Width="150"/>
-                    <Border Width="212" Height="176" CornerRadius="9" Background="{DynamicResource OnboardingScreenDim}"/>
-                    <Border Canvas.Left="13" Canvas.Top="13" Width="90" Height="90" CornerRadius="8" Background="{DynamicResource OnboardingScreenSelection}">
+                    <Border Width="212" Height="176" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}" Background="{DynamicResource OnboardingScreenDim}"/>
+                    <Border Canvas.Left="13" Canvas.Top="13" Width="90" Height="90" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}" Background="{DynamicResource OnboardingScreenSelection}">
                         <Border.Effect>
                             <DropShadowEffect Color="{DynamicResource OnboardingGlowColor}" ShadowDepth="0" BlurRadius="14" Opacity="0.5"/>
                         </Border.Effect>
                     </Border>
                     <Image Canvas.Left="13" Canvas.Top="13" Width="90" Height="90" Source="{DynamicResource TwinDrillEgg}"/>
-                    <Border Canvas.Left="13" Canvas.Top="13" Width="90" Height="90" CornerRadius="8" BorderThickness="2.5" BorderBrush="{DynamicResource OnboardingScreenSelection}"/>
+                    <Border Canvas.Left="13" Canvas.Top="13" Width="90" Height="90" CornerRadius="{x:Static ui:PluginShapes.MediumCorners}" BorderThickness="2.5" BorderBrush="{DynamicResource OnboardingScreenSelection}"/>
                 </Canvas>
             </DataTemplate>
         </ResourceDictionary>
@@ -262,7 +262,7 @@
                         <TextBlock Text="{Binding [sample_line]}"/>
                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                             <TextBlock Text="{Binding [sample_prefix]}" Margin="0,0,5,0"/>
-                            <Border Background="{DynamicResource OnboardingTextHighlight}" CornerRadius="4" Padding="3,1">
+                            <Border Background="{DynamicResource OnboardingTextHighlight}" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" Padding="3,1">
                                 <TextBlock Text="{Binding [sample_selected]}"/>
                             </Border>
                         </StackPanel>
@@ -294,7 +294,7 @@
                 </Border>
                 </Canvas>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,188,0,0" Height="30" Orientation="Horizontal" TextElement.FontSize="12">
-                    <Border Style="{StaticResource Keycap}" BorderThickness="1,1,1,2" CornerRadius="5" Padding="8,0">
+                    <Border Style="{StaticResource Keycap}" BorderThickness="1,1,1,2" CornerRadius="{x:Static ui:PluginShapes.SmallCorners}" Padding="8,0">
                         <TextBlock x:Name="AltLabel" FontWeight="Medium" VerticalAlignment="Center"/>
                     </Border>
                     <TextBlock x:Name="AltPlus" Foreground="{DynamicResource SettingsMuted}" Margin="6,0"/>

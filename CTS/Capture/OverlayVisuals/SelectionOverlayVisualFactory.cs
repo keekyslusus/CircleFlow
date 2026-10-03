@@ -17,7 +17,7 @@ internal static class SelectionOverlayVisualFactory
     private const double SheenBlurRadius = 14;
     private const double FrameGlowRadius = 18;
     internal const double RevealBleed = 96;
-    internal const double FrameCornerRadius = 6;
+    internal const double FrameCornerRadius = PluginShapes.Medium;
 
     internal static SelectionOverlayVisual Create(BitmapSource? frame, Size size, Color accentColor)
     {

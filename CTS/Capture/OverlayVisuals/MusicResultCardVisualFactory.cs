@@ -32,7 +32,7 @@ internal static class MusicResultCardVisualFactory
             VerticalAlignment = VerticalAlignment.Center,
             BorderBrush = OverlayVisualResources.Frozen(theme.SelectionChip.Divider),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(24),
+            CornerRadius = PluginShapes.ExtraLargeCorners,
             Effect = OverlayVisualResources.DockShadow(10, palette.ShadowOpacity),
         };
         var style = new Style(typeof(Border));
@@ -83,7 +83,7 @@ internal static class MusicResultCardVisualFactory
                 Cursor = Cursors.Hand,
                 ToolTip = strings.OpenInShazam,
             };
-            OverlayVisualResources.ApplyButtonTemplate(open, 24, PluginPalette.Transparent, palette.Primary);
+            OverlayVisualResources.ApplyButtonTemplate(open, PluginShapes.ExtraLarge, PluginPalette.Transparent, palette.Primary);
             AutomationProperties.SetName(open, strings.OpenInShazam);
             open.Click += (_, e) => { e.Handled = true; publish(new OpenMusicResult()); };
             content.Children.Add(open);
@@ -137,7 +137,7 @@ internal static class MusicResultCardVisualFactory
             Width = 98,
             Height = 98,
             Background = OverlayVisualResources.Frozen(palette.SecondaryContainer),
-            Clip = new RectangleGeometry(new Rect(0, 0, 98, 98), 14, 14),
+            Clip = new RectangleGeometry(new Rect(0, 0, 98, 98), PluginShapes.Large, PluginShapes.Large),
         };
         cover.Children.Add(OverlayVisualResources.Icon(PluginIcons.MusicFilled, 30, palette.Primary));
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)

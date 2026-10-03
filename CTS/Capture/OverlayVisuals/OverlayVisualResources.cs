@@ -168,7 +168,7 @@ internal static class OverlayVisualResources
             Cursor = Cursors.Hand,
             ToolTip = name,
         };
-        ApplyButtonTemplate(button, 15, hoverBackground, hoverForeground);
+        ApplyButtonTemplate(button, button.Height / 2, hoverBackground, hoverForeground);
         AutomationProperties.SetName(button, name);
         return button;
     }

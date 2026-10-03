@@ -9,6 +9,7 @@ using CircleToSearch.Ui;
 internal static class ToastOverlayVisualFactory
 {
     internal const double MaximumWidth = 360;
+    private const double MinimumHeight = 40;
 
     internal static ToastOverlayVisual Create(ToastNotification notification, bool lightTheme)
     {
@@ -38,9 +39,9 @@ internal static class ToastOverlayVisualFactory
             Background = OverlayVisualResources.Frozen(theme.Toast.Surface),
             BorderBrush = OverlayVisualResources.Frozen(accent),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(20),
+            CornerRadius = new CornerRadius(MinimumHeight / 2),
             Padding = new Thickness(16, 10, 16, 10),
-            MinHeight = 40,
+            MinHeight = MinimumHeight,
             MaxWidth = MaximumWidth,
             HorizontalAlignment = HorizontalAlignment.Center,
             IsHitTestVisible = false,

@@ -58,7 +58,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
                 Child = content, Width = _host.CardWidth,
                 Background = OverlayVisualResources.Frozen(palette.Surface),
                 BorderBrush = OverlayVisualResources.Frozen(theme.SelectionChip.Divider),
-                BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(24),
+                BorderThickness = new Thickness(1), CornerRadius = PluginShapes.ExtraLargeCorners,
                 Padding = new Thickness(0), Effect = OverlayVisualResources.DockShadow(10, palette.ShadowOpacity),
             };
             _card.ClearValue(Border.BackgroundProperty);
@@ -121,7 +121,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 Cursor = Cursors.Hand, ToolTip = _strings.TraceOpen,
             };
-            OverlayVisualResources.ApplyButtonTemplate(openButton, 24,
+            OverlayVisualResources.ApplyButtonTemplate(openButton, PluginShapes.ExtraLarge,
                 PluginPalette.Transparent, palette.Primary);
             AutomationProperties.SetName(openButton, $"{_strings.TraceOpen}: {match.Title}");
             openButton.Click += (_, e) => { if (_host.IsActive) _open(new Uri(match.AnilistUrl)); e.Handled = true; };
@@ -208,7 +208,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
     private FrameworkElement CreateMedia(TraceMoeMatch match, double width)
     {
         var grid = new Grid { Width = width, Height = 97, Background = OverlayVisualResources.Frozen(PluginPalette.OpaqueBlack),
-            Clip = new RectangleGeometry(new Rect(0, 0, width, 97), 14, 14) };
+            Clip = new RectangleGeometry(new Rect(0, 0, width, 97), PluginShapes.Large, PluginShapes.Large) };
         if (match.Image is not null)
             grid.Children.Add(new Image { Source = new BitmapImage(match.Image), Stretch = Stretch.UniformToFill });
         if (match.Video is not null && _createVideo is not null)
@@ -222,12 +222,13 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
     private FrameworkElement CreateTimeline(TraceMoeMatch match)
     {
         var panel = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        var track = new Grid { Height = 5 };
-        track.Children.Add(new Border { CornerRadius = new CornerRadius(2.5),
+        const double trackHeight = 5, segmentHeight = 15, cutout = 3;
+        var track = new Grid { Height = trackHeight };
+        track.Children.Add(new Border { CornerRadius = new CornerRadius(trackHeight / 2),
             Background = OverlayVisualResources.Frozen(PluginPalette.TraceTimelineTrack(_light)) });
-        var segment = new Border { Height = 15, CornerRadius = new CornerRadius(7.5), HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(3),
-            Child = new Border { CornerRadius = new CornerRadius(4.5),
+        var segment = new Border { Height = segmentHeight, CornerRadius = new CornerRadius(segmentHeight / 2), HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(cutout),
+            Child = new Border { CornerRadius = new CornerRadius(segmentHeight / 2 - cutout),
                 Background = OverlayVisualResources.Frozen(PluginPalette.For(_light).Card.Primary) } };
         // The cutout must follow the actual card surface, including its hover state.
         segment.SetBinding(Border.BackgroundProperty, new Binding(nameof(Border.Background)) { Source = _card });
@@ -236,8 +237,9 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
         {
             var duration = Math.Max(1, match.Duration);
             var width = Math.Min(track.ActualWidth, Math.Max(15, track.ActualWidth * Math.Max(0, match.To - match.From) / duration));
-            segment.Width = width + 6;
-            segment.Margin = new Thickness(Math.Clamp(track.ActualWidth * match.From / duration, 0, Math.Max(0, track.ActualWidth - width)) - 3, -5, -3, -5);
+            segment.Width = width + 2 * cutout;
+            var overhang = (segmentHeight - trackHeight) / 2;
+            segment.Margin = new Thickness(Math.Clamp(track.ActualWidth * match.From / duration, 0, Math.Max(0, track.ActualWidth - width)) - cutout, -overhang, -cutout, -overhang);
         };
         panel.Children.Add(track);
         var scale = new Grid { Margin = new Thickness(0, 5, 0, 0) };
