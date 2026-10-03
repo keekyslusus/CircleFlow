@@ -39,10 +39,10 @@ public sealed class SearchBrowserWindowViewTests
                 {
                     view.ApplyTheme(light);
                     var palette = PluginPalette.For(light);
-                    Assert.Equal(palette.WindowSurface, ((SolidColorBrush)view.Window.Background).Color);
-                    Assert.Equal(palette.WindowSurface, ((SolidColorBrush)content.Background).Color);
-                    Assert.Equal(palette.PrimaryText, ((SolidColorBrush)title.Foreground).Color);
-                    Assert.Equal(palette.PrimaryText, ((SolidColorBrush)close.Foreground).Color);
+                    Assert.Equal(palette.Roles.Background, ((SolidColorBrush)view.Window.Background).Color);
+                    Assert.Equal(palette.Roles.Background, ((SolidColorBrush)content.Background).Color);
+                    Assert.Equal(palette.Roles.OnBackground, ((SolidColorBrush)title.Foreground).Color);
+                    Assert.Equal(palette.Roles.OnBackground, ((SolidColorBrush)close.Foreground).Color);
                 }
                 view.ShowLoading();
                 view.HideLoading();

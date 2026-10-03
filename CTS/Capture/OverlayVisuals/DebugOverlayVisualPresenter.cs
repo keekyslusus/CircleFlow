@@ -12,12 +12,12 @@ internal static class DebugOverlayVisualPresenter
         bool lightTheme) =>
         SetMusicScenario(
             visual.MusicScenarioButtons,
-            PluginPalette.For(lightTheme).MusicOverlay,
+            PluginPalette.For(lightTheme).Card,
             scenario);
 
     internal static void SetMusicScenario(
         Panel buttons,
-        MusicOverlayPalette palette,
+        CardPalette palette,
         MusicDebugScenario scenario)
     {
         foreach (var button in buttons.Children.OfType<Button>())

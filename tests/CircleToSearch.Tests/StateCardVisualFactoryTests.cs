@@ -18,7 +18,7 @@ public sealed class StateCardVisualFactoryTests
     {
         var failure = RunOnSta(() =>
         {
-            var palette = PluginPalette.For(lightTheme).StateCard;
+            var palette = PluginPalette.For(lightTheme).Card;
             var geometry = Geometry.Parse("M0 0 10 0 10 10Z");
             var visual = StateCardVisualFactory.Create(
                 new StateCardOptions(
@@ -65,7 +65,7 @@ public sealed class StateCardVisualFactoryTests
                 Options(
                     close: () => closeCalls++,
                     action: new StateCardAction("Retry now", () => actionCalls++)),
-                PluginPalette.For(lightTheme: false).StateCard);
+                PluginPalette.For(lightTheme: false).Card);
 
             Assert.Equal("Close card", visual.CloseButton.ToolTip);
             Assert.Equal("Close card", AutomationProperties.GetName(visual.CloseButton));
@@ -90,7 +90,7 @@ public sealed class StateCardVisualFactoryTests
         {
             var visual = StateCardVisualFactory.Create(
                 Options(action: null),
-                PluginPalette.For(lightTheme: true).StateCard);
+                PluginPalette.For(lightTheme: true).Card);
             var root = Assert.IsType<Grid>(visual.Card.Child);
 
             Assert.Null(visual.PrimaryActionButton);
@@ -108,7 +108,7 @@ public sealed class StateCardVisualFactoryTests
     {
         var failure = RunOnSta(() =>
         {
-            var palette = PluginPalette.For(lightTheme: true).StateCard;
+            var palette = PluginPalette.For(lightTheme: true).Card;
             var visual = StateCardVisualFactory.Create(Options() with { Title = "Privacy consent" }, palette);
             var row = Assert.IsType<StackPanel>(Assert.IsType<Grid>(visual.Card.Child).Children[1]);
             var column = Assert.IsType<StackPanel>(row.Children[1]);
@@ -137,7 +137,7 @@ public sealed class StateCardVisualFactoryTests
             {
                 Title = "Translate this screenshot?",
                 Message = string.Join(' ', Enumerable.Repeat("Personal information will be shared.", 12)),
-            }, PluginPalette.For(lightTheme: false).StateCard);
+            }, PluginPalette.For(lightTheme: false).Card);
             visual.Card.Measure(new Size(340, double.PositiveInfinity));
             visual.Card.Arrange(new Rect(0, 0, 340, visual.Card.DesiredSize.Height));
 
@@ -162,7 +162,7 @@ public sealed class StateCardVisualFactoryTests
                     Title = "Consent",
                     CardWidth = 304,
                     CardMaxHeight = 120,
-                }, PluginPalette.For(lightTheme: false).StateCard);
+                }, PluginPalette.For(lightTheme: false).Card);
             var root = Assert.IsType<Grid>(visual.Card.Child);
             var row = Assert.IsType<StackPanel>(root.Children[1]);
             Assert.Equal(VerticalAlignment.Top, Assert.IsType<Border>(row.Children[0]).VerticalAlignment);
@@ -186,7 +186,7 @@ public sealed class StateCardVisualFactoryTests
     {
         var failure = RunOnSta(() =>
         {
-            var palette = PluginPalette.For(lightTheme: false).StateCard;
+            var palette = PluginPalette.For(lightTheme: false).Card;
             var message = string.Join(' ', Enumerable.Repeat("Personal information will be shared.", 12));
             var compact = StateCardVisualFactory.Create(Options() with { Message = message }, palette);
             var consent = StateCardVisualFactory.Create(Options(action: new StateCardAction("Continue", () => { })) with
@@ -216,7 +216,7 @@ public sealed class StateCardVisualFactoryTests
     {
         var failure = RunOnSta(() =>
         {
-            var palette = PluginPalette.For(lightTheme: false).StateCard;
+            var palette = PluginPalette.For(lightTheme: false).Card;
 
             Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(Options() with { Message = " " }, palette));
             Assert.Throws<ArgumentException>(() => StateCardVisualFactory.Create(Options() with { AccessibleName = "" }, palette));

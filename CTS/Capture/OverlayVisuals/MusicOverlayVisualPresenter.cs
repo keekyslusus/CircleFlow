@@ -233,7 +233,7 @@ internal static class MusicOverlayVisualPresenter
         else
         {
             var options = CreateStateCardOptions(outcome.Status, strings, publish);
-            card = StateCardVisualFactory.Create(options, theme.StateCard).Card;
+            card = StateCardVisualFactory.Create(options, theme.Card).Card;
         }
         visual.ResultHost.Children.Add(card);
         visual.ResultHost.Visibility = Visibility.Visible;
@@ -242,7 +242,7 @@ internal static class MusicOverlayVisualPresenter
 
     internal static void SetCopyConfirmed(Button button, bool confirmed, UiStrings strings, bool lightTheme)
     {
-        var palette = PluginPalette.For(lightTheme).MusicOverlay;
+        var palette = PluginPalette.For(lightTheme).Card;
         button.Content = OverlayVisualResources.Icon(
             confirmed ? PluginIcons.CheckFilled : PluginIcons.CopyFilled,
             12,

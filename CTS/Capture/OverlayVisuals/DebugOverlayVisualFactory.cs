@@ -13,7 +13,7 @@ internal static class DebugOverlayVisualFactory
 {
     internal static DebugOverlayVisual Create(bool lightTheme, UiStrings strings)
     {
-        var palette = PluginPalette.For(lightTheme).MusicOverlay;
+        var palette = PluginPalette.For(lightTheme).Card;
         (MusicDebugScenario Scenario, string Label)[] scenarios =
         [
             (MusicDebugScenario.Live, strings.DebugMusicLive),
@@ -92,7 +92,7 @@ internal static class DebugOverlayVisualFactory
     }
 
     private static Button CreateDebugButton(
-        MusicOverlayPalette palette,
+        CardPalette palette,
         string label,
         object? tag)
     {
@@ -118,7 +118,7 @@ internal static class DebugOverlayVisualFactory
     }
 
     private static TextBlock CreateDebugSectionTitle(
-        MusicOverlayPalette palette,
+        CardPalette palette,
         string text) => new()
         {
             Text = text,

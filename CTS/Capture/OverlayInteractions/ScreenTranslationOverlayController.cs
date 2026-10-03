@@ -309,7 +309,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         _activity?.Dispose();
         _activity = _activityPresenter.ShowLoading(
             _strings.Translating,
-            OverlayVisualResources.Frozen(PluginPalette.For(_lightTheme).MusicOverlay.Primary));
+            OverlayVisualResources.Frozen(PluginPalette.For(_lightTheme).Roles.Primary));
         if (string.IsNullOrWhiteSpace(target)) ShowFailure(_requestId, TranslationFailure.Service);
         else _publish(new ScreenTranslationRequested(_requestId,
             _region is { } bounds ? VisibleImage.Crop(_scopeOriginal, bounds) : _scopeOriginal, target));
@@ -361,7 +361,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private void ShowCard(StateCardOptions options, TranslationCardKind kind)
     {
         ClearCardImmediately();
-        var card = StateCardVisualFactory.Create(options, PluginPalette.For(_lightTheme).StateCard);
+        var card = StateCardVisualFactory.Create(options, PluginPalette.For(_lightTheme).Card);
         _cardKind = kind;
         _stateCard = card;
         var host = _overlay.StateHost;

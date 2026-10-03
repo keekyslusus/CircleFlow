@@ -237,7 +237,7 @@ internal sealed class OverlayImageTextCoordinator : IDisposable
         _runningRevision = _revision;
         if (_switchFeedback && _activityPresenter is not null)
             _activity = _activityPresenter.ShowLoading(_strings.OcrProcessing,
-                OverlayVisualResources.Frozen(PluginPalette.For(_lightTheme).MusicOverlay.Primary));
+                OverlayVisualResources.Frozen(PluginPalette.For(_lightTheme).Roles.Primary));
         _ocr.Restart(_image, _effectiveTag);
     }
 

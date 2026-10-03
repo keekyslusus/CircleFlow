@@ -87,7 +87,7 @@ internal sealed class NotificationPresenter(
         SystemParameters.StaticPropertyChanged += OnSystemParameterChanged;
         var theme = PluginPalette.For(light);
         _chrome = new NotificationChrome(strings.PluginTitle, strings.Close, window.Icon,
-            SettingsWindowTheme.Frozen(theme.Toast.ErrorAccent), theme.StateCard.ShadowOpacity);
+            SettingsWindowTheme.Frozen(theme.Toast.ErrorAccent), theme.Toast.ShadowOpacity);
         _stack = (StackPanel)window.FindName("Cards");
         _window = window;
         return (window, _stack, _chrome);

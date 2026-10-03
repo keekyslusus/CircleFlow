@@ -324,7 +324,7 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         cancel.ThrowIfCancellationRequested();
 
         var lightTheme = SystemTheme.IsLight();
-        var webViewBackground = ToDrawingColor(PluginPalette.For(lightTheme).WindowSurface);
+        var webViewBackground = ToDrawingColor(PluginPalette.For(lightTheme).Roles.Background);
         var webView = new WebView2 { DefaultBackgroundColor = webViewBackground };
         var windowLifetime = new CancellationTokenSource();
         SearchBrowserWindowView view;
@@ -483,7 +483,7 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
 
     private static void ApplyBrowserTheme(WebView2 webView, bool lightTheme)
     {
-        webView.DefaultBackgroundColor = ToDrawingColor(PluginPalette.For(lightTheme).WindowSurface);
+        webView.DefaultBackgroundColor = ToDrawingColor(PluginPalette.For(lightTheme).Roles.Background);
         if (webView.CoreWebView2 is { } coreWebView)
             coreWebView.Profile.PreferredColorScheme = lightTheme
                 ? CoreWebView2PreferredColorScheme.Light
