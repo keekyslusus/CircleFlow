@@ -164,6 +164,148 @@ public sealed class OverlayActivityPresenterTests
         }));
     }
 
+    [Theory]
+    [InlineData(0xFF, 1.0, false, true)]
+    [InlineData(0x00, 1.0, false, false)]
+    [InlineData(0x90, 1.0, false, false)]
+    [InlineData(0x90, 0.0, false, true)]
+    [InlineData(0xFF, 1.0, true, true)]
+    [InlineData(0x00, 1.0, true, false)]
+    public void Label_switches_to_dark_text_over_a_light_dimmed_backdrop(
+        byte gray, double dimOpacity, bool rgb24Frame, bool darkText)
+    {
+        AssertLabelColors(gray, darkText, visual => visual.Selection.Dim.Opacity = dimOpacity, rgb24Frame);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void Label_follows_the_selection_dim_after_a_reveal(bool labelInsideSelection, bool darkText)
+    {
+        AssertLabelColors(0x90, darkText, visual =>
+        {
+            var selection = labelInsideSelection ? new Rect(100, 50, 440, 300) : new Rect(10, 10, 60, 60);
+            visual.Selection.Dim.Opacity = 0;
+            visual.Selection.DimRect.Opacity = 1;
+            visual.Selection.DimRect.Data = SelectionOverlayTransitions.BuildRevealGeometry(
+                new Size(640, 400),
+                [selection.TopLeft, selection.TopRight, selection.BottomRight, selection.BottomLeft]);
+        });
+    }
+
+    [Fact]
+    public void Showing_does_not_force_layout_and_the_next_layout_samples_the_backdrop()
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var size = new Size(640, 400);
+            var visual = OverlayVisualFactory.CreateRoot(SolidFrame(0xFF, rgb24: false), size, 32, false, TestUiStrings.English);
+            try
+            {
+                visual.Root.Measure(size);
+                visual.Root.Arrange(new Rect(size));
+                visual.Root.UpdateLayout();
+                using var presenter = new OverlayActivityPresenter(
+                    visual.ActivityHost, () => false, new OverlayBackdropSampler(visual.Selection));
+                using var presentation = presenter.ShowContent(new Border { Width = 80, Height = 80 }, "Translating");
+                var label = Assert.Single(Descendants(visual.ActivityHost).OfType<TextBlock>());
+
+                Assert.False(visual.ActivityHost.IsMeasureValid);
+                Assert.Equal(PluginPalette.ListeningText, Assert.IsType<SolidColorBrush>(label.Foreground).Color);
+                visual.Root.UpdateLayout();
+                Assert.Equal(PluginPalette.ListeningTextOnLightBackdrop, Assert.IsType<SolidColorBrush>(label.Foreground).Color);
+            }
+            finally
+            {
+                visual.Music.Waveform.Dispose();
+                visual.Effects.SceneRipples.Dispose();
+            }
+        }));
+    }
+
+    [Fact]
+    public void An_unrelated_layout_pass_before_the_label_is_sized_does_not_stop_sampling()
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var size = new Size(640, 400);
+            var visual = OverlayVisualFactory.CreateRoot(SolidFrame(0xFF, rgb24: false), size, 32, false, TestUiStrings.English);
+            try
+            {
+                using var presenter = new OverlayActivityPresenter(
+                    visual.ActivityHost, () => false, new OverlayBackdropSampler(visual.Selection));
+                using var presentation = presenter.ShowContent(new Border { Width = 80, Height = 80 }, "Translating");
+                var label = Assert.Single(Descendants(visual.ActivityHost).OfType<TextBlock>());
+                var unrelated = new Border { Width = 10, Height = 10 };
+                unrelated.Measure(new Size(10, 10));
+                unrelated.Arrange(new Rect(0, 0, 10, 10));
+                unrelated.UpdateLayout();
+                Assert.Equal(PluginPalette.ListeningText, Assert.IsType<SolidColorBrush>(label.Foreground).Color);
+
+                visual.Root.Measure(size);
+                visual.Root.Arrange(new Rect(size));
+                visual.Root.UpdateLayout();
+
+                Assert.Equal(PluginPalette.ListeningTextOnLightBackdrop, Assert.IsType<SolidColorBrush>(label.Foreground).Color);
+            }
+            finally
+            {
+                visual.Music.Waveform.Dispose();
+                visual.Effects.SceneRipples.Dispose();
+            }
+        }));
+    }
+
+    private static void AssertLabelColors(byte gray, bool darkText, Action<OverlayVisual> arrange, bool rgb24Frame = false)
+    {
+        Assert.Null(RunOnSta(() =>
+        {
+            var size = new Size(640, 400);
+            var visual = OverlayVisualFactory.CreateRoot(SolidFrame(gray, rgb24Frame), size, 32, false, TestUiStrings.English);
+            try
+            {
+                arrange(visual);
+                visual.Root.Measure(size);
+                visual.Root.Arrange(new Rect(size));
+                visual.Root.UpdateLayout();
+                using var presenter = new OverlayActivityPresenter(
+                    visual.ActivityHost, () => false, new OverlayBackdropSampler(visual.Selection));
+                using var presentation = presenter.ShowContent(new Border { Width = 80, Height = 80 }, "Translating");
+                visual.Root.UpdateLayout();
+
+                var label = Assert.Single(Descendants(visual.ActivityHost).OfType<TextBlock>());
+                var shadow = Assert.IsType<System.Windows.Media.Effects.DropShadowEffect>(label.Effect);
+                Assert.Equal(
+                    darkText ? PluginPalette.ListeningTextOnLightBackdrop : PluginPalette.ListeningText,
+                    Assert.IsType<SolidColorBrush>(label.Foreground).Color);
+                Assert.Equal(
+                    darkText ? PluginPalette.ListeningShadowOnLightBackdrop : PluginPalette.OpaqueBlack,
+                    shadow.Color);
+            }
+            finally
+            {
+                visual.Music.Waveform.Dispose();
+                visual.Effects.SceneRipples.Dispose();
+            }
+        }));
+    }
+
+    private static System.Windows.Media.Imaging.BitmapSource SolidFrame(byte gray, bool rgb24)
+    {
+        const int width = 64, height = 40;
+        var bytesPerPixel = rgb24 ? 3 : 4;
+        var pixels = new byte[width * height * bytesPerPixel];
+        for (var index = 0; index < pixels.Length; index += bytesPerPixel)
+        {
+            pixels[index] = pixels[index + 1] = pixels[index + 2] = gray;
+            if (!rgb24) pixels[index + 3] = 0xFF;
+        }
+        var frame = System.Windows.Media.Imaging.BitmapSource.Create(
+            width, height, 96, 96, rgb24 ? PixelFormats.Rgb24 : PixelFormats.Bgra32, null, pixels, width * bytesPerPixel);
+        frame.Freeze();
+        return frame;
+    }
+
     private static Grid Host() => new()
     {
         Visibility = Visibility.Collapsed,

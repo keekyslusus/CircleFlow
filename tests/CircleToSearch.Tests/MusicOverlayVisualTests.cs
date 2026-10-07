@@ -87,7 +87,7 @@ public sealed class MusicOverlayVisualTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Listening_label_stays_light_with_a_dark_shadow_in_both_themes(bool lightTheme)
+    public void Listening_label_without_a_backdrop_sampler_is_light_with_a_dark_shadow_in_both_themes(bool lightTheme)
     {
         var failure = RunOnSta(() =>
         {

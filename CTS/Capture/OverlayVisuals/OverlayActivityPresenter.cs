@@ -9,10 +9,23 @@ using CircleToSearch.Ui;
 
 internal sealed class OverlayActivityPresenter : IDisposable
 {
+    private const double DarkShadowOpacity = 0.4;
+    private const double LightShadowOpacity = 0.7;
+    private static readonly Brush LightText = OverlayVisualResources.Frozen(PluginPalette.ListeningText);
+    private static readonly Brush DarkText = OverlayVisualResources.Frozen(PluginPalette.ListeningTextOnLightBackdrop);
+
     private readonly Grid _host;
     private readonly Func<bool> _animationsEnabled;
+    private readonly OverlayBackdropSampler? _backdrop;
     private readonly Grid _contentHost = new();
     private readonly TextBlock _label;
+    private readonly DropShadowEffect _labelShadow = new()
+    {
+        Color = PluginPalette.OpaqueBlack,
+        BlurRadius = 10,
+        ShadowDepth = 1,
+        Opacity = DarkShadowOpacity,
+    };
     private readonly Grid _panel;
     private readonly LoadingIndicatorVisual _loading = new() { Width = 80, Height = 80 };
     private ActivityPresentation? _current;
@@ -20,13 +33,14 @@ internal sealed class OverlayActivityPresenter : IDisposable
     private long _generation;
     private bool _disposed;
 
-    internal OverlayActivityPresenter(Grid host, Func<bool> animationsEnabled)
+    internal OverlayActivityPresenter(Grid host, Func<bool> animationsEnabled, OverlayBackdropSampler? backdrop = null)
     {
         _host = host;
         _animationsEnabled = animationsEnabled;
+        _backdrop = backdrop;
         _label = new TextBlock
         {
-            Foreground = OverlayVisualResources.Frozen(PluginPalette.ListeningText),
+            Foreground = LightText,
             HorizontalAlignment = HorizontalAlignment.Center,
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
@@ -35,13 +49,7 @@ internal sealed class OverlayActivityPresenter : IDisposable
             FontWeight = FontWeights.Medium,
             FontFamily = PluginTypography.Font,
             Margin = new Thickness(0, 10, 0, 0),
-            Effect = new DropShadowEffect
-            {
-                Color = PluginPalette.OpaqueBlack,
-                BlurRadius = 10,
-                ShadowDepth = 1,
-                Opacity = 0.4,
-            },
+            Effect = _labelShadow,
         };
         _label.SetBinding(FrameworkElement.MaxWidthProperty, new Binding(nameof(FrameworkElement.ActualWidth))
         {
@@ -107,9 +115,48 @@ internal sealed class OverlayActivityPresenter : IDisposable
         _contentHost.Children.Add(content);
         if (!_host.Children.Contains(_panel)) _host.Children.Add(_panel);
         _host.Visibility = Visibility.Visible;
+        ApplyLabelContrast();
         if (ownsRendering) _loading.Start(_animationsEnabled());
         StateCardTransitions.BeginEntrance(_panel, _animationsEnabled());
         return presentation;
+    }
+
+    // A light screenshot behind the label defeats the dark shadow, so the label flips to dark text there.
+    // The backdrop is sampled once the label is laid out; LayoutUpdated runs before that frame renders,
+    // so the label never shows the wrong color and Show does not force layout mid mode transition.
+    private void ApplyLabelContrast()
+    {
+        SetLabelColors(darkText: false);
+        if (_backdrop is not null) _label.LayoutUpdated += OnLabelLayoutUpdated;
+    }
+
+    private void OnLabelLayoutUpdated(object? sender, EventArgs e)
+    {
+        // LayoutUpdated fires for every layout pass on this dispatcher, including ones before the label is sized.
+        if (!_label.IsArrangeValid || _label.ActualWidth <= 0 || _label.ActualHeight <= 0) return;
+        _label.LayoutUpdated -= OnLabelLayoutUpdated;
+        Color? backdrop;
+        try
+        {
+            backdrop = _backdrop?.AverageColorBehind(_label);
+        }
+        // The contrast is cosmetic: an unreadable frame keeps the light label instead of failing the layout pass.
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException
+            or NotSupportedException or System.IO.IOException or System.Runtime.InteropServices.ExternalException)
+        {
+            return;
+        }
+        if (backdrop is not { } color) return;
+        SetLabelColors(
+            PluginPalette.ContrastRatio(color, PluginPalette.ListeningTextOnLightBackdrop) >
+            PluginPalette.ContrastRatio(color, PluginPalette.ListeningText));
+    }
+
+    private void SetLabelColors(bool darkText)
+    {
+        _label.Foreground = darkText ? DarkText : LightText;
+        _labelShadow.Color = darkText ? PluginPalette.ListeningShadowOnLightBackdrop : PluginPalette.OpaqueBlack;
+        _labelShadow.Opacity = darkText ? LightShadowOpacity : DarkShadowOpacity;
     }
 
     private Task HideAsync(ActivityPresentation presentation)
@@ -153,6 +200,7 @@ internal sealed class OverlayActivityPresenter : IDisposable
     {
         var presentation = _current;
         _current = null;
+        _label.LayoutUpdated -= OnLabelLayoutUpdated;
         _exit?.Dispose();
         _exit = null;
         if (presentation?.OwnsRendering == true) _loading.Stop();

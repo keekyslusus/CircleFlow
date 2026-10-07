@@ -498,7 +498,8 @@ public static class CompositionRoot
         {
             var activityPresenter = Track(new OverlayActivityPresenter(
                 context.Visual.ActivityHost,
-                dependencies.AnimationsEnabled));
+                dependencies.AnimationsEnabled,
+                new OverlayBackdropSampler(context.Visual.Selection)));
             var toast = Track(new ToastOverlayController(
                 context.Visual.Bottom,
                 context.Visual.LightTheme,

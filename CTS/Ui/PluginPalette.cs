@@ -145,6 +145,8 @@ internal static class PluginPalette
     public static Color SelectionFrameFill { get; } = Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF);
     public static Color EntranceParticle { get; } = Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF);
     public static Color ListeningText { get; } = Color.FromRgb(0xF4, 0xF5, 0xF8);
+    public static Color ListeningTextOnLightBackdrop { get; } = Color.FromRgb(0x1F, 0x20, 0x23);
+    public static Color ListeningShadowOnLightBackdrop { get; } = Colors.White;
     public static Color SceneRippleAudio { get; } = Color.FromRgb(0xC5, 0x9B, 0xFF);
 
     // The sample screens show some other app, so they keep the same colors in both themes.
@@ -307,6 +309,20 @@ internal static class PluginPalette
         TagText: roles.OnSecondaryContainer,
         TagHighlight: Composite(roles.SecondaryContainer, WithAlpha(roles.Primary, tagHighlightAlpha)),
         ShadowOpacity: shadowOpacity);
+
+    internal static double ContrastRatio(Color first, Color second)
+    {
+        static double Channel(byte value)
+        {
+            var srgb = value / 255d;
+            return srgb <= 0.03928 ? srgb / 12.92 : Math.Pow((srgb + 0.055) / 1.055, 2.4);
+        }
+        static double Luminance(Color color) =>
+            0.2126 * Channel(color.R) + 0.7152 * Channel(color.G) + 0.0722 * Channel(color.B);
+        var (lighter, darker) = (Luminance(first), Luminance(second));
+        if (lighter < darker) (lighter, darker) = (darker, lighter);
+        return (lighter + 0.05) / (darker + 0.05);
+    }
 
     internal static Color Composite(Color background, Color foreground)
     {
