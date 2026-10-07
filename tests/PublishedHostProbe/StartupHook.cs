@@ -8,7 +8,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using CircleToSearch;
+using CircleToSearch.Capture;
 using CircleToSearch.Interop;
+using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
 using CircleToSearch.Settings;
@@ -69,7 +71,8 @@ internal static class StartupHook
         var notifications = new PluginNotifier((_, _) => { }, (_, _, _, _) => { }, (_, message) => throw new InvalidOperationException(message), log);
         var embeddedStrings = new UiStrings(LocalUiStrings.LoadEmbeddedEnglish().Get);
         var settingsWindow = new SettingsWindowView(embeddedStrings, true, paths.TrayIconPath,
-            CreateSettingsModel(paths, embeddedStrings, notifications, log)).Window;
+            CreateSettingsModel(paths, embeddedStrings, notifications, log),
+            feedback => new ClipboardCopyService(_ => { }, feedback, embeddedStrings)).Window;
         Require(settingsWindow.Icon is not null, "Settings icon did not load.");
         settingsWindow.Close();
         var source = LocalUiStrings.LoadEnglish(paths.LanguagesDirectory)
@@ -147,7 +150,7 @@ internal static class StartupHook
         }
     }
 
-    // In-memory settings and a no-op URL opener keep the probe from changing the user's settings or opening anything.
+    // In-memory settings, a probe-only music history file and a no-op URL opener keep the probe from changing user data or opening anything.
     private static SettingsWindowModel CreateSettingsModel(AppPaths paths, UiStrings strings, IPluginNotifier notifier, PluginLog log)
     {
         var settings = new SettingsService(new AppSettings(), _ => { },
@@ -159,8 +162,11 @@ internal static class StartupHook
         var language = new UiLanguage(LocalUiStrings.LoadEnglish(paths.LanguagesDirectory),
             new AppLanguageCatalog(paths.LanguagesDirectory), CultureInfo.GetCultureInfo("en-US"), log);
         var urlOpening = new UrlOpeningService(_ => false, notifier, strings, log);
+        var history = new MusicHistory(Path.Combine(paths.TempDirectory, "publish-probe-music-history.json"),
+            () => false, () => MusicHistory.KeepForever, TimeProvider.System, log);
         return new SettingsWindowModel(settings, new ProviderSelectionStore(router, settings, notifier, strings, log),
-            new OcrLanguageCatalog(), language, CultureInfo.GetCultureInfo("en-US"), new ProjectSupport(urlOpening), urlOpening,
+            new OcrLanguageCatalog(), history, new MusicResultPresenter(urlOpening, notifier, strings),
+            language, CultureInfo.GetCultureInfo("en-US"), new ProjectSupport(urlOpening), urlOpening,
             paths, strings, () => null, () => null, new WindowsStartupRegistration(paths.ExecutablePath, log), () => { }, () => { }, () => { },
             checkForUpdates: null);
     }
