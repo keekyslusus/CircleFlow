@@ -447,6 +447,12 @@ public sealed class SettingsPreviewTests
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
             Click(window, "page:search");
             AssertPage("search");
+            var combo = Find<ComboBox>(window, "TextSearch");
+            combo.IsDropDownOpen = true;
+            Pump();
+            SideButton(window, MouseButton.XButton1);
+            Assert.False(combo.IsDropDownOpen);
+            AssertPage("search");
 
             Assert.True(SideButton(window, MouseButton.XButton1));
             AssertPage("general");
@@ -484,9 +490,10 @@ public sealed class SettingsPreviewTests
 
     private static bool SideButton(Window window, MouseButton button)
     {
-        var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button) { RoutedEvent = UIElement.PreviewMouseUpEvent };
-        window.RaiseEvent(args);
-        return args.Handled;
+        window.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button) { RoutedEvent = UIElement.PreviewMouseDownEvent });
+        var release = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button) { RoutedEvent = UIElement.PreviewMouseUpEvent };
+        window.RaiseEvent(release);
+        return release.Handled;
     }
 
     [Theory]

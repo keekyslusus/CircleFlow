@@ -376,7 +376,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
 
     public bool TryGoBack()
     {
-        if (!IsExpanded) return false;
+        if (!IsExpanded || !_host.IsActive) return false;
         Collapse();
         return true;
     }

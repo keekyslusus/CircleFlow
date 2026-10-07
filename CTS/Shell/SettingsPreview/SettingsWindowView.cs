@@ -37,6 +37,7 @@ internal sealed class SettingsWindowView
     private IInputElement? _dialogOwner;
     private string? _pendingShortcut;
     private bool _loadingSettings;
+    private bool _sidePressClosedDropdown;
 
     internal SettingsWindowView(UiStrings strings, bool lightTheme, string iconPath, SettingsWindowModel model,
         Func<Action<ToastNotification>, ClipboardCopyService> createClipboardCopy)
@@ -69,7 +70,8 @@ internal sealed class SettingsWindowView
             lightTheme, ShowStatus, ShowProviderMenuSummary);
         _historyRetentionMotion = new SettingsCollapseMotion(Element<FrameworkElement>("HistoryRetentionRow"));
         _historyContentMotion = new SettingsCollapseMotion(Element<FrameworkElement>("HistoryContent"));
-        _navigation = new SettingsNavigationHistory(Pages.First(page => Element<RadioButton>("Nav_" + page).IsChecked == true));
+        _navigation = new SettingsNavigationHistory(
+            Pages.FirstOrDefault(page => Element<RadioButton>("Nav_" + page).IsChecked == true) ?? Pages[0]);
         model.MusicHistoryChanged += OnMusicHistoryChanged;
         Window.Closed += (_, _) =>
         {
@@ -85,6 +87,7 @@ internal sealed class SettingsWindowView
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
         Window.AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavigationChecked));
         Window.PreviewKeyDown += OnPreviewKeyDown;
+        Window.PreviewMouseDown += OnPreviewMouseDown;
         Window.PreviewMouseUp += OnPreviewMouseUp;
         var shortcutInput = Element<Border>("ShortcutInput");
         shortcutInput.PreviewKeyDown += RecordShortcut;
@@ -172,10 +175,28 @@ internal sealed class SettingsWindowView
         ShowPage(page);
     }
 
+    // A side press closes an open dropdown, so its release must not navigate as well.
+    private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!IsSideButton(e)) return;
+        _sidePressClosedDropdown = false;
+        foreach (var (comboBox, _) in _dropdowns)
+        {
+            if (!comboBox.IsDropDownOpen) continue;
+            comboBox.IsDropDownOpen = false;
+            _sidePressClosedDropdown = true;
+        }
+    }
+
     private void OnPreviewMouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton is not (MouseButton.XButton1 or MouseButton.XButton2)) return;
+        if (!IsSideButton(e)) return;
         e.Handled = true;
+        if (_sidePressClosedDropdown)
+        {
+            _sidePressClosedDropdown = false;
+            return;
+        }
         if (IsDialogOpen)
         {
             if (e.ChangedButton == MouseButton.XButton1) CloseDialog();
@@ -184,6 +205,9 @@ internal sealed class SettingsWindowView
         var page = e.ChangedButton == MouseButton.XButton1 ? _navigation.GoBack() : _navigation.GoForward();
         if (page is not null) Element<RadioButton>("Nav_" + page).IsChecked = true;
     }
+
+    private static bool IsSideButton(MouseButtonEventArgs e) =>
+        e.ChangedButton is MouseButton.XButton1 or MouseButton.XButton2;
 
     private void ShowPage(string page)
     {

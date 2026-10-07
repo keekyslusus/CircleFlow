@@ -143,6 +143,13 @@ internal sealed class MusicOverlayController : IDisposable
         AutomationProperties.SetName(_visual.Button, _strings.MusicRecognitionAction);
     }
 
+    internal bool TryCloseResult()
+    {
+        if (_disposed || _getMode() != OverlayInteractionMode.MusicResult) return false;
+        _resultCommandRequested(new DismissMusicResult());
+        return true;
+    }
+
     internal void ReportAudio(MusicVisualizationFrame frame)
     {
         if (_disposed || _getMode() != OverlayInteractionMode.Listening) return;

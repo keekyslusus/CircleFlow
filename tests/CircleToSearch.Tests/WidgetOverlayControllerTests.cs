@@ -93,15 +93,67 @@ public sealed class WidgetOverlayControllerTests
             commands.OfType<VisualSelection>().Last().Selection.Dispose();
             overlay.ShowWidgetResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForPinterest([])));
             Assert.Equal(OverlayInteractionMode.WidgetResult, overlay.Mode);
-            overlay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(overlay), 0, Key.Escape)
-            {
-                RoutedEvent = Keyboard.PreviewKeyDownEvent,
-            });
+            RaiseEscape(overlay);
             Assert.Equal(OverlayInteractionMode.Closing, overlay.Mode);
             Assert.IsType<CancelSession>(commands[^1]);
 
             overlay.CloseFromSession();
             Dispatcher.Run();
+        });
+    }
+
+    [Fact]
+    public void Escape_and_mouse_back_collapse_the_pinterest_masonry_before_leaving_the_card()
+    {
+        RunSta(() =>
+        {
+            using var source = new GdiBitmap(640, 400);
+            var bounds = new GdiRectangle(0, 0, 640, 400);
+            var start = new Point(100, 100);
+            var finish = new Point(180, 160);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                source,
+                bounds,
+                bounds,
+                1,
+                new OverlayOptions(8, 12),
+                TestUiStrings.English,
+                TestOverlayControllers.CreateFactory(
+                    pointerPosition: e => e.RoutedEvent == UIElement.MouseLeftButtonUpEvent ? finish : start),
+                overscan: false,
+                providers: [new(SearchProviderIds.Pinterest, "Pinterest")],
+                initialProviderId: SearchProviderIds.Pinterest,
+                publishCommand: commands.Add);
+            overlay.Show();
+            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
+            commands.OfType<VisualSelection>().Single().Selection.Dispose();
+            overlay.ShowWidgetResult(VisualSearchPreparationOutcome.Ready(
+                PreparedVisualSearch.ForPinterest(PinterestOverlayTests.Pins())));
+            overlay.UpdateLayout();
+            var back = Named(TestUiStrings.English.PinterestBack);
+
+            Named(TestUiStrings.English.PinterestShowAll).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(Visibility.Visible, back.Visibility);
+            RaiseEscape(overlay);
+            Assert.Equal(Visibility.Collapsed, back.Visibility);
+            Assert.Equal(OverlayInteractionMode.WidgetResult, overlay.Mode);
+
+            overlay.UpdateLayout();
+            Named(TestUiStrings.English.PinterestShowAll).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(Visibility.Visible, back.Visibility);
+            RaiseMouseBack(overlay);
+            Assert.Equal(Visibility.Collapsed, back.Visibility);
+            Assert.Equal(OverlayInteractionMode.WidgetResult, overlay.Mode);
+            RaiseMouseBack(overlay);
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            Assert.DoesNotContain(commands, command => command is CancelSession);
+
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+
+            Button Named(string name) => Descendants(overlay.VisualState.Bottom.Stack).OfType<Button>()
+                .Single(button => AutomationProperties.GetName(button) == name);
         });
     }
 
@@ -380,6 +432,12 @@ public sealed class WidgetOverlayControllerTests
             Source = input,
         });
     }
+
+    private static void RaiseEscape(OverlayWindow overlay) =>
+        overlay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(overlay), 0, Key.Escape)
+        {
+            RoutedEvent = Keyboard.PreviewKeyDownEvent,
+        });
 
     private static void RaiseMouseBack(OverlayWindow overlay) =>
         overlay.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.XButton1)

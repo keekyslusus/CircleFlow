@@ -244,7 +244,7 @@ public sealed class PinterestOverlayTests
             .ToList();
 
     // Previews come from local files so the tests stay offline; an optional folder of real pins shows true content.
-    private static PinterestPin[] Pins()
+    internal static PinterestPin[] Pins()
     {
         var preview = Environment.GetEnvironmentVariable("CTS_PINTEREST_PREVIEW_DIRECTORY");
         var sizes = new (int Width, int Height)[]

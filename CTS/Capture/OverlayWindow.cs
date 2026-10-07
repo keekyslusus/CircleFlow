@@ -372,8 +372,7 @@ public sealed class OverlayWindow : Window
             e.LeftButton == MouseButtonState.Pressed ||
             e.RightButton == MouseButtonState.Pressed ||
             TryStepBack()) return;
-        if (Mode == OverlayInteractionMode.MusicResult) HandleMusicResultCommand(new DismissMusicResult());
-        else _widget.TryCloseResult();
+        if (!_music.TryCloseResult()) _widget.TryCloseResult();
     }
 
     private bool TryStepBack()
