@@ -13,6 +13,7 @@ using GdiRectangle = System.Drawing.Rectangle;
 
 namespace CircleToSearch.Tests;
 
+[Trait("Category", "Slow")]
 public sealed class WidgetOverlayControllerTests
 {
     [Fact]
@@ -380,12 +381,67 @@ public sealed class WidgetOverlayControllerTests
         });
     }
 
+    [Fact]
+    public void Ctrl_c_copies_the_anime_info_of_a_shown_trace_result()
+    {
+        RunSta(() =>
+        {
+            using var source = new GdiBitmap(640, 400);
+            var visual = CreateVisual();
+            var window = new Window
+            {
+                Content = visual.Root,
+                Width = 640,
+                Height = 400,
+                ShowActivated = false,
+                ShowInTaskbar = false,
+            };
+            var state = new OverlayInteractionState();
+            string? copied = null;
+            var controller = CreateController(
+                visual,
+                state,
+                command => OverlayCommandOwnership.DisposePayload(command),
+                bounds => new SelectionOutcome(bounds, (GdiBitmap)source.Clone()),
+                setClipboard: text => copied = text);
+            window.Show();
+            window.UpdateLayout();
+            try
+            {
+                var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(
+                    TestOutputPaths.RepoDirectory,
+                    "tests",
+                    "CircleToSearch.Tests",
+                    "Fixtures",
+                    "trace-moe.json")))! with { Image = null, Video = null };
+                Assert.True(controller.TryStart(SearchProviderIds.TraceMoe, new GdiRectangle(10, 10, 120, 90)));
+                Assert.False(controller.TryHandleShortcut(Key.C, ModifierKeys.Control));
+
+                controller.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
+                window.UpdateLayout();
+
+                Assert.False(controller.TryHandleShortcut(Key.C, ModifierKeys.None));
+                Assert.Null(copied);
+                Assert.True(controller.TryHandleShortcut(Key.C, ModifierKeys.Control));
+                Assert.StartsWith(match.Title, copied);
+            }
+            finally
+            {
+                controller.Dispose();
+                DisposeVisual(visual);
+                window.Content = null;
+                window.Close();
+            }
+        });
+    }
+
     private static WidgetOverlayController CreateController(
         OverlayVisual visual,
         OverlayInteractionState state,
         Action<IOverlayCommand>? publish,
         Func<GdiRectangle, SelectionOutcome> createSelectionCopy,
-        Func<Uri, ITraceVideoPreview>? createVideo = null) =>
+        Func<Uri, ITraceVideoPreview>? createVideo = null,
+        Action<string>? setClipboard = null) =>
         new(
             visual.Root,
             new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled),
@@ -393,7 +449,7 @@ public sealed class WidgetOverlayControllerTests
             visual.Effects,
             TestUiStrings.English,
             () => visual.LightTheme,
-            new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English),
+            new ClipboardCopyService(setClipboard ?? (_ => { }), _ => { }, TestUiStrings.English),
             () => state.Mode,
             mode => state.TransitionTo(mode),
             publish,

@@ -67,6 +67,13 @@ internal sealed class TextSelectionOverlayController : IDisposable
     internal bool HasSelection => _selection is not null;
     internal bool IsActionMenuOpen => _visual.Toolbar.IsOpen;
 
+    internal bool TryHandleShortcut(Key key, ModifierKeys modifiers)
+    {
+        if (_disposed || _selection is null || !IsActionMenuOpen) return false;
+        if (OverlayShortcuts.Copy.Matches(key, modifiers)) return KeyboardShortcut.Press(_visual.CopyButton);
+        return OverlayShortcuts.Search.Matches(key, modifiers) && KeyboardShortcut.Press(_visual.SearchButton);
+    }
+
     internal void SetDocument(OcrDocument? document)
     {
         _document = document;

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -71,6 +72,7 @@ public sealed class OverlayWindow : Window
     private bool _exitFadeStarted;
     private bool _entranceRipplePending;
     private bool _resourcesDisposed;
+    private bool _focusMovedByKeyboard;
     private DispatcherTimer? _inputSwitcherCheck;
 
     internal OverlayInteractionMode Mode => _interaction.Mode;
@@ -198,7 +200,9 @@ public sealed class OverlayWindow : Window
 
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
+        PreviewTextInput += OnPreviewTextInput;
         PreviewMouseUp += OnPreviewMouseUp;
+        PreviewMouseDown += OnPreviewMouseDown;
         PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
         Deactivated += OnDeactivated;
         Activated += OnActivated;
@@ -348,6 +352,7 @@ public sealed class OverlayWindow : Window
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key is Key.Tab or Key.Left or Key.Right or Key.Up or Key.Down) _focusMovedByKeyboard = true;
         if (_publishCommand is not null &&
             e.Key == Key.D &&
             Keyboard.Modifiers.HasFlag(ModifierKeys.Control) &&
@@ -357,9 +362,47 @@ public sealed class OverlayWindow : Window
             e.Handled = true;
             return;
         }
+        if (CanUseShortcuts() && !e.IsRepeat && TryHandleShortcut(e.Key, Keyboard.Modifiers))
+        {
+            e.Handled = true;
+            return;
+        }
         if (e.Key != Key.Escape) return;
         if (!TryStepBack()) CancelInternal();
         e.Handled = true;
+    }
+
+    private void OnPreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (CanUseShortcuts() && _imageSelection.TryTypeQuestion(e.Text)) e.Handled = true;
+    }
+
+    private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e) => _focusMovedByKeyboard = false;
+
+    // The ask prompt keeps its own editing keys, and a key pressed mid-drag must not act on a half-drawn selection.
+    private bool CanUseShortcuts() =>
+        !_interaction.IsFinished &&
+        Keyboard.FocusedElement is not TextBoxBase &&
+        Mouse.LeftButton != MouseButtonState.Pressed &&
+        Mouse.RightButton != MouseButtonState.Pressed;
+
+    internal bool TryHandleShortcut(Key key, ModifierKeys modifiers)
+    {
+        // A click also focuses its button, so only a button reached with Tab or arrows owns Enter; after a click,
+        // Enter keeps meaning Search. A faded-out tray stays focusable, so its hidden buttons never take Enter.
+        if (key == Key.Enter && _focusMovedByKeyboard &&
+            Keyboard.FocusedElement is ButtonBase { IsHitTestVisible: true }) return false;
+        if (_imageSelection.Bounds is not null) return _imageSelection.TryHandleShortcut(key, modifiers);
+        if (_textSelection.TryHandleShortcut(key, modifiers) ||
+            _music.TryHandleShortcut(key, modifiers) ||
+            _widget.TryHandleShortcut(key, modifiers)) return true;
+        if (!_actionTray.IsShown) return false;
+        if (_provider.IsOpen)
+            return KeyboardShortcut.Digit(key, modifiers) is { } number && _provider.TryChooseFromKeyboard(number);
+        if (OverlayShortcuts.ProviderMenu.Matches(key, modifiers)) return _provider.TryToggleFromKeyboard();
+        if (OverlayShortcuts.ScreenTranslation.Matches(key, modifiers))
+            return KeyboardShortcut.Press(_visual.TranslationAction.Button);
+        return OverlayShortcuts.MusicRecognition.Matches(key, modifiers) && KeyboardShortcut.Press(_visual.Music.Button);
     }
 
     // Mouse Back mirrors Escape but never closes the overlay: side buttons are easy to press by accident.
@@ -786,7 +829,9 @@ public sealed class OverlayWindow : Window
         _resourcesDisposed = true;
         Loaded -= OnLoaded;
         PreviewKeyDown -= OnPreviewKeyDown;
+        PreviewTextInput -= OnPreviewTextInput;
         PreviewMouseUp -= OnPreviewMouseUp;
+        PreviewMouseDown -= OnPreviewMouseDown;
         PreviewMouseLeftButtonDown -= OnPreviewMouseLeftButtonDown;
         Deactivated -= OnDeactivated;
         Activated -= OnActivated;

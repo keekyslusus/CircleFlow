@@ -19,6 +19,8 @@ internal sealed class ActionTrayOverlayController : IDisposable
 
     internal int ControlRippleCount => _controlRipples.Count;
 
+    internal bool IsShown => !_dismissed && !_disposed;
+
     internal void ShowEntrance()
     {
         if (_disposed) return;

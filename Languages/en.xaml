@@ -119,6 +119,7 @@
     <system:String x:Key="plugin_circletosearch_search_browser_loading">Searching with {0}…</system:String>
     <system:String x:Key="plugin_circletosearch_search_browser_show_failed">{0} results could not be shown in the embedded browser.</system:String>
     <system:String x:Key="plugin_circletosearch_text_copy">Copy</system:String>
+    <system:String x:Key="plugin_circletosearch_shortcut_hint">{0} ({1})</system:String>
     <system:String x:Key="plugin_circletosearch_text_search">Search</system:String>
     <system:String x:Key="plugin_circletosearch_text_search_too_long">The selected text is too long to search in a browser.</system:String>
     <system:String x:Key="plugin_circletosearch_text_search_open_failed">The text search could not be opened in the default browser.</system:String>
@@ -309,6 +310,7 @@ Third-party services are used for search, translation, and recognition.</system:
     <system:String x:Key="app_settings_alt">Alt</system:String>
     <system:String x:Key="app_settings_shift">Shift</system:String>
     <system:String x:Key="app_settings_space">Space</system:String>
+    <system:String x:Key="app_settings_enter">Enter</system:String>
     <system:String x:Key="app_settings_updates_checking">Checking for updates...</system:String>
     <system:String x:Key="app_settings_updates_current">CircleFlow is up to date.</system:String>
     <system:String x:Key="app_settings_updates_available">An update is available. Use Update in the notification to install it.</system:String>

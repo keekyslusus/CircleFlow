@@ -374,6 +374,8 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         });
     }
 
+    public bool TryCopy() => false;
+
     public bool TryGoBack()
     {
         if (!IsExpanded || !_host.IsActive) return false;

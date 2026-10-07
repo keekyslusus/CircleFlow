@@ -157,6 +157,7 @@ public sealed class UiStrings
     public string SearchBrowserShowFailed(string providerName) =>
         Get("plugin_circletosearch_search_browser_show_failed", providerName);
     public string TextCopy => Get("plugin_circletosearch_text_copy");
+    public string ShortcutHint(string action, string keys) => Get("plugin_circletosearch_shortcut_hint", action, keys);
     public string TextSearch => Get("plugin_circletosearch_text_search");
     public string TextSearchTooLong => Get("plugin_circletosearch_text_search_too_long");
     public string TextSearchOpenFailed => Get("plugin_circletosearch_text_search_open_failed");

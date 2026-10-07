@@ -586,6 +586,100 @@ public sealed class ProviderMusicOverlayUiTests
     }
 
     [Fact]
+    public void Number_keys_press_tray_actions_and_choose_providers_by_menu_position()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    [.. Providers, new(SearchProviderIds.Pinterest, "Pinterest")],
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                TestOverlayControllers.CreateFactory(),
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+            void Press(Key key) => overlay.RaiseEvent(new KeyEventArgs(
+                Keyboard.PrimaryDevice, PresentationSource.FromVisual(overlay)!, 0, key)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent,
+            });
+
+            Press(Key.D1);
+            Press(Key.D2);
+            Assert.Empty(commands);
+            Assert.Equal(Visibility.Visible, overlay.VisualState.Provider!.Menu.Visibility);
+            overlay.UpdateLayout();
+            Press(Key.D9);
+            Press(Key.NumPad2);
+            Assert.Equal(SearchProviderIds.Pinterest,
+                Assert.IsType<ProviderSelected>(Assert.Single(commands)).ProviderId);
+
+            Press(Key.D3);
+            Assert.IsType<ScreenTranslationRequested>(commands[^1]);
+            Press(Key.D3);
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+
+            Press(Key.D4);
+            Assert.IsType<StartMusicRecognition>(commands[^1]);
+            Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
+            Press(Key.D4);
+            Assert.IsType<CancelSession>(commands[^1]);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Ctrl_c_copies_the_track_info_of_a_music_result()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            string? copied = null;
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                _ => { },
+                TestOverlayControllers.CreateFactory(setClipboard: text => copied = text),
+                overscan: false);
+            overlay.Show();
+            overlay.ShowListening();
+            Assert.False(overlay.TryHandleShortcut(Key.C, ModifierKeys.Control));
+
+            overlay.ShowMusicResult(MusicRecognitionOutcome.Matched(new ShazamRecognition(
+                "Track", "Artist", null, null, null, null, "https://www.shazam.com/track/1")));
+            overlay.UpdateLayout();
+
+            Assert.True(overlay.TryHandleShortcut(Key.C, ModifierKeys.Control));
+            Assert.Contains("Track", copied);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Mouse_back_dismisses_the_music_result_but_not_listening()
     {
         var failure = RunOnSta(() =>

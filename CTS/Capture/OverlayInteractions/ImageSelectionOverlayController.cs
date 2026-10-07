@@ -119,6 +119,31 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         return true;
     }
 
+    internal bool TryHandleShortcut(Key key, ModifierKeys modifiers)
+    {
+        if (!CanAct || _visual.Toolbar.IsPromptOpen) return false;
+        if (OverlayShortcuts.Search.Matches(key, modifiers)) return KeyboardShortcut.Press(_visual.SearchButton);
+        if (OverlayShortcuts.Copy.Matches(key, modifiers)) return KeyboardShortcut.Press(_visual.CopyButton);
+        if (OverlayShortcuts.Save.Matches(key, modifiers)) return KeyboardShortcut.Press(_visual.SaveButton);
+        return OverlayShortcuts.Translate.Matches(key, modifiers) && KeyboardShortcut.Press(_visual.TranslateButton);
+    }
+
+    // Typing over the actions starts a question with what was typed, so the Ask button is optional. Typing into an
+    // open prompt that lost focus continues the question instead of being dropped.
+    internal bool TryTypeQuestion(string text)
+    {
+        if (!CanAct || text.Length == 0 || text.Any(char.IsControl)) return false;
+        if (!_visual.Toolbar.IsPromptOpen &&
+            (string.IsNullOrWhiteSpace(text) || !KeyboardShortcut.Press(_visual.AskButton) ||
+             !_visual.Toolbar.IsPromptOpen)) return false;
+        var input = _visual.AskPrompt.Input;
+        var room = input.MaxLength == 0 ? text.Length : Math.Max(0, input.MaxLength - input.Text.Length);
+        input.Focus();
+        input.AppendText(text[..Math.Min(room, text.Length)]);
+        input.CaretIndex = input.Text.Length;
+        return true;
+    }
+
     internal void SetInputLanguage(string? tag)
     {
         if (_disposed) return;

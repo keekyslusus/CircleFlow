@@ -61,6 +61,7 @@ internal static class MusicOverlayVisualFactory
         OverlayVisualResources.ApplyButtonTemplate(
             button, 22, palette.MusicButton.Hover, palette.MusicButton.Foreground);
         AutomationProperties.SetName(button, strings.MusicRecognitionAction);
+        OverlayShortcuts.MusicRecognition.AttachHint(button, strings);
 
         var waveform = new AudioWaveformVisual(lightTheme);
         var resultHost = new Grid
