@@ -44,7 +44,8 @@ public sealed class YandexLiveSearchTests
         Assert.True(preparation.Success, $"upload failed: {preparation.Failure}");
 
         using var host = new SearchBrowserHost(
-            AppContext.BaseDirectory,
+            new AppPaths().ExtensionArchivePath,
+            new AppPaths().CosmeticFiltersPath,
             paths.SearchProfileDirectory,
             new PluginLog(paths.LogsDirectory),
             new StaDispatcher(CompositionRoot.SearchBrowserThreadName),

@@ -32,17 +32,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Extensions\uBlockOriginLite.zip;Extensions\CircleFlowFilters.txt;Emoji\NotoColorEmoji.zip">
+    <Content Include="Assets\Extensions\uBlockOriginLite.zip;Assets\Extensions\CircleFlowFilters.txt;Assets\Emoji\NotoColorEmoji.zip">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="Languages\*.xaml">
+    <Content Include="Assets\Languages\*.xaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Page Remove="Languages\*.xaml" />
-    <EmbeddedResource Include="Languages\en.xaml" LogicalName="CircleToSearch.Languages.en.xaml" />
-    <Content Include="CTS\app.ico" Link="Images\app.ico">
+    <Page Remove="Assets\Languages\*.xaml" />
+    <EmbeddedResource Include="Assets\Languages\en.xaml" LogicalName="CircleToSearch.Languages.en.xaml" />
+    <Content Include="CTS\app.ico" Link="Assets\Images\app.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
@@ -82,26 +82,26 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="THIRD_PARTY_NOTICES.txt">
+    <Content Include="THIRD_PARTY_NOTICES.txt" Link="Licenses\THIRD_PARTY_NOTICES.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="THIRD_PARTY_LICENSES\*.txt">
+    <Content Include="THIRD_PARTY_LICENSES\*.txt" Link="Licenses\%(Filename)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="$(NuGetPackageRoot)microsoft.web.webview2\1.0.4129.50\LICENSE.txt"
-             Link="THIRD_PARTY_LICENSES\Microsoft.Web.WebView2.LICENSE.txt">
+             Link="Licenses\Microsoft.Web.WebView2.LICENSE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="$(NuGetPackageRoot)microsoft.web.webview2\1.0.4129.50\NOTICE.txt"
-             Link="THIRD_PARTY_LICENSES\Microsoft.Web.WebView2.NOTICE.txt">
+             Link="Licenses\Microsoft.Web.WebView2.NOTICE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include="$(NuGetPackageRoot)system.numerics.tensors\9.0.0\THIRD-PARTY-NOTICES.TXT"
-             Link="THIRD_PARTY_LICENSES\System.Numerics.Tensors.NOTICE.txt">
+             Link="Licenses\System.Numerics.Tensors.NOTICE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
@@ -111,7 +111,7 @@
     <Error Condition="'PublishSingleFile' == 'true'" Text="The deps layout requires PublishSingleFile=false." />
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.xml' and Exists('%(RootDir)%(Directory)%(Filename).dll')" />
-      <ResolvedFileToPublish Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(RelativePath)', '^(Images|Languages|Extensions|Emoji|THIRD_PARTY_LICENSES)[/\\]|^(CircleFlow\.exe|LICENSE|THIRD_PARTY_NOTICES\.txt)$'))">
+      <ResolvedFileToPublish Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(RelativePath)', '^(Assets|Licenses)[/\\]|^(CircleFlow\.exe|LICENSE)$'))">
         <RelativePath>deps\%(RelativePath)</RelativePath>
       </ResolvedFileToPublish>
     </ItemGroup>

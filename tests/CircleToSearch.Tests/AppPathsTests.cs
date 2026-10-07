@@ -37,7 +37,7 @@ public sealed class AppPathsTests
             var paths = new AppPaths(current);
             Assert.Equal(Path.Combine(root, "Data"), paths.DataDirectory);
             Assert.Equal(Path.Combine(root, "Data", "settings.json"), paths.SettingsFilePath);
-            Assert.Equal(Path.Combine(current, "Languages"), paths.LanguagesDirectory);
+            Assert.Equal(Path.Combine(current, "Assets", "Languages"), paths.LanguagesDirectory);
             Assert.Equal(Path.Combine(current, "CircleFlow.exe"), paths.ExecutablePath);
             Assert.True(paths.IsInsideData(paths.SearchProfileDirectory));
             Assert.Equal(Path.Combine(root, "Data"), new AppPaths(root).DataDirectory);

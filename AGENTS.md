@@ -15,7 +15,7 @@
 - Icons use the Material outlined style: no solid filled areas. Draw new icons as SVG strokes: `viewBox="0 0 24 24"`, `fill="none"`, `stroke="currentColor"`, `stroke-width="1.65"`, round line caps and joins; size 20px (21px in settings rows). Material Symbols weight/grade axes do not apply to these custom SVGs.
   - Line glyphs without enclosed areas (arrows, close, check, translate) look the same filled or outlined, so the existing fill-rendered paths in `PluginIcons` may be reused. There, the `Filled` suffix means the path is rendered with a fill, not the filled icon style.
   - Allowed solid icons: glyphs that are solid even in Material Symbols Outlined (e.g. the `arrow_drop_down` caret), icons matching Android Circle to Search for recognizability (e.g. the music note), and brand marks (search providers, AniList, Pinterest), which keep their original artwork.
-- Put all user-visible strings in `Languages/*.xaml`; do not hardcode them in C#.
+- Put all user-visible strings in `Assets/Languages/*.xaml`; do not hardcode them in C#.
 - Do not use em dashes (U+2014); use hyphens (-) instead.
 
 ## Tests

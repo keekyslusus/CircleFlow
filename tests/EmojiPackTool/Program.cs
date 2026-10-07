@@ -6,7 +6,7 @@ using System.Text;
 
 namespace CircleToSearch.EmojiPackTool;
 
-// Builds Emoji/NotoColorEmoji.zip from NotoColorEmoji.ttf so emoji look as they do on Android.
+// Builds Assets/Emoji/NotoColorEmoji.zip from NotoColorEmoji.ttf so emoji look as they do on Android.
 // The font's own cmap and GSUB ligatures define which sequences exist, including flags and aliases.
 public static class Program
 {

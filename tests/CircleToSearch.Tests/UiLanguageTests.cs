@@ -13,7 +13,7 @@ public sealed class UiLanguageTests
         var languages = Path.Combine(root, "Languages");
         var logs = Path.Combine(root, "Logs");
         Directory.CreateDirectory(languages);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(languages, "en.xaml"));
+        File.Copy(Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml"), Path.Combine(languages, "en.xaml"));
         File.WriteAllText(Path.Combine(languages, "de.xaml"), "<ResourceDictionary broken");
         File.WriteAllText(Path.Combine(languages, "ru.xaml"), """
             <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"

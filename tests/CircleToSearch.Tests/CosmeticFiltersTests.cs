@@ -51,10 +51,10 @@ public sealed class CosmeticFiltersTests
     [Fact]
     public void Bundled_filter_file_ships_with_the_app()
     {
-        var path = CosmeticFilters.FilePath(AppContext.BaseDirectory);
+        var path = new AppPaths().CosmeticFiltersPath;
         Assert.True(File.Exists(path));
         Assert.Equal(CosmeticFilters.CreateScript(CosmeticFilters.Parse(File.ReadAllLines(path))),
-            CosmeticFilters.LoadScript(AppContext.BaseDirectory, new PluginLog(TestOutputPaths.TempDirectory)));
+            CosmeticFilters.LoadScript(path, new PluginLog(TestOutputPaths.TempDirectory)));
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public sealed class CosmeticFiltersTests
         Directory.CreateDirectory(directory);
         try
         {
-            Assert.Equal(CosmeticFilters.CreateScript([]), CosmeticFilters.LoadScript(directory, new PluginLog(directory)));
+            Assert.Equal(CosmeticFilters.CreateScript([]), CosmeticFilters.LoadScript(Path.Combine(directory, "CircleFlowFilters.txt"), new PluginLog(directory)));
             Assert.Contains("operation=read-filters", File.ReadAllText(Path.Combine(directory, "plugin.log")));
         }
         finally { Directory.Delete(directory, true); }

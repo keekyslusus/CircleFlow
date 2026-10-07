@@ -13,7 +13,7 @@ public sealed class SearchBrowserExtensionTests
         var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
         try
         {
-            var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+            var directory = SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile);
             using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "manifest.json")));
             Assert.Equal(3, manifest.RootElement.GetProperty("manifest_version").GetInt32());
             var rules = manifest.RootElement.GetProperty("declarative_net_request").GetProperty("rule_resources");
@@ -21,7 +21,7 @@ public sealed class SearchBrowserExtensionTests
                 Assert.Contains(rules.EnumerateArray(), rule =>
                     rule.GetProperty("id").GetString() == id && rule.GetProperty("enabled").GetBoolean());
             var timestamp = File.GetLastWriteTimeUtc(Path.Combine(directory, "manifest.json"));
-            Assert.Equal(directory, SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile));
+            Assert.Equal(directory, SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile));
             Assert.Equal(timestamp, File.GetLastWriteTimeUtc(Path.Combine(directory, "manifest.json")));
             Assert.True(File.Exists(Path.Combine(directory, "dashboard.html")));
         }
@@ -34,17 +34,17 @@ public sealed class SearchBrowserExtensionTests
         var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
         try
         {
-            var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+            var directory = SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile);
             Assert.Null(SearchBrowserExtension.InstalledId(directory));
             Assert.Null(SearchBrowserExtension.EnabledRulesets(directory));
             SearchBrowserExtension.RememberInstalled(directory, "extension-id");
             File.WriteAllText(Path.Combine(directory, ".enabled-rulesets"), "annoyances-others");
-            SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+            SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile);
             Assert.Equal("extension-id", SearchBrowserExtension.InstalledId(directory));
             Assert.Equal("annoyances-others", SearchBrowserExtension.EnabledRulesets(directory));
 
             File.WriteAllText(Path.Combine(directory, ".package-sha256"), "previous package");
-            SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+            SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile);
             Assert.Null(SearchBrowserExtension.InstalledId(directory));
             Assert.Null(SearchBrowserExtension.EnabledRulesets(directory));
         }
@@ -59,7 +59,7 @@ public sealed class SearchBrowserExtensionTests
         var moved = Path.Combine(root, "after");
         try
         {
-            var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+            var directory = SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile);
             SearchBrowserExtension.RememberInstalled(directory, "extension-id");
             var copied = directory.Replace(profile, moved);
             Directory.CreateDirectory(copied);
@@ -67,7 +67,7 @@ public sealed class SearchBrowserExtensionTests
             foreach (var name in new[] { ".package-sha256", "manifest.json", ".installed-id" })
                 File.Copy(Path.Combine(directory, name), Path.Combine(copied, name));
 
-            var movedDirectory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, moved);
+            var movedDirectory = SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, moved);
             Assert.Equal(copied, movedDirectory);
             Assert.True(File.Exists(Path.Combine(movedDirectory, ".installed-id")));
             Assert.Null(SearchBrowserExtension.InstalledId(movedDirectory));
@@ -81,9 +81,10 @@ public sealed class SearchBrowserExtensionTests
         var directory = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionTests", Guid.NewGuid().ToString("N"));
         try
         {
-            Directory.CreateDirectory(Path.Combine(directory, "Extensions"));
-            File.WriteAllText(Path.Combine(directory, "Extensions", "uBlockOriginLite.zip"), "invalid");
-            Assert.Throws<InvalidDataException>(() => SearchBrowserExtension.Prepare(directory, Path.Combine(directory, "Profile")));
+            Directory.CreateDirectory(directory);
+            var archive = Path.Combine(directory, "uBlockOriginLite.zip");
+            File.WriteAllText(archive, "invalid");
+            Assert.Throws<InvalidDataException>(() => SearchBrowserExtension.Prepare(archive, Path.Combine(directory, "Profile")));
             Assert.False(Directory.Exists(Path.Combine(directory, "Profile")));
         }
         finally { Directory.Delete(directory, true); }

@@ -32,7 +32,7 @@ public sealed class UiStringsTests
     [Fact]
     public void Delivered_translations_are_named_by_culture_and_match_English_keys_and_placeholders()
     {
-        var directory = Path.Combine(TestOutputPaths.RepoDirectory, "Languages");
+        var directory = Path.Combine(TestOutputPaths.RepoDirectory, "Assets", "Languages");
         var english = LocalUiStrings.LoadEnglish(directory);
         var files = Directory.GetFiles(directory, "*.xaml");
         var translations = files.Select(path => Path.GetFileNameWithoutExtension(path)!).Where(name => name != "en").ToArray();
@@ -53,9 +53,9 @@ public sealed class UiStringsTests
     [Fact]
     public void Language_files_are_copied_to_application_output()
     {
-        foreach (var source in Directory.GetFiles(Path.Combine(TestOutputPaths.RepoDirectory, "Languages"), "*.xaml"))
+        foreach (var source in Directory.GetFiles(Path.Combine(TestOutputPaths.RepoDirectory, "Assets", "Languages"), "*.xaml"))
         {
-            var path = Path.Combine(AppContext.BaseDirectory, "Languages", Path.GetFileName(source));
+            var path = Path.Combine(new AppPaths().LanguagesDirectory, Path.GetFileName(source));
             Assert.True(File.Exists(path), $"Missing language file: {path}");
         }
     }

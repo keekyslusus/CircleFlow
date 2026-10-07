@@ -8,14 +8,11 @@ internal sealed record CosmeticFilter(IReadOnlyList<string> Hosts, IReadOnlyList
 // Reads uBlock Origin cosmetic filters ("host##selector") so rules made with uBO's picker can be pasted in as is.
 internal static class CosmeticFilters
 {
-    internal static string FilePath(string assetDirectory) =>
-        Path.Combine(assetDirectory, "Extensions", "CircleFlowFilters.txt");
-
     // Read on every call so an edited file applies to the next browser window without a restart.
-    internal static string LoadScript(string assetDirectory, PluginLog log)
+    internal static string LoadScript(string path, PluginLog log)
     {
         string[] lines;
-        try { lines = File.ReadAllLines(FilePath(assetDirectory)); }
+        try { lines = File.ReadAllLines(path); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             log.SafeError(nameof(CosmeticFilters), "read-filters", exception);

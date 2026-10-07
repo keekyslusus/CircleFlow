@@ -13,7 +13,8 @@ namespace CircleToSearch.Shell.TestBrowser;
 internal sealed class TestBrowserWindow
 {
     private readonly Func<Task<CoreWebView2Environment>> _createEnvironment;
-    private readonly string _assetDirectory;
+    private readonly string _extensionArchivePath;
+    private readonly string _filtersPath;
     private readonly string _userDataFolder;
     private readonly PluginLog _log;
     private readonly WebView2 _webView;
@@ -28,13 +29,15 @@ internal sealed class TestBrowserWindow
         UiStrings strings,
         bool lightTheme,
         Func<Task<CoreWebView2Environment>> createEnvironment,
-        string assetDirectory,
+        string extensionArchivePath,
+        string filtersPath,
         string userDataFolder,
         Action openFiltersFile,
         PluginLog log)
     {
         _createEnvironment = createEnvironment;
-        _assetDirectory = assetDirectory;
+        _extensionArchivePath = extensionArchivePath;
+        _filtersPath = filtersPath;
         _userDataFolder = userDataFolder;
         _log = log;
         var palette = PluginPalette.For(lightTheme);
@@ -128,9 +131,9 @@ internal sealed class TestBrowserWindow
                 core.Navigate(args.Uri);
             };
             _filterScriptId = await core.AddScriptToExecuteOnDocumentCreatedAsync(
-                await Task.Run(() => CosmeticFilters.LoadScript(_assetDirectory, _log)));
+                await Task.Run(() => CosmeticFilters.LoadScript(_filtersPath, _log)));
             _extensionId = (await SearchBrowserExtension.EnsureEnabledAsync(
-                _webView, _assetDirectory, _userDataFolder, _log, CancellationToken.None)).Id;
+                _webView, _extensionArchivePath, _userDataFolder, _log, CancellationToken.None)).Id;
             foreach (var button in _browserButtons) button.IsEnabled = true;
             _address.Focus();
         }
@@ -178,7 +181,7 @@ internal sealed class TestBrowserWindow
         if (_webView.CoreWebView2 is not { } core) return;
         try
         {
-            var script = await Task.Run(() => CosmeticFilters.LoadScript(_assetDirectory, _log));
+            var script = await Task.Run(() => CosmeticFilters.LoadScript(_filtersPath, _log));
             if (_filterScriptId is not null) core.RemoveScriptToExecuteOnDocumentCreated(_filterScriptId);
             _filterScriptId = await core.AddScriptToExecuteOnDocumentCreatedAsync(script);
             core.Reload();

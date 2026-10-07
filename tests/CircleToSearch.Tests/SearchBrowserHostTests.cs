@@ -159,7 +159,8 @@ public sealed class SearchBrowserHostTests
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         return new SearchBrowserHost(
-            AppContext.BaseDirectory,
+            new AppPaths().ExtensionArchivePath,
+            new AppPaths().CosmeticFiltersPath,
             Path.Combine(directory, "Profile"),
             new PluginLog(directory),
             dispatcher,

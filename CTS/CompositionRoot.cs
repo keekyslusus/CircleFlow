@@ -173,8 +173,8 @@ public static class CompositionRoot
                 var testBrowser = new SingleWindowController(application.Dispatcher,
                     () => new TestBrowserWindow(strings, SystemTheme.IsLight(),
                         () => testBrowserEnvironments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true),
-                        paths.RootDirectory, paths.SearchProfileDirectory,
-                        () => urlOpening.TryOpen(CosmeticFilters.FilePath(paths.RootDirectory),
+                        paths.ExtensionArchivePath, paths.CosmeticFiltersPath, paths.SearchProfileDirectory,
+                        () => urlOpening.TryOpen(paths.CosmeticFiltersPath,
                             strings.SettingsPreviewText("open_filters_failed")),
                         log).Window);
                 lifetime.AddCleanup("close-test-browser", () => { testBrowser.Dispose(); return Task.CompletedTask; });
@@ -254,7 +254,8 @@ public static class CompositionRoot
         var searchBrowserDispatcher = new StaDispatcher(SearchBrowserThreadName);
         rollback.Own(searchBrowserDispatcher, searchBrowserDispatcher.StopAsync);
         var searchBrowserHost = rollback.Replace(searchBrowserDispatcher, new SearchBrowserHost(
-            paths.RootDirectory,
+            paths.ExtensionArchivePath,
+            paths.CosmeticFiltersPath,
             paths.SearchProfileDirectory,
             log,
             searchBrowserDispatcher,

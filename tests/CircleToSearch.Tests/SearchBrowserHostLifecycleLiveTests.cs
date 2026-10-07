@@ -341,7 +341,8 @@ public sealed class SearchBrowserHostLifecycleLiveTests
         var environments = new WebViewEnvironmentFactory(
             paths, TestUiStrings.English, new TestPluginNotifier());
         var host = new SearchBrowserHost(
-            AppContext.BaseDirectory,
+            new AppPaths().ExtensionArchivePath,
+            new AppPaths().CosmeticFiltersPath,
             paths.SearchProfileDirectory,
             new PluginLog(paths.LogsDirectory),
             dispatcher,

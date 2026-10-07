@@ -1006,7 +1006,7 @@ public sealed class SettingsPreviewTests
     {
         var languages = Path.Combine(TestOutputPaths.TempDirectory, "languages-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(languages);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(languages, "en.xaml"));
+        File.Copy(Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml"), Path.Combine(languages, "en.xaml"));
         var window = new TestSettingsWindow(languagesDirectory: languages).CreateView().Window;
         try
         {

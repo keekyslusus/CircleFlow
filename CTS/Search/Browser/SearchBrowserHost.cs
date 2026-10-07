@@ -13,7 +13,8 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
     private static readonly TimeSpan NavigationTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(2);
 
-    private readonly string _assetDirectory;
+    private readonly string _extensionArchivePath;
+    private readonly string _filtersPath;
     private readonly string _userDataFolder;
     private readonly PluginLog _log;
     private readonly IStaDispatcher _dispatcher;
@@ -35,7 +36,8 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
     private Task? _stopTask;
 
     internal SearchBrowserHost(
-        string assetDirectory,
+        string extensionArchivePath,
+        string filtersPath,
         string userDataFolder,
         PluginLog log,
         IStaDispatcher dispatcher,
@@ -43,7 +45,8 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
         Func<FrameworkElement, POINT, bool, SearchBrowserWindowView> createWindowView,
         TimeSpan? shutdownTimeout = null)
     {
-        _assetDirectory = assetDirectory;
+        _extensionArchivePath = extensionArchivePath;
+        _filtersPath = filtersPath;
         _userDataFolder = userDataFolder;
         _log = log;
         _dispatcher = dispatcher;
@@ -420,13 +423,13 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
                 .ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
             if (view.IsClosed || !ReferenceEquals(_view, view)) throw new OperationCanceledException();
-            var filterScript = await Task.Run(() => CosmeticFilters.LoadScript(_assetDirectory, _log), cancel)
+            var filterScript = await Task.Run(() => CosmeticFilters.LoadScript(_filtersPath, _log), cancel)
                 .ConfigureAwait(true);
             await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(filterScript).ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
             if (view.IsClosed || !ReferenceEquals(_view, view)) throw new OperationCanceledException();
             await SearchBrowserExtension.EnsureEnabledAsync(
-                    webView, _assetDirectory, _userDataFolder, _log, cancel)
+                    webView, _extensionArchivePath, _userDataFolder, _log, cancel)
                 .ConfigureAwait(true);
             cancel.ThrowIfCancellationRequested();
             if (view.IsClosed || !ReferenceEquals(_view, view)) throw new OperationCanceledException();

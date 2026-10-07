@@ -1,10 +1,13 @@
 CircleFlow third-party notices
 ==============================
 
+License texts named below are distributed in the Licenses folder of the application
+(THIRD_PARTY_LICENSES in the source repository).
+
 uBlock Origin Lite
 ------------------
 The unmodified official Edge package is bundled in
-Extensions/uBlockOriginLite.zip. Copyright Raymond Hill and contributors.
+Assets/Extensions/uBlockOriginLite.zip. Copyright Raymond Hill and contributors.
 Licensed under GPL-3.0; license and dependency notices are included in the archive.
 Source: https://github.com/gorhill/uBlock/tree/master/platform/mv3
 
@@ -32,7 +35,7 @@ https://github.com/Flow-Launcher/Flow.Launcher
 Copyright (c) 2019 Flow-Launcher. Copyright (c) 2015 Wox.
 Licensed under the MIT License. The port was created on 2026-09-24 and has been
 subsequently modified for CircleFlow. The complete license text is distributed in
-THIRD_PARTY_LICENSES/MIT.txt.
+MIT.txt.
 
 Material Color Utilities
 ------------------------
@@ -44,7 +47,7 @@ https://github.com/material-foundation/material-color-utilities
 Copyright 2021 Google LLC.
 Licensed under the Apache License, Version 2.0. The port was created on 2026-08-31 and has
 been subsequently modified for CircleFlow. The complete license text is distributed in
-THIRD_PARTY_LICENSES/Apache-2.0.txt.
+Apache-2.0.txt.
 
 Material 3 Expressive loading indicator
 ---------------------------------------
@@ -54,17 +57,17 @@ CTS/Capture/LoadingIndicatorVisual.cs are adapted from Material Components for A
 
 Copyright 2024 Google LLC.
 Licensed under the Apache License, Version 2.0. The complete license text is distributed
-in THIRD_PARTY_LICENSES/Apache-2.0.txt.
+in Apache-2.0.txt.
 
 Noto Color Emoji
 ----------------
 
-The emoji images in Emoji/NotoColorEmoji.zip are extracted and scaled from the Noto Color Emoji
+The emoji images in Assets/Emoji/NotoColorEmoji.zip are extracted and scaled from the Noto Color Emoji
 font: https://github.com/googlefonts/noto-emoji
 
 Copyright 2013 Google LLC.
 Licensed under the SIL Open Font License, Version 1.1. The complete license text is distributed
-in THIRD_PARTY_LICENSES/OFL-1.1.txt.
+in OFL-1.1.txt.
 
 Bundled .NET dependencies
 -------------------------
@@ -82,4 +85,4 @@ CircleFlow binary distributions include the following third-party dependencies:
   https://aka.ms/WinSDKLicenseURL)
 
 The applicable open-source license texts and bundled notices are distributed in
-THIRD_PARTY_LICENSES. The Windows SDK component is governed by Microsoft's linked terms.
+the same folder. The Windows SDK component is governed by Microsoft's linked terms.

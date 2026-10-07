@@ -17,5 +17,5 @@ Download the font and [emoji-data.txt](https://www.unicode.org/Public/17.0.0/ucd
 matching Unicode version, then run from the repository root:
 
 ```powershell
-dotnet run --project tests/EmojiPackTool/EmojiPackTool.csproj -c Release -- NotoColorEmoji.ttf emoji-data.txt Emoji/NotoColorEmoji.zip 48
+dotnet run --project tests/EmojiPackTool/EmojiPackTool.csproj -c Release -- NotoColorEmoji.ttf emoji-data.txt Assets/Emoji/NotoColorEmoji.zip 48
 ```

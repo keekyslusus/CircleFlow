@@ -80,9 +80,9 @@ internal static class StartupHook
         Require(strings.TrayOpen == "Open", "Published English fallback did not resolve.");
         Require(File.Exists(paths.TrayIconPath), "Missing icon.");
         Require(File.Exists(Path.Combine(paths.RootDirectory, "LICENSE")), "Missing license.");
-        Require(File.Exists(Path.Combine(paths.RootDirectory, "THIRD_PARTY_NOTICES.txt")), "Missing third-party notices.");
+        Require(File.Exists(Path.Combine(paths.RootDirectory, "Licenses", "THIRD_PARTY_NOTICES.txt")), "Missing third-party notices.");
         using (var icon = new System.Drawing.Icon(paths.TrayIconPath)) Require(icon.Width > 0, "Invalid ICO.");
-        var extension = SearchBrowserExtension.Prepare(paths.RootDirectory, paths.SearchProfileDirectory);
+        var extension = SearchBrowserExtension.Prepare(paths.ExtensionArchivePath, paths.SearchProfileDirectory);
         Require(File.Exists(Path.Combine(extension, "manifest.json")), "Bundled extension failed to extract.");
         var languages = OcrEngine.AvailableRecognizerLanguages;
         Require(languages.Count > 0, "Install at least one Windows OCR language pack to run this check.");

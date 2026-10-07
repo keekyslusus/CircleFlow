@@ -37,10 +37,12 @@ internal sealed class AppPaths
             : directory.FullName;
     }
     public string ExecutablePath => Path.Combine(RootDirectory, "CircleFlow.exe");
-    public string LanguagesDirectory => Path.Combine(RootDirectory, "Languages");
-    public string TrayIconPath => Path.Combine(RootDirectory, "Images", "app.ico");
-    public string ExtensionArchivePath => Path.Combine(RootDirectory, "Extensions", "uBlockOriginLite.zip");
-    public string EmojiArchivePath => Path.Combine(RootDirectory, "Emoji", "NotoColorEmoji.zip");
+    private string AssetsDirectory =>Path.Combine(RootDirectory, "Assets");
+    public string LanguagesDirectory => Path.Combine(AssetsDirectory, "Languages");
+    public string TrayIconPath => Path.Combine(AssetsDirectory, "Images", "app.ico");
+    public string ExtensionArchivePath => Path.Combine(AssetsDirectory, "Extensions", "uBlockOriginLite.zip");
+    public string CosmeticFiltersPath => Path.Combine(AssetsDirectory, "Extensions", "CircleFlowFilters.txt");
+    public string EmojiArchivePath => Path.Combine(AssetsDirectory, "Emoji", "NotoColorEmoji.zip");
     public string DataDirectory => Path.Combine(_installDirectory, "Data");
     public string SettingsFilePath => Path.Combine(DataDirectory, "settings.json");
     public string SettingsBackupFilePath => Path.Combine(DataDirectory, "settings.json.bak");

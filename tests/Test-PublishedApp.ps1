@@ -33,15 +33,15 @@ try {
     }
     foreach ($name in $entries) {
         if ($velopackEntries -ccontains $name) { continue }
-        if ($name -match '\.xml$' -or $name -notmatch '^current/(deps/|Images/|Languages/|Extensions/|Emoji/|THIRD_PARTY_LICENSES/|CircleFlow\.exe$|LICENSE$|THIRD_PARTY_NOTICES\.txt$)') {
+        if ($name -match '\.xml$' -or $name -notmatch '^current/(deps/|Assets/|Licenses/|CircleFlow\.exe$|LICENSE$)') {
             throw "Unexpected release layout: $name"
         }
     }
     $required = @('CircleFlow.exe', 'deps/CircleFlow.dll', 'deps/CircleFlow.runtimeconfig.json', 'deps/CircleFlow.deps.json',
         'deps/WinRT.Runtime.dll', 'deps/coreclr.dll', 'deps/System.Private.CoreLib.dll', 'deps/hostfxr.dll', 'deps/hostpolicy.dll',
-        'Languages/en.xaml', 'Images/app.ico', 'Extensions/uBlockOriginLite.zip', 'Extensions/CircleFlowFilters.txt', 'Emoji/NotoColorEmoji.zip',
-        'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.LICENSE.txt',
-        'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.NOTICE.txt', 'THIRD_PARTY_LICENSES/System.Numerics.Tensors.NOTICE.txt')
+        'Assets/Languages/en.xaml', 'Assets/Images/app.ico', 'Assets/Extensions/uBlockOriginLite.zip', 'Assets/Extensions/CircleFlowFilters.txt', 'Assets/Emoji/NotoColorEmoji.zip',
+        'LICENSE', 'Licenses/THIRD_PARTY_NOTICES.txt', 'Licenses/Microsoft.Web.WebView2.LICENSE.txt',
+        'Licenses/Microsoft.Web.WebView2.NOTICE.txt', 'Licenses/System.Numerics.Tensors.NOTICE.txt')
     foreach ($asset in $velopackEntries) {
         if ($entries -cnotcontains $asset) { throw "Missing Velopack entry: $asset" }
     }
@@ -50,17 +50,17 @@ try {
     }
     $licenseNames = Get-ChildItem -LiteralPath (Join-Path $workspace 'THIRD_PARTY_LICENSES') -Filter '*.txt' -File
     foreach ($license in $licenseNames) {
-        if ($entries -cnotcontains ('current/THIRD_PARTY_LICENSES/' + $license.Name)) { throw "Missing license: $($license.Name)" }
+        if ($entries -cnotcontains ('current/Licenses/' + $license.Name)) { throw "Missing license: $($license.Name)" }
     }
 }
 finally { $archive.Dispose() }
 [IO.Compression.ZipFile]::ExtractToDirectory($archivePath, $unpacked)
 $assetSources = [ordered]@{
-    'Languages/en.xaml' = 'Languages/en.xaml'; 'Images/app.ico' = 'CTS/app.ico'
-    'Extensions/uBlockOriginLite.zip' = 'Extensions/uBlockOriginLite.zip'; 'LICENSE' = 'LICENSE'
-    'Extensions/CircleFlowFilters.txt' = 'Extensions/CircleFlowFilters.txt'
-    'Emoji/NotoColorEmoji.zip' = 'Emoji/NotoColorEmoji.zip'
-    'THIRD_PARTY_NOTICES.txt' = 'THIRD_PARTY_NOTICES.txt'
+    'Assets/Languages/en.xaml' = 'Assets/Languages/en.xaml'; 'Assets/Images/app.ico' = 'CTS/app.ico'
+    'Assets/Extensions/uBlockOriginLite.zip' = 'Assets/Extensions/uBlockOriginLite.zip'; 'LICENSE' = 'LICENSE'
+    'Assets/Extensions/CircleFlowFilters.txt' = 'Assets/Extensions/CircleFlowFilters.txt'
+    'Assets/Emoji/NotoColorEmoji.zip' = 'Assets/Emoji/NotoColorEmoji.zip'
+    'Licenses/THIRD_PARTY_NOTICES.txt' = 'THIRD_PARTY_NOTICES.txt'
 }
 foreach ($asset in $assetSources.Keys) {
     if ((Get-FileHash -LiteralPath (Join-Path $workspace $assetSources[$asset])).Hash -ne

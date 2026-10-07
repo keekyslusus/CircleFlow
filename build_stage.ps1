@@ -54,10 +54,10 @@ try {
     $required = @('CircleFlow.exe', 'deps/CircleFlow.dll', 'deps/CircleFlow.deps.json', 'deps/CircleFlow.runtimeconfig.json',
         'deps/coreclr.dll', 'deps/hostfxr.dll', 'deps/hostpolicy.dll', 'deps/System.Private.CoreLib.dll', 'deps/PresentationFramework.dll',
         'deps/WinRT.Runtime.dll', 'deps/Microsoft.Windows.SDK.NET.dll', 'deps/Microsoft.Web.WebView2.Core.dll',
-        'deps/Microsoft.Web.WebView2.Wpf.dll', 'Languages/en.xaml', 'Images/app.ico',
-        'Extensions/uBlockOriginLite.zip', 'Extensions/CircleFlowFilters.txt', 'Emoji/NotoColorEmoji.zip', 'LICENSE', 'THIRD_PARTY_NOTICES.txt',
-        'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.LICENSE.txt', 'THIRD_PARTY_LICENSES/Microsoft.Web.WebView2.NOTICE.txt',
-        'THIRD_PARTY_LICENSES/System.Numerics.Tensors.NOTICE.txt')
+        'deps/Microsoft.Web.WebView2.Wpf.dll', 'Assets/Languages/en.xaml', 'Assets/Images/app.ico',
+        'Assets/Extensions/uBlockOriginLite.zip', 'Assets/Extensions/CircleFlowFilters.txt', 'Assets/Emoji/NotoColorEmoji.zip', 'LICENSE', 'Licenses/THIRD_PARTY_NOTICES.txt',
+        'Licenses/Microsoft.Web.WebView2.LICENSE.txt', 'Licenses/Microsoft.Web.WebView2.NOTICE.txt',
+        'Licenses/System.Numerics.Tensors.NOTICE.txt')
     foreach ($asset in $required) {
         if (-not (Test-Path -LiteralPath (Join-Path $appDirectory $asset) -PathType Leaf)) { throw "Missing published asset: $asset" }
     }

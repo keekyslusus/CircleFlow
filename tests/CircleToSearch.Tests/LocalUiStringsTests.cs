@@ -139,7 +139,7 @@ public sealed class LocalUiStringsTests
     {
         var directory = Path.Combine(TestOutputPaths.TempDirectory, "languages-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(directory, "en.xaml"));
+        File.Copy(Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml"), Path.Combine(directory, "en.xaml"));
         return directory;
     }
 

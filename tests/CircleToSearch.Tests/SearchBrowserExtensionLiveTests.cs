@@ -34,7 +34,7 @@ public sealed class SearchBrowserExtensionLiveTests
                 await view.EnsureCoreWebView2Async(environment);
                 var core = view.CoreWebView2;
                 var extension = await core.Profile.AddBrowserExtensionAsync(
-                    SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile));
+                    SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile));
                 Assert.True(extension.IsEnabled);
                 await Navigate(core, $"chrome-extension://{extension.Id}/dashboard.html");
                 Assert.Contains("uBO Lite", await core.ExecuteScriptAsync("document.title"));
@@ -64,7 +64,7 @@ public sealed class SearchBrowserExtensionLiveTests
     {
         TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
-        var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+        var directory = SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile);
         var id = await RunInBrowser(profile, async (view, _) =>
         {
             var extension = await view.CoreWebView2.Profile.AddBrowserExtensionAsync(directory);
@@ -72,7 +72,7 @@ public sealed class SearchBrowserExtensionLiveTests
             return extension.Id;
         });
 
-        Assert.Equal(directory, SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile));
+        Assert.Equal(directory, SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile));
         Assert.Equal(id, SearchBrowserExtension.InstalledId(directory));
         var outcome = await RunInBrowser(profile, async (view, environment) =>
         {
@@ -91,7 +91,7 @@ public sealed class SearchBrowserExtensionLiveTests
     {
         TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
-        var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+        var directory = SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile);
 
         var (enabled, defaults) = await RunInBrowser(profile, (view, _) => EnableAndReadListsAsync(view, profile, directory));
 
@@ -108,7 +108,7 @@ public sealed class SearchBrowserExtensionLiveTests
     {
         TestSwitches.Require("CTS_WEBVIEW2_LIVE");
         var profile = Path.Combine(TestOutputPaths.TempDirectory, "CircleFlowExtensionLive", Guid.NewGuid().ToString("N"));
-        var directory = SearchBrowserExtension.Prepare(AppContext.BaseDirectory, profile);
+        var directory = SearchBrowserExtension.Prepare(new AppPaths().ExtensionArchivePath, profile);
         await RunInBrowser(profile, (view, _) => EnableAndReadListsAsync(view, profile, directory));
 
         // BrowserDataCleanup removes this folder, and uBO Lite's settings with it, but keeps the unpacked extension.
@@ -122,7 +122,7 @@ public sealed class SearchBrowserExtensionLiveTests
     private static async Task<Rulesets> EnableAndReadListsAsync(WebView2 view, string profile, string directory)
     {
         var extension = await SearchBrowserExtension.EnsureEnabledAsync(
-            view, AppContext.BaseDirectory, profile, new PluginLog(profile), CancellationToken.None);
+            view, new AppPaths().ExtensionArchivePath, profile, new PluginLog(profile), CancellationToken.None);
         for (var attempt = 0; attempt < 600 && SearchBrowserExtension.EnabledRulesets(directory) is null; attempt++)
             await Task.Delay(50);
 

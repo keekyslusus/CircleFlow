@@ -21,7 +21,8 @@ public sealed class GoogleLensLiveSearchTests
         var environments = new WebViewEnvironmentFactory(paths, TestUiStrings.English, new TestPluginNotifier());
         var log = new PluginLog(paths.LogsDirectory);
         using var host = new SearchBrowserHost(
-            AppContext.BaseDirectory,
+            new AppPaths().ExtensionArchivePath,
+            new AppPaths().CosmeticFiltersPath,
             paths.SearchProfileDirectory,
             log,
             new StaDispatcher(CompositionRoot.SearchBrowserThreadName),
@@ -59,7 +60,8 @@ public sealed class GoogleLensLiveSearchTests
         var environments = new WebViewEnvironmentFactory(paths, TestUiStrings.English, new TestPluginNotifier());
         var log = new PluginLog(paths.LogsDirectory);
         using var host = new SearchBrowserHost(
-            AppContext.BaseDirectory,
+            new AppPaths().ExtensionArchivePath,
+            new AppPaths().CosmeticFiltersPath,
             paths.SearchProfileDirectory,
             log,
             new StaDispatcher(CompositionRoot.SearchBrowserThreadName),
@@ -96,7 +98,8 @@ public sealed class GoogleLensLiveSearchTests
         var environments = new WebViewEnvironmentFactory(paths, TestUiStrings.English, new TestPluginNotifier());
         var log = new PluginLog(paths.LogsDirectory);
         using var host = new SearchBrowserHost(
-            AppContext.BaseDirectory,
+            new AppPaths().ExtensionArchivePath,
+            new AppPaths().CosmeticFiltersPath,
             paths.SearchProfileDirectory,
             log,
             new StaDispatcher(CompositionRoot.SearchBrowserThreadName),
@@ -146,7 +149,8 @@ public sealed class GoogleLensLiveSearchTests
         var log = new PluginLog(paths.LogsDirectory);
         var descriptor = new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens");
         SearchBrowserHost CreateHost() => new(
-            AppContext.BaseDirectory,
+            new AppPaths().ExtensionArchivePath,
+            new AppPaths().CosmeticFiltersPath,
             paths.SearchProfileDirectory,
             log,
             new StaDispatcher(CompositionRoot.SearchBrowserThreadName),

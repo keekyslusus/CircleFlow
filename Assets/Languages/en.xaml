@@ -18,7 +18,7 @@
     <system:String x:Key="app_tray_exit">Exit</system:String>
     <system:String x:Key="app_settings_window_title">CircleFlow Settings</system:String>
     <system:String x:Key="app_startup_failed">CircleFlow could not start. Extract a complete copy of the application and try again.</system:String>
-    <system:String x:Key="app_startup_language_failed">CircleFlow could not load its language files. Extract a complete copy of the application, including Languages/en.xaml, and try again.</system:String>
+    <system:String x:Key="app_startup_language_failed">CircleFlow could not load its language files. Extract a complete copy of the application, including Assets/Languages/en.xaml, and try again.</system:String>
     <system:String x:Key="app_startup_data_failed">CircleFlow cannot write to {0}. Move the complete application folder to a location you can write to, such as %LocalAppData%\Programs\CircleFlow, and try again.</system:String>
     <system:String x:Key="app_storage_save_failed">Could not save settings. Your previous settings are still in use.</system:String>
     <system:String x:Key="app_storage_load_failed">CircleFlow could not load or preserve its settings. Check access to Data/settings.json and Data/settings.json.bak, then try again. See Data/Logs for details.</system:String>

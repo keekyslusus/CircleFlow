@@ -18,7 +18,7 @@ internal static class SearchBrowserExtension
     private static readonly string RulesetsMarker = string.Join(',', AnnoyanceRulesets);
     private static readonly TimeSpan RulesetTimeout = TimeSpan.FromSeconds(30);
 
-    internal static string Prepare(string assetDirectory, string userDataFolder)
+    internal static string Prepare(string archivePath, string userDataFolder)
     {
         // Keep the registered directory stable across window openings and package updates.
         var directory = Path.Combine(userDataFolder, "CircleFlowExtensions", "uBlockOriginLite");
@@ -26,8 +26,7 @@ internal static class SearchBrowserExtension
         if (File.Exists(marker) && File.ReadAllText(marker) == PackageHash &&
             File.Exists(Path.Combine(directory, "manifest.json"))) return directory;
 
-        var archive = Path.Combine(assetDirectory, "Extensions", "uBlockOriginLite.zip");
-        using var stream = File.OpenRead(archive);
+        using var stream = File.OpenRead(archivePath);
         if (Convert.ToHexString(SHA256.HashData(stream)) != PackageHash)
             throw new InvalidDataException("The bundled uBlock Origin Lite package checksum does not match.");
 
@@ -57,14 +56,14 @@ internal static class SearchBrowserExtension
 
     internal static async Task<CoreWebView2BrowserExtension> EnsureEnabledAsync(
         WebView2 webView,
-        string assetDirectory,
+        string archivePath,
         string userDataFolder,
         PluginLog log,
         CancellationToken cancel)
     {
         var (directory, listsApplied) = await Task.Run(() =>
         {
-            var prepared = Prepare(assetDirectory, userDataFolder);
+            var prepared = Prepare(archivePath, userDataFolder);
             return (prepared, EnabledRulesets(prepared) == RulesetsMarker);
         }, cancel).ConfigureAwait(true);
         cancel.ThrowIfCancellationRequested();

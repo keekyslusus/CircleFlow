@@ -4,7 +4,7 @@
 
 Development requires Windows and the .NET 9 SDK. Browser features need the [Microsoft Edge WebView2 Evergreen Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download); OCR tests need at least one Windows OCR language pack.
 
-Code conventions (composition, one responsibility per class, strings in `Languages/*.xaml`, colors in `PluginPalette`, icon style) are in [AGENTS.md](./AGENTS.md). They apply to people as well as clanker agents.
+Code conventions (composition, one responsibility per class, strings in `Assets/Languages/*.xaml`, colors in `PluginPalette`, icon style) are in [AGENTS.md](./AGENTS.md). They apply to people as well as clanker agents.
 
 ## Build and test
 

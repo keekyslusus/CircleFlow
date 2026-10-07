@@ -39,7 +39,8 @@ public sealed class TestBrowserWindowLiveTests
                 await Navigate(decoy.CoreWebView2, PageUrl);
 
                 browser = new TestBrowserWindow(TestUiStrings.English, lightTheme: true, () => Task.FromResult(environment),
-                    AppContext.BaseDirectory, profile, () => { }, new PluginLog(profile));
+                    new AppPaths().ExtensionArchivePath,
+                    new AppPaths().CosmeticFiltersPath, profile, () => { }, new PluginLog(profile));
                 browser.Window.Show();
                 var content = (DockPanel)browser.Window.Content;
                 var page = content.Children.OfType<WebView2>().Single();

@@ -115,7 +115,7 @@ public sealed class OnboardingTests
     [Fact]
     public void Russian_text_fits_every_step() => OnSta(() =>
     {
-        var directory = Path.Combine(AppContext.BaseDirectory, "Languages");
+        var directory = new AppPaths().LanguagesDirectory;
         var russian = LocalUiStrings.LoadEnglish(directory).Translate(directory, CultureInfo.GetCultureInfo("ru"));
         using var harness = new Harness(strings: new UiStrings(russian.Get));
         var window = harness.CreateView(light: false).Window;
@@ -357,7 +357,7 @@ public sealed class OnboardingTests
     [InlineData("Ctrl+S", true)]
     public void The_shortcut_stays_centered_whatever_its_length(string gesture, bool russian) => OnSta(() =>
     {
-        var directory = Path.Combine(AppContext.BaseDirectory, "Languages");
+        var directory = new AppPaths().LanguagesDirectory;
         var strings = russian
             ? new UiStrings(LocalUiStrings.LoadEnglish(directory).Translate(directory, CultureInfo.GetCultureInfo("ru")).Get)
             : null;

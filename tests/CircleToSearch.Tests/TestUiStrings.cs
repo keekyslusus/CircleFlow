@@ -10,11 +10,11 @@ internal static class TestUiStrings
     public static UiStrings English { get; } = LoadEnglish();
 
     private static UiStrings LoadEnglish() =>
-        new(LocalUiStrings.LoadEnglish(Path.Combine(AppContext.BaseDirectory, "Languages")).Get);
+        new(LocalUiStrings.LoadEnglish(new AppPaths().LanguagesDirectory).Get);
 
     private static IReadOnlyDictionary<string, string> LoadEnglishValues()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml");
+        var path = Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml");
         var document = XDocument.Load(path, LoadOptions.PreserveWhitespace);
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
         return document.Root!.Elements().ToDictionary(

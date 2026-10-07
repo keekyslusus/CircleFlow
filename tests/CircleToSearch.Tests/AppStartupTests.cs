@@ -16,7 +16,7 @@ public sealed class AppStartupTests
         if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "startup-runtime-rollback-" + Guid.NewGuid().ToString("N")));
         Directory.CreateDirectory(paths.LanguagesDirectory);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        File.Copy(Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
         AppDataDirectory.Initialize(paths);
         var log = new PluginLog(paths.LogsDirectory);
         using var probe = new HotkeyWindow(new StaDispatcher("CircleFlow startup cleanup test"), log);
@@ -53,7 +53,7 @@ public sealed class AppStartupTests
     {
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "startup-language-" + Guid.NewGuid().ToString("N")));
         Directory.CreateDirectory(paths.LanguagesDirectory);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        File.Copy(Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
         File.WriteAllText(Path.Combine(paths.LanguagesDirectory, "ru.xaml"), valid
             ? """
               <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -99,7 +99,7 @@ public sealed class AppStartupTests
         if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "second-instance-" + Guid.NewGuid().ToString("N")));
         Directory.CreateDirectory(paths.LanguagesDirectory);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        File.Copy(Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
         var instanceName = "Local\\CircleFlow.StartupTests." + Guid.NewGuid().ToString("N");
         using var owner = Shell.SingleInstanceCoordinator.TryAcquire(instanceName);
         Assert.NotNull(owner);
@@ -116,7 +116,7 @@ public sealed class AppStartupTests
         if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "activated-instance-" + Guid.NewGuid().ToString("N")));
         Directory.CreateDirectory(paths.LanguagesDirectory);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        File.Copy(Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
         var name = "Local\\CircleFlow.StartupTests." + Guid.NewGuid().ToString("N");
         using var owner = Shell.SingleInstanceCoordinator.TryAcquire(name);
         var opens = 0;
@@ -134,7 +134,7 @@ public sealed class AppStartupTests
         if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "autostart-instance-" + Guid.NewGuid().ToString("N")));
         Directory.CreateDirectory(paths.LanguagesDirectory);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        File.Copy(Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
         var name = "Local\\CircleFlow.StartupTests." + Guid.NewGuid().ToString("N");
         using var owner = Shell.SingleInstanceCoordinator.TryAcquire(name);
         var opens = 0;
@@ -152,9 +152,9 @@ public sealed class AppStartupTests
         if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "startup-recovery-" + Guid.NewGuid().ToString("N")));
         Directory.CreateDirectory(Path.GetDirectoryName(paths.TrayIconPath)!);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Images", "app.ico"), paths.TrayIconPath);
+        File.Copy(new AppPaths().TrayIconPath, paths.TrayIconPath);
         Directory.CreateDirectory(paths.LanguagesDirectory);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        File.Copy(Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
         AppDataDirectory.Initialize(paths);
         File.WriteAllText(paths.SettingsFilePath, "corrupt file");
         var expected = new AppSettings { PaddingPx = 21, ImageTranslationPrivacyConsentAccepted = true };
@@ -191,7 +191,7 @@ public sealed class AppStartupTests
         if (await IsolatedTestHost.RunAsync<AppStartupTests>()) return;
         var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "blocked-data-" + Guid.NewGuid().ToString("N")));
         Directory.CreateDirectory(paths.LanguagesDirectory);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Languages", "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
+        File.Copy(Path.Combine(new AppPaths().LanguagesDirectory, "en.xaml"), Path.Combine(paths.LanguagesDirectory, "en.xaml"));
         File.WriteAllText(paths.DataDirectory, "keep this file");
         var instanceName = "Local\\CircleFlow.StartupTests." + Guid.NewGuid().ToString("N");
         var result = RunOnSta(paths, instanceName);
