@@ -14,6 +14,8 @@ internal static class TextSelectionVisualFactory
         var openLink = toolbar.AddAction(string.Empty, PluginIcons.LinkOutlined);
         openLink.Visibility = Visibility.Collapsed;
         var copy = toolbar.AddAction(strings.TextCopy, PluginIcons.CopyOutlined);
+        OverlayShortcuts.Search.AttachHint(search, strings);
+        OverlayShortcuts.Copy.AttachHint(copy, strings);
         return new TextSelectionVisual(
             new Canvas { IsHitTestVisible = false },
             toolbar,

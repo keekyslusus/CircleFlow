@@ -12,6 +12,11 @@ namespace CircleToSearch.Capture;
 
 internal static class MusicResultCardVisualFactory
 {
+    private const string CopyButtonName = "CopyTrackInfo";
+
+    internal static Button? FindCopyButton(DependencyObject? card) =>
+        card is null ? null : LogicalTreeHelper.FindLogicalNode(card, CopyButtonName) as Button;
+
     internal static Border Create(
         ShazamRecognition recognition,
         bool lightTheme,
@@ -104,6 +109,8 @@ internal static class MusicResultCardVisualFactory
         var copyButton = OverlayVisualResources.IconButton(
             PluginIcons.CopyFilled, strings.CopyTrackInfo,
             palette.MutedText, palette.SecondaryContainer, palette.OnSecondaryContainer, 12);
+        copyButton.Name = CopyButtonName;
+        OverlayShortcuts.Copy.AttachHint(copyButton, strings);
         copyButton.Click += (_, e) =>
         {
             e.Handled = true;

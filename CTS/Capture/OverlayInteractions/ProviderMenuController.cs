@@ -61,6 +61,15 @@ internal sealed class ProviderMenuController : IDisposable
         ProviderMenuVisualPresenter.SetOpen(_visual, _coordinateRoot, open);
     }
 
+    internal bool TryToggleFromKeyboard() => !_disposed && KeyboardShortcut.Press(_visual?.Button);
+
+    // Numbers follow the menu as shown, top to bottom.
+    internal bool TryChooseFromKeyboard(int number)
+    {
+        if (_disposed || !IsOpen || number < 1 || number > _menuItems.Count) return false;
+        return KeyboardShortcut.Press(_menuItems[number - 1]);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

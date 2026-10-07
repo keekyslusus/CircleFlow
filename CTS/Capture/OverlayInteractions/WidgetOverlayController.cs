@@ -1,4 +1,5 @@
 using System.Windows.Controls;
+using System.Windows.Input;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
 using GdiRectangle = System.Drawing.Rectangle;
@@ -101,6 +102,10 @@ internal sealed class WidgetOverlayController : IDisposable
 
     internal bool TryGoBack() =>
         !_disposed && _getMode() == OverlayInteractionMode.WidgetResult && _visual?.TryGoBack() == true;
+
+    internal bool TryHandleShortcut(Key key, ModifierKeys modifiers) =>
+        !_disposed && _getMode() == OverlayInteractionMode.WidgetResult &&
+        OverlayShortcuts.Copy.Matches(key, modifiers) && _visual?.TryCopy() == true;
 
     internal bool TryCloseResult()
     {

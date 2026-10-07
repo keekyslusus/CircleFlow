@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.MusicRecognition.Audio;
@@ -142,6 +143,11 @@ internal sealed class MusicOverlayController : IDisposable
         _visual.Button.ToolTip = _strings.MusicRecognitionAction;
         AutomationProperties.SetName(_visual.Button, _strings.MusicRecognitionAction);
     }
+
+    internal bool TryHandleShortcut(Key key, ModifierKeys modifiers) =>
+        !_disposed && _getMode() == OverlayInteractionMode.MusicResult &&
+        OverlayShortcuts.Copy.Matches(key, modifiers) &&
+        KeyboardShortcut.Press(MusicResultCardVisualFactory.FindCopyButton(_currentResultCard));
 
     internal bool TryCloseResult()
     {

@@ -57,6 +57,7 @@ internal static class TextTranslationVisualFactory
         };
         OverlayVisualResources.ApplyButtonTemplate(button, 22, palette.Hover, palette.Text);
         AutomationProperties.SetName(button, strings.Translate);
+        OverlayShortcuts.ScreenTranslation.AttachHint(button, strings);
         return new TranslationActionVisual(button, icon, loading);
     }
 

@@ -22,6 +22,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
     private readonly Func<Uri, ITraceVideoPreview>? _createVideo;
     private ITraceVideoPreview? _media;
     private Border? _card;
+    private Button? _copy;
 
     private TraceOverlayVisual(OverlayWidgetContext context, Func<Uri, ITraceVideoPreview>? createVideo)
     {
@@ -134,6 +135,8 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
                 palette.SecondaryContainer,
                 palette.OnSecondaryContainer,
                 12);
+            _copy = copy;
+            OverlayShortcuts.Copy.AttachHint(copy, _strings);
             var copyIcon = copy.Content;
             copy.Click += (_, e) =>
             {
@@ -141,12 +144,14 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
                 var payload = $"{match.Title} - {string.Format(CultureInfo.CurrentCulture, _strings.TraceEpisode, match.Episode)}, {TraceMoeMatch.Timestamp(match.From)}";
                 if (_clipboardCopy.TryCopy(payload))
                 {
+                    KeyboardShortcut.SetShowsStatus(copy, true);
                     copy.ToolTip = _strings.Copied;
                     AutomationProperties.SetName(copy, _strings.Copied);
                     copy.Content = OverlayVisualResources.Icon(PluginIcons.CheckFilled, 12, palette.Primary);
                 }
                 else
                 {
+                    KeyboardShortcut.SetShowsStatus(copy, true);
                     copy.ToolTip = _strings.CopyFailed;
                     AutomationProperties.SetName(copy, _strings.CopyFailed);
                     copy.Content = copyIcon;
@@ -265,6 +270,8 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
     }
 
     public bool TryGoBack() => false;
+
+    public bool TryCopy() => _host.IsActive && KeyboardShortcut.Press(_copy);
 
     public void Dispose()
     {

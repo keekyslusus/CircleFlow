@@ -70,6 +70,7 @@ internal static class ProviderMenuVisualFactory
         };
         OverlayVisualResources.ApplyButtonTemplate(button, 22, palette.Hover, palette.Text);
         AutomationProperties.SetName(button, strings.SelectSearchProvider(selected.DisplayName));
+        if (providers.Count > 1) OverlayShortcuts.ProviderMenu.AttachHint(button, strings);
 
         var panel = new StackPanel();
         AddMenuItems(panel, providers, selectedProviderId, lightTheme, strings);

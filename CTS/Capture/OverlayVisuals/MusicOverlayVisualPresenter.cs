@@ -248,6 +248,7 @@ internal static class MusicOverlayVisualPresenter
             12,
             confirmed ? palette.Primary : palette.MutedText);
         var name = confirmed ? strings.Copied : strings.CopyTrackInfo;
+        KeyboardShortcut.SetShowsStatus(button, confirmed);
         button.ToolTip = name;
         AutomationProperties.SetName(button, name);
     }

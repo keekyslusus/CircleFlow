@@ -176,6 +176,149 @@ public sealed class ImageSelectionTests
                 .Select(button => button.Visibility));
     });
 
+    [Fact]
+    public void Enter_searches_the_image_selection() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+
+        h.Key(h.Window, Key.Enter, Keyboard.PreviewKeyDownEvent);
+
+        Assert.Single(h.Commands.OfType<VisualSelection>());
+    });
+
+    [Fact]
+    public void Ctrl_shortcuts_copy_save_and_translate_the_image_selection() => Run(() =>
+    {
+        using (var h = new Harness())
+        {
+            h.Select();
+            Assert.True(h.Window.TryHandleShortcut(Key.T, ModifierKeys.Control));
+            var request = Assert.Single(h.Commands.OfType<ScreenTranslationRequested>());
+            Assert.False(h.Window.TryHandleShortcut(Key.C, ModifierKeys.Control));
+            h.Window.ShowTranslation(new ScreenTranslationResult(request.RequestId, Solid(30, 20, Colors.Red)));
+            h.Window.UpdateLayout();
+            Assert.True(h.Window.TryHandleShortcut(Key.C, ModifierKeys.Control));
+            Assert.NotNull(h.Copied);
+        }
+        using (var h = new Harness())
+        {
+            h.Select();
+            Assert.False(h.Window.TryHandleShortcut(Key.S, ModifierKeys.None));
+            Assert.False(h.Window.TryHandleShortcut(Key.A, ModifierKeys.Control));
+            Assert.True(h.Window.TryHandleShortcut(Key.S, ModifierKeys.Control));
+            Assert.Single(h.Commands.OfType<SaveSelectedImage>());
+        }
+    });
+
+    [Fact]
+    public void Shortcuts_of_hidden_actions_do_nothing() => Run(() =>
+    {
+        using var h = new Harness(hiddenActions: SelectionToolbarAction.Save | SelectionToolbarAction.Ask);
+        h.Select();
+
+        Assert.False(h.Window.TryHandleShortcut(Key.S, ModifierKeys.Control));
+        h.Type("w");
+
+        Assert.False(h.Actions.Toolbar.IsPromptOpen);
+        Assert.Empty(h.Commands);
+    });
+
+    [Fact]
+    public void Typing_over_the_toolbar_opens_ask_with_the_typed_text() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Type(" ");
+        Assert.False(h.Actions.Toolbar.IsPromptOpen);
+
+        h.Type("w");
+
+        Assert.True(h.Actions.Toolbar.IsPromptOpen);
+        Assert.Equal("w", h.Actions.AskPrompt.Input.Text);
+        Assert.Equal(1, h.Actions.AskPrompt.Input.CaretIndex);
+        Assert.Equal([typeof(AskDraftStarted), typeof(AskImageAttached)],
+            h.Commands.Select(command => command.GetType()));
+    });
+
+    [Fact]
+    public void Typing_into_an_open_question_that_lost_focus_continues_it() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Type("w");
+        var input = h.Actions.AskPrompt.Input;
+        Assert.True(h.Actions.AskPrompt.SendButton.Focus());
+        Assert.False(input.IsKeyboardFocused);
+
+        h.Type(" ");
+
+        Assert.Equal("w ", input.Text);
+        Assert.True(input.IsKeyboardFocused);
+        Assert.Equal(input.Text.Length, input.CaretIndex);
+    });
+
+    [Fact]
+    public void Keys_typed_into_the_question_are_not_shortcuts() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Type("w");
+        Assert.True(h.Actions.AskPrompt.Input.IsKeyboardFocused);
+
+        h.Key(h.Window, Key.Enter, Keyboard.PreviewKeyDownEvent);
+        h.Key(h.Window, Key.D3, Keyboard.PreviewKeyDownEvent);
+        h.Type("x");
+
+        Assert.Empty(h.Commands.OfType<VisualSelection>());
+        Assert.Empty(h.Commands.OfType<ScreenTranslationRequested>());
+        Assert.Equal("w", h.Actions.AskPrompt.Input.Text);
+    });
+
+    [Fact]
+    public void Enter_belongs_to_a_button_reached_with_tab_until_the_next_click() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Key(h.Window, Key.Tab, Keyboard.PreviewKeyDownEvent);
+        Assert.True(h.Actions.CopyButton.Focus());
+
+        h.Key(h.Window, Key.Enter, Keyboard.PreviewKeyDownEvent);
+        Assert.Empty(h.Commands.OfType<VisualSelection>());
+
+        h.Window.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Middle)
+        { RoutedEvent = Mouse.PreviewMouseDownEvent });
+        h.Key(h.Window, Key.Enter, Keyboard.PreviewKeyDownEvent);
+        Assert.Single(h.Commands.OfType<VisualSelection>());
+    });
+
+    [Fact]
+    public void Enter_is_not_taken_by_a_focused_button_of_the_faded_out_tray() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Key(h.Window, Key.Tab, Keyboard.PreviewKeyDownEvent);
+        Assert.True(h.Window.VisualState.Music.Button.Focus());
+
+        h.Key(h.Window, Key.Enter, Keyboard.PreviewKeyDownEvent);
+
+        Assert.Single(h.Commands.OfType<VisualSelection>());
+    });
+
+    [Fact]
+    public void Enter_searches_selected_text() => Run(() =>
+    {
+        var word = new GdiRectangle(300, 200, 60, 20);
+        using var h = new Harness(ocr: new ImmediateRecognizer(new OcrDocument("en", new GdiSize(640, 400),
+            [new OcrLine(0, 0, word, [new OcrWord(0, 0, 0, "hello", word)])])));
+        WpfUi.PumpUntil(() => h.HoverShowsText(new Point(310, 210)), "OCR delivery timed out.");
+        h.LeftDrag(new Point(310, 210), new Point(350, 210));
+
+        h.Key(h.Window, Key.Enter, Keyboard.PreviewKeyDownEvent);
+
+        Assert.Equal("hello", Assert.Single(h.Commands.OfType<SearchSelectedText>()).Text);
+    });
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -752,6 +895,11 @@ public sealed class ImageSelectionTests
         }
 
         internal void Escape() => Key(Window, System.Windows.Input.Key.Escape, Keyboard.PreviewKeyDownEvent);
+
+        internal void Type(string text) =>
+            Window.RaiseEvent(new TextCompositionEventArgs(Keyboard.PrimaryDevice,
+                new TextComposition(InputManager.Current, Window, text))
+            { RoutedEvent = TextCompositionManager.PreviewTextInputEvent });
 
         internal void Key(UIElement target, Key key, RoutedEvent routedEvent) =>
             target.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(Window)!, 0, key)
