@@ -33,9 +33,11 @@ internal sealed class SettingsWindowView
     private readonly SettingsProviderMenuPanel _providerMenu;
     private readonly SettingsCollapseMotion _historyRetentionMotion;
     private readonly SettingsCollapseMotion _historyContentMotion;
+    private readonly SettingsNavigationHistory _navigation;
     private IInputElement? _dialogOwner;
     private string? _pendingShortcut;
     private bool _loadingSettings;
+    private bool _sidePressClosedDropdown;
 
     internal SettingsWindowView(UiStrings strings, bool lightTheme, string iconPath, SettingsWindowModel model,
         Func<Action<ToastNotification>, ClipboardCopyService> createClipboardCopy)
@@ -68,6 +70,8 @@ internal sealed class SettingsWindowView
             lightTheme, ShowStatus, ShowProviderMenuSummary);
         _historyRetentionMotion = new SettingsCollapseMotion(Element<FrameworkElement>("HistoryRetentionRow"));
         _historyContentMotion = new SettingsCollapseMotion(Element<FrameworkElement>("HistoryContent"));
+        _navigation = new SettingsNavigationHistory(
+            Pages.FirstOrDefault(page => Element<RadioButton>("Nav_" + page).IsChecked == true) ?? Pages[0]);
         model.MusicHistoryChanged += OnMusicHistoryChanged;
         Window.Closed += (_, _) =>
         {
@@ -83,6 +87,8 @@ internal sealed class SettingsWindowView
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
         Window.AddHandler(ToggleButton.CheckedEvent, new RoutedEventHandler(OnNavigationChecked));
         Window.PreviewKeyDown += OnPreviewKeyDown;
+        Window.PreviewMouseDown += OnPreviewMouseDown;
+        Window.PreviewMouseUp += OnPreviewMouseUp;
         var shortcutInput = Element<Border>("ShortcutInput");
         shortcutInput.PreviewKeyDown += RecordShortcut;
         shortcutInput.MouseLeftButtonDown += (_, _) => shortcutInput.Focus();
@@ -164,9 +170,44 @@ internal sealed class SettingsWindowView
 
     private void OnNavigationChecked(object sender, RoutedEventArgs e)
     {
-        if (e.OriginalSource is RadioButton { Tag: string page } && Pages.Contains(page))
-            ShowPage(page);
+        if (e.OriginalSource is not RadioButton { Tag: string page } || !Pages.Contains(page)) return;
+        _navigation.Visit(page);
+        ShowPage(page);
     }
+
+    // A side press closes an open dropdown, so its release must not navigate as well.
+    private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!IsSideButton(e)) return;
+        _sidePressClosedDropdown = false;
+        foreach (var (comboBox, _) in _dropdowns)
+        {
+            if (!comboBox.IsDropDownOpen) continue;
+            comboBox.IsDropDownOpen = false;
+            _sidePressClosedDropdown = true;
+        }
+    }
+
+    private void OnPreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!IsSideButton(e)) return;
+        e.Handled = true;
+        if (_sidePressClosedDropdown)
+        {
+            _sidePressClosedDropdown = false;
+            return;
+        }
+        if (IsDialogOpen)
+        {
+            if (e.ChangedButton == MouseButton.XButton1) CloseDialog();
+            return;
+        }
+        var page = e.ChangedButton == MouseButton.XButton1 ? _navigation.GoBack() : _navigation.GoForward();
+        if (page is not null) Element<RadioButton>("Nav_" + page).IsChecked = true;
+    }
+
+    private static bool IsSideButton(MouseButtonEventArgs e) =>
+        e.ChangedButton is MouseButton.XButton1 or MouseButton.XButton2;
 
     private void ShowPage(string page)
     {
@@ -301,10 +342,12 @@ internal sealed class SettingsWindowView
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Escape || Element<Border>("DialogLayer").Visibility != Visibility.Visible) return;
+        if (e.Key != Key.Escape || !IsDialogOpen) return;
         CloseDialog();
         e.Handled = true;
     }
+
+    private bool IsDialogOpen => Element<Border>("DialogLayer").Visibility == Visibility.Visible;
 
     private void RecordShortcut(object sender, KeyEventArgs e)
     {

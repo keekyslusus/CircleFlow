@@ -421,6 +421,49 @@ public sealed class OverlayWindowTests
     }
 
     [Fact]
+    public void Mouse_back_steps_back_like_escape_but_never_closes_the_overlay()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                TestOverlayControllers.CreateFactory(),
+                overscan: false);
+            overlay.Show();
+            overlay.UpdateLayout();
+            overlay.SetDebugPanelOpen(true);
+            overlay.VisualState.Provider!.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.True(RaiseMouseBack(overlay));
+            Assert.Equal(Visibility.Collapsed, overlay.VisualState.Debug.Panel.Visibility);
+            RaiseMouseBack(overlay);
+            RaiseMouseBack(overlay);
+            RaiseMouseBack(overlay);
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            Assert.Empty(commands);
+
+            RaiseEscape(overlay);
+            overlay.CancelFromCoordinator();
+            Assert.IsType<CancelSession>(Assert.Single(commands));
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
     public void Starting_music_recognition_closes_the_debug_panel()
     {
         var failure = RunOnSta(() =>
@@ -782,6 +825,19 @@ public sealed class OverlayWindowTests
         {
             RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent,
         });
+    }
+
+    private static bool RaiseMouseBack(OverlayWindow overlay)
+    {
+        var args = new System.Windows.Input.MouseButtonEventArgs(
+            System.Windows.Input.Mouse.PrimaryDevice,
+            0,
+            System.Windows.Input.MouseButton.XButton1)
+        {
+            RoutedEvent = UIElement.PreviewMouseUpEvent,
+        };
+        overlay.RaiseEvent(args);
+        return args.Handled;
     }
 
     private static Exception? RunOnSta(Action action)

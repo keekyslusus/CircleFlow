@@ -134,7 +134,13 @@ public sealed class PinterestOverlayTests
                 pressed.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0,
                     System.Windows.Input.MouseButton.Left) { RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent, Source = pressed });
 
-                var close = Descendants(card).OfType<Button>()
+                Assert.True(pinterest.TryGoBack());
+                time.Advance(400);
+                Assert.False(pinterest.IsExpanded);
+                Assert.Equal(Visibility.Collapsed, back.Visibility);
+                Assert.False(pinterest.TryGoBack());
+
+                var close =Descendants(card).OfType<Button>()
                     .Single(button => AutomationProperties.GetName(button) == TestUiStrings.English.Close);
                 close.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 time.Advance(300);
@@ -238,7 +244,7 @@ public sealed class PinterestOverlayTests
             .ToList();
 
     // Previews come from local files so the tests stay offline; an optional folder of real pins shows true content.
-    private static PinterestPin[] Pins()
+    internal static PinterestPin[] Pins()
     {
         var preview = Environment.GetEnvironmentVariable("CTS_PINTEREST_PREVIEW_DIRECTORY");
         var sizes = new (int Width, int Height)[]

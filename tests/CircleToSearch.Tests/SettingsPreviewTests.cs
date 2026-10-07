@@ -437,6 +437,65 @@ public sealed class SettingsPreviewTests
         finally { window.Close(); }
     });
 
+    [Fact]
+    public void Mouse_side_buttons_walk_page_history_and_back_closes_a_dialog_first() => OnSta(time =>
+    {
+        var window = new TestSettingsWindow().CreateView().Window;
+        try
+        {
+            window.Show();
+            Find<RadioButton>(window, "Nav_general").IsChecked = true;
+            Click(window, "page:search");
+            AssertPage("search");
+            var combo = Find<ComboBox>(window, "TextSearch");
+            combo.IsDropDownOpen = true;
+            Pump();
+            SideButton(window, MouseButton.XButton1);
+            Assert.False(combo.IsDropDownOpen);
+            AssertPage("search");
+
+            Assert.True(SideButton(window, MouseButton.XButton1));
+            AssertPage("general");
+            SideButton(window, MouseButton.XButton1);
+            AssertPage("hotkeys");
+            SideButton(window, MouseButton.XButton1);
+            AssertPage("hotkeys");
+            Assert.True(window.IsVisible);
+
+            Assert.True(SideButton(window, MouseButton.XButton2));
+            AssertPage("general");
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            SideButton(window, MouseButton.XButton2);
+            AssertPage("music");
+
+            Click(window, "reset");
+            CompleteDialogTransition(window, time, open: true);
+            SideButton(window, MouseButton.XButton2);
+            Assert.Equal(1, Find<FrameworkElement>(window, "DialogMotionSurface").Opacity);
+            SideButton(window, MouseButton.XButton1);
+            CompleteDialogTransition(window, time, open: false);
+            AssertPage("music");
+            SideButton(window, MouseButton.XButton1);
+            AssertPage("general");
+        }
+        finally { window.Close(); }
+
+        void AssertPage(string page)
+        {
+            CompletePageTransition(window, time);
+            Assert.True(Find<RadioButton>(window, "Nav_" + page).IsChecked);
+            Assert.True(Find<StackPanel>(window, "Page_" + page).IsVisible);
+        }
+    });
+
+    private static bool SideButton(Window window, MouseButton button)
+    {
+        window.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button) { RoutedEvent = UIElement.PreviewMouseDownEvent });
+        var release = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button) { RoutedEvent = UIElement.PreviewMouseUpEvent };
+        window.RaiseEvent(release);
+        return release.Handled;
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

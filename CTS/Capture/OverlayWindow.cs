@@ -198,6 +198,7 @@ public sealed class OverlayWindow : Window
 
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
+        PreviewMouseUp += OnPreviewMouseUp;
         PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
         Deactivated += OnDeactivated;
         Activated += OnActivated;
@@ -357,34 +358,45 @@ public sealed class OverlayWindow : Window
             return;
         }
         if (e.Key != Key.Escape) return;
+        if (!TryStepBack()) CancelInternal();
+        e.Handled = true;
+    }
+
+    // Mouse Back mirrors Escape but never closes the overlay: side buttons are easy to press by accident.
+    // Where Escape would close it from a result card, Back returns to selecting instead.
+    private void OnPreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.XButton1) return;
+        e.Handled = true;
+        if (_interaction.IsFinished ||
+            e.LeftButton == MouseButtonState.Pressed ||
+            e.RightButton == MouseButtonState.Pressed ||
+            TryStepBack()) return;
+        if (!_music.TryCloseResult()) _widget.TryCloseResult();
+    }
+
+    private bool TryStepBack()
+    {
         if (_debug.IsOpen)
         {
             SetDebugPanelOpen(false);
+            return true;
         }
-        else if (_provider.IsOpen)
+        if (_provider.IsOpen)
         {
             _provider.SetOpen(false);
+            return true;
         }
-        else if (_imageSelection.CloseAskPrompt())
+        if (_imageSelection.CloseAskPrompt())
         {
             Keyboard.Focus(this);
+            return true;
         }
-        else if (_translation.HandleEscape())
-        {
-        }
-        else if (TryDismissImageSelection())
-        {
-        }
-        else if (_textSelection.IsActionMenuOpen)
-        {
-            _textSelection.Dismiss();
-            Cursor = Cursors.Cross;
-        }
-        else
-        {
-            CancelInternal();
-        }
-        e.Handled = true;
+        if (_translation.HandleEscape() || _widget.TryGoBack() || TryDismissImageSelection()) return true;
+        if (!_textSelection.IsActionMenuOpen) return false;
+        _textSelection.Dismiss();
+        Cursor = Cursors.Cross;
+        return true;
     }
 
     private bool CanStartSelection(object? originalSource, Point point)
@@ -774,6 +786,7 @@ public sealed class OverlayWindow : Window
         _resourcesDisposed = true;
         Loaded -= OnLoaded;
         PreviewKeyDown -= OnPreviewKeyDown;
+        PreviewMouseUp -= OnPreviewMouseUp;
         PreviewMouseLeftButtonDown -= OnPreviewMouseLeftButtonDown;
         Deactivated -= OnDeactivated;
         Activated -= OnActivated;

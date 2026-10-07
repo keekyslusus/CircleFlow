@@ -374,6 +374,13 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         });
     }
 
+    public bool TryGoBack()
+    {
+        if (!IsExpanded || !_host.IsActive) return false;
+        Collapse();
+        return true;
+    }
+
     // Hover motion starts from the value on screen, so moving quickly across tiles never jumps.
     private static void Animate(DependencyObject target, DependencyProperty property, double value, TimeSpan duration)
     {
