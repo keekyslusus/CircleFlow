@@ -585,6 +585,47 @@ public sealed class ProviderMusicOverlayUiTests
         Assert.Null(failure);
     }
 
+    [Fact]
+    public void Mouse_back_dismisses_the_music_result_but_not_listening()
+    {
+        var failure = RunOnSta(() =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var monitor = new GdiRectangle(0, 0, 640, 400);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                frame,
+                monitor,
+                monitor,
+                1,
+                new OverlayLaunchOptions(
+                    new OverlayOptions(8, 12),
+                    TestUiStrings.English,
+                    Providers,
+                    SearchProviderIds.GoogleLens),
+                commands.Add,
+                TestOverlayControllers.CreateFactory(),
+                overscan: false);
+            overlay.Show();
+            overlay.ShowListening();
+            RaiseMouseBack(overlay);
+            Assert.Equal(OverlayInteractionMode.Listening, overlay.Mode);
+            Assert.Empty(commands);
+
+            overlay.ShowMusicResult(MusicRecognitionOutcome.From(MusicRecognitionStatus.NoMatch));
+            RaiseMouseBack(overlay);
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            Assert.IsType<DismissMusicResult>(Assert.Single(commands));
+            RaiseMouseBack(overlay);
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            Assert.Single(commands);
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+
+        Assert.Null(failure);
+    }
+
     [Theory]
     [InlineData(MusicRecognitionStatus.NoMatch)]
     [InlineData(MusicRecognitionStatus.NoAudio)]
@@ -647,6 +688,13 @@ public sealed class ProviderMusicOverlayUiTests
 
         Assert.Null(failure);
     }
+
+    private static void RaiseMouseBack(OverlayWindow overlay) =>
+        overlay.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+            System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.XButton1)
+        {
+            RoutedEvent = UIElement.PreviewMouseUpEvent,
+        });
 
     private static Exception? RunOnSta(Action action)
     {

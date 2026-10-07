@@ -51,6 +51,61 @@ public sealed class WidgetOverlayControllerTests
     }
 
     [Fact]
+    public void Mouse_back_closes_the_widget_card_while_escape_closes_the_overlay()
+    {
+        RunSta(() =>
+        {
+            using var source = new GdiBitmap(640, 400);
+            var bounds = new GdiRectangle(0, 0, 640, 400);
+            var start = new Point(100, 100);
+            var finish = new Point(180, 160);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                source,
+                bounds,
+                bounds,
+                1,
+                new OverlayOptions(8, 12),
+                TestUiStrings.English,
+                TestOverlayControllers.CreateFactory(
+                    pointerPosition: e => e.RoutedEvent == UIElement.MouseLeftButtonUpEvent ? finish : start),
+                overscan: false,
+                providers: [new(SearchProviderIds.Pinterest, "Pinterest")],
+                initialProviderId: SearchProviderIds.Pinterest,
+                publishCommand: commands.Add);
+            overlay.Show();
+            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
+            Assert.Equal(OverlayInteractionMode.WidgetLoading, overlay.Mode);
+            commands.OfType<VisualSelection>().Single().Selection.Dispose();
+
+            RaiseMouseBack(overlay);
+            Assert.Equal(OverlayInteractionMode.WidgetLoading, overlay.Mode);
+            overlay.ShowWidgetResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForPinterest([])));
+            Assert.Equal(OverlayInteractionMode.WidgetResult, overlay.Mode);
+
+            RaiseMouseBack(overlay);
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            RaiseMouseBack(overlay);
+            Assert.Equal(OverlayInteractionMode.Selecting, overlay.Mode);
+            Assert.DoesNotContain(commands, command => command is CancelSession);
+
+            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
+            commands.OfType<VisualSelection>().Last().Selection.Dispose();
+            overlay.ShowWidgetResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForPinterest([])));
+            Assert.Equal(OverlayInteractionMode.WidgetResult, overlay.Mode);
+            overlay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(overlay), 0, Key.Escape)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent,
+            });
+            Assert.Equal(OverlayInteractionMode.Closing, overlay.Mode);
+            Assert.IsType<CancelSession>(commands[^1]);
+
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+        });
+    }
+
+    [Fact]
     public void TryStart_uses_a_copy_and_keeps_the_source_owned_by_the_overlay()
     {
         RunSta(() =>
@@ -325,6 +380,12 @@ public sealed class WidgetOverlayControllerTests
             Source = input,
         });
     }
+
+    private static void RaiseMouseBack(OverlayWindow overlay) =>
+        overlay.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.XButton1)
+        {
+            RoutedEvent = UIElement.PreviewMouseUpEvent,
+        });
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {

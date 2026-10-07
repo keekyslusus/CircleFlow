@@ -99,6 +99,16 @@ internal sealed class WidgetOverlayController : IDisposable
         _visual?.DismissResult();
     }
 
+    internal bool TryGoBack() =>
+        !_disposed && _getMode() == OverlayInteractionMode.WidgetResult && _visual?.TryGoBack() == true;
+
+    internal bool TryCloseResult()
+    {
+        if (_disposed || _getMode() != OverlayInteractionMode.WidgetResult) return false;
+        _transitionMode(OverlayInteractionMode.Selecting);
+        return true;
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -116,8 +126,6 @@ internal sealed class WidgetOverlayController : IDisposable
 
     private void CloseResult(IOverlayWidgetVisual? visual)
     {
-        if (_disposed || !ReferenceEquals(_visual, visual) ||
-            _getMode() != OverlayInteractionMode.WidgetResult) return;
-        _transitionMode(OverlayInteractionMode.Selecting);
+        if (ReferenceEquals(_visual, visual)) TryCloseResult();
     }
 }

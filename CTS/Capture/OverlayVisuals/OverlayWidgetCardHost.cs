@@ -12,6 +12,7 @@ internal interface IOverlayWidgetVisual : IDisposable
 {
     void ShowResult(VisualSearchPreparationOutcome outcome);
     void DismissResult();
+    bool TryGoBack();
 }
 
 internal sealed record OverlayWidgetContext(

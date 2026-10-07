@@ -264,6 +264,8 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
         _host.Dismiss();
     }
 
+    public bool TryGoBack() => false;
+
     public void Dispose()
     {
         _host.Dispose();
