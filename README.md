@@ -18,7 +18,7 @@ Just press a shortcut. No screenshots to save, no tabs to open.
 ## Features
 
 ### Visual Search
-<img src=".github/feature_visual-search.png" width="600">
+<img src=".github/pinterest.gif" width="600">
 
 - Circle or select any area and search it with Google Lens ,Yandex Images, Pinterest or trace.moe
 - [trace.moe](https://trace.moe/) finds the anime, episode and timestamp of a scene
