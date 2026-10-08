@@ -523,6 +523,7 @@ public static class CompositionRoot
         {
             var playSound = dependencies.PlaySound ?? (_ => { });
             UiClickSounds.Attach(context.Visual.Root, playSound);
+            var sounds = Track(new OverlaySoundCues(playSound));
             var activityPresenter = Track(new OverlayActivityPresenter(
                 context.Visual.ActivityHost,
                 dependencies.AnimationsEnabled,
@@ -531,7 +532,8 @@ public static class CompositionRoot
                 context.Visual.Bottom,
                 context.Visual.LightTheme,
                 dependencies.AnimationsEnabled,
-                TimeProvider.System));
+                TimeProvider.System,
+                tone => playSound(tone == ToastTone.Error ? UiSound.ToastError : UiSound.Toast)));
             var clipboardCopy = new ClipboardCopyService(
                 dependencies.SetClipboard,
                 toast.Show,
@@ -588,12 +590,17 @@ public static class CompositionRoot
                 context.CanAcceptPointerInput,
                 context.CanStartSelection,
                 context.SelectionStarted,
-                context.SelectionCompleted,
+                bounds =>
+                {
+                    playSound(UiSound.SelectionDone);
+                    context.SelectionCompleted(bounds);
+                },
                 context.SelectionRejected,
                 context.SelectionHoldCompleted,
                 dependencies.PointerPosition,
                 subscribeInput: false,
-                selectionDrawn: context.SelectionDrawn));
+                selectionDrawn: context.SelectionDrawn,
+                traced: sounds.Traced));
             var textSelection = Track(new TextSelectionOverlayController(
                 context.Visual.TextSelection,
                 context.CoordinateRoot,
@@ -628,7 +635,7 @@ public static class CompositionRoot
             var actionTray = Track(new ActionTrayOverlayController(
                 context.Visual.Actions,
                 context.Visual.Bottom.Root,
-                () => playSound(UiSound.OverlayOpened)));
+                sounds.Entered));
             var qrCodes = Track(new QrCodeOverlayController(
                 context.Visual.QrCodes,
                 frameSource,
@@ -639,7 +646,8 @@ public static class CompositionRoot
                 publishCommand,
                 context.Strings,
                 dependencies.AnimationsEnabled,
-                dependencies.Log));
+                dependencies.Log,
+                sounds.QrFound));
             imageText = Track(new OverlayImageTextCoordinator(
                 pointer,
                 textSelection,
@@ -763,7 +771,8 @@ public static class CompositionRoot
                 activityPresenter,
                 imageSelection,
                 selectionHint,
-                qrCodes);
+                qrCodes,
+                sounds);
             rollback.Clear();
             return controllers;
         }

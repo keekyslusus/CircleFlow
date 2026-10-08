@@ -72,7 +72,8 @@ internal sealed class WidgetOverlayController : IDisposable
             _isLightTheme(),
             url => OpenResult(visual, url),
             () => CloseResult(visual),
-            _clipboardCopy));
+            _clipboardCopy,
+            _found));
         _visual = visual;
 
         var selection = _createSelectionCopy(bounds);
@@ -94,9 +95,7 @@ internal sealed class WidgetOverlayController : IDisposable
         var visual = _visual;
         if (visual is null) return;
         _transitionMode(OverlayInteractionMode.WidgetResult);
-        if (_disposed || !ReferenceEquals(_visual, visual)) return;
-        visual.ShowResult(outcome);
-        if (outcome.Success) _found();
+        if (!_disposed && ReferenceEquals(_visual, visual)) visual.ShowResult(outcome);
     }
 
     internal void DismissResult()

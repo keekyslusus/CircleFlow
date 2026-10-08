@@ -15,13 +15,15 @@ namespace CircleToSearch.Tests;
 public sealed class ToastOverlayControllerTests
 {
     [Fact]
-    public void Keyed_language_toast_replaces_only_its_own_message_and_renews_lifetime()
+    public void Keyed_language_toast_replaces_only_its_own_message_renews_lifetime_and_announces_once()
     {
         Assert.Null(RunOnSta(time =>
         {
             var visual = CreateVisual();
             var window = ShowVisual(visual);
-            using var controller = new ToastOverlayController(visual.Bottom, false, () => true, time.Toasts);
+            var announced = new List<ToastTone>();
+            using var controller = new ToastOverlayController(visual.Bottom, false, () => true, time.Toasts,
+                announced.Add);
             controller.Show(new ToastNotification("Copied", ToastTone.Success, TimeSpan.FromSeconds(2)));
             controller.ShowOrUpdate("ocr-language", new ToastNotification("English", ToastTone.Neutral,
                 TimeSpan.FromMilliseconds(30)));
@@ -30,6 +32,7 @@ public sealed class ToastOverlayControllerTests
                 TimeSpan.FromSeconds(1)));
             Assert.Equal(2, controller.ActiveCount);
             Assert.Equal(["Copied", "Russian"], controller.ActiveVisuals.Select(v => v.Message.Text));
+            Assert.Equal([ToastTone.Success, ToastTone.Neutral], announced);
             time.Advance(220);
             Assert.Equal(2, controller.ActiveCount);
             visual.Effects.SceneRipples.Dispose();

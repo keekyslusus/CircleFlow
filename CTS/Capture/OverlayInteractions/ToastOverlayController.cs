@@ -12,6 +12,7 @@ internal sealed class ToastOverlayController : IDisposable
     private readonly bool _lightTheme;
     private readonly Func<bool> _animationsEnabled;
     private readonly TimeProvider _time;
+    private readonly Action<ToastTone> _shown;
     private readonly List<ActiveToast> _active = [];
     private long _nextId;
     private bool _closing;
@@ -21,12 +22,14 @@ internal sealed class ToastOverlayController : IDisposable
         BottomOverlayVisual bottom,
         bool lightTheme,
         Func<bool> animationsEnabled,
-        TimeProvider time)
+        TimeProvider time,
+        Action<ToastTone>? shown = null)
     {
         _bottom = bottom;
         _lightTheme = lightTheme;
         _animationsEnabled = animationsEnabled;
         _time = time;
+        _shown = shown ?? (_ => { });
     }
 
     internal int ActiveCount => _active.Count;
@@ -34,12 +37,14 @@ internal sealed class ToastOverlayController : IDisposable
         _active.Select(entry => entry.Visual).ToArray();
 
     internal void Show(ToastNotification notification)
-        => ShowCore(notification, null);
+        => ShowCore(notification, null, announce: true);
 
     internal void ShowOrUpdate(string key, ToastNotification notification)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         var existing = _active.FirstOrDefault(entry => entry.Key == key);
+        // Updating a toast already on screen stays silent, so a changing status does not chime on every step.
+        var announce = existing is null;
         if (existing is not null)
         {
             existing.Lifetime?.Dispose();
@@ -52,13 +57,14 @@ internal sealed class ToastOverlayController : IDisposable
                 RepairMargins();
             }, _animationsEnabled());
         }
-        ShowCore(notification, key);
+        ShowCore(notification, key, announce);
     }
 
-    private void ShowCore(ToastNotification notification, string? key)
+    private void ShowCore(ToastNotification notification, string? key, bool announce)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_closing) return;
+        if (announce) _shown(notification.Tone);
         var animationsEnabled = _animationsEnabled();
         var visual = ToastOverlayVisualFactory.Create(notification, _lightTheme);
         var entry = new ActiveToast(++_nextId, visual, key);

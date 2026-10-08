@@ -8,4 +8,9 @@ internal enum UiSound
     Key,
     Found,
     OverlayOpened,
+    Toast,
+    ToastError,
+    Trace,
+    SelectionDone,
+    QrFound,
 }

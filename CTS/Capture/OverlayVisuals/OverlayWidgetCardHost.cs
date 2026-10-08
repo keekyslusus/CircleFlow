@@ -25,7 +25,8 @@ internal sealed record OverlayWidgetContext(
     bool LightTheme,
     Action<Uri> Open,
     Action Close,
-    ClipboardCopyService ClipboardCopy);
+    ClipboardCopyService ClipboardCopy,
+    Action? Matched = null);
 
 // Owns the loading indicator, reveal and exit of a result card placed above the overlay's bottom controls.
 internal sealed class OverlayWidgetCardHost : IDisposable
@@ -34,6 +35,7 @@ internal sealed class OverlayWidgetCardHost : IDisposable
     private readonly OverlayActivityPresenter _activityPresenter;
     private readonly OverlayEffectsVisual _effects;
     private readonly BottomOverlayVisual _bottom;
+    private readonly Action? _matched;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly Grid _resultHost = new()
     {
@@ -54,6 +56,7 @@ internal sealed class OverlayWidgetCardHost : IDisposable
         _activityPresenter = context.ActivityPresenter;
         _bottom = context.Bottom;
         _effects = context.Effects;
+        _matched = context.Matched;
         _resultHost.Margin = context.Bottom.ResultSlot.Margin;
     }
 
@@ -107,6 +110,7 @@ internal sealed class OverlayWidgetCardHost : IDisposable
             _resultHost.IsHitTestVisible = true;
             _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_resultHost));
             StateCardTransitions.BeginEntrance(_card!, OverlayVisualResources.AnimationsEnabled());
+            if (matched) _matched?.Invoke();
             if (!matched || !OverlayVisualResources.AnimationsEnabled()) return;
             _ripple = _root.Dispatcher.BeginInvoke(() =>
             {

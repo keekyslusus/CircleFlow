@@ -188,3 +188,63 @@ public sealed class UiSoundTests
         }
     }
 }
+
+public sealed class OverlaySoundCuesTests
+{
+    [Fact]
+    public void Qr_cue_waits_for_the_entrance_cue_to_finish()
+    {
+        var played = new List<UiSound>();
+        var time = new FakeTimeProvider();
+        using var cues = new OverlaySoundCues(played.Add, time);
+
+        cues.Entered();
+        time.Advance(TimeSpan.FromMilliseconds(100));
+        cues.QrFound();
+        Assert.Equal([UiSound.OverlayOpened], played);
+
+        time.Advance(TimeSpan.FromMilliseconds(199));
+        Assert.Equal([UiSound.OverlayOpened], played);
+        time.Advance(TimeSpan.FromMilliseconds(2));
+        Assert.Equal([UiSound.OverlayOpened, UiSound.QrFound], played);
+    }
+
+    [Fact]
+    public void Late_qr_cue_plays_at_once_and_a_closed_overlay_drops_a_pending_one()
+    {
+        var played = new List<UiSound>();
+        var time = new FakeTimeProvider();
+        var cues = new OverlaySoundCues(played.Add, time);
+        cues.Entered();
+        time.Advance(OverlaySoundCues.EntranceGap);
+        cues.QrFound();
+        Assert.Equal(UiSound.QrFound, played[^1]);
+
+        var closed = new OverlaySoundCues(played.Add, time);
+        closed.Entered();
+        closed.QrFound();
+        closed.Dispose();
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(1, played.Count(sound => sound == UiSound.QrFound));
+        cues.Dispose();
+    }
+
+    [Fact]
+    public void Trace_ticks_follow_stroke_distance_but_never_faster_than_the_minimum_interval()
+    {
+        var played = new List<UiSound>();
+        var time = new FakeTimeProvider();
+        using var cues = new OverlaySoundCues(played.Add, time);
+
+        cues.Traced(OverlaySoundCues.TraceStepDips - 1);
+        Assert.Empty(played);
+        cues.Traced(2);
+        Assert.Single(played);
+
+        cues.Traced(OverlaySoundCues.TraceStepDips * 3);
+        Assert.Single(played);
+        time.Advance(OverlaySoundCues.TraceMinInterval);
+        cues.Traced(1);
+        Assert.Equal([UiSound.Trace, UiSound.Trace], played);
+    }
+}

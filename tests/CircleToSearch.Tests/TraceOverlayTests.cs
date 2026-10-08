@@ -146,6 +146,45 @@ public sealed class TraceOverlayTests
     }
 
     [Fact]
+    public void Match_is_announced_when_the_card_is_revealed_not_when_the_result_arrives()
+    {
+        RunSta(time =>
+        {
+            var visual = OverlayVisualFactory.CreateRoot(null, new Size(640, 400), 32, false,
+                TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
+            var window = new Window { Content = visual.Root, Width = 640, Height = 400, ShowActivated = false, ShowInTaskbar = false };
+            window.Show();
+            window.UpdateLayout();
+            var matched = 0;
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
+            using var trace = TraceOverlayVisual.Create(new OverlayWidgetContext(
+                visual.Root, activity, visual.Bottom, visual.Effects, TestUiStrings.English, false,
+                _ => { }, () => { }, new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English),
+                () => matched++));
+            try
+            {
+                time.Advance(240);
+                var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
+                    "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null, Video = null };
+                trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
+                Assert.Equal(0, matched);
+
+                Reveal(time, trace);
+
+                Assert.Equal(1, matched);
+            }
+            finally
+            {
+                visual.Effects.SceneRipples.Dispose();
+                visual.Bottom.LayoutTransitions.Dispose();
+                visual.Music.LoadingIndicator.Dispose();
+                visual.Music.Waveform.Dispose();
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void Clipboard_failure_shows_error_without_copy_success_state()
     {
         RunSta(time =>
