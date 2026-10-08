@@ -8,6 +8,8 @@ namespace CircleToSearch.Tests;
 
 public sealed class GoogleLensBrowserOperationTests
 {
+    private static readonly SearchProviderDescriptor GoogleLens = new(SearchProviderIds.GoogleLens, "Google Lens");
+
     [Fact]
     public async Task Direct_upload_success_does_not_use_the_page_script()
     {
@@ -139,7 +141,7 @@ public sealed class GoogleLensBrowserOperationTests
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
 
-        var result = await new GoogleLensBrowserOperation(CreateJpeg(), NewLog(), "What is red?")
+        var result = await new GoogleLensBrowserOperation(CreateJpeg(), NewLog(), "What is red?", GoogleLens)
             .ExecuteAsync(session, CancellationToken.None);
 
         Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, result);
@@ -147,6 +149,7 @@ public sealed class GoogleLensBrowserOperationTests
         var target = Assert.Single(session.GetTargets);
         Assert.Contains("mstk=token-1", target.Query, StringComparison.Ordinal);
         Assert.Contains("mq=What%20is%20red%3F", target.Query, StringComparison.Ordinal);
+        Assert.Empty(session.DisplayedProviders);
     }
 
     [Fact]
@@ -176,11 +179,12 @@ public sealed class GoogleLensBrowserOperationTests
         };
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
 
-        var result = await new GoogleLensBrowserOperation(CreateJpeg(), NewLog(), "What is red?")
+        var result = await new GoogleLensBrowserOperation(CreateJpeg(), NewLog(), "What is red?", GoogleLens)
             .ExecuteAsync(session, CancellationToken.None);
 
         Assert.Equal(VisualSearchBrowserOperationStatus.Succeeded, result);
         Assert.Equal(0, session.GetNavigations);
+        Assert.Equal([GoogleLens], session.DisplayedProviders);
     }
 
     [Fact]
@@ -194,7 +198,7 @@ public sealed class GoogleLensBrowserOperationTests
         session.Navigations.Enqueue(BrowserNavigationResult.Succeeded());
         session.Navigations.Enqueue(BrowserNavigationResult.Failed("ConnectionReset"));
 
-        var result = await new GoogleLensBrowserOperation(CreateJpeg(), NewLog(), "What is red?")
+        var result = await new GoogleLensBrowserOperation(CreateJpeg(), NewLog(), "What is red?", GoogleLens)
             .ExecuteAsync(session, CancellationToken.None);
 
         Assert.Equal(VisualSearchBrowserOperationStatus.Failed, result);

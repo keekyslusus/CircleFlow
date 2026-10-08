@@ -23,8 +23,8 @@ internal sealed class ImageAskWorkflow(
             createOperation(image, question), externalFallbackUrl: null, revealAfter: question);
         return presenter.PresentAsync(
             new RoutedVisualSearchPreparation(
-                SearchProviderIds.GoogleLens,
-                strings.GoogleLensProviderName,
+                SearchProviderIds.GoogleAiMode,
+                strings.GoogleAiModeProviderName,
                 VisualSearchPreparationOutcome.Ready(prepared),
                 UsedFallback: false),
             cancellationToken);

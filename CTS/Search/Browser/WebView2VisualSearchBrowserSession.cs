@@ -7,13 +7,20 @@ namespace CircleToSearch.Search.Browser;
 internal sealed class WebView2VisualSearchBrowserSession(
     WebView2 webView,
     CoreWebView2Environment environment,
-    Func<bool> isCurrent) : IVisualSearchBrowserSession
+    Func<bool> isCurrent,
+    Action<SearchProviderDescriptor> setDisplayedProvider) : IVisualSearchBrowserSession
 {
     private readonly WebView2 _webView = webView;
     private readonly CoreWebView2Environment _environment = environment;
     private readonly Func<bool> _isCurrent = isCurrent;
+    private readonly Action<SearchProviderDescriptor> _setDisplayedProvider = setDisplayedProvider;
 
     public Uri? CurrentUri => _isCurrent() ? _webView.Source : null;
+
+    public void SetDisplayedProvider(SearchProviderDescriptor provider)
+    {
+        if (_isCurrent()) _setDisplayedProvider(provider);
+    }
 
     public Task<BrowserNavigationResult> NavigateAsync(
         Uri target,

@@ -212,7 +212,8 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
                 _environment!,
                 () => generation == _showGeneration &&
                       ReferenceEquals(_view, view) &&
-                      !showLifetime.IsCancellationRequested);
+                      !showLifetime.IsCancellationRequested,
+                view.SetProvider);
             SearchBrowserShowStatus status;
             try
             {

@@ -1,3 +1,4 @@
+using CircleToSearch.Search;
 using CircleToSearch.Search.Browser;
 
 namespace CircleToSearch.Tests;
@@ -22,6 +23,9 @@ internal sealed class FakeBrowserSession : IVisualSearchBrowserSession
     public int ScriptCalls { get; private set; }
     public int MessageCalls { get; private set; }
     public List<Uri> GetTargets { get; } = [];
+    public List<SearchProviderDescriptor> DisplayedProviders { get; } = [];
+
+    public void SetDisplayedProvider(SearchProviderDescriptor provider) => DisplayedProviders.Add(provider);
 
     public Task<BrowserNavigationResult> NavigateAsync(
         Uri target,

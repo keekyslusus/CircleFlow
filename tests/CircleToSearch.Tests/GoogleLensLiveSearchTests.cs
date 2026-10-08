@@ -10,6 +10,8 @@ namespace CircleToSearch.Tests;
 
 public sealed class GoogleLensLiveSearchTests
 {
+    private static readonly SearchProviderDescriptor GoogleLens = new(SearchProviderIds.GoogleLens, "Google Lens");
+
     [SkippableFact]
     [Trait("Category", "Live")]
     public async Task Google_lens_opens_results_for_an_in_memory_jpeg()
@@ -70,12 +72,12 @@ public sealed class GoogleLensLiveSearchTests
                 TestUiStrings.English, content, anchor, lightTheme));
         const string question = "What color is the circle? Answer with one word.";
         var jpeg = CreateShapesJpeg();
-        var fallback = new FallbackProbe(new GoogleLensBrowserOperation(jpeg, log, question));
+        var fallback = new FallbackProbe(new GoogleLensBrowserOperation(jpeg, log, question, GoogleLens));
         var answer = new AnswerProbe(new GoogleAiModeBrowserOperation(
             Task.FromResult(jpeg), Task.FromResult(question), (_, _) => fallback, log));
 
         var shown = await host.ShowAsync(
-            new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens"),
+            new SearchProviderDescriptor(SearchProviderIds.GoogleAiMode, "Google AI Mode"),
             PreparedVisualSearch.ForBrowserOperation(answer, externalFallbackUrl: null),
             CancellationToken.None);
 
@@ -109,13 +111,13 @@ public sealed class GoogleLensLiveSearchTests
         const string question = "What color is the square? Answer with one word.";
         var image = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
         var asked = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var fallback = new FallbackProbe(new GoogleLensBrowserOperation(CreateShapesJpeg(), log, question));
+        var fallback = new FallbackProbe(new GoogleLensBrowserOperation(CreateShapesJpeg(), log, question, GoogleLens));
         var chips = new AttachmentCountingOperation(
             new GoogleAiModeBrowserOperation(image.Task, asked.Task, (_, _) => fallback, log));
         var answer = new AnswerProbe(chips, "red", "красн");
 
         var show = host.ShowAsync(
-            new SearchProviderDescriptor(SearchProviderIds.GoogleLens, "Google Lens"),
+            new SearchProviderDescriptor(SearchProviderIds.GoogleAiMode, "Google AI Mode"),
             PreparedVisualSearch.ForBrowserOperation(answer, externalFallbackUrl: null, revealAfter: asked.Task),
             CancellationToken.None);
         // Typing starts before the hidden page has finished loading its scripts.
@@ -212,6 +214,8 @@ public sealed class GoogleLensLiveSearchTests
             : IVisualSearchBrowserSession
         {
             public Uri? CurrentUri => inner.CurrentUri;
+
+            public void SetDisplayedProvider(SearchProviderDescriptor provider) => inner.SetDisplayedProvider(provider);
 
             public Task<BrowserNavigationResult> NavigateAsync(Uri target, TimeSpan timeout, CancellationToken cancel)
                 => inner.NavigateAsync(target, timeout, cancel);

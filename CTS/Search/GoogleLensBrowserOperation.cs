@@ -17,21 +17,27 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         ["source", "q", "mq", "udm", "mstk", "aep", "ntc", "aioh", "csuir", "cs"];
 
     private readonly PluginLog _log;
-    private readonly string? _question;
+    private readonly (string Question, SearchProviderDescriptor Provider)? _followUp;
     private Task<byte[]>? _jpeg;
     private int _started;
 
-    public GoogleLensBrowserOperation(byte[] jpeg, PluginLog log, string? question = null)
-        : this(Task.FromResult(jpeg), log, question)
+    public GoogleLensBrowserOperation(byte[] jpeg, PluginLog log)
+        : this(Task.FromResult(jpeg), log)
     {
     }
 
-    public GoogleLensBrowserOperation(Task<byte[]> jpeg, PluginLog log, string? question = null)
+    public GoogleLensBrowserOperation(Task<byte[]> jpeg, PluginLog log)
     {
-        if (question is not null) ArgumentException.ThrowIfNullOrWhiteSpace(question);
         _jpeg = jpeg;
         _log = log;
-        _question = question;
+    }
+
+    // Continues the question in AI Mode and names the provider in the window when Lens results have to stay.
+    public GoogleLensBrowserOperation(byte[] jpeg, PluginLog log, string question, SearchProviderDescriptor provider)
+        : this(Task.FromResult(jpeg), log)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(question);
+        _followUp = (question, provider);
     }
 
     public async Task<VisualSearchBrowserOperationStatus> ExecuteAsync(
@@ -64,9 +70,9 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
                 }
             }
 
-            return _question is null
-                ? VisualSearchBrowserOperationStatus.Succeeded
-                : await ContinueInAiModeAsync(session, _question, cancel).ConfigureAwait(true);
+            return _followUp is { } followUp
+                ? await ContinueInAiModeAsync(session, followUp.Question, followUp.Provider, cancel).ConfigureAwait(true)
+                : VisualSearchBrowserOperationStatus.Succeeded;
         }
         catch (OperationCanceledException)
         {
@@ -77,6 +83,7 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
     private async Task<VisualSearchBrowserOperationStatus> ContinueInAiModeAsync(
         IVisualSearchBrowserSession session,
         string question,
+        SearchProviderDescriptor provider,
         CancellationToken cancel)
     {
         var token = await WaitForContinuationTokenAsync(session, cancel).ConfigureAwait(true);
@@ -86,6 +93,7 @@ public sealed class GoogleLensBrowserOperation : IVisualSearchBrowserOperation
         {
             // Lens results still describe the image, so they remain more useful than an error.
             _log.Warn(nameof(GoogleLensBrowserOperation), "AI Mode continuation is unavailable; keeping Lens results");
+            session.SetDisplayedProvider(provider);
             return VisualSearchBrowserOperationStatus.Succeeded;
         }
 

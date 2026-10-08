@@ -32,6 +32,7 @@
     <system:String x:Key="app_browser_profile_outside_data">The browser profile is outside CircleFlow's Data folder. Check the WebView2 user data folder policy or environment override and try again.</system:String>
     <system:String x:Key="plugin_circletosearch_plugin_description">Search a screen area visually or recognize music from Windows output</system:String>
     <system:String x:Key="plugin_circletosearch_google_lens_provider_name">Google Lens</system:String>
+    <system:String x:Key="plugin_circletosearch_google_ai_mode_provider_name">Google AI Mode</system:String>
     <system:String x:Key="plugin_circletosearch_yandex_images_provider_name">Yandex Images</system:String>
     <system:String x:Key="plugin_circletosearch_selection_prompt">Select an area</system:String>
     <system:String x:Key="plugin_circletosearch_translated_text_prompt">Select translated text</system:String>

@@ -11,6 +11,9 @@ public static class SearchProviderIds
 
     // The provider menu keeps Google Lens, so it always has a provider to switch back to.
     public const string AlwaysInMenu = GoogleLens;
+
+    // Where Ask opens its question; not a provider the user can select.
+    public const string GoogleAiMode = "google-ai-mode";
 }
 
 public sealed record SearchProviderDescriptor

@@ -266,10 +266,11 @@ public static class CompositionRoot
         var providerHttpClient = visualSearchRollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
         // Each provider is a row in the Selection toolbar providers dialog in settings, and four rows nearly
         // fill its DialogCard MaxHeight. Before adding a fifth, make ProviderMenuDialog in SettingsWindow.xaml scroll.
+        var googleLens = new SearchProviderDescriptor(SearchProviderIds.GoogleLens, () => strings.GoogleLensProviderName);
         var providerRouter = visualSearchRollback.Own(new VisualSearchProviderRouter(
             [
                 new VisualSearchProviderRegistration(
-                    new SearchProviderDescriptor(SearchProviderIds.GoogleLens, () => strings.GoogleLensProviderName),
+                    googleLens,
                     () => new GoogleLensProvider(
                         jpeg => new GoogleLensBrowserOperation(jpeg, log))),
                 new VisualSearchProviderRegistration(
@@ -302,7 +303,7 @@ public static class CompositionRoot
             log);
         var imageAsk = new ImageAskWorkflow(
             (image, question) => new GoogleAiModeBrowserOperation(
-                image, question, (jpeg, asked) => new GoogleLensBrowserOperation(jpeg, log, asked), log),
+                image, question, (jpeg, asked) => new GoogleLensBrowserOperation(jpeg, log, asked, googleLens), log),
             ImageCropper.EncodeJpeg,
             visualSearchPresenter,
             strings,

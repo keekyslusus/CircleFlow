@@ -130,6 +130,7 @@ public sealed class OverlaySessionWorkflowTests
         Assert.Equal([7], await Assert.Single(harness.AskedImages));
         Assert.Equal("What is this?", await Assert.Single(harness.AskedQuestions));
         Assert.Equal(1, harness.AskCrops);
+        Assert.Equal([TestUiStrings.English.GoogleAiModeProviderName], harness.AskHost.Names);
     }
 
     [Fact]
@@ -1556,12 +1557,14 @@ public sealed class OverlaySessionWorkflowTests
     {
         public Action? Revealed { get; set; }
         public int CanceledCalls { get; private set; }
+        public List<string> Names { get; } = [];
 
         public async Task<SearchBrowserShowResult> ShowAsync(
             SearchProviderDescriptor descriptor,
             PreparedVisualSearch preparedSearch,
             CancellationToken cancel)
         {
+            Names.Add(descriptor.DisplayName);
             if (preparedSearch.RevealAfter is { } reveal)
             {
                 try { await reveal.WaitAsync(cancel); }
