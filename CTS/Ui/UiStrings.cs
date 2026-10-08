@@ -75,6 +75,7 @@ public sealed class UiStrings
     public string BrowserProfileOutsideData => Get("app_browser_profile_outside_data");
     public string PluginDescription => Get("plugin_circletosearch_plugin_description");
     public string GoogleLensProviderName => Get("plugin_circletosearch_google_lens_provider_name");
+    public string GoogleAiModeProviderName => Get("plugin_circletosearch_google_ai_mode_provider_name");
     public string YandexImagesProviderName => Get("plugin_circletosearch_yandex_images_provider_name");
     public string SelectionPrompt => Get("plugin_circletosearch_selection_prompt");
     public string SelectionTooSmall => Get("plugin_circletosearch_selection_too_small");

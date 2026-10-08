@@ -6,6 +6,9 @@ public interface IVisualSearchBrowserSession
 {
     Uri? CurrentUri { get; }
 
+    // For an operation that ends up showing another provider's results than the one the window opened with.
+    void SetDisplayedProvider(SearchProviderDescriptor provider);
+
     Task<BrowserNavigationResult> NavigateAsync(
         Uri target,
         TimeSpan timeout,

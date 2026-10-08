@@ -18,6 +18,7 @@ public sealed class UiStringsTests
         Assert.Equal("Copied: sample", strings.CopiedText("sample"));
         Assert.Equal("Could not copy to clipboard.", strings.CopyFailed);
         Assert.Equal("Google Lens", strings.GoogleLensProviderName);
+        Assert.Equal("Google AI Mode", strings.GoogleAiModeProviderName);
         Assert.Equal("Searching with Google Lens…", strings.SearchBrowserLoading("Google Lens"));
         Assert.Equal("CircleFlow: Google Lens", strings.SearchBrowserWindowTitle(strings.GoogleLensProviderName));
         Assert.Equal("CircleFlow: Yandex Images", strings.SearchBrowserWindowTitle("Yandex Images"));

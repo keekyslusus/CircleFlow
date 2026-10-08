@@ -48,6 +48,10 @@ internal sealed class NavigatingBrowserHost : ISearchBrowserHost
     {
         public Uri? CurrentUri { get; private set; }
 
+        public void SetDisplayedProvider(SearchProviderDescriptor provider)
+        {
+        }
+
         public Task<BrowserNavigationResult> NavigateAsync(Uri target, TimeSpan timeout, CancellationToken cancel)
         {
             host.Navigated.Add(target);
