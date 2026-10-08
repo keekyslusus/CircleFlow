@@ -17,6 +17,8 @@ public sealed record AppSettings
 
     public bool IgnoreHotkeyInFullscreen { get; init; } = true;
 
+    public bool UiSounds { get; init; } = true;
+
     public SelectionToolbarAction HiddenToolbarActions { get; init; }
 
     public bool ScanQrCodes { get; init; } = true;

@@ -1,6 +1,7 @@
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
 using CircleToSearch.Settings;
+using CircleToSearch.Sounds;
 using CircleToSearch.TextRecognition;
 
 namespace CircleToSearch;
@@ -14,7 +15,7 @@ public sealed class AppRuntime : IAsyncDisposable
 
     internal AppRuntime(SearchCoordinator coordinator, PluginRuntimeLifetime lifetime, SettingsService settings,
         ProviderSelectionStore providers, OcrLanguageCatalog ocrLanguages, MusicHistory musicHistory,
-        MusicResultPresenter musicResults)
+        MusicResultPresenter musicResults, UiSoundPlayer sounds)
     {
         _coordinator = coordinator;
         _lifetime = lifetime;
@@ -23,6 +24,7 @@ public sealed class AppRuntime : IAsyncDisposable
         OcrLanguages = ocrLanguages;
         MusicHistory = musicHistory;
         MusicResults = musicResults;
+        Sounds = sounds;
     }
 
     public Task OpenAsync() => _coordinator.OpenAsync();
@@ -31,6 +33,7 @@ public sealed class AppRuntime : IAsyncDisposable
     internal OcrLanguageCatalog OcrLanguages { get; }
     internal MusicHistory MusicHistory { get; }
     internal MusicResultPresenter MusicResults { get; }
+    internal UiSoundPlayer Sounds { get; }
 
     internal void RequestStop() => _coordinator.RequestStop();
 

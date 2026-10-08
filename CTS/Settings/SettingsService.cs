@@ -84,6 +84,11 @@ public sealed class SettingsService
         lock (_gate) return Commit(_current with { IgnoreHotkeyInFullscreen = ignore });
     }
 
+    public SettingsChangeResult SetUiSounds(bool enabled)
+    {
+        lock (_gate) return Commit(_current with { UiSounds = enabled });
+    }
+
     public SettingsChangeResult SetHiddenToolbarActions(SelectionToolbarAction hidden)
     {
         lock (_gate) return Commit(_current with { HiddenToolbarActions = hidden });

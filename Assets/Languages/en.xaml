@@ -206,6 +206,7 @@
     <system:String x:Key="app_settings_behavior">Behavior</system:String>
     <system:String x:Key="app_settings_ignore_fullscreen">Ignore in fullscreen apps</system:String>
     <system:String x:Key="app_settings_ignore_fullscreen_sub">Games and other fullscreen apps. Browsers and video players are not affected</system:String>
+    <system:String x:Key="app_settings_ui_sounds">Interface sounds</system:String>
     <system:String x:Key="app_settings_shortcut_hint">Shortcut works while CircleFlow is running. Esc closes selection or cancels the current action.</system:String>
     <system:String x:Key="app_settings_image_search">Image search</system:String>
     <system:String x:Key="app_settings_provider">Search providers</system:String>

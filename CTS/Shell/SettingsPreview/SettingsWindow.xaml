@@ -447,6 +447,27 @@
                                             </Grid.ColumnDefinitions>
                                             <Viewbox Width="21" Height="21" VerticalAlignment="Center">
                                                 <Canvas Width="24" Height="24">
+                                                    <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.VolumeOutlined}"/>
+                                                </Canvas>
+                                            </Viewbox>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,18,0">
+                                                <TextBlock Text="{Binding [ui_sounds]}" Style="{StaticResource RowTitle}"/>
+                                            </StackPanel>
+                                            <ContentControl Grid.Column="3" VerticalAlignment="Center">
+                                                <CheckBox x:Name="UiSounds" Style="{StaticResource Toggle}" AutomationProperties.Name="{Binding [ui_sounds]}"/>
+                                            </ContentControl>
+                                        </Grid>
+                                    </Border>
+                                    <Border BorderBrush="{DynamicResource SettingsLine}" BorderThickness="0,1,0,0" Padding="19,17" MinHeight="77">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="21"/>
+                                                <ColumnDefinition Width="16"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Viewbox Width="21" Height="21" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
                                                     <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.RestoreOutlined}"/>
                                                 </Canvas>
                                             </Viewbox>

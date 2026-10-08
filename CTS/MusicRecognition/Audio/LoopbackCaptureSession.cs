@@ -18,10 +18,27 @@ public interface IAudioCaptureSessionFactory
 public sealed class LoopbackCaptureSessionFactory : IAudioCaptureSessionFactory
 {
     private readonly PluginLog? _log;
+    private readonly Func<IDisposable>? _beginCapture;
 
-    public LoopbackCaptureSessionFactory(PluginLog? log = null) => _log = log;
+    public LoopbackCaptureSessionFactory(PluginLog? log = null, Func<IDisposable>? beginCapture = null)
+    {
+        _log = log;
+        _beginCapture = beginCapture;
+    }
 
-    public IAudioCaptureSession Create() => new LoopbackCaptureSession(_log);
+    public IAudioCaptureSession Create()
+    {
+        var lease = _beginCapture?.Invoke();
+        try
+        {
+            return new LoopbackCaptureSession(_log, lease);
+        }
+        catch
+        {
+            lease?.Dispose();
+            throw;
+        }
+    }
 }
 
 public sealed class LoopbackCaptureSession : IAudioCaptureSession
@@ -32,15 +49,17 @@ public sealed class LoopbackCaptureSession : IAudioCaptureSession
     private readonly MemoryStream _buffer;
     private readonly int _maximumBytes;
     private readonly PluginLog? _log;
+    private readonly IDisposable? _lease;
     private CancellationTokenSource? _captureCancellation;
     private Task? _captureTask;
     private int _disposed;
     private long _capturedBytes;
     private TimeSpan _lastProgress;
 
-    public LoopbackCaptureSession(PluginLog? log = null)
+    public LoopbackCaptureSession(PluginLog? log = null, IDisposable? lease = null)
     {
         _log = log;
+        _lease = lease;
         _recorder = new WasapiRecorderBuilder().WithLoopbackCapture().Build();
         _maximumBytes = checked(_recorder.WaveFormat.AverageBytesPerSecond * MaximumCaptureSeconds);
         _buffer = new MemoryStream(_maximumBytes);
@@ -95,6 +114,7 @@ public sealed class LoopbackCaptureSession : IAudioCaptureSession
         finally
         {
             _buffer.Dispose();
+            _lease?.Dispose();
         }
     }
 

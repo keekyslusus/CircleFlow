@@ -25,6 +25,7 @@ internal sealed class SelectionOverlayController : IDisposable
     private readonly Action _selectionRejected;
     private readonly Action _holdCompleted;
     private readonly Action? _selectionDrawn;
+    private readonly Action<double>? _traced;
     private readonly LassoPathSampler _sampler;
     private readonly List<Point> _stroke = [];
     private DispatcherTimer? _holdTimer;
@@ -52,7 +53,8 @@ internal sealed class SelectionOverlayController : IDisposable
         Action holdCompleted,
         Func<MouseEventArgs, Point>? pointerPosition = null,
         bool subscribeInput = true,
-        Action? selectionDrawn = null)
+        Action? selectionDrawn = null,
+        Action<double>? traced = null)
     {
         _visual = visual;
         _coordinateRoot = coordinateRoot;
@@ -67,6 +69,7 @@ internal sealed class SelectionOverlayController : IDisposable
         _selectionRejected = selectionRejected;
         _holdCompleted = holdCompleted;
         _selectionDrawn = selectionDrawn;
+        _traced = traced;
         _sampler = new LassoPathSampler(SampleDistanceDips * scale);
 
         if (subscribeInput)
@@ -249,6 +252,7 @@ internal sealed class SelectionOverlayController : IDisposable
         var physical = _coordinateMapper.ToPhysical(dip);
         var accepted = final ? _sampler.AddFinal(physical) : _sampler.Add(physical);
         if (!accepted) return;
+        if (_stroke.Count != 0 && !final) _traced?.Invoke((dip - _stroke[^1]).Length);
         _stroke.Add(dip);
         _visual.Halo.Points.Add(dip);
         _visual.Accent.Points.Add(dip);

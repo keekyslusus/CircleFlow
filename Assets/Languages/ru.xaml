@@ -20,6 +20,7 @@
     <system:String x:Key="app_settings_links_qr_codes">Ссылки и QR-коды</system:String>
     <system:String x:Key="app_settings_scan_qr_codes">Искать QR-коды</system:String>
     <system:String x:Key="app_settings_scan_qr_codes_sub">Предлагает открыть или скопировать QR-коды на снимке экрана. Распознавание не покидает этот ПК</system:String>
+    <system:String x:Key="app_settings_ui_sounds">Звуки интерфейса</system:String>
     <system:String x:Key="plugin_circletosearch_link_open">Открыть {0}</system:String>
     <system:String x:Key="plugin_circletosearch_qr_copy_text">Копировать текст</system:String>
     <system:String x:Key="plugin_circletosearch_qr_copy_password">Копировать пароль</system:String>

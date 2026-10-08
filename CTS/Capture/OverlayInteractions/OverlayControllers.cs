@@ -17,7 +17,8 @@ internal sealed class OverlayControllers(
     OverlayActivityPresenter activityPresenter,
     ImageSelectionOverlayController imageSelection,
     SelectionHintOverlayController selectionHint,
-    QrCodeOverlayController qrCodes) : IDisposable
+    QrCodeOverlayController qrCodes,
+    IDisposable? sounds = null) : IDisposable
 {
     private bool _disposed;
 
@@ -60,5 +61,6 @@ internal sealed class OverlayControllers(
         Provider.Dispose();
         Toast.Dispose();
         ActivityPresenter.Dispose();
+        sounds?.Dispose();
     }
 }

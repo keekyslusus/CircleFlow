@@ -26,7 +26,7 @@ public sealed class SettingsStoreTests
             MaxLongSidePx = 8000, PaddingPx = 100, HideDelayMilliseconds = 2000, LassoMinDiagonalPx = 1000,
             OcrLanguageTag = "ru-RU", AppLanguageTag = "ru", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
             HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save, BrowserDataCleanupDays = 0, OnboardingCompleted = true,
-            SaveMusicHistory = false, MusicHistoryRetentionDays = MusicHistory.KeepForever, ScanQrCodes = false,
+            SaveMusicHistory = false, MusicHistoryRetentionDays = MusicHistory.KeepForever, ScanQrCodes = false, UiSounds = false,
         };
         store.Save(updated);
         Assert.Equal(updated, new SettingsStore(paths).Load().Settings);

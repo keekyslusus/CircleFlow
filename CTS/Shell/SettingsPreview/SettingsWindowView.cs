@@ -34,16 +34,18 @@ internal sealed class SettingsWindowView
     private readonly SettingsCollapseMotion _historyRetentionMotion;
     private readonly SettingsCollapseMotion _historyContentMotion;
     private readonly SettingsNavigationHistory _navigation;
+    private readonly Action _shortcutKeyPressed;
     private IInputElement? _dialogOwner;
     private string? _pendingShortcut;
     private bool _loadingSettings;
     private bool _sidePressClosedDropdown;
 
     internal SettingsWindowView(UiStrings strings, bool lightTheme, string iconPath, SettingsWindowModel model,
-        Func<Action<ToastNotification>, ClipboardCopyService> createClipboardCopy)
+        Func<Action<ToastNotification>, ClipboardCopyService> createClipboardCopy, Action? shortcutKeyPressed = null)
     {
         _strings = strings;
         _model = model;
+        _shortcutKeyPressed = shortcutKeyPressed ?? (() => { });
         Window = (Window)Application.LoadComponent(new Uri(
             "/CircleFlow;component/CTS/Shell/SettingsPreview/SettingsWindow.xaml", UriKind.Relative));
         SettingsWindowTheme.Apply(Window, lightTheme, iconPath);
@@ -121,6 +123,9 @@ internal sealed class SettingsWindowView
         var ignoreFullscreen = Element<CheckBox>("IgnoreFullscreen");
         ignoreFullscreen.Checked += OnIgnoreFullscreenChanged;
         ignoreFullscreen.Unchecked += OnIgnoreFullscreenChanged;
+        var uiSounds = Element<CheckBox>("UiSounds");
+        uiSounds.Checked += OnUiSoundsChanged;
+        uiSounds.Unchecked += OnUiSoundsChanged;
         var launch = Element<CheckBox>("Launch");
         launch.Checked += OnLaunchChanged;
         launch.Unchecked += OnLaunchChanged;
@@ -354,6 +359,7 @@ internal sealed class SettingsWindowView
         if (!_dialogMotion.IsOpen) return;
         if (e.Key is Key.Tab or Key.Escape || ShortcutText.ClosesWindow(e)) return;
         e.Handled = true;
+        if (!e.IsRepeat) _shortcutKeyPressed();
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         if (ShortcutText.IsModifier(key)) return;
         _pendingShortcut = ShortcutText.Gesture(key, e.KeyboardDevice.Modifiers);
@@ -395,6 +401,7 @@ internal sealed class SettingsWindowView
             Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
             Select(Element<ComboBox>("AppLanguage"), _model.AppLanguageTag);
             Element<CheckBox>("IgnoreFullscreen").IsChecked = _model.IgnoreHotkeyInFullscreen;
+            Element<CheckBox>("UiSounds").IsChecked = _model.UiSounds;
             Element<CheckBox>("ScanQrCodes").IsChecked = _model.ScanQrCodes;
             Element<CheckBox>("Launch").IsChecked = _model.LaunchAtStartup;
             var cleanup = Element<ComboBox>("Cleanup");
@@ -524,6 +531,14 @@ internal sealed class SettingsWindowView
     {
         if (_loadingSettings) return;
         if (_model.SelectIgnoreHotkeyInFullscreen(Element<CheckBox>("IgnoreFullscreen").IsChecked == true)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnUiSoundsChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        if (_model.SelectUiSounds(Element<CheckBox>("UiSounds").IsChecked == true)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
     }

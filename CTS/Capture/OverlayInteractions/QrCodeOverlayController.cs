@@ -18,12 +18,14 @@ internal sealed class QrCodeOverlayController : IDisposable
     private readonly UiStrings _strings;
     private readonly Func<bool> _animationsEnabled;
     private readonly PluginLog? _log;
+    private readonly Action _found;
     private readonly CancellationTokenSource _cancellation = new();
     private readonly List<QrCodeChip> _chips = [];
     private bool _started;
     private bool _available = true;
     private bool _suppressed;
     private bool _shown;
+    private bool _announced;
     private bool _openPublished;
     private bool _disposed;
 
@@ -38,7 +40,8 @@ internal sealed class QrCodeOverlayController : IDisposable
         Action<IOverlayCommand> publish,
         UiStrings strings,
         Func<bool> animationsEnabled,
-        PluginLog? log = null)
+        PluginLog? log = null,
+        Action? found = null)
     {
         _visual = visual;
         _frame = frame;
@@ -50,6 +53,7 @@ internal sealed class QrCodeOverlayController : IDisposable
         _strings = strings;
         _animationsEnabled = animationsEnabled;
         _log = log;
+        _found = found ?? (() => { });
     }
 
     internal void Start()
@@ -141,6 +145,11 @@ internal sealed class QrCodeOverlayController : IDisposable
         var shown = _available && !_suppressed && !_openPublished && _chips.Count != 0;
         if (shown == _shown) return;
         _shown = shown;
+        if (shown && !_announced)
+        {
+            _announced = true;
+            _found();
+        }
         var animate = _animationsEnabled();
         var viewport = new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight);
         foreach (var chip in _chips)
