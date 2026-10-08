@@ -33,14 +33,14 @@ try {
     }
     foreach ($name in $entries) {
         if ($velopackEntries -ccontains $name) { continue }
-        if ($name -match '\.xml$' -or $name -notmatch '^current/(deps/|Assets/|Licenses/|CircleFlow\.exe$|LICENSE$)') {
+        if ($name -match '\.xml$' -or $name -notmatch '^current/(deps/|Assets/|Licenses/|CircleFlow\.exe$)') {
             throw "Unexpected release layout: $name"
         }
     }
     $required = @('CircleFlow.exe', 'deps/CircleFlow.dll', 'deps/CircleFlow.runtimeconfig.json', 'deps/CircleFlow.deps.json',
         'deps/WinRT.Runtime.dll', 'deps/coreclr.dll', 'deps/System.Private.CoreLib.dll', 'deps/hostfxr.dll', 'deps/hostpolicy.dll',
         'Assets/Languages/en.xaml', 'Assets/Images/app.ico', 'Assets/Extensions/uBlockOriginLite.zip', 'Assets/Extensions/CircleFlowFilters.txt', 'Assets/Emoji/NotoColorEmoji.zip',
-        'LICENSE', 'Licenses/THIRD_PARTY_NOTICES.txt', 'Licenses/Microsoft.Web.WebView2.LICENSE.txt',
+        'Licenses/LICENSE.txt', 'Licenses/THIRD_PARTY_NOTICES.txt', 'Licenses/Microsoft.Web.WebView2.LICENSE.txt',
         'Licenses/Microsoft.Web.WebView2.NOTICE.txt', 'Licenses/System.Numerics.Tensors.NOTICE.txt')
     foreach ($asset in $velopackEntries) {
         if ($entries -cnotcontains $asset) { throw "Missing Velopack entry: $asset" }
@@ -57,7 +57,7 @@ finally { $archive.Dispose() }
 [IO.Compression.ZipFile]::ExtractToDirectory($archivePath, $unpacked)
 $assetSources = [ordered]@{
     'Assets/Languages/en.xaml' = 'Assets/Languages/en.xaml'; 'Assets/Images/app.ico' = 'CTS/app.ico'
-    'Assets/Extensions/uBlockOriginLite.zip' = 'Assets/Extensions/uBlockOriginLite.zip'; 'LICENSE' = 'LICENSE'
+    'Assets/Extensions/uBlockOriginLite.zip' = 'Assets/Extensions/uBlockOriginLite.zip'; 'Licenses/LICENSE.txt' = 'LICENSE'
     'Assets/Extensions/CircleFlowFilters.txt' = 'Assets/Extensions/CircleFlowFilters.txt'
     'Assets/Emoji/NotoColorEmoji.zip' = 'Assets/Emoji/NotoColorEmoji.zip'
     'Licenses/THIRD_PARTY_NOTICES.txt' = 'THIRD_PARTY_NOTICES.txt'

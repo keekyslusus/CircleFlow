@@ -21,7 +21,7 @@ https://github.com/marin-m/SongRec
 Copyright Marin Moulinier and SongRec contributors.
 Licensed under GPL-3.0-or-later. The port was created on 2026-08-29 and has been
 subsequently modified for CircleFlow. Adapted source files retain SPDX identifiers.
-The complete GPL version 3 license text is distributed in the root LICENSE file.
+The complete GPL version 3 license text is distributed in LICENSE.txt.
 
 Shazam is an Apple service. CircleFlow is not affiliated with or endorsed by Apple or Shazam.
 

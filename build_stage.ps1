@@ -55,7 +55,7 @@ try {
         'deps/coreclr.dll', 'deps/hostfxr.dll', 'deps/hostpolicy.dll', 'deps/System.Private.CoreLib.dll', 'deps/PresentationFramework.dll',
         'deps/WinRT.Runtime.dll', 'deps/Microsoft.Windows.SDK.NET.dll', 'deps/Microsoft.Web.WebView2.Core.dll',
         'deps/Microsoft.Web.WebView2.Wpf.dll', 'Assets/Languages/en.xaml', 'Assets/Images/app.ico',
-        'Assets/Extensions/uBlockOriginLite.zip', 'Assets/Extensions/CircleFlowFilters.txt', 'Assets/Emoji/NotoColorEmoji.zip', 'LICENSE', 'Licenses/THIRD_PARTY_NOTICES.txt',
+        'Assets/Extensions/uBlockOriginLite.zip', 'Assets/Extensions/CircleFlowFilters.txt', 'Assets/Emoji/NotoColorEmoji.zip', 'Licenses/LICENSE.txt', 'Licenses/THIRD_PARTY_NOTICES.txt',
         'Licenses/Microsoft.Web.WebView2.LICENSE.txt', 'Licenses/Microsoft.Web.WebView2.NOTICE.txt',
         'Licenses/System.Numerics.Tensors.NOTICE.txt')
     foreach ($asset in $required) {

@@ -43,6 +43,7 @@ internal sealed class AppPaths
     public string ExtensionArchivePath => Path.Combine(AssetsDirectory, "Extensions", "uBlockOriginLite.zip");
     public string CosmeticFiltersPath => Path.Combine(AssetsDirectory, "Extensions", "CircleFlowFilters.txt");
     public string EmojiArchivePath => Path.Combine(AssetsDirectory, "Emoji", "NotoColorEmoji.zip");
+    public string LicensesDirectory => Path.Combine(RootDirectory, "Licenses");
     public string DataDirectory => Path.Combine(_installDirectory, "Data");
     public string SettingsFilePath => Path.Combine(DataDirectory, "settings.json");
     public string SettingsBackupFilePath => Path.Combine(DataDirectory, "settings.json.bak");

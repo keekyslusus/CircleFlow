@@ -1390,7 +1390,7 @@ public sealed class SettingsPreviewTests
             foreach (var tag in new[] { "github", "feedback", "license", "donate", "folder", "logs" })
                 Click(window, tag);
             Assert.Equal(
-                [ProjectSupport.RepositoryUrl, ProjectSupport.FeedbackUrl, ProjectSupport.LicenseUrl,
+                [ProjectSupport.RepositoryUrl, ProjectSupport.FeedbackUrl, harness.Paths.LicensesDirectory,
                     ProjectSupport.ProjectUrl, harness.Paths.DataDirectory, harness.Paths.LogsDirectory],
                 harness.Opened);
             Assert.Empty(harness.Notifier.Errors);

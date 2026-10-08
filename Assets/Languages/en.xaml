@@ -278,10 +278,9 @@
     <system:String x:Key="app_settings_check_updates">Check for updates</system:String>
     <system:String x:Key="app_settings_version_value">v{0}</system:String>
     <system:String x:Key="app_settings_version_value_sub">Version</system:String>
-    <system:String x:Key="app_settings_license">GPL-3.0-or-later</system:String>
+    <system:String x:Key="app_settings_license">GPL-3.0-or-later, provided without any warranty</system:String>
     <system:String x:Key="app_settings_open_source">Open source</system:String>
-    <system:String x:Key="app_settings_view_license">View license</system:String>
-    <system:String x:Key="app_settings_runtime_missing">Not installed</system:String>
+    <system:String x:Key="app_settings_view_license">View license</system:String>    <system:String x:Key="app_settings_runtime_missing">Not installed</system:String>
     <system:String x:Key="app_settings_runtime">WebView2 Runtime</system:String>
     <system:String x:Key="app_settings_runtime_sub">Embedded browser component</system:String>
     <system:String x:Key="app_settings_donate">Donate</system:String>
@@ -291,9 +290,8 @@
     <system:String x:Key="app_settings_reset">Reset</system:String>
     <system:String x:Key="app_settings_maintenance">Maintenance</system:String>
     <system:String x:Key="app_settings_maintenance_sub">Application files, logs, and settings</system:String>
-    <system:String x:Key="app_settings_powered_by">Powered by</system:String>
-    <system:String x:Key="app_settings_services_text">Google Lens · Yandex Images · trace.moe · Google Translate · Shazam
-Third-party services are used for search, translation, and recognition.</system:String>
+    <system:String x:Key="app_settings_privacy">Privacy</system:String>
+    <system:String x:Key="app_settings_privacy_text">Selected areas, text, and audio are sent to the search, translation, or recognition service you choose. CircleFlow is not affiliated with these services.</system:String>
     <system:String x:Key="app_settings_general_title">General</system:String>
     <system:String x:Key="app_settings_hotkeys_title">Shortcuts</system:String>
     <system:String x:Key="app_settings_search_title">Search</system:String>

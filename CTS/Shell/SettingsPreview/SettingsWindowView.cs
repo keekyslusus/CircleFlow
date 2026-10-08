@@ -255,7 +255,7 @@ internal sealed class SettingsWindowView
                 break;
             case "github": _model.Project.OpenRepository(); break;
             case "feedback": _model.Project.OpenFeedback(); break;
-            case "license": _model.Project.OpenLicense(); break;
+            case "license": _model.OpenLicenses(); break;
             case "donate": _model.Project.Open(); break;
             case "folder": _model.OpenDataFolder(); break;
             case "logs": _model.OpenLogsFolder(); break;

@@ -165,6 +165,8 @@ internal sealed class SettingsWindowModel(
 
     public void OpenLogsFolder() => urlOpening.TryOpen(paths.LogsDirectory, strings.SettingsOpenFolderFailed);
 
+    public void OpenLicenses() => urlOpening.TryOpen(paths.LicensesDirectory, strings.SettingsOpenFolderFailed);
+
     public void OpenOcrLanguageSettings() =>
         urlOpening.TryOpen(OcrLanguageSettingsUri, strings.SettingsOpenLanguageSettingsFailed);
 }

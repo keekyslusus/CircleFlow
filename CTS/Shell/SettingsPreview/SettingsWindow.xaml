@@ -1062,7 +1062,7 @@
                                                     <StackPanel Orientation="Horizontal">
                                                         <Viewbox Width="20" Height="20" VerticalAlignment="Center">
                                                             <Canvas Width="24" Height="24">
-                                                                <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.LinkOutlined}"/>
+                                                                <Path Style="{StaticResource OutlineIcon}" Data="{x:Static ui:PluginIcons.FolderOutlined}"/>
                                                             </Canvas>
                                                         </Viewbox>
                                                         <Border Width="8"/>
@@ -1189,10 +1189,10 @@
                                     </StackPanel>
                                 </Border>
                             </Border>
-                            <TextBlock Text="{Binding [powered_by]}" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Text="{Binding [privacy]}" Style="{StaticResource SectionTitle}"/>
                             <Border Style="{StaticResource Information}" Margin="0">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding [services_text]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                    <TextBlock Text="{Binding [privacy_text]}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

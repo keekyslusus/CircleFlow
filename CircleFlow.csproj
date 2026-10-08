@@ -14,7 +14,7 @@
     <Description>Search a screen area visually or recognize music from Windows output</Description>
     <Authors>keekys</Authors>
     <Company>keekys</Company>
-    <PackageProjectUrl>https://github.com/keekyslusus/circletosearchplugin</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/keekyslusus/CircleFlow</PackageProjectUrl>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
@@ -78,7 +78,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="LICENSE">
+    <Content Include="LICENSE" Link="Licenses\LICENSE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
@@ -111,7 +111,7 @@
     <Error Condition="'PublishSingleFile' == 'true'" Text="The deps layout requires PublishSingleFile=false." />
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.xml' and Exists('%(RootDir)%(Directory)%(Filename).dll')" />
-      <ResolvedFileToPublish Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(RelativePath)', '^(Assets|Licenses)[/\\]|^(CircleFlow\.exe|LICENSE)$'))">
+      <ResolvedFileToPublish Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('%(RelativePath)', '^(Assets|Licenses)[/\\]|^CircleFlow\.exe$'))">
         <RelativePath>deps\%(RelativePath)</RelativePath>
       </ResolvedFileToPublish>
     </ItemGroup>
