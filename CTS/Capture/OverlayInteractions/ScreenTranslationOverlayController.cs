@@ -40,6 +40,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
     private string? _requestedTarget;
     private bool _closing;
     private readonly TranslationMemoryProfiler? _profiler;
+    private readonly Action _translated;
     private readonly string _profileScope = Guid.NewGuid().ToString("N");
     private StateCardVisual? _stateCard;
     private TranslationCardKind _cardKind;
@@ -68,7 +69,8 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         bool lightTheme,
         Image screenshot,
         Action<BitmapSource, string?>? imageChanged = null,
-        TranslationMemoryProfiler? profiler = null)
+        TranslationMemoryProfiler? profiler = null,
+        Action? translated = null)
     {
         _action = action;
         _activityPresenter = activityPresenter;
@@ -90,6 +92,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
             ?? throw new InvalidOperationException("The overlay screenshot source must be a bitmap.");
         _imageChanged = imageChanged;
         _profiler = profiler;
+        _translated = translated ?? (() => { });
         _profiler?.Mark("overlay_open", _profileScope);
         _action.Button.Click += OnTranslate;
     }
@@ -145,6 +148,7 @@ internal sealed class ScreenTranslationOverlayController : IDisposable
         DisplayImage(scaled, _cachedTarget);
         _transition(OverlayInteractionMode.TranslationShown);
         _profiler?.Mark("translation_shown", _profileScope);
+        _translated();
         QueueCompletionRipple();
     }
 

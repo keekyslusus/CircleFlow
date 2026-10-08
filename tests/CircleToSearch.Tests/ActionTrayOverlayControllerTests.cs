@@ -8,7 +8,7 @@ namespace CircleToSearch.Tests;
 public sealed class ActionTrayOverlayControllerTests
 {
     [Fact]
-    public void Repeated_entrance_attaches_control_ripples_once_and_dispose_releases_them()
+    public void Repeated_entrance_attaches_control_ripples_and_announces_once_and_dispose_releases_them()
     {
         RunSta(() =>
         {
@@ -18,7 +18,8 @@ public sealed class ActionTrayOverlayControllerTests
                 32,
                 lightTheme: false,
                 TestUiStrings.English);
-            var controller = new ActionTrayOverlayController(visual.Actions, visual.Bottom.Root);
+            var entrances = 0;
+            var controller = new ActionTrayOverlayController(visual.Actions, visual.Bottom.Root, () => entrances++);
 
             controller.ShowEntrance();
             var initialCount = controller.ControlRippleCount;
@@ -26,6 +27,7 @@ public sealed class ActionTrayOverlayControllerTests
 
             Assert.True(initialCount > 0);
             Assert.Equal(initialCount, controller.ControlRippleCount);
+            Assert.Equal(1, entrances);
             controller.HideForSelection();
             Assert.False(visual.Actions.Tray.IsHitTestVisible);
             controller.Restore();

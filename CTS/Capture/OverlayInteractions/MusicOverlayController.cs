@@ -24,6 +24,7 @@ internal sealed class MusicOverlayController : IDisposable
     private readonly Action _cancelRequested;
     private readonly Action<IOverlayCommand> _resultCommandRequested;
     private readonly ClipboardCopyService _clipboardCopy;
+    private readonly Action _matched;
     private readonly Func<bool> _animationsEnabled;
     private readonly List<DispatcherTimer> _copyTimers = [];
     private readonly List<IDisposable> _resultRipples = [];
@@ -60,7 +61,8 @@ internal sealed class MusicOverlayController : IDisposable
         Action cancelRequested,
         Action<IOverlayCommand> resultCommandRequested,
         ClipboardCopyService clipboardCopy,
-        Func<bool> animationsEnabled)
+        Func<bool> animationsEnabled,
+        Action? matched = null)
     {
         _visual = visual;
         _activityPresenter = activityPresenter;
@@ -75,6 +77,7 @@ internal sealed class MusicOverlayController : IDisposable
         _resultCommandRequested = resultCommandRequested;
         _clipboardCopy = clipboardCopy;
         _animationsEnabled = animationsEnabled;
+        _matched = matched ?? (() => { });
 
         _visual.Button.Click += OnMusicButtonClick;
     }
@@ -119,6 +122,7 @@ internal sealed class MusicOverlayController : IDisposable
         }, animationsEnabled);
         StateCardTransitions.BeginEntrance(card, animationsEnabled);
         _resultRipples.AddRange(OverlayVisualResources.AttachControlRipples(_visual.ResultHost));
+        if (outcome.Status == MusicRecognitionStatus.Matched) _matched();
         if (outcome.Status != MusicRecognitionStatus.Matched || !animationsEnabled) return;
 
         var generation = _resultGeneration;

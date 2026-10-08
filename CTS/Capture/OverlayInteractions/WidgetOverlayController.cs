@@ -20,6 +20,7 @@ internal sealed class WidgetOverlayController : IDisposable
     private readonly Action<IOverlayCommand>? _publishCommand;
     private readonly Func<GdiRectangle, SelectionOutcome> _createSelectionCopy;
     private readonly IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> _visuals;
+    private readonly Action _found;
     private IOverlayWidgetVisual? _visual;
     private bool _disposed;
 
@@ -35,7 +36,8 @@ internal sealed class WidgetOverlayController : IDisposable
         Action<OverlayInteractionMode> transitionMode,
         Action<IOverlayCommand>? publishCommand,
         Func<GdiRectangle, SelectionOutcome> createSelectionCopy,
-        IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> visuals)
+        IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> visuals,
+        Action? found = null)
     {
         _root = root;
         _activityPresenter = activityPresenter;
@@ -49,6 +51,7 @@ internal sealed class WidgetOverlayController : IDisposable
         _publishCommand = publishCommand;
         _createSelectionCopy = createSelectionCopy;
         _visuals = visuals;
+        _found = found ?? (() => { });
     }
 
     internal bool TryStart(string providerId, GdiRectangle bounds)
@@ -91,7 +94,9 @@ internal sealed class WidgetOverlayController : IDisposable
         var visual = _visual;
         if (visual is null) return;
         _transitionMode(OverlayInteractionMode.WidgetResult);
-        if (!_disposed && ReferenceEquals(_visual, visual)) visual.ShowResult(outcome);
+        if (_disposed || !ReferenceEquals(_visual, visual)) return;
+        visual.ShowResult(outcome);
+        if (outcome.Success) _found();
     }
 
     internal void DismissResult()

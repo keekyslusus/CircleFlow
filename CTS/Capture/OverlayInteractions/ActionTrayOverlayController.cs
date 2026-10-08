@@ -6,15 +6,17 @@ internal sealed class ActionTrayOverlayController : IDisposable
 {
     private readonly ActionTrayVisual _visual;
     private readonly FrameworkElement _rippleRoot;
+    private readonly Action _entered;
     private readonly List<IDisposable> _controlRipples = [];
     private bool _dismissed;
     private bool _ripplesAttached;
     private bool _disposed;
 
-    internal ActionTrayOverlayController(ActionTrayVisual visual, FrameworkElement rippleRoot)
+    internal ActionTrayOverlayController(ActionTrayVisual visual, FrameworkElement rippleRoot, Action? entered = null)
     {
         _visual = visual;
         _rippleRoot = rippleRoot;
+        _entered = entered ?? (() => { });
     }
 
     internal int ControlRippleCount => _controlRipples.Count;
@@ -27,6 +29,7 @@ internal sealed class ActionTrayOverlayController : IDisposable
         if (!_dismissed) ActionTrayTransitions.BeginEntrance(_visual);
         if (_ripplesAttached) return;
         _ripplesAttached = true;
+        _entered();
         _controlRipples.AddRange(OverlayVisualResources.AttachControlRipples(_rippleRoot));
     }
 

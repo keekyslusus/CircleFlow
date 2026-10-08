@@ -103,6 +103,7 @@ internal sealed class SettingsStore(AppPaths paths)
                 defaults.TextSearchInBuiltInBrowser),
             HotkeyGesture = Text(nameof(AppSettings.HotkeyGesture), defaults.HotkeyGesture),
             IgnoreHotkeyInFullscreen = Flag(nameof(AppSettings.IgnoreHotkeyInFullscreen), defaults.IgnoreHotkeyInFullscreen),
+            UiSounds = Flag(nameof(AppSettings.UiSounds), defaults.UiSounds),
             HiddenToolbarActions = Actions(nameof(AppSettings.HiddenToolbarActions), defaults.HiddenToolbarActions),
             ScanQrCodes = Flag(nameof(AppSettings.ScanQrCodes), defaults.ScanQrCodes),
             BrowserDataCleanupDays = Number(nameof(AppSettings.BrowserDataCleanupDays), defaults.BrowserDataCleanupDays),

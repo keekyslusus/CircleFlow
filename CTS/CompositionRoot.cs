@@ -18,6 +18,7 @@ using CircleToSearch.Shell.Notifications;
 using CircleToSearch.Shell.Onboarding;
 using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.Shell.TestBrowser;
+using CircleToSearch.Sounds;
 using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
 using CircleToSearch.Ui.Emoji;
@@ -51,7 +52,8 @@ public static class CompositionRoot
         OcrLanguageCatalog? OcrLanguages = null,
         Action<BitmapSource>? SetImageClipboard = null,
         Func<SelectionHint>? NextSelectionHint = null,
-        Func<BitmapSource, CancellationToken, IReadOnlyList<QrCodes.QrCodeMatch>>? ScanQrCodes = null);
+        Func<BitmapSource, CancellationToken, IReadOnlyList<QrCodes.QrCodeMatch>>? ScanQrCodes = null,
+        Action<UiSound>? PlaySound = null);
 
     // The one place that decides which providers answer inside the overlay instead of in a browser.
     internal static IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> CreateWidgetVisuals(
@@ -160,6 +162,7 @@ public static class CompositionRoot
                         tray?.CloseMenu();
                         notifications.CloseAll();
                     }).Task, log, rollback);
+                lifetime.AddCleanup("close-sounds", () => { runtime.Sounds.Dispose(); return Task.CompletedTask; });
                 lifetime.AddStop("stop-runtime-triggers", () => _ = runtime.StopAsync());
                 cancellation.ThrowIfCancellationRequested();
                 var support = new ProjectSupport(urlOpening);
@@ -186,8 +189,14 @@ public static class CompositionRoot
                     () => NotificationSamples.Show(notifier, runtimeNotice, strings, runtime.Settings.Snapshot.HotkeyGesture),
                     updates is null ? null : updates.CheckNowAsync);
                 var settingsWindow = new SingleWindowController(application.Dispatcher,
-                    () => new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, settingsModel,
-                        feedback => new ClipboardCopyService(Clipboard.SetText, feedback, strings)).Window);
+                    () =>
+                    {
+                        var window = new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath,
+                            settingsModel, feedback => new ClipboardCopyService(Clipboard.SetText, feedback, strings),
+                            () => runtime.Sounds.Play(UiSound.Key)).Window;
+                        UiClickSounds.Attach(window, runtime.Sounds.Play);
+                        return window;
+                    });
                 lifetime.AddCleanup("close-settings", () => { settingsWindow.Dispose(); return Task.CompletedTask; });
                 tray = new TrayIcon(paths.TrayIconPath, strings, application.Dispatcher, log,
                     () => { activation.TryRequestOpen(); return Task.CompletedTask; },
@@ -250,6 +259,7 @@ public static class CompositionRoot
         var hotkeyWindow = rollback.Replace(hotkeyDispatcher, new HotkeyWindow(hotkeyDispatcher, log));
         var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
         var settings = new SettingsService(initialSettings, settingsStore.Save, registrar.TryApply, log);
+        var sounds = rollback.Own(new UiSoundPlayer(LoadSounds(paths, log), () => settings.Snapshot.UiSounds, log: log));
         var environments = new WebViewEnvironmentFactory(paths, strings, notifier);
         var searchBrowserDispatcher = new StaDispatcher(SearchBrowserThreadName);
         rollback.Own(searchBrowserDispatcher, searchBrowserDispatcher.StopAsync);
@@ -335,7 +345,7 @@ public static class CompositionRoot
         log.Info(nameof(ShazamClient),
             $"using User-Agent: {shazamClient.UserAgent}, location: {shazamLocationDescription}");
         var musicRecognizer = new ProgressiveMusicRecognizer(
-            new LoopbackCaptureSessionFactory(log),
+            new LoopbackCaptureSessionFactory(log, sounds.Mute),
             shazamClient,
             musicThrottle,
             musicClock,
@@ -403,7 +413,8 @@ public static class CompositionRoot
             ocrLanguages,
             Clipboard.SetImage,
             new SelectionHintRotation().Next,
-            QrCodes.QrCodeScanner.Scan);
+            QrCodes.QrCodeScanner.Scan,
+            sounds.Play);
         var overlayControllerFactory = new OverlayControllerFactory(
             context => CreateOverlayControllers(context, overlayControllerDependencies));
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
@@ -444,7 +455,7 @@ public static class CompositionRoot
             visualSearchLifetime.StopAsync,
             log);
         var runtime = rollback.TransferAllTo(new AppRuntime(coordinator, lifetime, settings, providerSelection, ocrLanguages,
-            musicHistory, musicResultPresenter));
+            musicHistory, musicResultPresenter, sounds));
 
         hotkeyWindow.HotkeyPressed += () =>
         {
@@ -468,6 +479,19 @@ public static class CompositionRoot
         if (!settings.InitializeHotkey().Success)
             notifier.ShowError(strings.PluginTitle, strings.HotkeyConflict(settings.Snapshot.HotkeyGesture));
         return runtime;
+    }
+
+    private static IReadOnlyDictionary<UiSound, float[][]> LoadSounds(AppPaths paths, PluginLog log)
+    {
+        try
+        {
+            return UiSoundLibrary.Load(paths.SoundsDirectory);
+        }
+        catch (Exception exception)
+        {
+            log.Warn(nameof(CompositionRoot), $"interface sounds are unavailable: {exception.Message}");
+            return new Dictionary<UiSound, float[][]>();
+        }
     }
 
     internal static SearchBrowserWindowView CreateSearchBrowserWindowView(
@@ -497,6 +521,8 @@ public static class CompositionRoot
 
         try
         {
+            var playSound = dependencies.PlaySound ?? (_ => { });
+            UiClickSounds.Attach(context.Visual.Root, playSound);
             var activityPresenter = Track(new OverlayActivityPresenter(
                 context.Visual.ActivityHost,
                 dependencies.AnimationsEnabled,
@@ -601,7 +627,8 @@ public static class CompositionRoot
                 dependencies.PointerPosition));
             var actionTray = Track(new ActionTrayOverlayController(
                 context.Visual.Actions,
-                context.Visual.Bottom.Root));
+                context.Visual.Bottom.Root,
+                () => playSound(UiSound.OverlayOpened)));
             var qrCodes = Track(new QrCodeOverlayController(
                 context.Visual.QrCodes,
                 frameSource,
@@ -651,7 +678,8 @@ public static class CompositionRoot
                 context.Visual.LightTheme,
                 context.Visual.Selection.Screenshot,
                 imageText.OnImageChanged,
-                dependencies.MemoryProfiler));
+                dependencies.MemoryProfiler,
+                () => playSound(UiSound.Found)));
             var debug = Track(new DebugOverlayController(
                 context.Visual.Debug,
                 context.Visual.LightTheme,
@@ -702,7 +730,8 @@ public static class CompositionRoot
                 context.MusicCancelRequested,
                 context.MusicResultCommandRequested,
                 clipboardCopy,
-                dependencies.AnimationsEnabled));
+                dependencies.AnimationsEnabled,
+                () => playSound(UiSound.Found)));
             var widget = Track(new WidgetOverlayController(
                 context.Visual.Root,
                 activityPresenter,
@@ -715,7 +744,8 @@ public static class CompositionRoot
                 context.TransitionMode,
                 context.PublishCommand,
                 context.CreateSelectionCopy,
-                dependencies.WidgetVisuals));
+                dependencies.WidgetVisuals,
+                () => playSound(UiSound.Found)));
             var controllers = new OverlayControllers(
                 selection,
                 textSelection,

@@ -45,6 +45,7 @@ internal sealed class SettingsWindowModel(
     public string AppLanguageTag => language.Catalog.Find(settings.Snapshot.AppLanguageTag);
     public string HotkeyGesture => settings.Snapshot.HotkeyGesture;
     public bool IgnoreHotkeyInFullscreen => settings.Snapshot.IgnoreHotkeyInFullscreen;
+    public bool UiSounds => settings.Snapshot.UiSounds;
     public bool ScanQrCodes => settings.Snapshot.ScanQrCodes;
     public int BrowserDataCleanupDays => settings.Snapshot.BrowserDataCleanupDays;
     public bool LaunchAtStartup => startup.IsEnabled;
@@ -96,6 +97,8 @@ internal sealed class SettingsWindowModel(
     }
 
     public bool SelectIgnoreHotkeyInFullscreen(bool ignore) => settings.SetIgnoreHotkeyInFullscreen(ignore).Success;
+
+    public bool SelectUiSounds(bool enabled) => settings.SetUiSounds(enabled).Success;
 
     public bool SelectScanQrCodes(bool scan) => settings.SetScanQrCodes(scan).Success;
 
@@ -152,6 +155,7 @@ internal sealed class SettingsWindowModel(
         if (!SelectOcrLanguage(defaults.OcrLanguageTag)) return strings.StorageSaveFailed;
         if (!SelectAppLanguage(defaults.AppLanguageTag)) return strings.StorageSaveFailed;
         if (!SelectIgnoreHotkeyInFullscreen(defaults.IgnoreHotkeyInFullscreen)) return strings.StorageSaveFailed;
+        if (!SelectUiSounds(defaults.UiSounds)) return strings.StorageSaveFailed;
         if (!settings.SetHiddenToolbarActions(defaults.HiddenToolbarActions).Success) return strings.StorageSaveFailed;
         if (!SelectScanQrCodes(defaults.ScanQrCodes)) return strings.StorageSaveFailed;
         if (!SelectBrowserDataCleanup(defaults.BrowserDataCleanupDays)) return strings.StorageSaveFailed;
