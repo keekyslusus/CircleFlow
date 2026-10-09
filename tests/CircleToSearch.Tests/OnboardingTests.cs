@@ -190,6 +190,31 @@ public sealed class OnboardingTests
     });
 
     [Fact]
+    public void Only_keys_typed_while_recording_the_shortcut_click() => OnSta(() =>
+    {
+        using var harness = new Harness();
+        var window = harness.CreateView(light: false).Window;
+        try
+        {
+            window.Show();
+            Pump();
+            Press(window, Key.K);
+            Assert.Equal(0, harness.ShortcutKeyPresses);
+
+            Click(window, "change-shortcut");
+            Press(window, Key.LeftCtrl);
+            Press(window, Key.Escape);
+            Assert.Equal(1, harness.ShortcutKeyPresses);
+
+            Click(window, "change-shortcut");
+            Press(window, Key.LeftCtrl);
+            Press(window, Key.K);
+            Assert.Equal(3, harness.ShortcutKeyPresses);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
     public void Changing_the_shortcut_records_in_place_and_reports_problems() => OnSta(() =>
     {
         using var harness = new Harness(hotkeyAvailable: false);
@@ -479,8 +504,10 @@ public sealed class OnboardingTests
         public UiStrings Strings { get; }
         public OnboardingModel Model { get; }
 
+        public int ShortcutKeyPresses { get; private set; }
+
         public OnboardingWindowView CreateView(bool light, TimeSpan? statusLifetime = null) =>
-            new(Strings, light, new AppPaths().TrayIconPath, Model, statusLifetime);
+            new(Strings, light, new AppPaths().TrayIconPath, Model, statusLifetime, () => ShortcutKeyPresses++);
 
         public OnboardingWindowController CreateController() =>
             new(Dispatcher.CurrentDispatcher, Model, () => CreateView(light: false).Window);

@@ -26,12 +26,14 @@ internal sealed class OnboardingWindowView
     private readonly OnboardingFadeTransition _status;
     private readonly OnboardingSwapTransition _launchFailure;
     private readonly DispatcherTimer _statusTimer;
+    private readonly Action _shortcutKeyPressed;
 
     internal OnboardingWindowView(UiStrings strings, bool lightTheme, string iconPath, OnboardingModel model,
-        TimeSpan? statusLifetime = null)
+        TimeSpan? statusLifetime = null, Action? shortcutKeyPressed = null)
     {
         _strings = strings;
         _model = model;
+        _shortcutKeyPressed = shortcutKeyPressed ?? (() => { });
         Window = (Window)Application.LoadComponent(new Uri(
             "/CircleFlow;component/CTS/Shell/Onboarding/OnboardingWindow.xaml", UriKind.Relative));
         SettingsWindowTheme.Apply(Window, lightTheme, iconPath);
@@ -185,6 +187,7 @@ internal sealed class OnboardingWindowView
             StopRecording();
             return;
         }
+        if (!e.IsRepeat) _shortcutKeyPressed();
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         if (ShortcutText.IsModifier(key)) return;
         if (ShortcutText.Gesture(key, Keyboard.Modifiers) is not { } gesture)

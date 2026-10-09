@@ -170,7 +170,13 @@ public static class CompositionRoot
                 var onboardingModel = new OnboardingModel(runtime.Settings, startup, strings,
                     () => activation.TryRequestOpen());
                 var onboarding = new OnboardingWindowController(application.Dispatcher, onboardingModel,
-                    () => new OnboardingWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath, onboardingModel).Window);
+                    () =>
+                    {
+                        var window = new OnboardingWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath,
+                            onboardingModel, shortcutKeyPressed: () => runtime.Sounds.Play(UiSound.Key)).Window;
+                        UiClickSounds.Attach(window, runtime.Sounds.Play);
+                        return window;
+                    });
                 lifetime.AddCleanup("close-onboarding", () => { onboarding.Dispose(); return Task.CompletedTask; });
                 var testBrowserEnvironments = new WebViewEnvironmentFactory(paths, strings, notifier);
                 var testBrowser = new SingleWindowController(application.Dispatcher,
