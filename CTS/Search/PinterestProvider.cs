@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace CircleToSearch.Search;
 
-public sealed record PinterestPin(string Id, string Title, string Domain, Uri? Link, Uri Image, int Width, int Height)
+public sealed record PinterestPin(string Id, string Title, string Domain, Uri? Link, Uri Image, Uri FullImage, int Width, int Height)
 {
     public string PinUrl => $"https://www.pinterest.com/pin/{Id}/";
 }
@@ -59,7 +59,9 @@ public sealed class PinterestProvider(HttpClient client) : IVisualSearchProvider
             if (item.ValueKind != JsonValueKind.Object || Text(item, "type") is not (null or "pin")) continue;
             var id = Text(item, "id");
             if (string.IsNullOrEmpty(id) || !id.All(char.IsAsciiDigit) || !seen.Add(id)) continue;
-            var image = PinImage(Text(item, "image_medium_url")) ?? PinImage(Text(item, "image_large_url"));
+            // The 474 px medium image keeps previews light; copying and saving want the 1200 px one.
+            var full = PinImage(Text(item, "image_large_url"));
+            var image = PinImage(Text(item, "image_medium_url")) ?? full;
             if (image is null) continue;
             var title = Clean(Text(item, "title"));
             if (title.Length == 0) title = Clean(Text(item, "description"));
@@ -68,7 +70,7 @@ public sealed class PinterestProvider(HttpClient client) : IVisualSearchProvider
             // Pins without an external source report a placeholder instead of a domain.
             if (link is null) domain = "";
             var (width, height) = Size(item, "image_medium_size_pixels");
-            pins.Add(new(id, title, domain, link, image, width, height));
+            pins.Add(new(id, title, domain, link, image, full ?? image, width, height));
         }
         return pins;
     }

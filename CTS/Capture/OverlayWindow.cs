@@ -260,16 +260,16 @@ public sealed class OverlayWindow : Window
     internal bool IsOverlayChromeInteraction(object? originalSource, Point windowPoint)
     {
         var hit = InputHitTest(windowPoint) as DependencyObject;
-        return IsWithin(originalSource as DependencyObject, _visual.Bottom.Root) ||
-               IsWithin(originalSource as DependencyObject, _visual.Debug.Panel) ||
-               IsWithin(originalSource as DependencyObject, _visual.TextSelection.Toolbar.Surface) ||
-               IsWithin(originalSource as DependencyObject, _visual.ImageSelection.Toolbar.Surface) ||
-               IsWithin(originalSource as DependencyObject, _visual.QrCodes.Layer) ||
-               IsWithin(hit, _visual.Bottom.Root) ||
-               IsWithin(hit, _visual.Debug.Panel) ||
-               IsWithin(hit, _visual.TextSelection.Toolbar.Surface) ||
-               IsWithin(hit, _visual.ImageSelection.Toolbar.Surface) ||
-               IsWithin(hit, _visual.QrCodes.Layer) ||
+        return OverlayVisualResources.IsWithin(originalSource as DependencyObject, _visual.Bottom.Root) ||
+               OverlayVisualResources.IsWithin(originalSource as DependencyObject, _visual.Debug.Panel) ||
+               OverlayVisualResources.IsWithin(originalSource as DependencyObject, _visual.TextSelection.Toolbar.Surface) ||
+               OverlayVisualResources.IsWithin(originalSource as DependencyObject, _visual.ImageSelection.Toolbar.Surface) ||
+               OverlayVisualResources.IsWithin(originalSource as DependencyObject, _visual.QrCodes.Layer) ||
+               OverlayVisualResources.IsWithin(hit, _visual.Bottom.Root) ||
+               OverlayVisualResources.IsWithin(hit, _visual.Debug.Panel) ||
+               OverlayVisualResources.IsWithin(hit, _visual.TextSelection.Toolbar.Surface) ||
+               OverlayVisualResources.IsWithin(hit, _visual.ImageSelection.Toolbar.Surface) ||
+               OverlayVisualResources.IsWithin(hit, _visual.QrCodes.Layer) ||
                _visual.Bottom.Root.IsMouseOver ||
                _visual.Debug.Panel.IsMouseOver ||
                _visual.TextSelection.Toolbar.Surface.IsMouseOver ||
@@ -710,7 +710,7 @@ public sealed class OverlayWindow : Window
             return;
         }
         if (!_textSelection.HasSelection) return;
-        if (IsWithin(e.OriginalSource as DependencyObject, _visual.TextSelection.Toolbar.Surface)) return;
+        if (OverlayVisualResources.IsWithin(e.OriginalSource as DependencyObject, _visual.TextSelection.Toolbar.Surface)) return;
         _textSelection.Dismiss();
     }
 
@@ -853,19 +853,6 @@ public sealed class OverlayWindow : Window
         new(from, to, ExitFadeDuration) { EasingFunction = EaseOut() };
 
     private static CubicEase EaseOut() => new() { EasingMode = EasingMode.EaseOut };
-
-    private static bool IsWithin(DependencyObject? source, DependencyObject ancestor)
-    {
-        var current = source;
-        while (current is not null)
-        {
-            if (ReferenceEquals(current, ancestor)) return true;
-            current = current is Visual or System.Windows.Media.Media3D.Visual3D
-                ? VisualTreeHelper.GetParent(current)
-                : LogicalTreeHelper.GetParent(current);
-        }
-        return false;
-    }
 
     // Reading the locked pixels directly skips the intermediate HBITMAP copy, several times faster per frame.
     private static BitmapSource CreateFrozenFrame(GdiBitmap frame)

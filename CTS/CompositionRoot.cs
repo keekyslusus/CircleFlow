@@ -753,7 +753,8 @@ public static class CompositionRoot
                 context.PublishCommand,
                 context.CreateSelectionCopy,
                 dependencies.WidgetVisuals,
-                () => playSound(UiSound.Found)));
+                () => playSound(UiSound.Found),
+                toast.Show));
             var controllers = new OverlayControllers(
                 selection,
                 textSelection,

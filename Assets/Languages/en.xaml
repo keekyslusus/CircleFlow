@@ -162,6 +162,9 @@
     <system:String x:Key="plugin_circletosearch_pinterest_show_all">Show all pins</system:String>
     <system:String x:Key="plugin_circletosearch_pinterest_more">+{0}</system:String>
     <system:String x:Key="plugin_circletosearch_pinterest_back">Back</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_copy_image">Copy image</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_save_image">Save image</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_image_unavailable">Could not load the image.</system:String>
     <system:String x:Key="app_settings_general">General</system:String>
     <system:String x:Key="app_settings_hotkeys">Shortcuts</system:String>
     <system:String x:Key="app_settings_search">Search</system:String>

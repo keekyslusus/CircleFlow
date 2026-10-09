@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
@@ -26,7 +27,9 @@ internal sealed record OverlayWidgetContext(
     Action<Uri> Open,
     Action Close,
     ClipboardCopyService ClipboardCopy,
-    Action? Matched = null);
+    Action? Matched = null,
+    Action<BitmapSource>? SaveImage = null,
+    Action<ToastNotification>? ShowToast = null);
 
 // Owns the loading indicator, reveal and exit of a result card placed above the overlay's bottom controls.
 internal sealed class OverlayWidgetCardHost : IDisposable

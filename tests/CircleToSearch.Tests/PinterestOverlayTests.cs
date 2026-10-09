@@ -154,6 +154,81 @@ public sealed class PinterestOverlayTests
         });
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Pin_menu_copies_and_saves_the_full_image(bool light)
+    {
+        RunSta(time =>
+        {
+            var full = PreviewFile(40, 1200, 800);
+            var pins = Pins().Take(2).Select((pin, index) => pin with
+            {
+                FullImage = index == 0 ? new Uri(full) : new Uri(Path.Combine(TestOutputPaths.TempDirectory, "missing-pin.png")),
+            }).ToArray();
+            var harness = Harness.Create(960, 600, light);
+            var copied = new List<BitmapSource>();
+            var saved = new List<BitmapSource>();
+            var toasts = new List<ToastNotification>();
+            using var pinterest = PinterestOverlayVisual.Create(harness.Context(_ => { }, () => { },
+                copied.Add, saved.Add, toasts.Add));
+            try
+            {
+                pinterest.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForPinterest(pins)));
+                Reveal(time, pinterest);
+                var tiles = PinButtons(harness.Visual.Bottom.Stack);
+
+                Assert.True(OpenMenu(tiles[0]));
+                time.Advance(240);
+                Assert.True(pinterest.IsMenuOpen);
+                var items = MenuItems(harness.Visual.Root);
+                Assert.Equal([TestUiStrings.English.PinterestCopyImage, TestUiStrings.English.PinterestSaveImage],
+                    items.Select(AutomationProperties.GetName));
+                Capture(harness.Visual.Root, $"pinterest-{light}-menu.png");
+                var menu = items[0].Parent is Panel panel ? (FrameworkElement)panel.Parent : null;
+                var tileCenter = tiles[0].TranslatePoint(new Point(tiles[0].ActualWidth / 2, tiles[0].ActualHeight / 2),
+                    harness.Visual.Root);
+                var menuTopLeft = menu!.TranslatePoint(new Point(), harness.Visual.Root);
+                Assert.InRange(menuTopLeft.X, tileCenter.X, tileCenter.X + 8);
+                Assert.InRange(menuTopLeft.Y, tileCenter.Y, tileCenter.Y + 8);
+                var itemPoint = items[0].TranslatePoint(new Point(40, 10), harness.Visual.Root);
+                Assert.True(OverlayVisualResources.IsWithin(harness.Visual.Root.InputHitTest(itemPoint) as DependencyObject, items[0]),
+                    "The menu should sit above the card.");
+
+                items[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var image = Assert.Single(copied);
+                Assert.Equal((1200, 800), (image.PixelWidth, image.PixelHeight));
+                Assert.False(pinterest.IsMenuOpen);
+
+                Assert.True(OpenMenu(tiles[0]));
+                MenuItems(harness.Visual.Root)[1].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.True(Assert.Single(saved).IsFrozen);
+                Assert.Equal(1200, saved[0].PixelWidth);
+
+                Assert.True(OpenMenu(tiles[0]));
+                Assert.True(pinterest.TryGoBack());
+                Assert.False(pinterest.IsMenuOpen);
+
+                Assert.True(OpenMenu(tiles[0]));
+                var outside = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0,
+                    System.Windows.Input.MouseButton.Left) { RoutedEvent = UIElement.PreviewMouseDownEvent };
+                tiles[1].RaiseEvent(outside);
+                Assert.False(pinterest.IsMenuOpen);
+                Assert.True(outside.Handled);
+
+                Assert.True(OpenMenu(tiles[1]));
+                MenuItems(harness.Visual.Root)[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Single(copied);
+                var toast = Assert.Single(toasts);
+                Assert.Equal((TestUiStrings.English.PinterestImageUnavailable, ToastTone.Error), (toast.Message, toast.Tone));
+            }
+            finally
+            {
+                harness.Dispose();
+            }
+        });
+    }
+
     [Fact]
     public void All_pins_fit_without_a_more_tile()
     {
@@ -238,6 +313,23 @@ public sealed class PinterestOverlayTests
         });
     }
 
+    // The menu keys raise ContextMenuOpening without a cursor position; its constructor is not public.
+    internal static bool OpenMenu(Button tile)
+    {
+        var args = (ContextMenuEventArgs)Activator.CreateInstance(typeof(ContextMenuEventArgs),
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic, null,
+            [tile, true, -1.0, -1.0], null)!;
+        tile.RaiseEvent(args);
+        return args.Handled;
+    }
+
+    private static List<Button> MenuItems(DependencyObject root) =>
+        Descendants(root).OfType<Button>()
+            .Where(button => AutomationProperties.GetName(button) is { } name &&
+                (name == TestUiStrings.English.PinterestCopyImage || name == TestUiStrings.English.PinterestSaveImage) &&
+                button.IsVisible)
+            .ToList();
+
     private static List<Button> PinButtons(DependencyObject root) =>
         Descendants(root).OfType<Button>()
             .Where(button => AutomationProperties.GetName(button).StartsWith(TestUiStrings.English.PinterestOpen))
@@ -259,7 +351,7 @@ public sealed class PinterestOverlayTests
         {
             var source = index < files.Length ? files[index] : PreviewFile(index, size.Width, size.Height);
             return new PinterestPin((index + 1).ToString(), index == 1 ? "2B" : "", index == 0 ? "example.com" : "",
-                null, new Uri(source), size.Width, size.Height);
+                null, new Uri(source), new Uri(source), size.Width, size.Height);
         }).ToArray();
     }
 
@@ -313,9 +405,11 @@ public sealed class PinterestOverlayTests
             return new Harness(visual, window, light);
         }
 
-        public OverlayWidgetContext Context(Action<Uri> open, Action close) => new(
+        public OverlayWidgetContext Context(Action<Uri> open, Action close, Action<BitmapSource>? copyImage = null,
+            Action<BitmapSource>? saveImage = null, Action<ToastNotification>? showToast = null) => new(
             Visual.Root, _activity, Visual.Bottom, Visual.Effects, TestUiStrings.English, _light, open, close,
-            new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English));
+            new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English, copyImage ?? (_ => { })),
+            SaveImage: saveImage, ShowToast: showToast);
 
         public void Dispose()
         {

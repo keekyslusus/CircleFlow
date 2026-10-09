@@ -27,6 +27,9 @@
     <system:String x:Key="plugin_circletosearch_qr_wifi_network">Сеть Wi-Fi {0}</system:String>
     <system:String x:Key="plugin_circletosearch_qr_password_copied">Пароль Wi-Fi скопирован</system:String>
     <system:String x:Key="plugin_circletosearch_link_open_failed">Не удалось открыть ссылку.</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_copy_image">Копировать изображение</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_save_image">Сохранить изображение</system:String>
+    <system:String x:Key="plugin_circletosearch_pinterest_image_unavailable">Не удалось загрузить изображение.</system:String>
     <system:String x:Key="plugin_circletosearch_selection_prompt">Выделите область</system:String>
     <system:String x:Key="plugin_circletosearch_cancel_action">отмена</system:String>
     <system:String x:Key="plugin_circletosearch_left_mouse_button">Левая кнопка мыши</system:String>

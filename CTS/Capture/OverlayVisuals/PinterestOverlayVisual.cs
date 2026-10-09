@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -28,14 +29,20 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     private static readonly TimeSpan HoverOut = TimeSpan.FromMilliseconds(140);
     private const double HoverTextRise = 6;
     private static readonly TimeSpan FadeMotion = TimeSpan.FromMilliseconds(220);
+    private static readonly TimeSpan FullImageWait = TimeSpan.FromSeconds(20);
 
     private readonly OverlayWidgetCardHost _host;
+    private readonly Grid _root;
     private readonly UiStrings _strings;
     private readonly bool _light;
     private readonly Action<Uri> _open;
     private readonly Action _close;
+    private readonly ClipboardCopyService _clipboardCopy;
+    private readonly Action<BitmapSource>? _saveImage;
+    private readonly Action<ToastNotification> _showToast;
     private readonly EmojiText? _emoji;
     private readonly List<BitmapImage> _stripImages = [];
+    private readonly Dictionary<string, Task<BitmapSource?>> _fullImages = [];
     private IReadOnlyList<PinterestPin> _pins = [];
     private IReadOnlyDictionary<string, BitmapImage> _previews = new Dictionary<string, BitmapImage>();
     private Border? _body;
@@ -44,21 +51,28 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     private ScrollViewer? _masonry;
     private AutoHideScrollbarController? _scrollbar;
     private SmoothScrollMotionController? _scrollMotion;
+    private OverlayContextMenu? _menu;
     private double _contentWidth;
 
     private PinterestOverlayVisual(OverlayWidgetContext context, EmojiText? emoji)
     {
         _emoji = emoji;
         _host = new OverlayWidgetCardHost(context);
+        _root = context.Root;
         _strings = context.Strings;
         _light = context.LightTheme;
         _open = context.Open;
         _close = context.Close;
+        _clipboardCopy = context.ClipboardCopy;
+        _saveImage = context.SaveImage;
+        _showToast = context.ShowToast ?? (_ => { });
     }
 
     internal Task Presentation => _host.Presentation;
 
     internal bool IsExpanded { get; private set; }
+
+    internal bool IsMenuOpen => _menu?.IsOpen == true;
 
     internal static PinterestOverlayVisual Create(OverlayWidgetContext context, EmojiText? emoji = null)
     {
@@ -99,6 +113,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         _contentWidth = width - 2 - padding * 2;
         // Every preview starts loading now, so the grid behind '+N' is mostly ready before it is opened.
         _previews = _pins.ToDictionary(pin => pin.Id, pin => LoadPreview(pin.Image));
+        _menu = new OverlayContextMenu(_root, _light);
         var content = new StackPanel();
         content.Children.Add(CreateHeader());
         _strip = CreateStrip();
@@ -279,7 +294,51 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
             e.Handled = true;
             if (_host.IsActive) _open(new Uri(pin.PinUrl));
         };
+        button.ContextMenuOpening += (_, e) =>
+        {
+            e.Handled = true;
+            // The menu keys report no cursor; the menu then opens from the middle of the tile.
+            var keyboard = e.CursorLeft < 0 && e.CursorTop < 0;
+            OpenPinMenu(pin, button,
+                keyboard ? new Point(button.ActualWidth / 2, button.ActualHeight / 2) : Mouse.GetPosition(button), keyboard);
+        };
         return button;
+    }
+
+    private void OpenPinMenu(PinterestPin pin, Button tile, Point position, bool keyboard)
+    {
+        if (!_host.IsActive || _menu is null) return;
+        // The full image starts loading with the menu, so it is usually ready by the time an item is chosen.
+        _ = FullImageAsync(pin);
+        var items = new List<OverlayContextMenuItem>
+        {
+            new(PluginIcons.CopyOutlined, _strings.PinterestCopyImage,
+                () => _ = WithFullImageAsync(pin, image => _clipboardCopy.TryCopyImage(image))),
+        };
+        if (_saveImage is { } save)
+            items.Add(new(PluginIcons.DownloadOutlined, _strings.PinterestSaveImage,
+                () => _ = WithFullImageAsync(pin, save)));
+        _menu.Open(tile, position, items, focusFirst: keyboard);
+    }
+
+    private async Task WithFullImageAsync(PinterestPin pin, Action<BitmapSource> use)
+    {
+        var image = await FullImageAsync(pin);
+        if (!_host.IsActive) return;
+        if (image is not null)
+        {
+            use(image);
+            return;
+        }
+        _fullImages.Remove(pin.Id);
+        _showToast(new ToastNotification(_strings.PinterestImageUnavailable, ToastTone.Error));
+    }
+
+    private Task<BitmapSource?> FullImageAsync(PinterestPin pin)
+    {
+        if (!_fullImages.TryGetValue(pin.Id, out var image))
+            _fullImages[pin.Id] = image = LoadFullImageAsync(pin.FullImage);
+        return image;
     }
 
     private Grid? CreateHoverDetails(PinterestPin pin, double width)
@@ -354,6 +413,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     {
         if (!_host.IsActive || _body is null || IsExpanded) return;
         IsExpanded = true;
+        _menu?.Close();
         _masonry ??= CreateMasonry();
         _host.ChangeLayout(() =>
         {
@@ -366,6 +426,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     {
         if (!_host.IsActive || _body is null || !IsExpanded) return;
         IsExpanded = false;
+        _menu?.Close();
         _scrollMotion?.Reset();
         _host.ChangeLayout(() =>
         {
@@ -378,7 +439,13 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
 
     public bool TryGoBack()
     {
-        if (!IsExpanded || !_host.IsActive) return false;
+        if (!_host.IsActive) return false;
+        if (IsMenuOpen)
+        {
+            _menu!.Close();
+            return true;
+        }
+        if (!IsExpanded) return false;
         Collapse();
         return true;
     }
@@ -423,6 +490,32 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         return image;
     }
 
+    // Remote bitmaps decode on the UI thread, so the result is frozen for the save dialog on the app's thread.
+    private static async Task<BitmapSource?> LoadFullImageAsync(Uri source)
+    {
+        var image = new BitmapImage();
+        var loaded = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        image.DownloadCompleted += (_, _) => loaded.TrySetResult(true);
+        image.DownloadFailed += (_, _) => loaded.TrySetResult(false);
+        image.DecodeFailed += (_, _) => loaded.TrySetResult(false);
+        try
+        {
+            image.BeginInit();
+            image.UriSource = source;
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.EndInit();
+            if (image.IsDownloading && !await loaded.Task.WaitAsync(FullImageWait)) return null;
+        }
+        catch (Exception exception) when (exception is IOException or NotSupportedException or
+                                              UnauthorizedAccessException or TimeoutException)
+        {
+            return null;
+        }
+        if (!image.CanFreeze) return null;
+        image.Freeze();
+        return image;
+    }
+
     private static double AspectRatio(PinterestPin pin) =>
         pin.Width > 0 && pin.Height > 0 ? (double)pin.Width / pin.Height : 1;
 
@@ -439,11 +532,16 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         _close();
     }
 
-    public void DismissResult() => _host.Dismiss();
+    public void DismissResult()
+    {
+        _menu?.Close();
+        _host.Dismiss();
+    }
 
     public void Dispose()
     {
         _host.Dispose();
+        _menu?.Dispose();
         _scrollbar?.Dispose();
         _scrollMotion?.Dispose();
     }

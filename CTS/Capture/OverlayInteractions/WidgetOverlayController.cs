@@ -1,5 +1,6 @@
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
 using GdiRectangle = System.Drawing.Rectangle;
@@ -21,6 +22,7 @@ internal sealed class WidgetOverlayController : IDisposable
     private readonly Func<GdiRectangle, SelectionOutcome> _createSelectionCopy;
     private readonly IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> _visuals;
     private readonly Action _found;
+    private readonly Action<ToastNotification> _showToast;
     private IOverlayWidgetVisual? _visual;
     private bool _disposed;
 
@@ -37,7 +39,8 @@ internal sealed class WidgetOverlayController : IDisposable
         Action<IOverlayCommand>? publishCommand,
         Func<GdiRectangle, SelectionOutcome> createSelectionCopy,
         IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> visuals,
-        Action? found = null)
+        Action? found = null,
+        Action<ToastNotification>? showToast = null)
     {
         _root = root;
         _activityPresenter = activityPresenter;
@@ -52,6 +55,7 @@ internal sealed class WidgetOverlayController : IDisposable
         _createSelectionCopy = createSelectionCopy;
         _visuals = visuals;
         _found = found ?? (() => { });
+        _showToast = showToast ?? (_ => { });
     }
 
     internal bool TryStart(string providerId, GdiRectangle bounds)
@@ -73,7 +77,9 @@ internal sealed class WidgetOverlayController : IDisposable
             url => OpenResult(visual, url),
             () => CloseResult(visual),
             _clipboardCopy,
-            _found));
+            _found,
+            image => SaveImage(visual, image),
+            _showToast));
         _visual = visual;
 
         var selection = _createSelectionCopy(bounds);
@@ -131,6 +137,12 @@ internal sealed class WidgetOverlayController : IDisposable
     {
         if (_disposed || !ReferenceEquals(_visual, visual)) return;
         _publishCommand?.Invoke(new OpenWidgetResult(url));
+    }
+
+    private void SaveImage(IOverlayWidgetVisual? visual, BitmapSource image)
+    {
+        if (_disposed || !ReferenceEquals(_visual, visual) || _getMode() != OverlayInteractionMode.WidgetResult) return;
+        _publishCommand?.Invoke(new SaveSelectedImage(image));
     }
 
     private void CloseResult(IOverlayWidgetVisual? visual)

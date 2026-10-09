@@ -20,6 +20,8 @@ public sealed class PinterestProviderTests
         Assert.Equal("kidspattern.com", pins[1].Link!.Host);
         Assert.Equal("i.pinimg.com", pins[1].Image.Host);
         Assert.Equal((474, 474), (pins[1].Width, pins[1].Height));
+        Assert.Equal("https://i.pinimg.com/474x/4c/83/dd/4c83dd22bf57edf2b3e45c6e9f77acc3.jpg", pins[1].Image.AbsoluteUri);
+        Assert.Equal("https://i.pinimg.com/1200x/4c/83/dd/4c83dd22bf57edf2b3e45c6e9f77acc3.jpg", pins[1].FullImage.AbsoluteUri);
     }
 
     [Fact]
@@ -40,6 +42,7 @@ public sealed class PinterestProviderTests
         Assert.Equal("", pin.Domain);
         Assert.Null(pin.Link);
         Assert.Equal("https://i.pinimg.com/1200x/b.jpg", pin.Image.AbsoluteUri);
+        Assert.Equal(pin.Image, pin.FullImage);
         Assert.Equal((0, 0), (pin.Width, pin.Height));
     }
 

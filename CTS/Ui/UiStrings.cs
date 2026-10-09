@@ -28,6 +28,9 @@ public sealed class UiStrings
     public string PinterestShowAll => Get("plugin_circletosearch_pinterest_show_all");
     public string PinterestMore(int count) => Get("plugin_circletosearch_pinterest_more", count);
     public string PinterestBack => Get("plugin_circletosearch_pinterest_back");
+    public string PinterestCopyImage => Get("plugin_circletosearch_pinterest_copy_image");
+    public string PinterestSaveImage => Get("plugin_circletosearch_pinterest_save_image");
+    public string PinterestImageUnavailable => Get("plugin_circletosearch_pinterest_image_unavailable");
     public string PluginTitle => Get("plugin_circletosearch_plugin_name");
     public string TrayOpen => Get("app_tray_open");
     public string TrayOpenWithHotkey(string gesture) => Get("app_tray_open_hotkey", gesture);

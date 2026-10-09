@@ -1105,7 +1105,8 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     private static PinterestPin Pin(string id) =>
-        new(id, "", "", null, new Uri("https://i.pinimg.com/474x/" + id + ".jpg"), 474, 474);
+        new(id, "", "", null, new Uri("https://i.pinimg.com/474x/" + id + ".jpg"),
+            new Uri("https://i.pinimg.com/1200x/" + id + ".jpg"), 474, 474);
 
     [Fact]
     public async Task Trace_encoding_failure_disposes_selection_and_overlay()

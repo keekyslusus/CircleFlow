@@ -159,6 +159,66 @@ public sealed class WidgetOverlayControllerTests
     }
 
     [Fact]
+    public void Escape_and_mouse_back_close_the_pin_menu_before_the_card()
+    {
+        RunSta(() =>
+        {
+            using var source = new GdiBitmap(640, 400);
+            var bounds = new GdiRectangle(0, 0, 640, 400);
+            var start = new Point(100, 100);
+            var finish = new Point(180, 160);
+            var commands = new List<IOverlayCommand>();
+            var overlay = new OverlayWindow(
+                source,
+                bounds,
+                bounds,
+                1,
+                new OverlayOptions(8, 12),
+                TestUiStrings.English,
+                TestOverlayControllers.CreateFactory(
+                    pointerPosition: e => e.RoutedEvent == UIElement.MouseLeftButtonUpEvent ? finish : start),
+                overscan: false,
+                providers: [new(SearchProviderIds.Pinterest, "Pinterest")],
+                initialProviderId: SearchProviderIds.Pinterest,
+                publishCommand: commands.Add);
+            overlay.Show();
+            RaisePointerGesture(overlay.VisualState.Selection.InputSurface);
+            commands.OfType<VisualSelection>().Single().Selection.Dispose();
+            overlay.ShowWidgetResult(VisualSearchPreparationOutcome.Ready(
+                PreparedVisualSearch.ForPinterest(PinterestOverlayTests.Pins())));
+            overlay.UpdateLayout();
+            var tile = Descendants(overlay.VisualState.Bottom.Stack).OfType<Button>()
+                .First(button => AutomationProperties.GetName(button).StartsWith(TestUiStrings.English.PinterestOpen));
+
+            Assert.True(PinterestOverlayTests.OpenMenu(tile));
+            Assert.True(MenuShown());
+            // A real side-button click presses before it releases; the press must not dismiss the menu on its own.
+            overlay.VisualState.Root.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.XButton1)
+            {
+                RoutedEvent = UIElement.PreviewMouseDownEvent,
+            });
+            RaiseMouseBack(overlay);
+            Pump(TimeSpan.FromMilliseconds(250));
+            Assert.False(MenuShown());
+            Assert.Equal(OverlayInteractionMode.WidgetResult, overlay.Mode);
+
+            Assert.True(PinterestOverlayTests.OpenMenu(tile));
+            RaiseEscape(overlay);
+            Pump(TimeSpan.FromMilliseconds(250));
+            Assert.False(MenuShown());
+            Assert.Equal(OverlayInteractionMode.WidgetResult, overlay.Mode);
+            Assert.DoesNotContain(commands, command => command is CancelSession);
+
+            overlay.CloseFromSession();
+            Dispatcher.Run();
+
+            bool MenuShown() => Descendants(overlay.VisualState.Root).OfType<Button>()
+                .Any(button => AutomationProperties.GetName(button) == TestUiStrings.English.PinterestCopyImage &&
+                    button.IsVisible);
+        });
+    }
+
+    [Fact]
     public void TryStart_uses_a_copy_and_keeps_the_source_owned_by_the_overlay()
     {
         RunSta(() =>

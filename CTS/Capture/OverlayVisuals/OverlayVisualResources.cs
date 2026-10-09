@@ -35,6 +35,19 @@ internal static class OverlayVisualResources
 
     internal static bool AnimationsEnabled() => UiAnimationPolicy.Enabled;
 
+    internal static bool IsWithin(DependencyObject? source, DependencyObject ancestor)
+    {
+        var current = source;
+        while (current is not null)
+        {
+            if (ReferenceEquals(current, ancestor)) return true;
+            current = current is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(current)
+                : LogicalTreeHelper.GetParent(current);
+        }
+        return false;
+    }
+
     // Remote artwork stays hidden over the card's placeholder until it is decoded, then fades in; a failed
     // download leaves the placeholder. A bitmap that is already loaded shows at once, without a second fade.
     internal static Image FadeInImage(BitmapImage bitmap)
