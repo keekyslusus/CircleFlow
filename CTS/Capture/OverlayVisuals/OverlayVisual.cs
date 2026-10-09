@@ -46,7 +46,8 @@ public sealed record SelectionOverlayVisual(
     Polyline Halo,
     Polyline Accent,
     Path SelectionFrame,
-    Grid InputSurface);
+    Grid InputSurface,
+    Grid DimLayer);
 
 public sealed record ActionTrayVisual(
     StackPanel Tray,

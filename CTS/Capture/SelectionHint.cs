@@ -6,4 +6,5 @@ public enum SelectionHint
     LeftDragSearch,
     EscapeCancel,
     AltLeftDragOverText,
+    MiddleDragPan,
 }

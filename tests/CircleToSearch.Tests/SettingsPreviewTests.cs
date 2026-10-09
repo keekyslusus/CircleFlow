@@ -1072,6 +1072,7 @@ public sealed class SettingsPreviewTests
             OcrLanguageTag = "de-DE",
             AppLanguageTag = "ru",
             IgnoreHotkeyInFullscreen = false,
+            OverlayZoom = false,
             ScanQrCodes = false,
             BrowserDataCleanupDays = 0,
             HotkeyGesture = "Ctrl+Shift+K",
@@ -1113,6 +1114,8 @@ public sealed class SettingsPreviewTests
             Assert.Equal(defaults.OcrLanguageTag, harness.Settings.Snapshot.OcrLanguageTag);
             Assert.True(harness.Settings.Snapshot.IgnoreHotkeyInFullscreen);
             Assert.True(Find<CheckBox>(window, "IgnoreFullscreen").IsChecked);
+            Assert.True(harness.Settings.Snapshot.OverlayZoom);
+            Assert.True(Find<CheckBox>(window, "OverlayZoom").IsChecked);
             Assert.True(harness.Settings.Snapshot.ScanQrCodes);
             Assert.True(Find<CheckBox>(window, "ScanQrCodes").IsChecked);
             Assert.Equal(28, harness.Settings.Snapshot.BrowserDataCleanupDays);
@@ -1303,6 +1306,33 @@ public sealed class SettingsPreviewTests
             harness.Settings.SetScanQrCodes(true).ThrowIfFailed("test update failed");
             Activate(window);
             Assert.True(scan.IsChecked);
+            Assert.Empty(harness.Notifier.Errors);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Overlay_zoom_is_on_by_default_and_turning_it_off_reaches_the_overlay_options() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var zoom = Find<CheckBox>(window, "OverlayZoom");
+            Assert.True(zoom.IsChecked);
+            Assert.True(SearchSessionOptions.From(harness.Settings.Snapshot,
+                new CircleToSearch.TextRecognition.OcrLanguageCatalog([]),
+                System.Globalization.CultureInfo.InvariantCulture).Zoom);
+            zoom.IsChecked = false;
+            Assert.False(harness.Settings.Snapshot.OverlayZoom);
+            Assert.False(SearchSessionOptions.From(harness.Settings.Snapshot,
+                new CircleToSearch.TextRecognition.OcrLanguageCatalog([]),
+                System.Globalization.CultureInfo.InvariantCulture).Zoom);
+
+            harness.Settings.SetOverlayZoom(true).ThrowIfFailed("test update failed");
+            Activate(window);
+            Assert.True(zoom.IsChecked);
             Assert.Empty(harness.Notifier.Errors);
         }
         finally { window.Close(); }

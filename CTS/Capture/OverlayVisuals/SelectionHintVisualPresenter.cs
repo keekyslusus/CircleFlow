@@ -31,6 +31,11 @@ internal static class SelectionHintVisualPresenter
                 AddKey(visual, MouseKeycap(visual, PluginIcons.MouseLeftButtonOutlined, strings.LeftMouseButton));
                 visual.Action.Text = strings.SelectionHintSearchOverText;
                 break;
+            case SelectionHint.MiddleDragPan:
+                AddKey(visual, MouseKeycap(visual, PluginIcons.MouseWheelButtonOutlined, strings.MiddleMouseButton,
+                    PluginIcons.MouseWithWheelOutlined));
+                visual.Action.Text = strings.SelectionHintPan;
+                break;
             default:
                 AddKey(visual, TextKeycap(visual, strings.CancelKeyName));
                 visual.Action.Text = strings.CancelAction;
@@ -62,7 +67,7 @@ internal static class SelectionHintVisualPresenter
             Foreground = visual.KeycapText,
         });
 
-    private static Border MouseKeycap(SelectionHintVisual visual, Geometry button, string name)
+    private static Border MouseKeycap(SelectionHintVisual visual, Geometry button, string name, Geometry? body = null)
     {
         var accent = SystemAccentColor.Read();
         var pressed = Stroke(button, OverlayVisualResources.Frozen(accent));
@@ -70,7 +75,7 @@ internal static class SelectionHintVisualPresenter
         pressed.Fill = OverlayVisualResources.Frozen(Color.FromArgb(PressedButtonTintAlpha, accent.R, accent.G, accent.B));
         var canvas = new Canvas { Width = 24, Height = 24 };
         canvas.Children.Add(pressed);
-        canvas.Children.Add(Stroke(PluginIcons.MouseOutlined, visual.KeycapText));
+        canvas.Children.Add(Stroke(body ?? PluginIcons.MouseOutlined, visual.KeycapText));
         var keycap = Keycap(
             visual,
             new Thickness(4, 5, 4, 5),

@@ -133,6 +133,44 @@ public sealed class SelectionHintTests
     }
 
     [Fact]
+    public void Zoom_shows_the_middle_drag_hint_at_once_and_text_hover_still_takes_over()
+    {
+        RunSta(() =>
+        {
+            var hint = HintVisual();
+            var scheduled = new List<Action>();
+            using var controller = new SelectionHintOverlayController(
+                hint,
+                TestUiStrings.English,
+                SelectionHint.EscapeCancel,
+                change => change(),
+                () => false,
+                Dispatcher.CurrentDispatcher,
+                (_, callback) => scheduled.Add(callback));
+
+            controller.SetZoomed(true);
+            Assert.Equal(SelectionHint.MiddleDragPan, controller.Shown);
+            Assert.Equal(TestUiStrings.English.SelectionHintPan, hint.Action.Text);
+            Assert.Equal(TestUiStrings.English.MiddleMouseButton,
+                System.Windows.Automation.AutomationProperties.GetName(
+                    Assert.IsType<Border>(Assert.Single(hint.Keys.Children))));
+
+            controller.SetTextHovered(true);
+            scheduled[^1]();
+            Assert.Equal(SelectionHint.AltLeftDragOverText, controller.Shown);
+            controller.SetTextHovered(false);
+            scheduled[^1]();
+            Assert.Equal(SelectionHint.MiddleDragPan, controller.Shown);
+
+            controller.SetZoomed(false);
+            Assert.Equal(SelectionHint.EscapeCancel, controller.Shown);
+            controller.SettleForClosing();
+            controller.SetZoomed(true);
+            Assert.Equal(SelectionHint.EscapeCancel, controller.Shown);
+        });
+    }
+
+    [Fact]
     public void Leaving_the_input_surface_over_text_ends_the_text_hover()
     {
         RunSta(() =>

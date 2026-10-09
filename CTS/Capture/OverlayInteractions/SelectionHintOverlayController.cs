@@ -18,6 +18,7 @@ internal sealed class SelectionHintOverlayController : IDisposable
     private readonly DispatcherTimer _timer;
     private long _revision;
     private bool _textHovered;
+    private bool _zoomed;
     private bool _settled;
     private bool _disposed;
 
@@ -65,6 +66,16 @@ internal sealed class SelectionHintOverlayController : IDisposable
         _timer.Start();
     }
 
+    // Shown at once: zoom changes on a deliberate gesture, unlike hover that flickers between words.
+    internal void SetZoomed(bool zoomed)
+    {
+        if (_disposed || _settled || zoomed == _zoomed) return;
+        _zoomed = zoomed;
+        ++_revision;
+        _timer.Stop();
+        Apply();
+    }
+
     internal void SettleForClosing()
     {
         _settled = true;
@@ -80,7 +91,9 @@ internal sealed class SelectionHintOverlayController : IDisposable
         _timer.Tick -= OnTimer;
     }
 
-    private SelectionHint Target => _textHovered ? SelectionHint.AltLeftDragOverText : _idleHint;
+    private SelectionHint Target => _textHovered ? SelectionHint.AltLeftDragOverText
+        : _zoomed ? SelectionHint.MiddleDragPan
+        : _idleHint;
 
     private void OnTimer(object? sender, EventArgs e)
     {

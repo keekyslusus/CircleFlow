@@ -24,6 +24,7 @@ internal sealed class QrCodeOverlayController : IDisposable
     private bool _started;
     private bool _available = true;
     private bool _suppressed;
+    private bool _zoomed;
     private bool _shown;
     private bool _announced;
     private bool _openPublished;
@@ -74,6 +75,13 @@ internal sealed class QrCodeOverlayController : IDisposable
     internal void SetSuppressed(bool suppressed)
     {
         _suppressed = suppressed;
+        UpdateVisibility();
+    }
+
+    // Chips are placed over the unzoomed screen, so they step aside while it is magnified.
+    internal void SetZoomed(bool zoomed)
+    {
+        _zoomed = zoomed;
         UpdateVisibility();
     }
 
@@ -142,7 +150,7 @@ internal sealed class QrCodeOverlayController : IDisposable
     private void UpdateVisibility()
     {
         if (_disposed) return;
-        var shown = _available && !_suppressed && !_openPublished && _chips.Count != 0;
+        var shown = _available && !_suppressed && !_zoomed && !_openPublished && _chips.Count != 0;
         if (shown == _shown) return;
         _shown = shown;
         if (shown && !_announced)

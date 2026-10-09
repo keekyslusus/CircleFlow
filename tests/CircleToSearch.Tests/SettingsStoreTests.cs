@@ -27,6 +27,7 @@ public sealed class SettingsStoreTests
             OcrLanguageTag = "ru-RU", AppLanguageTag = "ru", ImageTranslationPrivacyConsentAccepted = true, IgnoreHotkeyInFullscreen = false,
             HiddenToolbarActions = SelectionToolbarAction.Ask | SelectionToolbarAction.Save, BrowserDataCleanupDays = 0, OnboardingCompleted = true,
             SaveMusicHistory = false, MusicHistoryRetentionDays = MusicHistory.KeepForever, ScanQrCodes = false, UiSounds = false,
+            OverlayZoom = false,
         };
         store.Save(updated);
         Assert.Equal(updated, new SettingsStore(paths).Load().Settings);

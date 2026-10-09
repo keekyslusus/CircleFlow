@@ -41,6 +41,8 @@
     <system:String x:Key="plugin_circletosearch_cancel_action">cancel</system:String>
     <system:String x:Key="plugin_circletosearch_left_mouse_button">Left mouse button</system:String>
     <system:String x:Key="plugin_circletosearch_right_mouse_button">Right mouse button</system:String>
+    <system:String x:Key="plugin_circletosearch_middle_mouse_button">Middle mouse button</system:String>
+    <system:String x:Key="plugin_circletosearch_selection_hint_pan">move around</system:String>
     <system:String x:Key="plugin_circletosearch_selection_hint_search">search</system:String>
     <system:String x:Key="plugin_circletosearch_selection_hint_actions">actions</system:String>
     <system:String x:Key="plugin_circletosearch_selection_hint_search_over_text">search over text</system:String>
@@ -209,6 +211,8 @@
     <system:String x:Key="app_settings_behavior">Behavior</system:String>
     <system:String x:Key="app_settings_ignore_fullscreen">Ignore in fullscreen apps</system:String>
     <system:String x:Key="app_settings_ignore_fullscreen_sub">Games and other fullscreen apps. Browsers and video players are not affected</system:String>
+    <system:String x:Key="app_settings_overlay_zoom">Zoom with Ctrl + Wheel</system:String>
+    <system:String x:Key="app_settings_overlay_zoom_sub">Magnify the screen to circle small details</system:String>
     <system:String x:Key="app_settings_ui_sounds">Interface sounds</system:String>
     <system:String x:Key="app_settings_shortcut_hint">Shortcut works while CircleFlow is running. Esc closes selection or cancels the current action.</system:String>
     <system:String x:Key="app_settings_image_search">Image search</system:String>

@@ -69,8 +69,7 @@ public static class OverlayVisualFactory
 
         var root = new Grid();
         root.Children.Add(selection.Screenshot);
-        root.Children.Add(selection.Dim);
-        root.Children.Add(selection.DimRect);
+        root.Children.Add(selection.DimLayer);
         root.Children.Add(selection.Sheen);
         root.Children.Add(selection.Halo);
         root.Children.Add(selection.Accent);

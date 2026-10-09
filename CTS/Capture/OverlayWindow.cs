@@ -28,7 +28,7 @@ public enum OverlayExitFade
     // on some setups (reproduced in FadeCaptureTests). Kept only for the capture harness.
     Window,
 
-    // Window created with AllowsTransparency; only the root grid fades. Production default.
+    // Transparent window, composed by DWM or layered without a GPU; only the root grid fades. Production default.
     Root,
 
     // Opaque window; dim/lasso/chip fade away, the frozen frame stays until close.
@@ -68,6 +68,7 @@ public sealed class OverlayWindow : Window
     private readonly DebugOverlayController _debug;
     private readonly SelectionHintOverlayController _selectionHint;
     private readonly QrCodeOverlayController _qrCodes;
+    private readonly OverlayZoomController? _zoom;
     private bool _cancelPublished;
     private bool _exitFadeStarted;
     private bool _entranceRipplePending;
@@ -104,7 +105,8 @@ public sealed class OverlayWindow : Window
         KeyboardLanguageSnapshot inputLanguage = default,
         string textSearchEngineId = TextSearchEngines.MatchImageSearch,
         SelectionToolbarAction hiddenToolbarActions = SelectionToolbarAction.None,
-        bool scanQrCodes = false)
+        bool scanQrCodes = false,
+        bool zoom = false)
     {
         _frame = frame;
         _exitFade = exitFade;
@@ -173,7 +175,8 @@ public sealed class OverlayWindow : Window
                 OnSelectionDrawn,
                 textSearchEngineId,
                 hiddenToolbarActions,
-                scanQrCodes));
+                scanQrCodes,
+                zoom));
         }
         catch
         {
@@ -197,6 +200,7 @@ public sealed class OverlayWindow : Window
         _debug = _controllers.Debug;
         _selectionHint = _controllers.SelectionHint;
         _qrCodes = _controllers.QrCodes;
+        _zoom = _controllers.Zoom;
 
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -244,7 +248,8 @@ public sealed class OverlayWindow : Window
             options.SessionOptions.InputLanguage,
             options.SessionOptions.TextSearchEngineId,
             options.SessionOptions.HiddenToolbarActions,
-            options.SessionOptions.ScanQrCodes)
+            options.SessionOptions.ScanQrCodes,
+            options.SessionOptions.Zoom)
     {
     }
 
@@ -332,7 +337,8 @@ public sealed class OverlayWindow : Window
         Height = monitor.Height / scale;
         Background = CreateFrozenSolidBrush(
             allowsTransparency ? PluginPalette.Transparent : PluginPalette.OpaqueBlack);
-        if (allowsTransparency) AllowsTransparency = true;
+        if (allowsTransparency && DwmTransparentWindow.IsSupported) DwmTransparentWindow.Attach(this);
+        else if (allowsTransparency) AllowsTransparency = true;
         if (!overscan) return;
         Left -= 1;
         Top -= 1;
@@ -392,6 +398,7 @@ public sealed class OverlayWindow : Window
         // Enter keeps meaning Search. A faded-out tray stays focusable, so its hidden buttons never take Enter.
         if (key == Key.Enter && _focusMovedByKeyboard &&
             Keyboard.FocusedElement is ButtonBase { IsHitTestVisible: true }) return false;
+        if (_zoom?.TryHandleShortcut(key, modifiers) == true) return true;
         if (_imageSelection.Bounds is not null) return _imageSelection.TryHandleShortcut(key, modifiers);
         if (_textSelection.TryHandleShortcut(key, modifiers) ||
             _music.TryHandleShortcut(key, modifiers) ||
@@ -436,10 +443,15 @@ public sealed class OverlayWindow : Window
             return true;
         }
         if (_translation.HandleEscape() || _widget.TryGoBack() || TryDismissImageSelection()) return true;
-        if (!_textSelection.IsActionMenuOpen) return false;
-        _textSelection.Dismiss();
-        Cursor = Cursors.Cross;
-        return true;
+        if (_textSelection.IsActionMenuOpen)
+        {
+            _textSelection.Dismiss();
+            Cursor = Cursors.Cross;
+            return true;
+        }
+        // Zoom is undone last, after whatever was opened on the zoomed screen; mid-stroke Escape still cancels.
+        return _pointer.ActiveGesture == ActivePointerGesture.None && !_pointer.IsActionSelection &&
+               _zoom?.TryReset() == true;
     }
 
     private bool CanStartSelection(object? originalSource, Point point)
@@ -802,6 +814,8 @@ public sealed class OverlayWindow : Window
         CompositionTarget.Rendering -= EmitEntranceRippleOnFirstFrame;
     }
 
+    // Only the layered fallback lets clicks through; a DWM-composed window keeps taking them for the short fade,
+    // since turning it layered mid-flight composites black on some setups.
     private void MakeClickThrough()
     {
         var hwnd = new WindowInteropHelper(this).Handle;

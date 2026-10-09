@@ -28,6 +28,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     private readonly List<IDisposable> _ripples;
     private readonly Action? _askPromptOpened;
     private readonly Action? _askPromptClosed;
+    private readonly Func<Rect, Rect> _toViewport;
     private bool _askDraftStarted;
     private bool _askImageAttached;
     private bool _disposed;
@@ -38,8 +39,9 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         Func<BitmapSource> visibleImage, Func<GdiRectangle, SelectionOutcome> createSelection,
         Action<GdiRectangle> search, Action<IOverlayCommand> publish, Action close, UiStrings strings,
         SelectionToolbarAction hiddenActions = SelectionToolbarAction.None,
-        Action? askPromptOpened = null, Action? askPromptClosed = null)
+        Action? askPromptOpened = null, Action? askPromptClosed = null, Func<Rect, Rect>? toViewport = null)
     {
+        _toViewport = toViewport ?? (rect => rect);
         _askPromptOpened = askPromptOpened;
         _askPromptClosed = askPromptClosed;
         _visual = visual;
@@ -98,9 +100,18 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         _selection.ShowSelectionFrame(bounds, hold: false);
         _visual.Toolbar.SetActionLabel(_visual.TranslateButton,
             _translation.IsTranslationShown ? _strings.ShowOriginal : _strings.Translate);
-        _visual.Toolbar.Show(_mapper.ToDips(bounds), new Size(_root.ActualWidth, _root.ActualHeight));
+        ShowToolbar(bounds);
         _visual.Toolbar.Surface.IsEnabled = !IsCompleting;
     }
+
+    // Keeps the actions beside the selection while the screen under them is zoomed or panned.
+    internal void FollowView()
+    {
+        if (!_disposed && Bounds is { } bounds && _visual.Toolbar.IsOpen) ShowToolbar(bounds);
+    }
+
+    private void ShowToolbar(GdiRectangle bounds) =>
+        _visual.Toolbar.Show(_toViewport(_mapper.ToDips(bounds)), new Size(_root.ActualWidth, _root.ActualHeight));
 
     internal void Dismiss()
     {

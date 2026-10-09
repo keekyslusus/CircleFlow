@@ -32,8 +32,7 @@ public sealed class OverlayVisualCompositionTests
             UIElement[] expected =
             [
                 visual.Selection.Screenshot,
-                visual.Selection.Dim,
-                visual.Selection.DimRect,
+                visual.Selection.DimLayer,
                 visual.Selection.Sheen,
                 visual.Selection.Halo,
                 visual.Selection.Accent,
@@ -50,7 +49,13 @@ public sealed class OverlayVisualCompositionTests
             ];
 
             Assert.Equal(expected, visual.Root.Children.Cast<UIElement>());
-            Assert.All(expected.Take(8), layer => Assert.False(layer.IsHitTestVisible));
+            Assert.All(expected.Take(7), layer => Assert.False(layer.IsHitTestVisible));
+            // The dim is cached at reduced resolution, inside a clip that keeps a zoomed dim from growing the cache.
+            var dimClip = Assert.IsType<Grid>(Assert.Single(visual.Selection.DimLayer.Children));
+            Assert.True(dimClip.ClipToBounds);
+            Assert.Equal([visual.Selection.Dim, visual.Selection.DimRect], dimClip.Children.Cast<UIElement>());
+            if (visual.Selection.Dim.Effect is not null)
+                Assert.Equal(0.5, Assert.IsType<System.Windows.Media.BitmapCache>(visual.Selection.DimLayer.CacheMode).RenderAtScale);
             Assert.True(visual.Selection.InputSurface.IsHitTestVisible);
             Assert.Null(visual.TextSelection.Toolbar.Layer.Background);
             Assert.Null(visual.QrCodes.Layer.Background);

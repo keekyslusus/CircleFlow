@@ -589,6 +589,22 @@ public static class CompositionRoot
                 context.Scale,
                 context.Overscan,
                 context.Monitor.Size);
+            var zoom = context.Zoom
+                ? Track(new OverlayZoomController(
+                    context.CoordinateRoot,
+                    context.Visual.Selection,
+                    context.Visual.TextSelection.HighlightLayer,
+                    context.Visual.Root,
+                    context.CanAcceptPointerInput,
+                    sounds.Zoomed,
+                    sounds.ZoomLimitReached))
+                : null;
+            // Under zoom, gestures read the pointer on the zoomed screen; chrome hit tests still need the window point.
+            var pointerPosition = dependencies.PointerPosition ??
+                (zoom is null ? null : e => e.GetPosition(context.Visual.Selection.InputSurface));
+            Func<object?, Point, bool> canStartSelection = zoom is null
+                ? context.CanStartSelection
+                : (source, point) => context.CanStartSelection(source, zoom.ToViewport(point));
             var selection = Track(new SelectionOverlayController(
                 context.Visual.Selection,
                 context.CoordinateRoot,
@@ -598,7 +614,7 @@ public static class CompositionRoot
                 context.Options.MinDiagonalPx,
                 context.Overscan,
                 context.CanAcceptPointerInput,
-                context.CanStartSelection,
+                canStartSelection,
                 context.SelectionStarted,
                 bounds =>
                 {
@@ -607,7 +623,7 @@ public static class CompositionRoot
                 },
                 context.SelectionRejected,
                 context.SelectionHoldCompleted,
-                dependencies.PointerPosition,
+                pointerPosition,
                 subscribeInput: false,
                 selectionDrawn: context.SelectionDrawn,
                 traced: sounds.Traced));
@@ -622,7 +638,8 @@ public static class CompositionRoot
                 publishCommand,
                 context.Strings,
                 context.Visual.LightTheme,
-                selectionHint.SetTextHovered));
+                selectionHint.SetTextHovered,
+                zoom is null ? null : zoom.ToViewport));
             var frameSource = context.Visual.Selection.Screenshot.Source as BitmapSource
                 ?? throw new InvalidOperationException("The overlay frame source is missing.");
             OverlayImageTextCoordinator? imageText = null;
@@ -640,8 +657,8 @@ public static class CompositionRoot
                 selection,
                 textSelection,
                 context.CanAcceptPointerInput,
-                context.CanStartSelection,
-                dependencies.PointerPosition));
+                canStartSelection,
+                pointerPosition));
             var actionTray = Track(new ActionTrayOverlayController(
                 context.Visual.Actions,
                 context.Visual.Bottom.Root,
@@ -722,7 +739,18 @@ public static class CompositionRoot
                 context.Strings,
                 context.HiddenToolbarActions,
                 imageText.DeferInputLanguageChanges,
-                imageText.ApplyDeferredInputLanguage));
+                imageText.ApplyDeferredInputLanguage,
+                zoom is null ? null : zoom.ToViewport));
+            if (zoom is not null)
+            {
+                zoom.ViewChanged += () =>
+                {
+                    textSelection.FollowView();
+                    imageSelection.FollowView();
+                };
+                zoom.ZoomedChanged += qrCodes.SetZoomed;
+                zoom.ZoomedChanged += selectionHint.SetZoomed;
+            }
             var inputLanguage = Track(new KeyboardInputLanguageSource(
                 tag =>
                 {
@@ -784,7 +812,8 @@ public static class CompositionRoot
                 imageSelection,
                 selectionHint,
                 qrCodes,
-                sounds);
+                sounds,
+                zoom);
             rollback.Clear();
             return controllers;
         }
