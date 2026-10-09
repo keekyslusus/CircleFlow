@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Shell.Notifications;
+using CircleToSearch.Ui;
 using Xunit;
 using static CircleToSearch.Tests.WpfUi;
 
@@ -32,7 +33,8 @@ public sealed class NotificationPreviewTests
             new PluginLog(Path.Combine(TestOutputPaths.TempDirectory, "notification-preview-log")), TimeSpan.FromMinutes(5));
         presenter.ShowMessage(strings.PluginTitle, strings.MusicNoMatch);
         presenter.ShowError(strings.PluginTitle, strings.HotkeyConflict("Ctrl+Shift+S"));
-        presenter.ShowMessageWithButton(strings.UpdateAvailableTitle, strings.UpdateAvailable("0.5.2"), strings.UpdateInstall, () => { });
+        presenter.ShowMessageWithButton(strings.UpdateAvailableTitle, strings.UpdateAvailable("0.5.2"), strings.UpdateInstall, () => { },
+            new NotificationLink(strings.UpdateReleaseLink("0.5.2"), () => { }));
         Pump();
         time.Advance(400);
         var window = presenter.Window!;

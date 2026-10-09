@@ -24,6 +24,8 @@ internal sealed class ReleaseUpdates(string repositoryUrl, string? testFeed)
         return update is null
             ? null
             : new AvailableUpdate(update.TargetFullRelease.Version.ToString(),
+                // A local test feed has no release page; the release workflow tags each version as v<version>.
+                testFeed is null ? $"{repositoryUrl}/releases/tag/v{update.TargetFullRelease.Version}" : null,
                 download => _manager.DownloadUpdatesAsync(update, cancelToken: download),
                 () => _manager.WaitExitThenApplyUpdates(update.TargetFullRelease, silent: false, restart: true));
     }

@@ -28,7 +28,7 @@ public sealed class UpdateServiceTests
             waitedEnough.TrySetResult();
             return Task.Delay(Timeout.Infinite, cancellation);
         }
-        var service = new UpdateService(_ => Task.FromResult(results.Dequeue()()), notifier, () => Task.CompletedTask,
+        var service = new UpdateService(_ => Task.FromResult(results.Dequeue()()), notifier, _ => { }, () => Task.CompletedTask,
             Strings, NewLog(), Delay);
 
         service.Start();
@@ -44,6 +44,30 @@ public sealed class UpdateServiceTests
     }
 
     [Fact]
+    public async Task Offer_links_the_version_to_its_release_page_when_there_is_one()
+    {
+        var notifier = new TestPluginNotifier();
+        var opened = new List<string>();
+        var results = new Queue<AvailableUpdate>(
+        [
+            new("2.0.0", "https://github.com/owner/app/releases/tag/v2.0.0", _ => Task.CompletedTask, () => { }),
+            Update("2.0.1", _ => Task.CompletedTask, () => { }),
+        ]);
+        var service = new UpdateService(_ => Task.FromResult<AvailableUpdate?>(results.Dequeue()), notifier, opened.Add,
+            () => Task.CompletedTask, Strings, NewLog());
+
+        await service.CheckAsync(CancellationToken.None);
+        await service.CheckAsync(CancellationToken.None);
+
+        var link = notifier.Buttons[0].Link!;
+        Assert.Equal(Strings.UpdateReleaseLink("2.0.0"), link.Text);
+        Assert.Contains(link.Text, notifier.Buttons[0].Message);
+        link.Open();
+        Assert.Equal(["https://github.com/owner/app/releases/tag/v2.0.0"], opened);
+        Assert.Null(notifier.Buttons[1].Link);
+    }
+
+    [Fact]
     public async Task Update_button_downloads_once_then_applies_after_a_graceful_exit()
     {
         var notifier = new TestPluginNotifier();
@@ -54,7 +78,7 @@ public sealed class UpdateServiceTests
             _ => Task.FromResult<AvailableUpdate?>(Update("2.0.0",
                 _ => { steps.Add("download"); return download.Task; },
                 () => steps.Add("apply"))),
-            notifier, () => { steps.Add("exit"); exited.SetResult(); return Task.CompletedTask; }, Strings, NewLog());
+            notifier, _ => { }, () => { steps.Add("exit"); exited.SetResult(); return Task.CompletedTask; }, Strings, NewLog());
 
         Assert.Equal(UpdateCheckOutcome.Offered, await service.CheckAsync(CancellationToken.None));
         var offer = Assert.Single(notifier.Buttons);
@@ -77,7 +101,7 @@ public sealed class UpdateServiceTests
     {
         var notifier = new TestPluginNotifier();
         var results = new Queue<Func<AvailableUpdate?>>([() => null, () => throw new HttpRequestException("offline")]);
-        var service = new UpdateService(_ => Task.FromResult(results.Dequeue()()), notifier, () => Task.CompletedTask,
+        var service = new UpdateService(_ => Task.FromResult(results.Dequeue()()), notifier, _ => { }, () => Task.CompletedTask,
             Strings, NewLog());
 
         Assert.Equal(UpdateCheckOutcome.UpToDate, await service.CheckNowAsync());
@@ -93,7 +117,7 @@ public sealed class UpdateServiceTests
         var calls = 0;
         var service = new UpdateService(
             _ => Interlocked.Increment(ref calls) == 1 ? first.Task : Task.FromResult<AvailableUpdate?>(null),
-            new TestPluginNotifier(), () => Task.CompletedTask, Strings, NewLog());
+            new TestPluginNotifier(), _ => { }, () => Task.CompletedTask, Strings, NewLog());
 
         var scheduled = service.CheckAsync(CancellationToken.None);
         var manual = service.CheckNowAsync();
@@ -115,7 +139,7 @@ public sealed class UpdateServiceTests
         var update = Update("2.0.0",
             _ => ++attempts == 1 ? Task.FromException(new HttpRequestException("reset")) : Task.CompletedTask,
             () => { });
-        var service = new UpdateService(_ => Task.FromResult<AvailableUpdate?>(update), notifier,
+        var service = new UpdateService(_ => Task.FromResult<AvailableUpdate?>(update), notifier, _ => { },
             () => { exits++; return Task.CompletedTask; }, Strings, NewLog());
 
         await service.InstallAsync(update);
@@ -133,7 +157,7 @@ public sealed class UpdateServiceTests
         var notifier = new TestPluginNotifier();
         var exits = 0;
         var update = Update("2.0.0", cancellation => Task.Delay(Timeout.Infinite, cancellation), () => { });
-        var service = new UpdateService(_ => Task.FromResult<AvailableUpdate?>(update), notifier,
+        var service = new UpdateService(_ => Task.FromResult<AvailableUpdate?>(update), notifier, _ => { },
             () => { exits++; return Task.CompletedTask; }, Strings, NewLog());
 
         var install = service.InstallAsync(update);
@@ -145,7 +169,7 @@ public sealed class UpdateServiceTests
     }
 
     private static AvailableUpdate Update(string version, Func<CancellationToken, Task> download, Action apply) =>
-        new(version, download, apply);
+        new(version, ReleasePageUrl: null, download, apply);
 
     private static PluginLog NewLog() =>
         new(Path.Combine(TestOutputPaths.TempDirectory, "updates-" + Guid.NewGuid().ToString("N")));

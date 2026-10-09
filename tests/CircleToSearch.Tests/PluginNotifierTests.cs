@@ -13,7 +13,7 @@ public sealed class PluginNotifierTests
     {
         var notifier = new PluginNotifier(
             (_, _) => throw new InvalidOperationException("message failed"),
-            (_, _, _, _) => throw new InvalidOperationException("button failed"),
+            (_, _, _, _, _) => throw new InvalidOperationException("button failed"),
             (_, _) => throw new InvalidOperationException("error failed"),
             NewLog());
 

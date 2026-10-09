@@ -158,7 +158,7 @@ public sealed class TextSearchWorkflowTests
     private sealed class Notifier(List<string> errors) : IPluginNotifier
     {
         public void ShowMessage(string title, string message) { }
-        public void ShowMessageWithButton(string title, string message, string button, Action action) { }
+        public void ShowMessageWithButton(string title, string message, string button, Action action, NotificationLink? link = null) { }
         public void ShowError(string title, string message) => errors.Add(message);
     }
 }

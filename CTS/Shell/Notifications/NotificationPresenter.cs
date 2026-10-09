@@ -25,26 +25,26 @@ internal sealed class NotificationPresenter(
     internal IReadOnlyList<NotificationCard> Cards => _cards.AsReadOnly();
     internal Window? Window => _window;
 
-    public void ShowMessage(string title, string message) => Post(title, message, null, null, isError: false);
-    public void ShowError(string title, string message) => Post(title, message, null, null, isError: true);
-    public void ShowMessageWithButton(string title, string message, string button, Action action) =>
-        Post(title, message, button, action, isError: false);
+    public void ShowMessage(string title, string message) => Post(title, message, null, null, null, isError: false);
+    public void ShowError(string title, string message) => Post(title, message, null, null, null, isError: true);
+    public void ShowMessageWithButton(string title, string message, string button, Action action, NotificationLink? link = null) =>
+        Post(title, message, button, action, link, isError: false);
 
-    private void Post(string title, string message, string? button, Action? action, bool isError)
+    private void Post(string title, string message, string? button, Action? action, NotificationLink? link, bool isError)
     {
         if (dispatcher.HasShutdownStarted) return;
         dispatcher.BeginInvoke(new Action(() =>
         {
             if (_disposed) return;
-            try { Show(title, message, button, action, isError); }
+            try { Show(title, message, button, action, link, isError); }
             catch (Exception exception) { log.SafeError(nameof(NotificationPresenter), "show-notification", exception); }
         }));
     }
 
-    private void Show(string title, string message, string? button, Action? action, bool isError)
+    private void Show(string title, string message, string? button, Action? action, NotificationLink? link, bool isError)
     {
         // Most callers pass the app name as the title, which the card header already shows.
-        var content = new NotificationContent(title == strings.PluginTitle ? null : title, message, button, isError);
+        var content = new NotificationContent(title == strings.PluginTitle ? null : title, message, button, link?.Text, isError);
         var waitsForUser = action is not null || isError;
         // The daily update check and repeated failures would otherwise stack identical cards the user has not closed.
         if (waitsForUser && _cards.Any(shown => shown.Content == content)) return;
@@ -59,6 +59,11 @@ internal sealed class NotificationPresenter(
                     if (!Remove(card!)) return;
                     try { action(); }
                     catch (Exception exception) { log.SafeError(nameof(NotificationPresenter), "notification-action", exception); }
+                },
+                openLink: link is null ? null : () =>
+                {
+                    try { link.Open(); }
+                    catch (Exception exception) { log.SafeError(nameof(NotificationPresenter), "notification-link", exception); }
                 },
                 // Errors and offers wait for the user; a plain message is only information.
                 autoDismiss: waitsForUser ? null : autoDismiss ?? DefaultAutoDismiss);

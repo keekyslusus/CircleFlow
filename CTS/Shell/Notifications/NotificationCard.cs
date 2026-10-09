@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
@@ -10,7 +11,8 @@ using CircleToSearch.Ui;
 
 namespace CircleToSearch.Shell.Notifications;
 
-internal sealed record NotificationContent(string? Title, string Message, string? ActionText, bool IsError);
+// The link is kept as text only: comparing contents finds a repeated offer, which a new delegate would never match.
+internal sealed record NotificationContent(string? Title, string Message, string? ActionText, string? LinkText, bool IsError);
 
 internal sealed record NotificationChrome(string AppName, string CloseText, ImageSource? Icon, Brush ErrorBrush, double ShadowOpacity);
 
@@ -26,7 +28,7 @@ internal sealed class NotificationCard
     private bool _leaving;
 
     internal NotificationCard(FrameworkElement styles, NotificationContent content, NotificationChrome chrome,
-        Action close, Action? act, TimeSpan? autoDismiss)
+        Action close, Action? act, Action? openLink, TimeSpan? autoDismiss)
     {
         Content = content;
         CloseButton = new Button
@@ -58,10 +60,20 @@ internal sealed class NotificationCard
         });
 
         // Long error text is cut off at the style's MaxHeight; the tooltip keeps all of it readable.
-        MessageText = new TextBlock
+        MessageText = new TextBlock { Style = (Style)styles.FindResource("NotificationMessage"), ToolTip = content.Message };
+        var linkStart = content.LinkText is { } linked && openLink is not null
+            ? content.Message.IndexOf(linked, StringComparison.Ordinal)
+            : -1;
+        if (linkStart < 0) MessageText.Text = content.Message;
+        else
         {
-            Text = content.Message, Style = (Style)styles.FindResource("NotificationMessage"), ToolTip = content.Message,
-        };
+            var linkEnd = linkStart + content.LinkText!.Length;
+            Link = new Hyperlink(new Run(content.LinkText)) { Foreground = (Brush)styles.FindResource("SettingsAccent") };
+            Link.Click += (_, _) => openLink!();
+            MessageText.Inlines.Add(new Run(content.Message[..linkStart]));
+            MessageText.Inlines.Add(Link);
+            MessageText.Inlines.Add(new Run(content.Message[linkEnd..]));
+        }
         AutomationProperties.SetLiveSetting(MessageText, AutomationLiveSetting.Polite);
         var text = new StackPanel();
         if (content.Title is not null)
@@ -144,6 +156,7 @@ internal sealed class NotificationCard
     internal Canvas Root { get; }
     internal Button CloseButton { get; }
     internal Button? ActionButton { get; }
+    internal Hyperlink? Link { get; }
     internal TextBlock? TitleText { get; }
     internal TextBlock MessageText { get; }
     internal Border Card => _card;

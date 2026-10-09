@@ -187,7 +187,7 @@ public static class CompositionRoot
                             strings.SettingsPreviewText("open_filters_failed")),
                         log).Window);
                 lifetime.AddCleanup("close-test-browser", () => { testBrowser.Dispose(); return Task.CompletedTask; });
-                var updates = StartUpdates(lifetime, notifier, strings, log);
+                var updates = StartUpdates(lifetime, notifier, urlOpening, strings, log);
                 var settingsModel = new SettingsWindowModel(runtime.Settings, runtime.Providers, runtime.OcrLanguages,
                     runtime.MusicHistory, runtime.MusicResults,
                     language, CultureInfo.CurrentUICulture, support, urlOpening, paths, strings, WebViewEnvironmentFactory.RuntimeVersion,
@@ -230,13 +230,14 @@ public static class CompositionRoot
     }
 
     private static UpdateService? StartUpdates(AppLifetime lifetime, IPluginNotifier notifier,
-        UiStrings strings, PluginLog log)
+        UrlOpeningService urlOpening, UiStrings strings, PluginLog log)
     {
         var updates = new ReleaseUpdates(ReleaseUpdates.BuiltInTestRepository ?? ProjectSupport.RepositoryUrl,
             ReleaseUpdates.BuiltInTestFeed);
         // A copy run from the build output has no Update.exe to install with.
         if (!updates.IsInstalled) return null;
-        var service = new UpdateService(updates.FindAsync, notifier, lifetime.RequestExitAsync, strings, log);
+        var service = new UpdateService(updates.FindAsync, notifier, url => urlOpening.TryOpen(url), lifetime.RequestExitAsync,
+            strings, log);
         lifetime.AddStop("stop-updates", service.Stop);
         lifetime.AddCleanup("stop-updates", service.StopAsync);
         service.Start();

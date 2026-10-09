@@ -381,6 +381,7 @@
     <system:String x:Key="app_onboarding_try">Try it</system:String>
     <system:String x:Key="app_update_available_title">Update available</system:String>
     <system:String x:Key="app_update_available">CircleFlow {0} is ready to install.</system:String>
+    <system:String x:Key="app_update_release_link">CircleFlow {0}</system:String>
     <system:String x:Key="app_update_install">Update</system:String>
     <system:String x:Key="app_update_downloading_title">Downloading update</system:String>
     <system:String x:Key="app_update_downloading">CircleFlow will restart to install version {0} once the download finishes.</system:String>

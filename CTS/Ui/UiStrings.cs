@@ -67,6 +67,7 @@ public sealed class UiStrings
     public string ShutdownTimedOut => Get("app_shutdown_timed_out");
     public string UpdateAvailableTitle => Get("app_update_available_title");
     public string UpdateAvailable(string version) => Get("app_update_available", version);
+    public string UpdateReleaseLink(string version) => Get("app_update_release_link", version);
     public string UpdateInstall => Get("app_update_install");
     public string UpdateDownloadingTitle => Get("app_update_downloading_title");
     public string UpdateDownloading(string version) => Get("app_update_downloading", version);

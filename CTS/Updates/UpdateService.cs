@@ -2,13 +2,15 @@ using CircleToSearch.Ui;
 
 namespace CircleToSearch.Updates;
 
-internal sealed record AvailableUpdate(string Version, Func<CancellationToken, Task> DownloadAsync, Action ApplyAfterExit);
+internal sealed record AvailableUpdate(string Version, string? ReleasePageUrl, Func<CancellationToken, Task> DownloadAsync,
+    Action ApplyAfterExit);
 
 internal enum UpdateCheckOutcome { UpToDate, Offered, Installing, Failed }
 
 internal sealed class UpdateService(
     Func<CancellationToken, Task<AvailableUpdate?>> findAsync,
     IPluginNotifier notifier,
+    Action<string> openUrl,
     Func<Task> requestExitAsync,
     UiStrings strings,
     PluginLog log,
@@ -58,8 +60,11 @@ internal sealed class UpdateService(
             var update = await findAsync(cancellation);
             if (update is null) return UpdateCheckOutcome.UpToDate;
             log.Info(nameof(UpdateService), $"version {update.Version} is available");
+            var releasePage = update.ReleasePageUrl is { } page
+                ? new NotificationLink(strings.UpdateReleaseLink(update.Version), () => openUrl(page))
+                : null;
             notifier.ShowMessageWithButton(strings.UpdateAvailableTitle, strings.UpdateAvailable(update.Version),
-                strings.UpdateInstall, () => _ = InstallAsync(update));
+                strings.UpdateInstall, () => _ = InstallAsync(update), releasePage);
             return UpdateCheckOutcome.Offered;
         }
         catch (Exception exception) when (!cancellation.IsCancellationRequested)

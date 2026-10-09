@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using Shape = System.Windows.Shapes.Path;
@@ -71,6 +72,35 @@ public sealed class NotificationPresenterTests
         Assert.Equal(Strings.UpdateInstall, offer.ActionButton!.Content);
         Assert.Contains(Strings.Close, Texts(offer.Card));
         Assert.Equal(Strings.Close, AutomationName(offer.CloseButton));
+        Assert.Null(offer.Link);
+    });
+
+    [Fact]
+    public void An_offer_link_opens_its_page_and_keeps_the_card_open() => OnSta(time =>
+    {
+        using var presenter = Create();
+        var opened = 0;
+        var installed = 0;
+        presenter.ShowMessageWithButton(Strings.UpdateAvailableTitle, Strings.UpdateAvailable("2.0.0"), Strings.UpdateInstall,
+            () => installed++, new NotificationLink(Strings.UpdateReleaseLink("2.0.0"), () => opened++));
+        presenter.ShowMessageWithButton(Strings.PluginTitle, "no such text", "Open", () => { },
+            new NotificationLink("missing", () => opened++));
+        presenter.ShowMessageWithButton(Strings.UpdateAvailableTitle, Strings.UpdateAvailable("2.0.0"), Strings.UpdateInstall,
+            () => { }, new NotificationLink(Strings.UpdateReleaseLink("2.0.0"), () => { }));
+        Pump();
+        Assert.Equal(2, presenter.Cards.Count);
+        var (offer, unlinked) = (presenter.Cards[0], presenter.Cards[1]);
+
+        Assert.Equal(Strings.UpdateAvailable("2.0.0"),
+            new TextRange(offer.MessageText.ContentStart, offer.MessageText.ContentEnd).Text);
+        Assert.Equal(Strings.UpdateReleaseLink("2.0.0"), new TextRange(offer.Link!.ContentStart, offer.Link.ContentEnd).Text);
+        Assert.Null(unlinked.Link);
+        Assert.Equal("no such text", unlinked.MessageText.Text);
+
+        offer.Link.RaiseEvent(new RoutedEventArgs(Hyperlink.ClickEvent, offer.Link));
+        Assert.Equal(1, opened);
+        Assert.Equal(0, installed);
+        Assert.Same(offer, presenter.Cards[0]);
     });
 
     [Fact]

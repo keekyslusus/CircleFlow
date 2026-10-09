@@ -1375,7 +1375,8 @@ public sealed class OverlaySessionWorkflowTests
     {
         public Action? OnError { get; set; }
         public void ShowMessage(string title, string message) => messages.Add(message);
-        public void ShowMessageWithButton(string title, string message, string button, Action action) =>
+        public void ShowMessageWithButton(string title, string message, string button, Action action,
+            CircleToSearch.Ui.NotificationLink? link = null) =>
             messages.Add(message);
         public void ShowError(string title, string message)
         {

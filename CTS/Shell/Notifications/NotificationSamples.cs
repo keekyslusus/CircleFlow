@@ -10,7 +10,8 @@ internal static class NotificationSamples
         notifier.ShowMessage(strings.PluginTitle, strings.MusicNoMatch);
         notifier.ShowError(strings.PluginTitle, strings.HotkeyConflict(hotkey));
         notifier.ShowMessageWithButton(strings.UpdateAvailableTitle, strings.UpdateAvailable(ProjectSupport.Version),
-            strings.UpdateInstall, () => { });
+            strings.UpdateInstall, () => { },
+            new NotificationLink(strings.UpdateReleaseLink(ProjectSupport.Version), () => { }));
         runtimeNotice.Show(strings.WebViewRuntimeMissing);
     }
 }
