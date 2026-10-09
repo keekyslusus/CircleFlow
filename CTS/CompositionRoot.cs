@@ -48,6 +48,7 @@ public static class CompositionRoot
         PluginLog? Log,
         TranslationMemoryProfiler? MemoryProfiler,
         IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> WidgetVisuals,
+        RemoteImageLoader Images,
         Func<bool> WidgetTheme,
         OcrLanguageCatalog? OcrLanguages = null,
         Action<BitmapSource>? SetImageClipboard = null,
@@ -57,11 +58,11 @@ public static class CompositionRoot
 
     // The one place that decides which providers answer inside the overlay instead of in a browser.
     internal static IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> CreateWidgetVisuals(
-        Func<Uri, ITraceVideoPreview>? createTraceVideo, EmojiText? emoji = null) =>
+        RemoteImageLoader images, Func<Uri, ITraceVideoPreview>? createTraceVideo, EmojiText? emoji = null) =>
         new Dictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>>
         {
-            [SearchProviderIds.TraceMoe] = context => TraceOverlayVisual.Create(context, createTraceVideo),
-            [SearchProviderIds.Pinterest] = context => PinterestOverlayVisual.Create(context, emoji),
+            [SearchProviderIds.TraceMoe] = context => TraceOverlayVisual.Create(context, images, createTraceVideo),
+            [SearchProviderIds.Pinterest] = context => PinterestOverlayVisual.Create(context, images, emoji),
         };
 
     public static int Run(string[] args)
@@ -199,7 +200,7 @@ public static class CompositionRoot
                     {
                         var window = new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath,
                             settingsModel, feedback => new ClipboardCopyService(Win32Clipboard.SetText, feedback, strings),
-                            () => runtime.Sounds.Play(UiSound.Key)).Window;
+                            runtime.Images, () => runtime.Sounds.Play(UiSound.Key)).Window;
                         UiClickSounds.Attach(window, runtime.Sounds.Play);
                         return window;
                     });
@@ -402,7 +403,8 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
-        var widgetVisuals = CreateWidgetVisuals(video => new TraceVideoPreview(video,
+        var images = new RemoteImageLoader(rollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan }));
+        var widgetVisuals = CreateWidgetVisuals(images, video => new TraceVideoPreview(video,
             () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log), new EmojiText(paths.EmojiArchivePath));
         var overlayControllerDependencies = new OverlayControllerDependencies(
             Win32Clipboard.SetText,
@@ -416,6 +418,7 @@ public static class CompositionRoot
             log,
             translationMemory,
             widgetVisuals,
+            images,
             SystemTheme.IsLight,
             ocrLanguages,
             Win32Clipboard.SetImage,
@@ -462,7 +465,7 @@ public static class CompositionRoot
             visualSearchLifetime.StopAsync,
             log);
         var runtime = rollback.TransferAllTo(new AppRuntime(coordinator, lifetime, settings, providerSelection, ocrLanguages,
-            musicHistory, musicResultPresenter, sounds));
+            musicHistory, musicResultPresenter, sounds, images));
 
         hotkeyWindow.HotkeyPressed += () =>
         {
@@ -745,6 +748,7 @@ public static class CompositionRoot
                 context.MusicCancelRequested,
                 context.MusicResultCommandRequested,
                 clipboardCopy,
+                dependencies.Images,
                 dependencies.AnimationsEnabled,
                 () => playSound(UiSound.Found)));
             var widget = Track(new WidgetOverlayController(

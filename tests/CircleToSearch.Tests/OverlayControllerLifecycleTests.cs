@@ -72,7 +72,8 @@ public sealed class OverlayControllerLifecycleTests
                 null,
                 null,
                 null,
-                CompositionRoot.CreateWidgetVisuals(null),
+                CompositionRoot.CreateWidgetVisuals(TestRemoteImages.Offline, null),
+                TestRemoteImages.Offline,
                 () => false);
 
             Assert.Throws<NullReferenceException>(() =>
@@ -534,6 +535,7 @@ public sealed class OverlayControllerLifecycleTests
                 setClipboard ?? (_ => { }),
                 (notifications ?? []).Add,
                 TestUiStrings.English),
+            TestRemoteImages.Offline,
             () => animationsEnabled);
 
     private static OverlayVisual CreateVisual() => OverlayVisualFactory.CreateRoot(

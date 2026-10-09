@@ -26,7 +26,7 @@ public sealed class PinterestOverlayTests
             var harness = Harness.Create(960, 600, light);
             var opened = new List<Uri>();
             var closed = 0;
-            using var pinterest = PinterestOverlayVisual.Create(harness.Context(opened.Add, () => closed++));
+            using var pinterest = PinterestOverlayVisual.Create(harness.Context(opened.Add, () => closed++), TestRemoteImages.Offline);
             try
             {
                 time.Advance(240);
@@ -171,7 +171,7 @@ public sealed class PinterestOverlayTests
             var saved = new List<BitmapSource>();
             var toasts = new List<ToastNotification>();
             using var pinterest = PinterestOverlayVisual.Create(harness.Context(_ => { }, () => { },
-                copied.Add, saved.Add, toasts.Add));
+                copied.Add, saved.Add, toasts.Add), TestRemoteImages.Offline);
             try
             {
                 pinterest.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForPinterest(pins)));
@@ -236,7 +236,7 @@ public sealed class PinterestOverlayTests
         {
             var pins = Pins().Take(2).ToArray();
             var harness = Harness.Create(960, 600, light: false);
-            using var pinterest = PinterestOverlayVisual.Create(harness.Context(_ => { }, () => { }));
+            using var pinterest = PinterestOverlayVisual.Create(harness.Context(_ => { }, () => { }), TestRemoteImages.Offline);
             try
             {
                 pinterest.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForPinterest(pins)));
@@ -259,7 +259,7 @@ public sealed class PinterestOverlayTests
         {
             var pins = Pins().Take(2).Select(pin => pin with { Title = "Cozy room ✨" }).ToArray();
             var harness = Harness.Create(960, 600, light: false);
-            using var pinterest = PinterestOverlayVisual.Create(harness.Context(_ => { }, () => { }),
+            using var pinterest = PinterestOverlayVisual.Create(harness.Context(_ => { }, () => { }), TestRemoteImages.Offline,
                 new EmojiText(new AppPaths().EmojiArchivePath));
             try
             {
@@ -287,7 +287,7 @@ public sealed class PinterestOverlayTests
         {
             var harness = Harness.Create(640, 400, light: false);
             var closed = 0;
-            using var pinterest = PinterestOverlayVisual.Create(harness.Context(_ => { }, () => closed++));
+            using var pinterest = PinterestOverlayVisual.Create(harness.Context(_ => { }, () => closed++), TestRemoteImages.Offline);
             try
             {
                 pinterest.ShowResult(failure == UploadFailure.None

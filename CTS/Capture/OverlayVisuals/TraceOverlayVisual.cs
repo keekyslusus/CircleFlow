@@ -5,7 +5,6 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using CircleToSearch.Search;
 using CircleToSearch.Ui;
 
@@ -19,12 +18,14 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
     private readonly Action<Uri> _open;
     private readonly Action _close;
     private readonly ClipboardCopyService _clipboardCopy;
+    private readonly RemoteImageLoader _images;
     private readonly Func<Uri, ITraceVideoPreview>? _createVideo;
     private ITraceVideoPreview? _media;
     private Border? _card;
     private Button? _copy;
 
-    private TraceOverlayVisual(OverlayWidgetContext context, Func<Uri, ITraceVideoPreview>? createVideo)
+    private TraceOverlayVisual(OverlayWidgetContext context, RemoteImageLoader images,
+        Func<Uri, ITraceVideoPreview>? createVideo)
     {
         _host = new OverlayWidgetCardHost(context);
         _strings = context.Strings;
@@ -32,14 +33,16 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
         _open = context.Open;
         _close = context.Close;
         _clipboardCopy = context.ClipboardCopy;
+        _images = images;
         _createVideo = createVideo;
     }
 
     internal Task Presentation => _host.Presentation;
 
-    internal static TraceOverlayVisual Create(OverlayWidgetContext context, Func<Uri, ITraceVideoPreview>? createVideo = null)
+    internal static TraceOverlayVisual Create(OverlayWidgetContext context, RemoteImageLoader images,
+        Func<Uri, ITraceVideoPreview>? createVideo = null)
     {
-        var visual = new TraceOverlayVisual(context, createVideo);
+        var visual = new TraceOverlayVisual(context, images, createVideo);
         visual._host.ShowLoading(context.Strings.TraceSearching, PluginPalette.For(context.LightTheme).Roles.Primary);
         return visual;
     }
@@ -215,7 +218,7 @@ internal sealed class TraceOverlayVisual : IOverlayWidgetVisual
         var grid = new Grid { Width = width, Height = 97, Background = OverlayVisualResources.Frozen(PluginPalette.OpaqueBlack),
             Clip = new RectangleGeometry(new Rect(0, 0, width, 97), 14, 14) };
         if (match.Image is not null)
-            grid.Children.Add(new Image { Source = new BitmapImage(match.Image), Stretch = Stretch.UniformToFill });
+            grid.Children.Add(OverlayVisualResources.FadeInImage(_images.LoadAsync(match.Image)));
         if (match.Video is not null && _createVideo is not null)
         {
             _media = _createVideo(match.Video);

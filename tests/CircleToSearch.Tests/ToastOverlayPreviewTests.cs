@@ -74,6 +74,7 @@ public sealed class ToastOverlayPreviewTests
             MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio),
             TestUiStrings.English,
             lightTheme,
+            TestRemoteImages.Offline,
             _ => { },
             (_, _) => { }),
             animationsEnabled: true);

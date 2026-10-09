@@ -153,6 +153,7 @@ public sealed class ProviderMusicOverlayUiTests
                     "Track", "Artist", null, null, null, null, "https://www.shazam.com/track/1")),
                 TestUiStrings.English,
                 lightTheme: overlay.VisualState.LightTheme,
+                TestRemoteImages.Offline,
                 _ => { },
                 (_, _) => { });
             overlay.UpdateLayout();
@@ -216,6 +217,7 @@ public sealed class ProviderMusicOverlayUiTests
                 MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio),
                 TestUiStrings.English,
                 lightTheme: overlay.VisualState.LightTheme,
+                TestRemoteImages.Offline,
                 _ => { },
                 (_, _) => { });
             provider.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -746,6 +748,7 @@ public sealed class ProviderMusicOverlayUiTests
                 MusicRecognitionOutcome.From(status),
                 TestUiStrings.English,
                 lightTheme: false,
+                TestRemoteImages.Offline,
                 commands.Add,
                 (_, _) => { });
             var expectedMessage = status switch

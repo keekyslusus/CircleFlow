@@ -38,7 +38,8 @@ internal static class TestOverlayControllers
                 resetTranslationConsent,
                 log,
                 memoryProfiler,
-                CompositionRoot.CreateWidgetVisuals(createTraceVideo),
+                CompositionRoot.CreateWidgetVisuals(TestRemoteImages.Offline, createTraceVideo),
+                TestRemoteImages.Offline,
                 widgetTheme ?? (() => context.Visual.LightTheme),
                 SetImageClipboard: setImageClipboard,
                 ScanQrCodes: scanQrCodes)));

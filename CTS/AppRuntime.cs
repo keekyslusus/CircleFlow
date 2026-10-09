@@ -3,6 +3,7 @@ using CircleToSearch.Search;
 using CircleToSearch.Settings;
 using CircleToSearch.Sounds;
 using CircleToSearch.TextRecognition;
+using CircleToSearch.Ui;
 
 namespace CircleToSearch;
 
@@ -15,7 +16,7 @@ public sealed class AppRuntime : IAsyncDisposable
 
     internal AppRuntime(SearchCoordinator coordinator, PluginRuntimeLifetime lifetime, SettingsService settings,
         ProviderSelectionStore providers, OcrLanguageCatalog ocrLanguages, MusicHistory musicHistory,
-        MusicResultPresenter musicResults, UiSoundPlayer sounds)
+        MusicResultPresenter musicResults, UiSoundPlayer sounds, RemoteImageLoader images)
     {
         _coordinator = coordinator;
         _lifetime = lifetime;
@@ -25,6 +26,7 @@ public sealed class AppRuntime : IAsyncDisposable
         MusicHistory = musicHistory;
         MusicResults = musicResults;
         Sounds = sounds;
+        Images = images;
     }
 
     public Task OpenAsync() => _coordinator.OpenAsync();
@@ -34,6 +36,7 @@ public sealed class AppRuntime : IAsyncDisposable
     internal MusicHistory MusicHistory { get; }
     internal MusicResultPresenter MusicResults { get; }
     internal UiSoundPlayer Sounds { get; }
+    internal RemoteImageLoader Images { get; }
 
     internal void RequestStop() => _coordinator.RequestStop();
 

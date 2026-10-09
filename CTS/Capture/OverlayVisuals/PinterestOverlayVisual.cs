@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -29,7 +28,6 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     private static readonly TimeSpan HoverOut = TimeSpan.FromMilliseconds(140);
     private const double HoverTextRise = 6;
     private static readonly TimeSpan FadeMotion = TimeSpan.FromMilliseconds(220);
-    private static readonly TimeSpan FullImageWait = TimeSpan.FromSeconds(20);
 
     private readonly OverlayWidgetCardHost _host;
     private readonly Grid _root;
@@ -41,10 +39,11 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     private readonly Action<BitmapSource>? _saveImage;
     private readonly Action<ToastNotification> _showToast;
     private readonly EmojiText? _emoji;
-    private readonly List<BitmapImage> _stripImages = [];
+    private readonly RemoteImageLoader _images;
+    private readonly List<Task<BitmapSource?>> _stripImages = [];
     private readonly Dictionary<string, Task<BitmapSource?>> _fullImages = [];
     private IReadOnlyList<PinterestPin> _pins = [];
-    private IReadOnlyDictionary<string, BitmapImage> _previews = new Dictionary<string, BitmapImage>();
+    private IReadOnlyDictionary<string, Task<BitmapSource?>> _previews = new Dictionary<string, Task<BitmapSource?>>();
     private Border? _body;
     private Button? _back;
     private FrameworkElement? _strip;
@@ -54,9 +53,10 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     private OverlayContextMenu? _menu;
     private double _contentWidth;
 
-    private PinterestOverlayVisual(OverlayWidgetContext context, EmojiText? emoji)
+    private PinterestOverlayVisual(OverlayWidgetContext context, RemoteImageLoader images, EmojiText? emoji)
     {
         _emoji = emoji;
+        _images = images;
         _host = new OverlayWidgetCardHost(context);
         _root = context.Root;
         _strings = context.Strings;
@@ -74,10 +74,11 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
 
     internal bool IsMenuOpen => _menu?.IsOpen == true;
 
-    internal static PinterestOverlayVisual Create(OverlayWidgetContext context, EmojiText? emoji = null)
+    internal static PinterestOverlayVisual Create(OverlayWidgetContext context, RemoteImageLoader images,
+        EmojiText? emoji = null)
     {
         emoji?.Preload();
-        var visual = new PinterestOverlayVisual(context, emoji);
+        var visual = new PinterestOverlayVisual(context, images, emoji);
         visual._host.ShowLoading(context.Strings.PinterestSearching, PluginPalette.For(context.LightTheme).Roles.Primary);
         return visual;
     }
@@ -112,7 +113,8 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
         const double padding = 16;
         _contentWidth = width - 2 - padding * 2;
         // Every preview starts loading now, so the grid behind '+N' is mostly ready before it is opened.
-        _previews = _pins.ToDictionary(pin => pin.Id, pin => LoadPreview(pin.Image));
+        _previews = _pins.ToDictionary(pin => pin.Id, pin => _images.LoadAsync(pin.Image, PreviewDecodeWidth,
+            BitmapCreateOptions.IgnoreColorProfile));
         _menu = new OverlayContextMenu(_root, _light);
         var content = new StackPanel();
         content.Children.Add(CreateHeader());
@@ -254,7 +256,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     }
 
     private Button CreatePinTile(PinterestPin pin, double width, double height, Thickness margin, double radius,
-        List<BitmapImage>? previews)
+        List<Task<BitmapSource?>>? previews)
     {
         var palette = PluginPalette.For(_light).Card;
         var image = _previews[pin.Id];
@@ -337,7 +339,7 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
     private Task<BitmapSource?> FullImageAsync(PinterestPin pin)
     {
         if (!_fullImages.TryGetValue(pin.Id, out var image))
-            _fullImages[pin.Id] = image = LoadFullImageAsync(pin.FullImage);
+            _fullImages[pin.Id] = image = _images.LoadAsync(pin.FullImage);
         return image;
     }
 
@@ -464,56 +466,8 @@ internal sealed class PinterestOverlayVisual : IOverlayWidgetVisual
 
     private async Task WaitForStripPreviewsAsync(CancellationToken cancellation)
     {
-        try { await Task.WhenAll(_stripImages.Select(Loaded)).WaitAsync(PreviewWait, cancellation); }
+        try { await Task.WhenAll(_stripImages).WaitAsync(PreviewWait, cancellation); }
         catch (TimeoutException) { }
-    }
-
-    private static Task Loaded(BitmapImage image)
-    {
-        if (!image.IsDownloading) return Task.CompletedTask;
-        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        image.DownloadCompleted += (_, _) => done.TrySetResult();
-        image.DownloadFailed += (_, _) => done.TrySetResult();
-        image.DecodeFailed += (_, _) => done.TrySetResult();
-        return done.Task;
-    }
-
-    private static BitmapImage LoadPreview(Uri source)
-    {
-        var image = new BitmapImage();
-        image.BeginInit();
-        image.UriSource = source;
-        image.DecodePixelWidth = PreviewDecodeWidth;
-        image.CacheOption = BitmapCacheOption.OnLoad;
-        image.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
-        image.EndInit();
-        return image;
-    }
-
-    // Remote bitmaps decode on the UI thread, so the result is frozen for the save dialog on the app's thread.
-    private static async Task<BitmapSource?> LoadFullImageAsync(Uri source)
-    {
-        var image = new BitmapImage();
-        var loaded = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        image.DownloadCompleted += (_, _) => loaded.TrySetResult(true);
-        image.DownloadFailed += (_, _) => loaded.TrySetResult(false);
-        image.DecodeFailed += (_, _) => loaded.TrySetResult(false);
-        try
-        {
-            image.BeginInit();
-            image.UriSource = source;
-            image.CacheOption = BitmapCacheOption.OnLoad;
-            image.EndInit();
-            if (image.IsDownloading && !await loaded.Task.WaitAsync(FullImageWait)) return null;
-        }
-        catch (Exception exception) when (exception is IOException or NotSupportedException or
-                                              UnauthorizedAccessException or TimeoutException)
-        {
-            return null;
-        }
-        if (!image.CanFreeze) return null;
-        image.Freeze();
-        return image;
     }
 
     private static double AspectRatio(PinterestPin pin) =>

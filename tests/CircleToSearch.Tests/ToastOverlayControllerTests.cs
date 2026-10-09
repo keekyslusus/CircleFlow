@@ -145,6 +145,7 @@ public sealed class ToastOverlayControllerTests
                 MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio),
                 TestUiStrings.English,
                 lightTheme: false,
+                TestRemoteImages.Offline,
                 _ => { },
                 (_, _) => { }),
                 animationsEnabled: true);

@@ -1287,7 +1287,7 @@ public sealed class OverlaySessionWorkflowTests
                     return new OverlayWidgetSession(
                         overlay,
                         visualSearch,
-                        CompositionRoot.CreateWidgetVisuals(null).Keys.ToHashSet(),
+                        CompositionRoot.CreateWidgetVisuals(TestRemoteImages.Offline, null).Keys.ToHashSet(),
                         maxLongSidePx,
                         new UrlOpeningService(OpenTrace, Notifier, TestUiStrings.English, Log),
                         cancellation);

@@ -219,6 +219,7 @@ internal static class MusicOverlayVisualPresenter
         MusicRecognitionOutcome outcome,
         UiStrings strings,
         bool lightTheme,
+        RemoteImageLoader images,
         Action<IOverlayCommand> publish,
         Action<string, Button> copy)
     {
@@ -227,7 +228,7 @@ internal static class MusicOverlayVisualPresenter
         Border card;
         if (outcome.Status == MusicRecognitionStatus.Matched && outcome.Recognition is { } recognition)
         {
-            card = MusicResultCardVisualFactory.Create(recognition, lightTheme, strings, publish, copy,
+            card = MusicResultCardVisualFactory.Create(recognition, lightTheme, strings, images, publish, copy,
                 visual.ResultHost.MaxWidth);
         }
         else

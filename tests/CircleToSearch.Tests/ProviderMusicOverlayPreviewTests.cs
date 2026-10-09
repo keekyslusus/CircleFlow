@@ -94,6 +94,7 @@ public sealed class ProviderMusicOverlayPreviewTests
                 "https://www.shazam.com/track/1")),
             TestUiStrings.English,
             lightTheme,
+            TestRemoteImages.Offline,
             _ => { },
             (_, _) => { });
         window.UpdateLayout();
@@ -111,6 +112,7 @@ public sealed class ProviderMusicOverlayPreviewTests
             MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio),
             TestUiStrings.English,
             lightTheme,
+            TestRemoteImages.Offline,
             _ => { },
             (_, _) => { });
         window.UpdateLayout();

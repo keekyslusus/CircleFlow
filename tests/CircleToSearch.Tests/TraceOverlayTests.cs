@@ -46,7 +46,7 @@ public sealed class TraceOverlayTests
             var clipboardCopy = new ClipboardCopyService(text => copied = text, notifications.Add, TestUiStrings.English);
             using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
             using var trace = TraceOverlayVisual.Create(new OverlayWidgetContext(visual.Root, activity, visual.Bottom, visual.Effects, TestUiStrings.English, light,
-                _ => opened++, () => closed++, clipboardCopy), video => new TraceVideoPreview(video,
+                _ => opened++, () => closed++, clipboardCopy), TestRemoteImages.Offline, video => new TraceVideoPreview(video,
                     () => Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(
                         userDataFolder: Path.Combine(TestOutputPaths.TempDirectory, "trace-video-profile")),
                     new PluginLog(TestOutputPaths.TempDirectory)));
@@ -160,7 +160,7 @@ public sealed class TraceOverlayTests
             using var trace = TraceOverlayVisual.Create(new OverlayWidgetContext(
                 visual.Root, activity, visual.Bottom, visual.Effects, TestUiStrings.English, false,
                 _ => { }, () => { }, new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English),
-                () => matched++));
+                () => matched++), TestRemoteImages.Offline);
             try
             {
                 time.Advance(240);
@@ -172,6 +172,46 @@ public sealed class TraceOverlayTests
                 Reveal(time, trace);
 
                 Assert.Equal(1, matched);
+            }
+            finally
+            {
+                visual.Effects.SceneRipples.Dispose();
+                visual.Bottom.LayoutTransitions.Dispose();
+                visual.Music.LoadingIndicator.Dispose();
+                visual.Music.Waveform.Dispose();
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void Preview_image_comes_from_the_shared_image_loader()
+    {
+        RunSta(time =>
+        {
+            var visual = OverlayVisualFactory.CreateRoot(null, new Size(640, 400), 32, false,
+                TestUiStrings.English, [new(SearchProviderIds.TraceMoe, "trace.moe")], SearchProviderIds.TraceMoe);
+            var window = new Window { Content = visual.Root, Width = 640, Height = 400, ShowActivated = false, ShowInTaskbar = false };
+            window.Show();
+            window.UpdateLayout();
+            using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
+            using var trace = TraceOverlayVisual.Create(new OverlayWidgetContext(
+                visual.Root, activity, visual.Bottom, visual.Effects, TestUiStrings.English, false,
+                _ => { }, () => { }, new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English)),
+                TestRemoteImages.Serving(TestRemoteImages.Png(320, 180)));
+            try
+            {
+                time.Advance(240);
+                var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
+                    "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Video = null };
+                Assert.NotNull(match.Image);
+
+                trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));
+                Reveal(time, trace);
+
+                Assert.True(time.AdvanceUntil(() => Descendants(visual.Root).OfType<Image>()
+                    .Any(image => image.Source is BitmapSource { PixelWidth: 320 } && image.Opacity == 1)),
+                    "The trace preview image did not appear.");
             }
             finally
             {
@@ -209,7 +249,7 @@ public sealed class TraceOverlayTests
                 false,
                 _ => { },
                 () => { },
-                clipboardCopy));
+                clipboardCopy), TestRemoteImages.Offline);
             try
             {
                 time.Advance(240);
@@ -263,7 +303,7 @@ public sealed class TraceOverlayTests
                 false,
                 _ => { },
                 () => { },
-                clipboardCopy));
+                clipboardCopy), TestRemoteImages.Offline);
             try
             {
                 time.Advance(240);
@@ -423,7 +463,7 @@ public sealed class TraceOverlayTests
             var clipboardCopy = new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English);
             using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
             using var trace = TraceOverlayVisual.Create(new OverlayWidgetContext(visual.Root, activity, visual.Bottom, visual.Effects, TestUiStrings.English,
-                false, _ => { }, () => { }, clipboardCopy), _ => preview);
+                false, _ => { }, () => { }, clipboardCopy), TestRemoteImages.Offline, _ => preview);
             try
             {
                 time.Advance(240);
@@ -485,7 +525,7 @@ public sealed class TraceOverlayTests
             var clipboardCopy = new ClipboardCopyService(_ => { }, _ => { }, TestUiStrings.English);
             using var activity = new OverlayActivityPresenter(visual.ActivityHost, OverlayVisualResources.AnimationsEnabled);
             var trace = TraceOverlayVisual.Create(new OverlayWidgetContext(visual.Root, activity, visual.Bottom, visual.Effects, TestUiStrings.English,
-                false, _ => { }, () => { }, clipboardCopy), _ => preview);
+                false, _ => { }, () => { }, clipboardCopy), TestRemoteImages.Offline, _ => preview);
             var match = TraceMoeProvider.Parse(File.ReadAllText(Path.Combine(TestOutputPaths.RepoDirectory,
                 "tests", "CircleToSearch.Tests", "Fixtures", "trace-moe.json")))! with { Image = null };
             trace.ShowResult(VisualSearchPreparationOutcome.Ready(PreparedVisualSearch.ForTraceMoe(match)));

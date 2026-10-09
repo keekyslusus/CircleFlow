@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Net.Http;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Text.Json;
@@ -68,11 +69,12 @@ internal static class StartupHook
         Require(!string.Equals(Environment.CurrentDirectory, paths.RootDirectory, StringComparison.OrdinalIgnoreCase), "Expected a different working directory.");
         Require(Path.GetDirectoryName(Environment.ProcessPath) == paths.RootDirectory, "Assets must resolve beside the apphost.");
         var log = new PluginLog(paths.LogsDirectory);
-        var notifications = new PluginNotifier((_, _) => { }, (_, _, _, _) => { }, (_, message) => throw new InvalidOperationException(message), log);
+        var notifications = new PluginNotifier((_, _) => { }, (_, _, _, _, _) => { }, (_, message) => throw new InvalidOperationException(message), log);
         var embeddedStrings = new UiStrings(LocalUiStrings.LoadEmbeddedEnglish().Get);
         var settingsWindow = new SettingsWindowView(embeddedStrings, true, paths.TrayIconPath,
             CreateSettingsModel(paths, embeddedStrings, notifications, log),
-            feedback => new ClipboardCopyService(_ => { }, feedback, embeddedStrings)).Window;
+            feedback => new ClipboardCopyService(_ => { }, feedback, embeddedStrings),
+            new RemoteImageLoader(new HttpClient())).Window;
         Require(settingsWindow.Icon is not null, "Settings icon did not load.");
         settingsWindow.Close();
         var source = LocalUiStrings.LoadEnglish(paths.LanguagesDirectory)

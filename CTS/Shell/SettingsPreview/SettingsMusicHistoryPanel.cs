@@ -1,9 +1,11 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using CircleToSearch.Capture;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.Ui;
@@ -19,18 +21,20 @@ internal sealed class SettingsMusicHistoryPanel
     private readonly FrameworkElement _root;
     private readonly TextBox _search;
     private readonly ClipboardCopyService _clipboardCopy;
-    private readonly Dictionary<string, ImageSource?> _covers = new(StringComparer.Ordinal);
+    private readonly RemoteImageLoader _images;
+    private readonly Dictionary<string, HistoryCover?> _covers = new(StringComparer.Ordinal);
     private IReadOnlyList<MusicHistoryEntry> _shownEntries = [];
     private DateTime _shownDay;
 
     internal SettingsMusicHistoryPanel(FrameworkElement root, SettingsWindowModel model, UiStrings strings,
-        ClipboardCopyService clipboardCopy)
+        ClipboardCopyService clipboardCopy, RemoteImageLoader images)
     {
         _root = root;
         _model = model;
         _strings = strings;
         _search = Element<TextBox>("HistorySearch");
         _clipboardCopy = clipboardCopy;
+        _images = images;
         _search.TextChanged += (_, _) => Refresh();
         root.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
     }
@@ -107,25 +111,13 @@ internal sealed class SettingsMusicHistoryPanel
             .Any(text => text?.Contains(query, StringComparison.CurrentCultureIgnoreCase) == true);
 
     // Cached, so typing in the search box does not download the covers again.
-    private ImageSource? Cover(string? url)
+    private HistoryCover? Cover(string? url)
     {
         if (url is null) return null;
         if (_covers.TryGetValue(url, out var cached)) return cached;
-        ImageSource? cover = null;
+        HistoryCover? cover = null;
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
-        {
-            try
-            {
-                var image = new BitmapImage();
-                image.BeginInit();
-                image.UriSource = uri;
-                image.DecodePixelWidth = CoverPixels;
-                image.CacheOption = BitmapCacheOption.OnLoad;
-                image.EndInit();
-                cover = image;
-            }
-            catch (Exception exception) when (exception is NotSupportedException or InvalidOperationException) { }
-        }
+            cover = new HistoryCover(_images.LoadAsync(uri, CoverPixels), _root.Dispatcher);
         return _covers[url] = cover;
     }
 
@@ -148,5 +140,22 @@ internal sealed class SettingsMusicHistoryPanel
     private sealed record HistoryDay(string Label, IReadOnlyList<HistoryRow> Tracks);
 
     private sealed record HistoryRow(MusicHistoryEntry Entry, string Time, string Title, string Artist, string? Genre,
-        ImageSource? Cover, bool CanOpen, bool IsFirst);
+        HistoryCover? Cover, bool CanOpen, bool IsFirst);
+
+    // Rows are bound before the artwork arrives, so the cover tells its row when it can be shown.
+    private sealed class HistoryCover : INotifyPropertyChanged
+    {
+        internal HistoryCover(Task<BitmapSource?> load, Dispatcher dispatcher)
+        {
+            _ = load.ContinueWith(loaded => dispatcher.InvokeAsync(() =>
+            {
+                Source = loaded.IsCompletedSuccessfully ? loaded.Result : null;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Source)));
+            }), TaskScheduler.Default);
+        }
+
+        public ImageSource? Source { get; private set; }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+    }
 }

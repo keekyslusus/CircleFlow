@@ -1898,12 +1898,36 @@ public sealed class SettingsPreviewTests
         finally { window.Close(); }
     });
 
+    [Fact]
+    public void Music_history_shows_a_cover_once_its_artwork_has_downloaded() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow { Images = TestRemoteImages.Serving(TestRemoteImages.Png(64, 64)) };
+        RecordTrack(harness, "Nightcall", "Kavinsky", TimeSpan.FromHours(3));
+        RecordTrack(harness, "Midnight City", "M83", TimeSpan.FromHours(2), coverUrl: "https://covers.test/m83.jpg");
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
+            CompletePageTransition(window, time);
+            var days = Find<ItemsControl>(window, "HistoryDays");
+            Border[] Covers() => VisualChildren(days).OfType<Border>().Where(border => border.Name == "Cover").ToArray();
+
+            Assert.True(time.AdvanceUntil(() => Covers().Count(cover => cover.IsVisible) == 1),
+                "The downloaded cover did not appear.");
+            var shown = Assert.Single(Covers(), cover => cover.IsVisible);
+            Assert.IsAssignableFrom<BitmapSource>(Assert.IsType<ImageBrush>(shown.Background).ImageSource);
+            Assert.Equal(2, Covers().Length);
+        }
+        finally { window.Close(); }
+    });
+
     private static void RecordTrack(TestSettingsWindow harness, string title, string artist, TimeSpan ago,
-        string? genre = null, string? shazamUrl = null)
+        string? genre = null, string? shazamUrl = null, string? coverUrl = null)
     {
         var now = harness.Time.Now;
         harness.Time.Now = now - ago;
-        harness.History.Record(new ShazamRecognition(title, artist, "Album", genre, null, null, shazamUrl));
+        harness.History.Record(new ShazamRecognition(title, artist, "Album", genre, null, coverUrl, shazamUrl));
         harness.Time.Now = now;
     }
 

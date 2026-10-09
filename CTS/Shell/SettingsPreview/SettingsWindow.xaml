@@ -33,7 +33,7 @@
                         </Border>
                         <Border x:Name="Cover" Grid.Column="1" Width="32" Height="32" CornerRadius="5">
                             <Border.Background>
-                                <ImageBrush ImageSource="{Binding Cover}" Stretch="UniformToFill"/>
+                                <ImageBrush ImageSource="{Binding Cover.Source}" Stretch="UniformToFill"/>
                             </Border.Background>
                         </Border>
                         <StackPanel Grid.Column="3" VerticalAlignment="Center">
@@ -64,7 +64,7 @@
                 <DataTemplate.Triggers>
                     <DataTrigger Binding="{Binding IsFirst}" Value="True"><Setter TargetName="Row" Property="BorderThickness" Value="0"/></DataTrigger>
                     <DataTrigger Binding="{Binding Genre}" Value="{x:Null}"><Setter TargetName="Genre" Property="Visibility" Value="Collapsed"/></DataTrigger>
-                    <DataTrigger Binding="{Binding Cover}" Value="{x:Null}"><Setter TargetName="Cover" Property="Visibility" Value="Collapsed"/></DataTrigger>
+                    <DataTrigger Binding="{Binding Cover.Source, FallbackValue={x:Null}}" Value="{x:Null}"><Setter TargetName="Cover" Property="Visibility" Value="Collapsed"/></DataTrigger>
                     <DataTrigger Binding="{Binding CanOpen}" Value="False"><Setter TargetName="Open" Property="Visibility" Value="Collapsed"/></DataTrigger>
                     <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
                         <Trigger.EnterActions><BeginStoryboard Storyboard="{StaticResource HistoryActionsIn}"/></Trigger.EnterActions>

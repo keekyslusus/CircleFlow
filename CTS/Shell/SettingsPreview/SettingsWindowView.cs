@@ -41,7 +41,8 @@ internal sealed class SettingsWindowView
     private bool _sidePressClosedDropdown;
 
     internal SettingsWindowView(UiStrings strings, bool lightTheme, string iconPath, SettingsWindowModel model,
-        Func<Action<ToastNotification>, ClipboardCopyService> createClipboardCopy, Action? shortcutKeyPressed = null)
+        Func<Action<ToastNotification>, ClipboardCopyService> createClipboardCopy, RemoteImageLoader images,
+        Action? shortcutKeyPressed = null)
     {
         _strings = strings;
         _model = model;
@@ -67,7 +68,7 @@ internal sealed class SettingsWindowView
         _dialogMotion = new SettingsDialogMotion(Element<Border>("DialogLayer"),
             Element<FrameworkElement>("DialogMotionSurface"), Element<Border>("DialogScrim"), FinishCloseDialog);
         _history = new SettingsMusicHistoryPanel(Element<FrameworkElement>("HistoryContent"), model, strings,
-            createClipboardCopy(toast => ShowStatus(toast.Message)));
+            createClipboardCopy(toast => ShowStatus(toast.Message)), images);
         _providerMenu = new SettingsProviderMenuPanel(Element<FrameworkElement>("ProviderMenuDialog"), model, strings,
             lightTheme, ShowStatus, ShowProviderMenuSummary);
         _historyRetentionMotion = new SettingsCollapseMotion(Element<FrameworkElement>("HistoryRetentionRow"));

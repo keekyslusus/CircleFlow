@@ -4,7 +4,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
 using CircleToSearch.MusicRecognition.Shazam;
 using CircleToSearch.Ui;
 
@@ -21,6 +20,7 @@ internal static class MusicResultCardVisualFactory
         ShazamRecognition recognition,
         bool lightTheme,
         UiStrings strings,
+        RemoteImageLoader images,
         Action<IOverlayCommand> publish,
         Action<string, Button> copy,
         double availableWidth)
@@ -51,7 +51,7 @@ internal static class MusicResultCardVisualFactory
         var row = new Grid();
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(98) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.Children.Add(CreateCover(recognition.CoverUrl, palette));
+        row.Children.Add(CreateCover(recognition.CoverUrl, palette, images));
         var info = new StackPanel
         {
             Margin = new Thickness(14, 0, 6, 0),
@@ -137,7 +137,7 @@ internal static class MusicResultCardVisualFactory
         TextTrimming = TextTrimming.CharacterEllipsis,
     };
 
-    private static FrameworkElement CreateCover(string? url, CardPalette palette)
+    private static FrameworkElement CreateCover(string? url, CardPalette palette, RemoteImageLoader images)
     {
         var cover = new Grid
         {
@@ -147,22 +147,9 @@ internal static class MusicResultCardVisualFactory
             Clip = new RectangleGeometry(new Rect(0, 0, 98, 98), 14, 14),
         };
         cover.Children.Add(OverlayVisualResources.Icon(PluginIcons.MusicFilled, 30, palette.Primary));
+        // Missing or unreadable artwork leaves the music placeholder visible.
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
-        {
-            try
-            {
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.UriSource = uri;
-                bitmap.DecodePixelWidth = 196;
-                bitmap.EndInit();
-                cover.Children.Add(OverlayVisualResources.FadeInImage(bitmap));
-            }
-            catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or System.IO.IOException or NotSupportedException)
-            {
-                // Missing or unreadable artwork leaves the music placeholder visible.
-            }
-        }
+            cover.Children.Add(OverlayVisualResources.FadeInImage(images.LoadAsync(uri, 196)));
         return cover;
     }
 }

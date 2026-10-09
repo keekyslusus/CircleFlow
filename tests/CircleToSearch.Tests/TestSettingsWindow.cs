@@ -67,10 +67,11 @@ internal sealed class TestSettingsWindow
     public int OnboardingRequests { get; private set; }
     public int TestBrowserRequests { get; private set; }
     public int TestNotificationRequests { get; private set; }
+    internal RemoteImageLoader Images { get; set; } = TestRemoteImages.Offline;
 
     public SettingsWindowView CreateView(bool light = true) =>
         new(Strings, light, Paths.TrayIconPath, Model,
-            feedback => new ClipboardCopyService(Clipboard.Add, feedback, Strings));
+            feedback => new ClipboardCopyService(Clipboard.Add, feedback, Strings), Images);
 
     private static VisualSearchProviderRegistration Registration(string id, string name) =>
         new(new SearchProviderDescriptor(id, name), () => throw new InvalidOperationException("Not used by settings."));

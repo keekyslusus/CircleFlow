@@ -39,7 +39,7 @@ public sealed class MusicOverlayVisualTests
                     var commands = new List<IOverlayCommand>();
                     string? copied = null;
                     var card = MusicOverlayVisualPresenter.PresentResult(visual,
-                        MusicRecognitionOutcome.Matched(tracks[index]), TestUiStrings.English, lightTheme,
+                        MusicRecognitionOutcome.Matched(tracks[index]), TestUiStrings.English, lightTheme, TestRemoteImages.Offline,
                         commands.Add, (text, _) => copied = text);
                     host.Measure(new Size(viewportWidth, 180));
                     host.Arrange(new Rect(0, 0, viewportWidth, 180));
@@ -139,6 +139,7 @@ public sealed class MusicOverlayVisualTests
                     "Track", "Artist", null, null, null, null, "https://www.shazam.com/track/1")),
                 TestUiStrings.English,
                 lightTheme: false,
+                TestRemoteImages.Offline,
                 _ => { },
                 (track, _) => copiedTrack = track);
 

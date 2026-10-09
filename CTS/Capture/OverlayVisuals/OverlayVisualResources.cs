@@ -50,19 +50,17 @@ internal static class OverlayVisualResources
 
     // Remote artwork stays hidden over the card's placeholder until it is decoded, then fades in; a failed
     // download leaves the placeholder. A bitmap that is already loaded shows at once, without a second fade.
-    internal static Image FadeInImage(BitmapImage bitmap)
+    internal static Image FadeInImage(Task<BitmapSource?> bitmap)
     {
-        var image = new Image { Stretch = Stretch.UniformToFill, Source = bitmap, Opacity = bitmap.IsDownloading ? 0 : 1 };
-        var revealed = !bitmap.IsDownloading;
-        image.ImageFailed += (_, _) =>
+        var ready = bitmap.IsCompletedSuccessfully;
+        var image = new Image
         {
-            image.BeginAnimation(UIElement.OpacityProperty, null);
-            image.Source = null;
-            image.Opacity = 0;
+            Stretch = Stretch.UniformToFill, Source = ready ? bitmap.Result : null, Opacity = ready ? 1 : 0,
         };
+        var revealed = ready;
         void Reveal()
         {
-            if (revealed || !image.IsLoaded || bitmap.IsDownloading || image.Source is null) return;
+            if (revealed || !image.IsLoaded || image.Source is null) return;
             revealed = true;
             image.Opacity = 1;
             if (!AnimationsEnabled()) return;
@@ -72,7 +70,12 @@ internal static class OverlayVisualResources
         }
         // Artwork can finish downloading before the card joins the visual tree.
         image.Loaded += (_, _) => Reveal();
-        bitmap.DownloadCompleted += (_, _) => Reveal();
+        if (!ready)
+            _ = bitmap.ContinueWith(loaded => image.Dispatcher.InvokeAsync(() =>
+            {
+                image.Source = loaded.IsCompletedSuccessfully ? loaded.Result : null;
+                Reveal();
+            }), TaskScheduler.Default);
         image.Unloaded += (_, _) => image.BeginAnimation(UIElement.OpacityProperty, null);
         return image;
     }

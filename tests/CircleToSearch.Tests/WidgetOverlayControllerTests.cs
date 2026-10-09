@@ -514,7 +514,7 @@ public sealed class WidgetOverlayControllerTests
             mode => state.TransitionTo(mode),
             publish,
             createSelectionCopy,
-            CompositionRoot.CreateWidgetVisuals(createVideo));
+            CompositionRoot.CreateWidgetVisuals(TestRemoteImages.Offline, createVideo));
 
 
     private static OverlayVisual CreateVisual() => OverlayVisualFactory.CreateRoot(

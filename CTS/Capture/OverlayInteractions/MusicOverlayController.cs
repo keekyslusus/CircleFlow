@@ -24,6 +24,7 @@ internal sealed class MusicOverlayController : IDisposable
     private readonly Action _cancelRequested;
     private readonly Action<IOverlayCommand> _resultCommandRequested;
     private readonly ClipboardCopyService _clipboardCopy;
+    private readonly RemoteImageLoader _images;
     private readonly Action _matched;
     private readonly Func<bool> _animationsEnabled;
     private readonly List<DispatcherTimer> _copyTimers = [];
@@ -61,6 +62,7 @@ internal sealed class MusicOverlayController : IDisposable
         Action cancelRequested,
         Action<IOverlayCommand> resultCommandRequested,
         ClipboardCopyService clipboardCopy,
+        RemoteImageLoader images,
         Func<bool> animationsEnabled,
         Action? matched = null)
     {
@@ -76,6 +78,7 @@ internal sealed class MusicOverlayController : IDisposable
         _cancelRequested = cancelRequested;
         _resultCommandRequested = resultCommandRequested;
         _clipboardCopy = clipboardCopy;
+        _images = images;
         _animationsEnabled = animationsEnabled;
         _matched = matched ?? (() => { });
 
@@ -115,6 +118,7 @@ internal sealed class MusicOverlayController : IDisposable
                 outcome,
                 _strings,
                 _lightTheme,
+                _images,
                 _resultCommandRequested,
                 CopyTrackInfo);
             _currentResultCard = presented;

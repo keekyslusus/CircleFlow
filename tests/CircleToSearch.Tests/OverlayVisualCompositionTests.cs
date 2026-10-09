@@ -164,6 +164,7 @@ public sealed class OverlayVisualCompositionTests
                     "Track", "Artist", null, null, null, null, "https://www.shazam.com/track/1")),
                 TestUiStrings.English,
                 lightTheme: false,
+                TestRemoteImages.Offline,
                 _ => { },
                 (_, _) => { });
             Arrange(visual.Root, new Size(640, 400));
@@ -180,6 +181,7 @@ public sealed class OverlayVisualCompositionTests
                 MusicRecognitionOutcome.From(MusicRecognitionStatus.NoAudio),
                 TestUiStrings.English,
                 lightTheme: false,
+                TestRemoteImages.Offline,
                 _ => { },
                 (_, _) => { });
             Arrange(visual.Root, new Size(640, 400));
