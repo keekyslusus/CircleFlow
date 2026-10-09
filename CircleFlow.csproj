@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>CircleToSearch</RootNamespace>
     <AssemblyName>CircleFlow</AssemblyName>
-    <Version>0.5.1</Version>
+    <Version>0.5.2</Version>
     <Product>CircleFlow</Product>
     <Title>CircleFlow</Title>
     <Description>Search a screen area visually or recognize music from Windows output</Description>
