@@ -198,7 +198,7 @@ public static class CompositionRoot
                     () =>
                     {
                         var window = new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath,
-                            settingsModel, feedback => new ClipboardCopyService(Clipboard.SetText, feedback, strings),
+                            settingsModel, feedback => new ClipboardCopyService(Win32Clipboard.SetText, feedback, strings),
                             () => runtime.Sounds.Play(UiSound.Key)).Window;
                         UiClickSounds.Attach(window, runtime.Sounds.Play);
                         return window;
@@ -404,7 +404,7 @@ public static class CompositionRoot
         var widgetVisuals = CreateWidgetVisuals(video => new TraceVideoPreview(video,
             () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log), new EmojiText(paths.EmojiArchivePath));
         var overlayControllerDependencies = new OverlayControllerDependencies(
-            Clipboard.SetText,
+            Win32Clipboard.SetText,
             OverlayVisualResources.AnimationsEnabled,
             PointerPosition: null,
             new WindowsOcrRecognizer(),
@@ -417,7 +417,7 @@ public static class CompositionRoot
             widgetVisuals,
             SystemTheme.IsLight,
             ocrLanguages,
-            Clipboard.SetImage,
+            Win32Clipboard.SetImage,
             new SelectionHintRotation().Next,
             QrCodes.QrCodeScanner.Scan,
             sounds.Play);
