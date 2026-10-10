@@ -47,15 +47,6 @@ internal struct WNDCLASSW
 }
 
 [StructLayout(LayoutKind.Sequential)]
-internal struct MARGINS
-{
-    public int Left;
-    public int Right;
-    public int Top;
-    public int Bottom;
-}
-
-[StructLayout(LayoutKind.Sequential)]
 internal struct MONITORINFO
 {
     public int CbSize;
@@ -184,7 +175,4 @@ internal static class NativeMethods
         int attribute,
         ref int value,
         int valueSize);
-
-    [DllImport("dwmapi.dll")]
-    public static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
 }

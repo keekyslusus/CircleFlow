@@ -28,7 +28,7 @@ public enum OverlayExitFade
     // on some setups (reproduced in FadeCaptureTests). Kept only for the capture harness.
     Window,
 
-    // Transparent window, composed by DWM or layered without a GPU; only the root grid fades. Production default.
+    // Window created with AllowsTransparency; only the root grid fades. Production default.
     Root,
 
     // Opaque window; dim/lasso/chip fade away, the frozen frame stays until close.
@@ -337,8 +337,9 @@ public sealed class OverlayWindow : Window
         Height = monitor.Height / scale;
         Background = CreateFrozenSolidBrush(
             allowsTransparency ? PluginPalette.Transparent : PluginPalette.OpaqueBlack);
-        if (allowsTransparency && DwmTransparentWindow.IsSupported) DwmTransparentWindow.Attach(this);
-        else if (allowsTransparency) AllowsTransparency = true;
+        // Layered, not DWM-composed: with a window that WPF presents through D3D9, the whole desktop on some
+        // AMD drivers drops to 16 Hz for seconds at a time, while a layered one never stalls.
+        if (allowsTransparency) AllowsTransparency = true;
         if (!overscan) return;
         Left -= 1;
         Top -= 1;
@@ -814,8 +815,6 @@ public sealed class OverlayWindow : Window
         CompositionTarget.Rendering -= EmitEntranceRippleOnFirstFrame;
     }
 
-    // Only the layered fallback lets clicks through; a DWM-composed window keeps taking them for the short fade,
-    // since turning it layered mid-flight composites black on some setups.
     private void MakeClickThrough()
     {
         var hwnd = new WindowInteropHelper(this).Handle;

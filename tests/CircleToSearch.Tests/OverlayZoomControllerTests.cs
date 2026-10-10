@@ -72,7 +72,7 @@ public sealed class OverlayZoomControllerTests
     }
 
     [Fact]
-    public void Transparent_overlay_is_composed_by_dwm_instead_of_a_layered_window_when_a_gpu_renders_it()
+    public void Transparent_overlay_stays_a_layered_window()
     {
         RunOnSta(_ =>
         {
@@ -81,7 +81,7 @@ public sealed class OverlayZoomControllerTests
             var window = ZoomOverlay(frame, commands);
             try
             {
-                Assert.Equal(!CircleToSearch.Ui.DwmTransparentWindow.IsSupported, window.AllowsTransparency);
+                Assert.True(window.AllowsTransparency);
             }
             finally
             {
