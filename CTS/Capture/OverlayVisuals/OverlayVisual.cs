@@ -118,6 +118,7 @@ public sealed record MusicOverlayVisual(
 public sealed record DebugOverlayVisual(
     Border Panel,
     Panel MusicScenarioButtons,
+    Panel PinterestModeButtons,
     Panel ToastButtons,
     Button ResetTranslationConsentButton);
 

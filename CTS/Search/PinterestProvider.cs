@@ -12,7 +12,7 @@ public sealed record PinterestPin(string Id, string Title, string Domain, Uri? L
 public sealed class PinterestProvider(HttpClient client) : IVisualSearchProvider
 {
     // The same endpoint Pinterest's own browser extension uses; it needs no account or key.
-    private const string Endpoint = "https://api.pinterest.com/v3/visual_search/extension/image/";
+    internal const string Endpoint ="https://api.pinterest.com/v3/visual_search/extension/image/";
 
     public async Task<VisualSearchPreparationOutcome> PrepareAsync(byte[] jpeg, CancellationToken cancel)
     {

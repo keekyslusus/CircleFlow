@@ -54,7 +54,8 @@ public static class CompositionRoot
         Action<BitmapSource>? SetImageClipboard = null,
         Func<SelectionHint>? NextSelectionHint = null,
         Func<BitmapSource, CancellationToken, IReadOnlyList<QrCodes.QrCodeMatch>>? ScanQrCodes = null,
-        Action<UiSound>? PlaySound = null);
+        Action<UiSound>? PlaySound = null,
+        PinterestSimulation? PinterestSimulation = null);
 
     // The one place that decides which providers answer inside the overlay instead of in a browser.
     internal static IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> CreateWidgetVisuals(
@@ -281,7 +282,9 @@ public static class CompositionRoot
             (content, anchor, lightTheme) => CreateSearchBrowserWindowView(
                 strings, content, anchor, lightTheme)));
         var visualSearchRollback = rollback.Own(new ResourceRollbackScope(log));
-        var providerHttpClient = visualSearchRollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
+        var pinterestSimulation = new PinterestSimulation(strings);
+        var providerHttpClient = visualSearchRollback.Own(
+            new HttpClient(pinterestSimulation.CreateHandler(new HttpClientHandler())) { Timeout = Timeout.InfiniteTimeSpan });
         // Each provider is a row in the Selection toolbar providers dialog in settings, and four rows nearly
         // fill its DialogCard MaxHeight. Before adding a fifth, make ProviderMenuDialog in SettingsWindow.xaml scroll.
         var googleLens = new SearchProviderDescriptor(SearchProviderIds.GoogleLens, () => strings.GoogleLensProviderName);
@@ -403,7 +406,8 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
-        var images = new RemoteImageLoader(rollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan }));
+        var images = new RemoteImageLoader(rollback.Own(
+            new HttpClient(pinterestSimulation.CreateHandler(new HttpClientHandler())) { Timeout = Timeout.InfiniteTimeSpan }));
         var widgetVisuals = CreateWidgetVisuals(images, video => new TraceVideoPreview(video,
             () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log), new EmojiText(paths.EmojiArchivePath));
         var overlayControllerDependencies = new OverlayControllerDependencies(
@@ -424,7 +428,8 @@ public static class CompositionRoot
             Win32Clipboard.SetImage,
             new SelectionHintRotation().Next,
             QrCodes.QrCodeScanner.Scan,
-            sounds.Play);
+            sounds.Play,
+            pinterestSimulation);
         var overlayControllerFactory = new OverlayControllerFactory(
             context => CreateOverlayControllers(context, overlayControllerDependencies));
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
@@ -723,7 +728,8 @@ public static class CompositionRoot
                 context.DebugScenarioSelected,
                 toast.Show,
                 dependencies.ResetTranslationConsent,
-                context.Strings));
+                context.Strings,
+                dependencies.PinterestSimulation));
             var imageSelection = Track(new ImageSelectionOverlayController(
                 context.Visual.ImageSelection,
                 context.CoordinateRoot,

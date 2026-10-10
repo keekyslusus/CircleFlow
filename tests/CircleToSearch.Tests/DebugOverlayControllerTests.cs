@@ -4,6 +4,7 @@ using System.Windows.Media;
 using CircleToSearch.Capture;
 using CircleToSearch.Capture.OverlayInteractions;
 using CircleToSearch.MusicRecognition;
+using CircleToSearch.Search;
 using CircleToSearch.Ui;
 using Xunit;
 
@@ -86,6 +87,42 @@ public sealed class DebugOverlayControllerTests
             }
 
             Assert.Equal(Enum.GetValues<MusicDebugScenario>(), selected);
+        });
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void Pinterest_mode_buttons_switch_the_simulation_which_a_later_panel_still_shows()
+    {
+        var failure = RunOnSta(() =>
+        {
+            var simulation = new PinterestSimulation(TestUiStrings.English);
+            var visual = CreateVisual();
+            using (var controller = CreateController(visual, pinterestSimulation: simulation))
+            {
+                var simulated = Assert.Single(visual.PinterestModeButtons.Children.OfType<Button>(),
+                    button => Equals(button.Tag, PinterestDebugMode.Simulated));
+                controller.SetOpen(true);
+                simulated.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(PinterestDebugMode.Simulated, simulation.Mode);
+                Assert.False(controller.IsOpen);
+            }
+
+            var nextVisual = CreateVisual();
+            using var next = CreateController(nextVisual, pinterestSimulation: simulation);
+            var palette = PluginPalette.For(lightTheme: false).Card;
+            foreach (var button in nextVisual.PinterestModeButtons.Children.OfType<Button>())
+                Assert.Equal(Equals(button.Tag, PinterestDebugMode.Simulated) ? palette.PrimaryContainer : PluginPalette.Transparent,
+                    Assert.IsType<SolidColorBrush>(button.Background).Color);
+            var live = Assert.Single(nextVisual.PinterestModeButtons.Children.OfType<Button>(),
+                button => Equals(button.Tag, PinterestDebugMode.Live));
+            live.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(PinterestDebugMode.Live, simulation.Mode);
+
+            var withoutSimulation = CreateVisual();
+            using var unavailable = CreateController(withoutSimulation);
+            Assert.All(withoutSimulation.PinterestModeButtons.Children.OfType<Button>(), button => Assert.False(button.IsEnabled));
         });
 
         Assert.Null(failure);
@@ -210,7 +247,8 @@ public sealed class DebugOverlayControllerTests
         Action<ToastNotification>? showToast = null,
         Action? resetTranslationConsent = null,
         bool debugEnabled = true,
-        Func<OverlayInteractionMode>? getMode = null) =>
+        Func<OverlayInteractionMode>? getMode = null,
+        PinterestSimulation? pinterestSimulation = null) =>
         new(
             visual,
             lightTheme: false,
@@ -219,7 +257,8 @@ public sealed class DebugOverlayControllerTests
             musicScenarioSelected ?? (_ => { }),
             showToast ?? (_ => { }),
             resetTranslationConsent,
-            TestUiStrings.English);
+            TestUiStrings.English,
+            pinterestSimulation);
 
     private static Exception? RunOnSta(Action action)
     {

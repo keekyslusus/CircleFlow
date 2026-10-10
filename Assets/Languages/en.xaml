@@ -89,6 +89,10 @@
     <system:String x:Key="plugin_circletosearch_debug_music_track_artist">CircleFlow</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_track_album">Local Simulation</system:String>
     <system:String x:Key="plugin_circletosearch_debug_music_track_genre">Electronic</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_pinterest_section">Pinterest</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_pinterest_live">Live Pinterest</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_pinterest_simulated">Simulated pins</system:String>
+    <system:String x:Key="plugin_circletosearch_debug_pinterest_pin_title">Simulated pin {0}</system:String>
     <system:String x:Key="plugin_circletosearch_music_match">Music recognized</system:String>
     <system:String x:Key="plugin_circletosearch_music_match_album">Album: {0}</system:String>
     <system:String x:Key="plugin_circletosearch_music_match_genre">Genre: {0}</system:String>
