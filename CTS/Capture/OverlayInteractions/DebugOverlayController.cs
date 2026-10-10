@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using CircleToSearch.MusicRecognition;
+using CircleToSearch.Search;
 using CircleToSearch.Ui;
 
 namespace CircleToSearch.Capture.OverlayInteractions;
@@ -14,8 +15,10 @@ internal sealed class DebugOverlayController : IDisposable
     private readonly Action<MusicDebugScenario> _musicScenarioSelected;
     private readonly Action<ToastNotification> _showToast;
     private readonly Action? _resetTranslationConsent;
+    private readonly PinterestSimulation? _pinterestSimulation;
     private readonly UiStrings _strings;
     private readonly List<Button> _musicScenarioButtons = [];
+    private readonly List<Button> _pinterestModeButtons = [];
     private readonly List<Button> _toastButtons = [];
     private bool _disposed;
 
@@ -27,7 +30,8 @@ internal sealed class DebugOverlayController : IDisposable
         Action<MusicDebugScenario> musicScenarioSelected,
         Action<ToastNotification> showToast,
         Action? resetTranslationConsent,
-        UiStrings strings)
+        UiStrings strings,
+        PinterestSimulation? pinterestSimulation = null)
     {
         _visual = visual;
         _lightTheme = lightTheme;
@@ -36,13 +40,22 @@ internal sealed class DebugOverlayController : IDisposable
         _musicScenarioSelected = musicScenarioSelected;
         _showToast = showToast;
         _resetTranslationConsent = resetTranslationConsent;
+        _pinterestSimulation = pinterestSimulation;
         _strings = strings;
         _visual.ResetTranslationConsentButton.IsEnabled = resetTranslationConsent is not null;
+        // The simulation outlives the session, so a new overlay shows the mode chosen in an earlier one.
+        DebugOverlayVisualPresenter.SetPinterestMode(_visual, pinterestSimulation?.Mode ?? PinterestDebugMode.Live, lightTheme);
 
         foreach (var button in _visual.MusicScenarioButtons.Children.OfType<Button>())
         {
             button.Click += OnMusicScenarioClick;
             _musicScenarioButtons.Add(button);
+        }
+        foreach (var button in _visual.PinterestModeButtons.Children.OfType<Button>())
+        {
+            button.IsEnabled = pinterestSimulation is not null;
+            button.Click += OnPinterestModeClick;
+            _pinterestModeButtons.Add(button);
         }
         foreach (var button in _visual.ToastButtons.Children.OfType<Button>())
         {
@@ -67,6 +80,8 @@ internal sealed class DebugOverlayController : IDisposable
         _disposed = true;
         foreach (var button in _musicScenarioButtons) button.Click -= OnMusicScenarioClick;
         _musicScenarioButtons.Clear();
+        foreach (var button in _pinterestModeButtons) button.Click -= OnPinterestModeClick;
+        _pinterestModeButtons.Clear();
         foreach (var button in _toastButtons) button.Click -= OnToastClick;
         _toastButtons.Clear();
         _visual.ResetTranslationConsentButton.Click -= OnResetTranslationConsentClick;
@@ -78,6 +93,15 @@ internal sealed class DebugOverlayController : IDisposable
             sender is not Button { Tag: MusicDebugScenario scenario }) return;
         DebugOverlayVisualPresenter.SetMusicScenario(_visual, scenario, _lightTheme);
         _musicScenarioSelected(scenario);
+        SetOpen(false);
+    }
+
+    private void OnPinterestModeClick(object sender, RoutedEventArgs e)
+    {
+        if (_disposed || _pinterestSimulation is null || _getMode() == OverlayInteractionMode.Closing ||
+            sender is not Button { Tag: PinterestDebugMode mode }) return;
+        _pinterestSimulation.Mode = mode;
+        DebugOverlayVisualPresenter.SetPinterestMode(_visual, mode, _lightTheme);
         SetOpen(false);
     }
 

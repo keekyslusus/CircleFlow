@@ -99,6 +99,11 @@ public sealed class SettingsService
         lock (_gate) return Commit(_current with { ScanQrCodes = scan });
     }
 
+    public SettingsChangeResult SetOverlayZoom(bool enabled)
+    {
+        lock (_gate) return Commit(_current with { OverlayZoom = enabled });
+    }
+
     public SettingsChangeResult SetBrowserDataCleanupDays(int days)
     {
         lock (_gate) return Commit(_current with { BrowserDataCleanupDays = days });

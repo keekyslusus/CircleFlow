@@ -16,6 +16,9 @@ internal static class SelectionOverlayVisualFactory
     private const double DimBlurRadius = 28;
     private const double SheenBlurRadius = 14;
     private const double FrameGlowRadius = 18;
+    // The dim is one translucent color with soft edges, which half resolution renders the same at a quarter of the
+    // cost; at full resolution its full-screen blur, redrawn on every lasso or zoom frame, misses frames at 4K.
+    private const double DimCacheScale = 0.5;
     internal const double RevealBleed = 96;
     internal const double FrameCornerRadius = 6;
 
@@ -91,7 +94,15 @@ internal static class SelectionOverlayVisualFactory
             Background = OverlayVisualResources.Frozen(PluginPalette.Transparent),
             IsHitTestVisible = true,
         };
+        // The cache holds everything inside it, so without this inner clip a zoomed dim, up to eight times the
+        // screen, would grow the cache along with it.
+        var dimClip = new Grid { IsHitTestVisible = false, ClipToBounds = true };
+        dimClip.Children.Add(dim);
+        dimClip.Children.Add(dimRect);
+        var dimLayer = new Grid { IsHitTestVisible = false };
+        dimLayer.Children.Add(dimClip);
+        if (dim.Effect is not null) dimLayer.CacheMode = new BitmapCache { RenderAtScale = DimCacheScale };
         return new SelectionOverlayVisual(
-            screenshot, dim, dimRect, sheen, halo, accent, selectionFrame, inputSurface);
+            screenshot, dim, dimRect, sheen, halo, accent, selectionFrame, inputSurface, dimLayer);
     }
 }

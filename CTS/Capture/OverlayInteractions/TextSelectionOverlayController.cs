@@ -24,6 +24,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
     private readonly UiStrings _strings;
     private readonly bool _lightTheme;
     private readonly Action<bool>? _textHoverChanged;
+    private readonly Func<Rect, Rect> _toViewport;
     private OcrDocument? _document;
     private OcrDocument? _gestureDocument;
     private OcrWord? _anchor;
@@ -46,7 +47,8 @@ internal sealed class TextSelectionOverlayController : IDisposable
         Action<IOverlayCommand> publish,
         UiStrings strings,
         bool lightTheme,
-        Action<bool>? textHoverChanged = null)
+        Action<bool>? textHoverChanged = null,
+        Func<Rect, Rect>? toViewport = null)
     {
         _visual = visual;
         _coordinateRoot = coordinateRoot;
@@ -59,6 +61,7 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _strings = strings;
         _lightTheme = lightTheme;
         _textHoverChanged = textHoverChanged;
+        _toViewport = toViewport ?? (rect => rect);
         _visual.CopyButton.Click += OnCopy;
         _visual.SearchButton.Click += OnSearch;
         _visual.OpenLinkButton.Click += OnOpenLink;
@@ -214,10 +217,19 @@ internal sealed class TextSelectionOverlayController : IDisposable
         _visual.SearchButton.IsEnabled = true;
         _visual.OpenLinkButton.IsEnabled = true;
         ShowOpenLink(ScreenLink.FromRecognizedText(range.Text));
-        _visual.Toolbar.Show(
-            _mapper.ToDips(range.BoundsPx),
-            new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight));
+        ShowToolbar(range);
     }
+
+    // Keeps the actions beside the selection while the screen under them is zoomed or panned.
+    internal void FollowView()
+    {
+        if (!_disposed && _selection is not null && IsActionMenuOpen) ShowToolbar(_selection);
+    }
+
+    private void ShowToolbar(TextSelectionRange range) =>
+        _visual.Toolbar.Show(
+            _toViewport(_mapper.ToDips(range.BoundsPx)),
+            new Size(_coordinateRoot.ActualWidth, _coordinateRoot.ActualHeight));
 
     // OCR misreads links often, so Open link sits beside Search instead of replacing it, and the button shows the
     // host that would really open.

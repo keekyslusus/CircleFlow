@@ -124,6 +124,9 @@ internal sealed class SettingsWindowView
         var ignoreFullscreen = Element<CheckBox>("IgnoreFullscreen");
         ignoreFullscreen.Checked += OnIgnoreFullscreenChanged;
         ignoreFullscreen.Unchecked += OnIgnoreFullscreenChanged;
+        var overlayZoom = Element<CheckBox>("OverlayZoom");
+        overlayZoom.Checked += OnOverlayZoomChanged;
+        overlayZoom.Unchecked += OnOverlayZoomChanged;
         var uiSounds = Element<CheckBox>("UiSounds");
         uiSounds.Checked += OnUiSoundsChanged;
         uiSounds.Unchecked += OnUiSoundsChanged;
@@ -402,6 +405,7 @@ internal sealed class SettingsWindowView
             Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
             Select(Element<ComboBox>("AppLanguage"), _model.AppLanguageTag);
             Element<CheckBox>("IgnoreFullscreen").IsChecked = _model.IgnoreHotkeyInFullscreen;
+            Element<CheckBox>("OverlayZoom").IsChecked = _model.OverlayZoom;
             Element<CheckBox>("UiSounds").IsChecked = _model.UiSounds;
             Element<CheckBox>("ScanQrCodes").IsChecked = _model.ScanQrCodes;
             Element<CheckBox>("Launch").IsChecked = _model.LaunchAtStartup;
@@ -532,6 +536,14 @@ internal sealed class SettingsWindowView
     {
         if (_loadingSettings) return;
         if (_model.SelectIgnoreHotkeyInFullscreen(Element<CheckBox>("IgnoreFullscreen").IsChecked == true)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnOverlayZoomChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        if (_model.SelectOverlayZoom(Element<CheckBox>("OverlayZoom").IsChecked == true)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
     }

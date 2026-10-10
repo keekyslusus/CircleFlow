@@ -7,6 +7,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media.Effects;
 using CircleToSearch.MusicRecognition;
+using CircleToSearch.Search;
 using CircleToSearch.Ui;
 
 internal static class DebugOverlayVisualFactory
@@ -31,6 +32,15 @@ internal static class DebugOverlayVisualFactory
         foreach (var (scenario, label) in scenarios)
             scenarioButtons.Children.Add(CreateDebugButton(palette, label, scenario));
 
+        (PinterestDebugMode Mode, string Label)[] pinterestModes =
+        [
+            (PinterestDebugMode.Live, strings.DebugPinterestLive),
+            (PinterestDebugMode.Simulated, strings.DebugPinterestSimulated),
+        ];
+        var pinterestButtons = new UniformGrid { Columns = 2 };
+        foreach (var (mode, label) in pinterestModes)
+            pinterestButtons.Children.Add(CreateDebugButton(palette, label, mode));
+
         (ToastTone Tone, string Label)[] toasts =
         [
             (ToastTone.Neutral, strings.DebugToastNeutral),
@@ -53,6 +63,10 @@ internal static class DebugOverlayVisualFactory
         });
         content.Children.Add(CreateDebugSectionTitle(palette, strings.DebugMusicSection));
         content.Children.Add(scenarioButtons);
+        var pinterestTitle = CreateDebugSectionTitle(palette, strings.DebugPinterestSection);
+        pinterestTitle.Margin = new Thickness(0, 10, 0, 4);
+        content.Children.Add(pinterestTitle);
+        content.Children.Add(pinterestButtons);
         var toastTitle = CreateDebugSectionTitle(palette, strings.DebugToastSection);
         toastTitle.Margin = new Thickness(0, 10, 0, 4);
         content.Children.Add(toastTitle);
@@ -86,8 +100,9 @@ internal static class DebugOverlayVisualFactory
             },
         };
         Panel.SetZIndex(panel, 3);
-        var visual = new DebugOverlayVisual(panel, scenarioButtons, toastButtons, resetTranslationConsent);
+        var visual = new DebugOverlayVisual(panel, scenarioButtons, pinterestButtons, toastButtons, resetTranslationConsent);
         DebugOverlayVisualPresenter.SetMusicScenario(visual, MusicDebugScenario.Live, lightTheme);
+        DebugOverlayVisualPresenter.SetPinterestMode(visual, PinterestDebugMode.Live, lightTheme);
         return visual;
     }
 

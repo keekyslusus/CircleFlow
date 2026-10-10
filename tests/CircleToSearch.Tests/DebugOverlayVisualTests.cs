@@ -4,6 +4,7 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using CircleToSearch.Capture;
 using CircleToSearch.MusicRecognition;
+using CircleToSearch.Search;
 using CircleToSearch.Ui;
 using Xunit;
 
@@ -28,6 +29,11 @@ public sealed class DebugOverlayVisualTests
                     .Select(button => Assert.IsType<MusicDebugScenario>(button.Tag))
                     .ToArray());
             Assert.Equal(
+                Enum.GetValues<PinterestDebugMode>(),
+                visual.PinterestModeButtons.Children.OfType<Button>()
+                    .Select(button => Assert.IsType<PinterestDebugMode>(button.Tag))
+                    .ToArray());
+            Assert.Equal(
                 Enum.GetValues<ToastTone>(),
                 visual.ToastButtons.Children.OfType<Button>()
                     .Select(button => Assert.IsType<ToastTone>(button.Tag))
@@ -39,11 +45,12 @@ public sealed class DebugOverlayVisualTests
             visual.Panel.Visibility = Visibility.Visible;
             var root = new Grid();
             root.Children.Add(visual.Panel);
-            root.Measure(new Size(640, 400));
-            root.Arrange(new Rect(0, 0, 640, 400));
+            // The shortest overlay in practice: a 1280x720 screen at 150% scale.
+            root.Measure(new Size(640, 480));
+            root.Arrange(new Rect(0, 0, 640, 480));
             var resetBounds = visual.ResetTranslationConsentButton.TransformToAncestor(root)
                 .TransformBounds(new Rect(visual.ResetTranslationConsentButton.RenderSize));
-            Assert.True(resetBounds.Top >= 0 && resetBounds.Bottom <= 400);
+            Assert.True(resetBounds.Top >= 0 && resetBounds.Bottom <= 480);
 
             var live = visual.MusicScenarioButtons.Children.OfType<Button>()
                 .Single(button => Equals(button.Tag, MusicDebugScenario.Live));

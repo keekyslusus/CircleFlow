@@ -46,7 +46,8 @@ public sealed record SelectionOverlayVisual(
     Polyline Halo,
     Polyline Accent,
     Path SelectionFrame,
-    Grid InputSurface);
+    Grid InputSurface,
+    Grid DimLayer);
 
 public sealed record ActionTrayVisual(
     StackPanel Tray,
@@ -117,6 +118,7 @@ public sealed record MusicOverlayVisual(
 public sealed record DebugOverlayVisual(
     Border Panel,
     Panel MusicScenarioButtons,
+    Panel PinterestModeButtons,
     Panel ToastButtons,
     Button ResetTranslationConsentButton);
 

@@ -54,7 +54,8 @@ public static class CompositionRoot
         Action<BitmapSource>? SetImageClipboard = null,
         Func<SelectionHint>? NextSelectionHint = null,
         Func<BitmapSource, CancellationToken, IReadOnlyList<QrCodes.QrCodeMatch>>? ScanQrCodes = null,
-        Action<UiSound>? PlaySound = null);
+        Action<UiSound>? PlaySound = null,
+        PinterestSimulation? PinterestSimulation = null);
 
     // The one place that decides which providers answer inside the overlay instead of in a browser.
     internal static IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> CreateWidgetVisuals(
@@ -281,7 +282,9 @@ public static class CompositionRoot
             (content, anchor, lightTheme) => CreateSearchBrowserWindowView(
                 strings, content, anchor, lightTheme)));
         var visualSearchRollback = rollback.Own(new ResourceRollbackScope(log));
-        var providerHttpClient = visualSearchRollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
+        var pinterestSimulation = new PinterestSimulation(strings);
+        var providerHttpClient = visualSearchRollback.Own(
+            new HttpClient(pinterestSimulation.CreateHandler(new HttpClientHandler())) { Timeout = Timeout.InfiniteTimeSpan });
         // Each provider is a row in the Selection toolbar providers dialog in settings, and four rows nearly
         // fill its DialogCard MaxHeight. Before adding a fifth, make ProviderMenuDialog in SettingsWindow.xaml scroll.
         var googleLens = new SearchProviderDescriptor(SearchProviderIds.GoogleLens, () => strings.GoogleLensProviderName);
@@ -403,7 +406,8 @@ public static class CompositionRoot
             notifier,
             strings,
             log);
-        var images = new RemoteImageLoader(rollback.Own(new HttpClient { Timeout = Timeout.InfiniteTimeSpan }));
+        var images = new RemoteImageLoader(rollback.Own(
+            new HttpClient(pinterestSimulation.CreateHandler(new HttpClientHandler())) { Timeout = Timeout.InfiniteTimeSpan }));
         var widgetVisuals = CreateWidgetVisuals(images, video => new TraceVideoPreview(video,
             () => environments.CreateAsync(paths.TraceVideoProfileDirectory), log), new EmojiText(paths.EmojiArchivePath));
         var overlayControllerDependencies = new OverlayControllerDependencies(
@@ -424,7 +428,8 @@ public static class CompositionRoot
             Win32Clipboard.SetImage,
             new SelectionHintRotation().Next,
             QrCodes.QrCodeScanner.Scan,
-            sounds.Play);
+            sounds.Play,
+            pinterestSimulation);
         var overlayControllerFactory = new OverlayControllerFactory(
             context => CreateOverlayControllers(context, overlayControllerDependencies));
         var overlayWindowFactory = new OverlayWindowFactory(overlayControllerFactory);
@@ -589,6 +594,22 @@ public static class CompositionRoot
                 context.Scale,
                 context.Overscan,
                 context.Monitor.Size);
+            var zoom = context.Zoom
+                ? Track(new OverlayZoomController(
+                    context.CoordinateRoot,
+                    context.Visual.Selection,
+                    context.Visual.TextSelection.HighlightLayer,
+                    context.Visual.Root,
+                    context.CanAcceptPointerInput,
+                    sounds.Zoomed,
+                    sounds.ZoomLimitReached))
+                : null;
+            // Under zoom, gestures read the pointer on the zoomed screen; chrome hit tests still need the window point.
+            var pointerPosition = dependencies.PointerPosition ??
+                (zoom is null ? null : e => e.GetPosition(context.Visual.Selection.InputSurface));
+            Func<object?, Point, bool> canStartSelection = zoom is null
+                ? context.CanStartSelection
+                : (source, point) => context.CanStartSelection(source, zoom.ToViewport(point));
             var selection = Track(new SelectionOverlayController(
                 context.Visual.Selection,
                 context.CoordinateRoot,
@@ -598,7 +619,7 @@ public static class CompositionRoot
                 context.Options.MinDiagonalPx,
                 context.Overscan,
                 context.CanAcceptPointerInput,
-                context.CanStartSelection,
+                canStartSelection,
                 context.SelectionStarted,
                 bounds =>
                 {
@@ -607,7 +628,7 @@ public static class CompositionRoot
                 },
                 context.SelectionRejected,
                 context.SelectionHoldCompleted,
-                dependencies.PointerPosition,
+                pointerPosition,
                 subscribeInput: false,
                 selectionDrawn: context.SelectionDrawn,
                 traced: sounds.Traced));
@@ -622,7 +643,8 @@ public static class CompositionRoot
                 publishCommand,
                 context.Strings,
                 context.Visual.LightTheme,
-                selectionHint.SetTextHovered));
+                selectionHint.SetTextHovered,
+                zoom is null ? null : zoom.ToViewport));
             var frameSource = context.Visual.Selection.Screenshot.Source as BitmapSource
                 ?? throw new InvalidOperationException("The overlay frame source is missing.");
             OverlayImageTextCoordinator? imageText = null;
@@ -640,8 +662,8 @@ public static class CompositionRoot
                 selection,
                 textSelection,
                 context.CanAcceptPointerInput,
-                context.CanStartSelection,
-                dependencies.PointerPosition));
+                canStartSelection,
+                pointerPosition));
             var actionTray = Track(new ActionTrayOverlayController(
                 context.Visual.Actions,
                 context.Visual.Bottom.Root,
@@ -706,7 +728,8 @@ public static class CompositionRoot
                 context.DebugScenarioSelected,
                 toast.Show,
                 dependencies.ResetTranslationConsent,
-                context.Strings));
+                context.Strings,
+                dependencies.PinterestSimulation));
             var imageSelection = Track(new ImageSelectionOverlayController(
                 context.Visual.ImageSelection,
                 context.CoordinateRoot,
@@ -722,7 +745,18 @@ public static class CompositionRoot
                 context.Strings,
                 context.HiddenToolbarActions,
                 imageText.DeferInputLanguageChanges,
-                imageText.ApplyDeferredInputLanguage));
+                imageText.ApplyDeferredInputLanguage,
+                zoom is null ? null : zoom.ToViewport));
+            if (zoom is not null)
+            {
+                zoom.ViewChanged += () =>
+                {
+                    textSelection.FollowView();
+                    imageSelection.FollowView();
+                };
+                zoom.ZoomedChanged += qrCodes.SetZoomed;
+                zoom.ZoomedChanged += selectionHint.SetZoomed;
+            }
             var inputLanguage = Track(new KeyboardInputLanguageSource(
                 tag =>
                 {
@@ -784,7 +818,8 @@ public static class CompositionRoot
                 imageSelection,
                 selectionHint,
                 qrCodes,
-                sounds);
+                sounds,
+                zoom);
             rollback.Clear();
             return controllers;
         }

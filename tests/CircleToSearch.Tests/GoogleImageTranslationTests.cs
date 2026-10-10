@@ -156,7 +156,7 @@ public sealed class GoogleImageTranslationTests
                 Assert.Equal("ru-RU", request.TargetLanguageTag);
                 window.ShowTranslation(new(request.RequestId, Source()));
                 Assert.Equal(Visibility.Visible, visual.Selection.Dim.Visibility);
-                Assert.True(visual.Root.Children.IndexOf(visual.Selection.Screenshot) < visual.Root.Children.IndexOf(visual.Selection.Dim));
+                Assert.True(visual.Root.Children.IndexOf(visual.Selection.Screenshot) < visual.Root.Children.IndexOf(visual.Selection.DimLayer));
                 Assert.Equal(TestUiStrings.English.TranslatedTextPrompt, visual.Actions.Prompt!.Text);
                 Assert.Equal("ru-RU", Assert.Single(recognizer.Languages));
                 Assert.Equal(320, ((BitmapSource)visual.Selection.Screenshot.Source).PixelWidth);

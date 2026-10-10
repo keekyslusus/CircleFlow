@@ -13,4 +13,7 @@ internal enum UiSound
     Trace,
     SelectionDone,
     QrFound,
+    ZoomIn,
+    ZoomOut,
+    ZoomLimit,
 }

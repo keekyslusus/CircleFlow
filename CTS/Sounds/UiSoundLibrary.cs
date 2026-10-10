@@ -20,6 +20,10 @@ internal static class UiSoundLibrary
             [UiSound.Trace] = (["trace_1", "trace_2", "trace_3", "trace_4"], 0.10f),
             [UiSound.SelectionDone] = (["selection_done"], 1),
             [UiSound.QrFound] = (["qr_found"], 0.15f),
+            // Like trace ticks, zoom detents repeat through one gesture and stay quiet.
+            [UiSound.ZoomIn] = (["zoom_in_1", "zoom_in_2", "zoom_in_3", "zoom_in_4"], 0.12f),
+            [UiSound.ZoomOut] = (["zoom_out_1", "zoom_out_2", "zoom_out_3", "zoom_out_4"], 0.12f),
+            [UiSound.ZoomLimit] = (["zoom_limit"], 1),
         };
 
     internal static IReadOnlyDictionary<UiSound, float[][]> Load(string directory) =>

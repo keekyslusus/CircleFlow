@@ -88,6 +88,8 @@ public sealed class UiStrings
     public string AltKeyName => Get("app_settings_alt");
     public string LeftMouseButton => Get("plugin_circletosearch_left_mouse_button");
     public string RightMouseButton => Get("plugin_circletosearch_right_mouse_button");
+    public string MiddleMouseButton => Get("plugin_circletosearch_middle_mouse_button");
+    public string SelectionHintPan => Get("plugin_circletosearch_selection_hint_pan");
     public string SelectionHintSearch => Get("plugin_circletosearch_selection_hint_search");
     public string SelectionHintActions => Get("plugin_circletosearch_selection_hint_actions");
     public string SelectionHintSearchOverText => Get("plugin_circletosearch_selection_hint_search_over_text");
@@ -140,6 +142,10 @@ public sealed class UiStrings
     public string DebugMusicTrackArtist => Get("plugin_circletosearch_debug_music_track_artist");
     public string DebugMusicTrackAlbum => Get("plugin_circletosearch_debug_music_track_album");
     public string DebugMusicTrackGenre => Get("plugin_circletosearch_debug_music_track_genre");
+    public string DebugPinterestSection => Get("plugin_circletosearch_debug_pinterest_section");
+    public string DebugPinterestLive => Get("plugin_circletosearch_debug_pinterest_live");
+    public string DebugPinterestSimulated => Get("plugin_circletosearch_debug_pinterest_simulated");
+    public string DebugPinterestPinTitle(int number) => Get("plugin_circletosearch_debug_pinterest_pin_title", number);
     public string QueryTitle => Get("plugin_circletosearch_query_title");
     public string SettingsHotkeyLabel => Get("plugin_circletosearch_settings_hotkey_label");
     public string SettingsMaxImageSideLabel => Get("plugin_circletosearch_settings_max_image_side_label");

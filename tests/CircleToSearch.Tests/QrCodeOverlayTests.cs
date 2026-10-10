@@ -125,6 +125,34 @@ public sealed class QrCodeOverlayTests
     });
 
     [Fact]
+    public void Zooming_in_hides_the_chips_until_the_screen_is_back_to_normal() => Run(() =>
+    {
+        using var time = ManualAnimationClock.Install();
+        using var h = new Harness([new("https://example.com", TopCode)], zoom: true);
+        var chip = h.WaitForChip();
+
+        Assert.True(h.Window.TryHandleShortcut(Key.OemPlus, ModifierKeys.Control));
+        time.Advance(1000);
+        Assert.Equal(1.25, h.Window.VisualState.Selection.Screenshot.RenderTransform.Value.M11, 4);
+        Assert.Equal(Visibility.Collapsed, chip.Surface.Visibility);
+
+        Assert.True(h.Window.TryHandleShortcut(Key.D0, ModifierKeys.Control));
+        time.Advance(1000);
+        Assert.True(h.Window.VisualState.Selection.Screenshot.RenderTransform.Value.IsIdentity);
+        Assert.Equal(Visibility.Visible, chip.Surface.Visibility);
+    });
+
+    [Fact]
+    public void Zoom_keys_do_nothing_when_the_setting_is_off() => Run(() =>
+    {
+        using var h = new Harness([new("https://example.com", TopCode)]);
+        h.WaitForChip();
+
+        Assert.False(h.Window.TryHandleShortcut(Key.OemPlus, ModifierKeys.Control));
+        Assert.True(h.Window.VisualState.Selection.Screenshot.RenderTransform.Value.IsIdentity);
+    });
+
+    [Fact]
     public void Scan_logging_leaves_out_the_code_content() => Run(() =>
     {
         var directory = Path.Combine(TestOutputPaths.TempDirectory, "qr-log-" + Guid.NewGuid().ToString("N"));
@@ -226,14 +254,14 @@ public sealed class QrCodeOverlayTests
         private int _scanCalls;
 
         internal Harness(IReadOnlyList<QrCodeMatch> matches, bool scan = true, PluginLog? log = null,
-            bool animations = false, bool copyFails = false)
+            bool animations = false, bool copyFails = false, bool zoom = false)
         {
             using (var graphics = System.Drawing.Graphics.FromImage(_frame)) graphics.Clear(System.Drawing.Color.Black);
             var monitor = new GdiRectangle(0, 0, 640, 400);
             Window = new OverlayWindow(_frame, monitor, monitor, 1,
                 new OverlayLaunchOptions(new OverlayOptions(0, 12), TestUiStrings.English,
                     [new(SearchProviderIds.GoogleLens, SearchProviderIds.GoogleLens)], SearchProviderIds.GoogleLens,
-                    new SearchSessionOptions(ScanQrCodes: scan)),
+                    new SearchSessionOptions(ScanQrCodes: scan, Zoom: zoom)),
                 Commands.Add,
                 TestOverlayControllers.CreateFactory(
                     setClipboard: text =>

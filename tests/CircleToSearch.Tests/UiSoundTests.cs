@@ -247,4 +247,41 @@ public sealed class OverlaySoundCuesTests
         cues.Traced(1);
         Assert.Equal([UiSound.Trace, UiSound.Trace], played);
     }
+
+    [Fact]
+    public void Zoom_ticks_follow_the_zoom_direction_and_a_turn_back_starts_fresh()
+    {
+        var played = new List<UiSound>();
+        var time = new FakeTimeProvider();
+        using var cues = new OverlaySoundCues(played.Add, time);
+
+        cues.Zoomed(OverlaySoundCues.ZoomStep * 0.6);
+        Assert.Empty(played);
+        cues.Zoomed(OverlaySoundCues.ZoomStep * 0.6);
+        Assert.Equal([UiSound.ZoomIn], played);
+
+        time.Advance(OverlaySoundCues.TraceMinInterval);
+        cues.Zoomed(-OverlaySoundCues.ZoomStep * 0.6);
+        Assert.Single(played);
+        cues.Zoomed(-OverlaySoundCues.ZoomStep * 0.6);
+        Assert.Equal([UiSound.ZoomIn, UiSound.ZoomOut], played);
+
+        cues.Zoomed(-OverlaySoundCues.ZoomStep * 5);
+        Assert.Equal(2, played.Count);
+    }
+
+    [Fact]
+    public void Pushing_against_the_zoom_limit_bumps_once_per_push()
+    {
+        var played = new List<UiSound>();
+        var time = new FakeTimeProvider();
+        using var cues = new OverlaySoundCues(played.Add, time);
+
+        cues.ZoomLimitReached();
+        cues.ZoomLimitReached();
+        time.Advance(OverlaySoundCues.ZoomLimitMinInterval);
+        cues.ZoomLimitReached();
+
+        Assert.Equal([UiSound.ZoomLimit, UiSound.ZoomLimit], played);
+    }
 }

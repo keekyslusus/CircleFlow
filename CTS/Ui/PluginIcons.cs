@@ -90,6 +90,10 @@ internal static class PluginIcons
         new EllipseGeometry(new Point(10.5, 10.5), 6.5, 6.5),
         Geometry.Parse("m16 16 5 5"));
 
+    public static Geometry ZoomInOutlined { get; } = Group(
+        new EllipseGeometry(new Point(10.5, 10.5), 6.5, 6.5),
+        Geometry.Parse("m16 16 5 5M10.5 8v5M8 10.5h5"));
+
     public static Geometry TranslateOutlined { get; } = Group(
         Geometry.Parse("M3 5h12M9 3v2m4 0c0 7-4 10-9 12m1-9c1 4 4 7 8 8m1 5 4-11 4 11m-6-4h4"));
 
@@ -184,6 +188,14 @@ internal static class PluginIcons
 
     public static Geometry MouseRightButtonOutlined { get; } = Group(
         Geometry.Parse("M12 2v8h7V9a7 7 0 0 0-7-7Z"));
+
+    // The split between the buttons stops at the wheel, which MouseWheelButtonOutlined draws.
+    public static Geometry MouseWithWheelOutlined { get; } = Group(
+        new RectangleGeometry(new Rect(5, 2, 14, 20), 7, 7),
+        Geometry.Parse("M12 2v1.5M5 10h14"));
+
+    public static Geometry MouseWheelButtonOutlined { get; } = Group(
+        new RectangleGeometry(new Rect(10.75, 3.5, 2.5, 5.5), 1.25, 1.25));
 
     public static Geometry CoffeeOutlined { get; } = Group(
         Geometry.Parse("M4 8h13v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM17 9h2a3 3 0 0 1 0 6h-2M3 22h16M7 3v2m4-3v3m4-2v2"));
