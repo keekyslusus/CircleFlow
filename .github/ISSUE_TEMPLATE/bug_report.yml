@@ -1,0 +1,94 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. A log and a screenshot usually make the difference between a quick fix and a guess.
+
+  - type: input
+    id: version
+    attributes:
+      label: CircleFlow version
+      description: Tray -> Settings -> About -> Version
+      placeholder: v0.5.2
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installation
+      options:
+        - Installer (Setup.exe)
+        - Portable zip
+        - Built from source
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: Win+R -> winver
+      placeholder: Windows 11 24H2 (26100)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected feature
+      multiple: true
+      options:
+        - Selection overlay (circling, zoom, toolbar)
+        - Google Lens
+        - Google AI Mode
+        - Yandex Images
+        - Pinterest
+        - trace.moe
+        - Text recognition (OCR) and text search
+        - Translation
+        - Music recognition
+        - QR codes
+        - Shortcut, tray or settings
+        - Updates or installation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did, step by step, starting from pressing the shortcut.
+      placeholder: |
+        1. Press the shortcut
+        2. Circle an image
+        3. Click Search
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Include the exact text of any error or notification, and what the browser window showed (results, a captcha, a sign-in page, an empty page).
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Log and screenshots
+      description: |
+        Reproduce the problem, then open Tray -> Settings -> About -> Maintenance -> Logs and drag the newest log file here, together with a screenshot.
+        The log may include page addresses and recognized text; look through it and remove anything private before attaching.
+    validations:
+      required: true
