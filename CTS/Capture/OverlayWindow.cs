@@ -69,6 +69,7 @@ public sealed class OverlayWindow : Window
     private readonly SelectionHintOverlayController _selectionHint;
     private readonly QrCodeOverlayController _qrCodes;
     private readonly OverlayZoomController? _zoom;
+    private readonly OverlayPenController? _pen;
     private bool _cancelPublished;
     private bool _exitFadeStarted;
     private bool _entranceRipplePending;
@@ -106,7 +107,8 @@ public sealed class OverlayWindow : Window
         string textSearchEngineId = TextSearchEngines.MatchImageSearch,
         SelectionToolbarAction hiddenToolbarActions = SelectionToolbarAction.None,
         bool scanQrCodes = false,
-        bool zoom = false)
+        bool zoom = false,
+        bool pen = false)
     {
         _frame = frame;
         _exitFade = exitFade;
@@ -176,7 +178,8 @@ public sealed class OverlayWindow : Window
                 textSearchEngineId,
                 hiddenToolbarActions,
                 scanQrCodes,
-                zoom));
+                zoom,
+                pen));
         }
         catch
         {
@@ -201,6 +204,7 @@ public sealed class OverlayWindow : Window
         _selectionHint = _controllers.SelectionHint;
         _qrCodes = _controllers.QrCodes;
         _zoom = _controllers.Zoom;
+        _pen = _controllers.Pen;
 
         Loaded += OnLoaded;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -249,7 +253,8 @@ public sealed class OverlayWindow : Window
             options.SessionOptions.TextSearchEngineId,
             options.SessionOptions.HiddenToolbarActions,
             options.SessionOptions.ScanQrCodes,
-            options.SessionOptions.Zoom)
+            options.SessionOptions.Zoom,
+            options.SessionOptions.Pen)
     {
     }
 
@@ -399,7 +404,8 @@ public sealed class OverlayWindow : Window
         // Enter keeps meaning Search. A faded-out tray stays focusable, so its hidden buttons never take Enter.
         if (key == Key.Enter && _focusMovedByKeyboard &&
             Keyboard.FocusedElement is ButtonBase { IsHitTestVisible: true }) return false;
-        if (_zoom?.TryHandleShortcut(key, modifiers) == true) return true;
+        if (_zoom?.TryHandleShortcut(key, modifiers) == true ||
+            _pen?.TryHandleShortcut(key, modifiers) == true) return true;
         if (_imageSelection.Bounds is not null) return _imageSelection.TryHandleShortcut(key, modifiers);
         if (_textSelection.TryHandleShortcut(key, modifiers) ||
             _music.TryHandleShortcut(key, modifiers) ||
@@ -715,9 +721,11 @@ public sealed class OverlayWindow : Window
 
     private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        // Drawing marks up the screen around an open selection, so the selection stays for Ask, Copy and Save.
+        // While a question is open its image is already taken, so a Ctrl press then neither draws nor dismisses.
         if (_imageSelection.Bounds is not null &&
             !IsOverlayChromeInteraction(e.OriginalSource, e.GetPosition(this)) &&
-            !TryDismissImageSelection())
+            (_pointer.PenHeld ? _pen?.CanDraw != true : !TryDismissImageSelection()))
         {
             e.Handled = true;
             return;

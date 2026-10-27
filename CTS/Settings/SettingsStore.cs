@@ -107,6 +107,7 @@ internal sealed class SettingsStore(AppPaths paths)
             HiddenToolbarActions = Actions(nameof(AppSettings.HiddenToolbarActions), defaults.HiddenToolbarActions),
             ScanQrCodes = Flag(nameof(AppSettings.ScanQrCodes), defaults.ScanQrCodes),
             OverlayZoom = Flag(nameof(AppSettings.OverlayZoom), defaults.OverlayZoom),
+            OverlayPen = Flag(nameof(AppSettings.OverlayPen), defaults.OverlayPen),
             BrowserDataCleanupDays = Number(nameof(AppSettings.BrowserDataCleanupDays), defaults.BrowserDataCleanupDays),
             SaveMusicHistory = Flag(nameof(AppSettings.SaveMusicHistory), defaults.SaveMusicHistory),
             MusicHistoryRetentionDays = Number(nameof(AppSettings.MusicHistoryRetentionDays),

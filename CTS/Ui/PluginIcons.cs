@@ -125,6 +125,11 @@ internal static class PluginIcons
     public static Geometry EditOutlined { get; } = Group(
         Geometry.Parse("m14 5 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14Z"));
 
+    // A pen with the squiggle it has just drawn running out of its tip.
+    public static Geometry DrawOutlined { get; } = Group(
+        Geometry.Parse("M18 2.8a2 2 0 0 1 2.8 2.8L12.5 14l-3.5 1 1-3.5ZM16 4.8l2.8 2.8" +
+                       "M3.5 6c2.5-1.5 4.5.5 2.5 3S2 14 4.5 15s3.5-2 5-1-2 4.5 0 6 4-.5 5-1.5"));
+
     public static Geometry ChevronRightOutlined { get; } = Group(
         Geometry.Parse("m9 5 7 7-7 7"));
 

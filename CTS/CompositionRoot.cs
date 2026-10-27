@@ -55,7 +55,8 @@ public static class CompositionRoot
         Func<SelectionHint>? NextSelectionHint = null,
         Func<BitmapSource, CancellationToken, IReadOnlyList<QrCodes.QrCodeMatch>>? ScanQrCodes = null,
         Action<UiSound>? PlaySound = null,
-        PinterestSimulation? PinterestSimulation = null);
+        PinterestSimulation? PinterestSimulation = null,
+        Func<ModifierKeys>? Modifiers = null);
 
     // The one place that decides which providers answer inside the overlay instead of in a browser.
     internal static IReadOnlyDictionary<string, Func<OverlayWidgetContext, IOverlayWidgetVisual>> CreateWidgetVisuals(
@@ -656,6 +657,21 @@ public static class CompositionRoot
                 outcome => imageText?.OnCompleted(outcome),
                 dependencies.Log,
                 dependencies.MemoryProfiler));
+            ImageSelectionOverlayController? imageSelection = null;
+            Func<BitmapSource> visibleImage = () => (BitmapSource)context.Visual.Selection.Screenshot.Source;
+            var pen = context.Pen
+                ? Track(new OverlayPenController(
+                    context.Visual.Selection,
+                    context.CoordinateRoot,
+                    mapper,
+                    visibleImage,
+                    () => context.CanAcceptPointerInput() && imageSelection?.IsPromptOpen != true,
+                    context.Strings,
+                    toast.ShowOrUpdate,
+                    dependencies.AnimationsEnabled,
+                    sounds.Traced,
+                    zoom is null ? null : () => zoom.Scale))
+                : null;
             var pointer = Track(new PointerGestureRouter(
                 context.Visual.Selection,
                 context.CoordinateRoot,
@@ -663,7 +679,9 @@ public static class CompositionRoot
                 textSelection,
                 context.CanAcceptPointerInput,
                 canStartSelection,
-                pointerPosition));
+                pointerPosition,
+                dependencies.Modifiers,
+                pen));
             var actionTray = Track(new ActionTrayOverlayController(
                 context.Visual.Actions,
                 context.Visual.Bottom.Root,
@@ -730,15 +748,17 @@ public static class CompositionRoot
                 dependencies.ResetTranslationConsent,
                 context.Strings,
                 dependencies.PinterestSimulation));
-            var imageSelection = Track(new ImageSelectionOverlayController(
+            imageSelection = Track(new ImageSelectionOverlayController(
                 context.Visual.ImageSelection,
                 context.CoordinateRoot,
                 mapper,
                 selection,
                 translation,
                 clipboardCopy,
-                () => (BitmapSource)context.Visual.Selection.Screenshot.Source,
-                context.CreateSelectionCopy,
+                pen is null ? bounds => VisibleImage.Crop(visibleImage(), bounds) : pen.Crop,
+                bounds => pen?.HasInk == true
+                    ? VisibleImage.CreateSelection(pen.Crop(bounds))
+                    : context.CreateSelectionCopy(bounds),
                 context.SelectionCompleted,
                 publishCommand,
                 context.CloseRequested ?? (() => publishCommand(new CancelSession())),
@@ -818,6 +838,7 @@ public static class CompositionRoot
                 imageSelection,
                 selectionHint,
                 qrCodes,
+                pen,
                 sounds,
                 zoom);
             rollback.Clear();

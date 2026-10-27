@@ -60,6 +60,7 @@ internal sealed class OverlayZoomController : IDisposable
             new SceneLayer(selection.Halo),
             new SceneLayer(selection.Accent),
             new SceneLayer(selection.SelectionFrame),
+            new SceneLayer(selection.Ink),
             new SceneLayer(textHighlights),
             new SceneLayer(selection.InputSurface),
         ];

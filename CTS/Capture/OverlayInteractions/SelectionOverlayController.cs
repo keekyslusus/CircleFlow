@@ -138,6 +138,7 @@ internal sealed class SelectionOverlayController : IDisposable
             _visual.Halo,
             _visual.Accent,
             _visual.SelectionFrame,
+            _visual.Ink,
         ];
         if (!OverlayVisualResources.AnimationsEnabled())
         {
@@ -155,7 +156,7 @@ internal sealed class SelectionOverlayController : IDisposable
     internal void RestoreSelectionVisuals()
     {
         ResetSelectionGesture();
-        UIElement[] targets = [_visual.Screenshot, _visual.Sheen, _visual.Halo, _visual.Accent];
+        UIElement[] targets = [_visual.Screenshot, _visual.Sheen, _visual.Halo, _visual.Accent, _visual.Ink];
         if (!OverlayVisualResources.AnimationsEnabled())
         {
             foreach (var target in targets) target.Opacity = 1;

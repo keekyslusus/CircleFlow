@@ -1073,6 +1073,7 @@ public sealed class SettingsPreviewTests
             AppLanguageTag = "ru",
             IgnoreHotkeyInFullscreen = false,
             OverlayZoom = false,
+            OverlayPen = false,
             ScanQrCodes = false,
             BrowserDataCleanupDays = 0,
             HotkeyGesture = "Ctrl+Shift+K",
@@ -1116,6 +1117,8 @@ public sealed class SettingsPreviewTests
             Assert.True(Find<CheckBox>(window, "IgnoreFullscreen").IsChecked);
             Assert.True(harness.Settings.Snapshot.OverlayZoom);
             Assert.True(Find<CheckBox>(window, "OverlayZoom").IsChecked);
+            Assert.True(harness.Settings.Snapshot.OverlayPen);
+            Assert.True(Find<CheckBox>(window, "OverlayPen").IsChecked);
             Assert.True(harness.Settings.Snapshot.ScanQrCodes);
             Assert.True(Find<CheckBox>(window, "ScanQrCodes").IsChecked);
             Assert.Equal(28, harness.Settings.Snapshot.BrowserDataCleanupDays);
@@ -1333,6 +1336,33 @@ public sealed class SettingsPreviewTests
             harness.Settings.SetOverlayZoom(true).ThrowIfFailed("test update failed");
             Activate(window);
             Assert.True(zoom.IsChecked);
+            Assert.Empty(harness.Notifier.Errors);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Overlay_pen_is_on_by_default_and_turning_it_off_reaches_the_overlay_options() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            var pen = Find<CheckBox>(window, "OverlayPen");
+            Assert.True(pen.IsChecked);
+            Assert.True(SearchSessionOptions.From(harness.Settings.Snapshot,
+                new CircleToSearch.TextRecognition.OcrLanguageCatalog([]),
+                System.Globalization.CultureInfo.InvariantCulture).Pen);
+            pen.IsChecked = false;
+            Assert.False(harness.Settings.Snapshot.OverlayPen);
+            Assert.False(SearchSessionOptions.From(harness.Settings.Snapshot,
+                new CircleToSearch.TextRecognition.OcrLanguageCatalog([]),
+                System.Globalization.CultureInfo.InvariantCulture).Pen);
+
+            harness.Settings.SetOverlayPen(true).ThrowIfFailed("test update failed");
+            Activate(window);
+            Assert.True(pen.IsChecked);
             Assert.Empty(harness.Notifier.Errors);
         }
         finally { window.Close(); }

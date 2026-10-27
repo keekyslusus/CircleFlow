@@ -127,6 +127,9 @@ internal sealed class SettingsWindowView
         var overlayZoom = Element<CheckBox>("OverlayZoom");
         overlayZoom.Checked += OnOverlayZoomChanged;
         overlayZoom.Unchecked += OnOverlayZoomChanged;
+        var overlayPen = Element<CheckBox>("OverlayPen");
+        overlayPen.Checked += OnOverlayPenChanged;
+        overlayPen.Unchecked += OnOverlayPenChanged;
         var uiSounds = Element<CheckBox>("UiSounds");
         uiSounds.Checked += OnUiSoundsChanged;
         uiSounds.Unchecked += OnUiSoundsChanged;
@@ -406,6 +409,7 @@ internal sealed class SettingsWindowView
             Select(Element<ComboBox>("AppLanguage"), _model.AppLanguageTag);
             Element<CheckBox>("IgnoreFullscreen").IsChecked = _model.IgnoreHotkeyInFullscreen;
             Element<CheckBox>("OverlayZoom").IsChecked = _model.OverlayZoom;
+            Element<CheckBox>("OverlayPen").IsChecked = _model.OverlayPen;
             Element<CheckBox>("UiSounds").IsChecked = _model.UiSounds;
             Element<CheckBox>("ScanQrCodes").IsChecked = _model.ScanQrCodes;
             Element<CheckBox>("Launch").IsChecked = _model.LaunchAtStartup;
@@ -544,6 +548,14 @@ internal sealed class SettingsWindowView
     {
         if (_loadingSettings) return;
         if (_model.SelectOverlayZoom(Element<CheckBox>("OverlayZoom").IsChecked == true)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnOverlayPenChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loadingSettings) return;
+        if (_model.SelectOverlayPen(Element<CheckBox>("OverlayPen").IsChecked == true)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
     }
