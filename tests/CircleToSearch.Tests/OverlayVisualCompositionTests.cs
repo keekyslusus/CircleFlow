@@ -37,6 +37,7 @@ public sealed class OverlayVisualCompositionTests
                 visual.Selection.Halo,
                 visual.Selection.Accent,
                 visual.Selection.SelectionFrame,
+                visual.Selection.Ink,
                 visual.TextSelection.HighlightLayer,
                 visual.Selection.InputSurface,
                 visual.Effects.SceneRippleLayer,
@@ -49,7 +50,7 @@ public sealed class OverlayVisualCompositionTests
             ];
 
             Assert.Equal(expected, visual.Root.Children.Cast<UIElement>());
-            Assert.All(expected.Take(7), layer => Assert.False(layer.IsHitTestVisible));
+            Assert.All(expected.Take(8), layer => Assert.False(layer.IsHitTestVisible));
             // The dim is cached at reduced resolution, inside a clip that keeps a zoomed dim from growing the cache.
             var dimClip = Assert.IsType<Grid>(Assert.Single(visual.Selection.DimLayer.Children));
             Assert.True(dimClip.ClipToBounds);

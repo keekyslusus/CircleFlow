@@ -143,6 +143,9 @@ internal static class PluginPalette
     public static Color SelectionSheen { get; } = Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF);
     public static Color SelectionHalo { get; } = Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF);
     public static Color SelectionFrameFill { get; } = Color.FromArgb(0x2E, 0xFF, 0xFF, 0xFF);
+    public static Color PenInk { get; } = Color.FromRgb(0xE5, 0x1C, 0x23);
+    // The outline keeps the ink readable where the screen under it is red too.
+    public static Color PenInkOutline { get; } = Colors.White;
     public static Color EntranceParticle { get; } = Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF);
     public static Color ListeningText { get; } = Color.FromRgb(0xF4, 0xF5, 0xF8);
     public static Color ListeningTextOnLightBackdrop { get; } = Color.FromRgb(0x1F, 0x20, 0x23);

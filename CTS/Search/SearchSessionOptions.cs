@@ -18,7 +18,8 @@ public sealed record SearchSessionOptions(
     string TextSearchEngineId = TextSearchEngines.MatchImageSearch,
     SelectionToolbarAction HiddenToolbarActions = SelectionToolbarAction.None,
     bool ScanQrCodes = false,
-    bool Zoom = false)
+    bool Zoom = false,
+    bool Pen = false)
 {
     internal static SearchSessionOptions From(AppSettings settings, OcrLanguageCatalog languages, CultureInfo culture,
         KeyboardLanguageSnapshot inputLanguage = default) =>
@@ -29,5 +30,6 @@ public sealed record SearchSessionOptions(
             settings.TextSearchEngineId,
             settings.HiddenToolbarActions,
             settings.ScanQrCodes,
-            settings.OverlayZoom);
+            settings.OverlayZoom,
+            settings.OverlayPen);
 }

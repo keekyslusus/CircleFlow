@@ -3,13 +3,14 @@ using System.Windows.Input;
 
 namespace CircleToSearch.Capture.OverlayInteractions;
 
-internal enum ActivePointerGesture { None, Lasso, Text }
+internal enum ActivePointerGesture { None, Lasso, Text, Pen }
 
 internal sealed class PointerGestureRouter : IDisposable
 {
     private readonly SelectionOverlayVisual _visual;
     private readonly SelectionOverlayController _lasso;
     private readonly TextSelectionOverlayController _text;
+    private readonly OverlayPenController? _pen;
     private readonly Func<bool> _canAcceptInput;
     private readonly Func<object?, Point, bool> _canStart;
     private readonly Func<MouseEventArgs, Point> _pointerPosition;
@@ -27,11 +28,13 @@ internal sealed class PointerGestureRouter : IDisposable
         Func<bool> canAcceptInput,
         Func<object?, Point, bool> canStart,
         Func<MouseEventArgs, Point>? pointerPosition = null,
-        Func<ModifierKeys>? modifiers = null)
+        Func<ModifierKeys>? modifiers = null,
+        OverlayPenController? pen = null)
     {
         _visual = visual;
         _lasso = lasso;
         _text = text;
+        _pen = pen;
         _canAcceptInput = canAcceptInput;
         _canStart = canStart;
         _pointerPosition = pointerPosition ?? (e => e.GetPosition(coordinateRoot));
@@ -54,6 +57,7 @@ internal sealed class PointerGestureRouter : IDisposable
         IsActionSelection = false;
         if (gesture == ActivePointerGesture.Lasso) _lasso.Cancel();
         if (gesture == ActivePointerGesture.Text) _text.CancelGesture();
+        if (gesture == ActivePointerGesture.Pen) _pen?.Cancel();
         if (wasActionSelection && ReferenceEquals(Mouse.Captured, _visual.InputSurface)) Mouse.Capture(null);
         return gesture;
     }
@@ -71,6 +75,8 @@ internal sealed class PointerGestureRouter : IDisposable
         Cancel();
     }
 
+    internal bool PenHeld => _pen is not null && _modifiers().HasFlag(ModifierKeys.Control);
+
     private void OnDown(object sender, MouseButtonEventArgs e)
     {
         if (_disposed || !_canAcceptInput() || IsActionSelection || ActiveGesture != ActivePointerGesture.None) return;
@@ -81,7 +87,9 @@ internal sealed class PointerGestureRouter : IDisposable
             return;
         }
         _text.Dismiss();
-        if (!_modifiers().HasFlag(ModifierKeys.Alt) && _text.Begin(point))
+        if (PenHeld && _pen!.Begin(point))
+            ActiveGesture = ActivePointerGesture.Pen;
+        else if (!_modifiers().HasFlag(ModifierKeys.Alt) && _text.Begin(point))
             ActiveGesture = ActivePointerGesture.Text;
         else if (_lasso.Begin(point, e.OriginalSource))
             ActiveGesture = ActivePointerGesture.Lasso;
@@ -107,6 +115,8 @@ internal sealed class PointerGestureRouter : IDisposable
         }
         if (ActiveGesture == ActivePointerGesture.Lasso) _lasso.Update(point);
         else if (ActiveGesture == ActivePointerGesture.Text) _text.Update(point);
+        else if (ActiveGesture == ActivePointerGesture.Pen) _pen!.Update(point);
+        else if (_pen?.Hover(PenHeld) == true) _text.EndHover();
         else _text.Hover(point);
         if (ActiveGesture != ActivePointerGesture.None) e.Handled = true;
     }
@@ -116,6 +126,7 @@ internal sealed class PointerGestureRouter : IDisposable
     {
         if (_disposed || IsActionSelection || ActiveGesture != ActivePointerGesture.None) return;
         _text.EndHover();
+        _pen?.Hover(penHeld: false);
     }
 
     private void OnUp(object sender, MouseButtonEventArgs e)
@@ -123,6 +134,7 @@ internal sealed class PointerGestureRouter : IDisposable
         if (_disposed || IsActionSelection || ActiveGesture == ActivePointerGesture.None) return;
         var point = _pointerPosition(e);
         if (ActiveGesture == ActivePointerGesture.Lasso) _lasso.Complete(point);
+        else if (ActiveGesture == ActivePointerGesture.Pen) _pen!.Complete(point);
         else _text.Complete(point);
         ActiveGesture = ActivePointerGesture.None;
         e.Handled = true;

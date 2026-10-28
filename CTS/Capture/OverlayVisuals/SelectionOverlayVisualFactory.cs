@@ -102,7 +102,8 @@ internal static class SelectionOverlayVisualFactory
         var dimLayer = new Grid { IsHitTestVisible = false };
         dimLayer.Children.Add(dimClip);
         if (dim.Effect is not null) dimLayer.CacheMode = new BitmapCache { RenderAtScale = DimCacheScale };
+        var ink = new Canvas { IsHitTestVisible = false };
         return new SelectionOverlayVisual(
-            screenshot, dim, dimRect, sheen, halo, accent, selectionFrame, inputSurface, dimLayer);
+            screenshot, dim, dimRect, sheen, halo, accent, selectionFrame, inputSurface, dimLayer, ink);
     }
 }

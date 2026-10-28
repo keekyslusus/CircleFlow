@@ -24,7 +24,8 @@ internal static class TestOverlayControllers
         Func<bool>? widgetTheme = null,
         Action<System.Windows.Media.Imaging.BitmapSource>? setImageClipboard = null,
         Func<System.Windows.Media.Imaging.BitmapSource, CancellationToken,
-            IReadOnlyList<CircleToSearch.QrCodes.QrCodeMatch>>? scanQrCodes = null) =>
+            IReadOnlyList<CircleToSearch.QrCodes.QrCodeMatch>>? scanQrCodes = null,
+        Func<ModifierKeys>? modifiers = null) =>
         new(context => CompositionRoot.CreateOverlayControllers(
             context,
             new CompositionRoot.OverlayControllerDependencies(
@@ -42,5 +43,6 @@ internal static class TestOverlayControllers
                 TestRemoteImages.Offline,
                 widgetTheme ?? (() => context.Visual.LightTheme),
                 SetImageClipboard: setImageClipboard,
-                ScanQrCodes: scanQrCodes)));
+                ScanQrCodes: scanQrCodes,
+                Modifiers: modifiers)));
 }

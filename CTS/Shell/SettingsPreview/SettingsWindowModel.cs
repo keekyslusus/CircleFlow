@@ -48,6 +48,7 @@ internal sealed class SettingsWindowModel(
     public bool UiSounds => settings.Snapshot.UiSounds;
     public bool ScanQrCodes => settings.Snapshot.ScanQrCodes;
     public bool OverlayZoom => settings.Snapshot.OverlayZoom;
+    public bool OverlayPen => settings.Snapshot.OverlayPen;
     public int BrowserDataCleanupDays => settings.Snapshot.BrowserDataCleanupDays;
     public bool LaunchAtStartup => startup.IsEnabled;
     public bool SaveMusicHistory => settings.Snapshot.SaveMusicHistory;
@@ -105,6 +106,8 @@ internal sealed class SettingsWindowModel(
 
     public bool SelectOverlayZoom(bool enabled) => settings.SetOverlayZoom(enabled).Success;
 
+    public bool SelectOverlayPen(bool enabled) => settings.SetOverlayPen(enabled).Success;
+
     public bool SelectBrowserDataCleanup(int days) => settings.SetBrowserDataCleanupDays(days).Success;
 
     public bool SelectLaunchAtStartup(bool enabled) => startup.TrySet(enabled);
@@ -159,6 +162,7 @@ internal sealed class SettingsWindowModel(
         if (!SelectAppLanguage(defaults.AppLanguageTag)) return strings.StorageSaveFailed;
         if (!SelectIgnoreHotkeyInFullscreen(defaults.IgnoreHotkeyInFullscreen)) return strings.StorageSaveFailed;
         if (!SelectOverlayZoom(defaults.OverlayZoom)) return strings.StorageSaveFailed;
+        if (!SelectOverlayPen(defaults.OverlayPen)) return strings.StorageSaveFailed;
         if (!SelectUiSounds(defaults.UiSounds)) return strings.StorageSaveFailed;
         if (!settings.SetHiddenToolbarActions(defaults.HiddenToolbarActions).Success) return strings.StorageSaveFailed;
         if (!SelectScanQrCodes(defaults.ScanQrCodes)) return strings.StorageSaveFailed;

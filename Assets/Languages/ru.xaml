@@ -23,11 +23,14 @@
     <system:String x:Key="app_settings_ui_sounds">Звуки интерфейса</system:String>
     <system:String x:Key="app_settings_overlay_zoom">Масштаб через Ctrl + Колесо</system:String>
     <system:String x:Key="app_settings_overlay_zoom_sub">Увеличивает экран, чтобы обвести мелкие детали</system:String>
+    <system:String x:Key="app_settings_overlay_pen">Рисование через Ctrl</system:String>
+    <system:String x:Key="app_settings_overlay_pen_sub">Пометки попадают в Ask, копирование и сохранение, но не в поиск</system:String>
     <system:String x:Key="plugin_circletosearch_link_open">Открыть {0}</system:String>
     <system:String x:Key="plugin_circletosearch_qr_copy_text">Копировать текст</system:String>
     <system:String x:Key="plugin_circletosearch_qr_copy_password">Копировать пароль</system:String>
     <system:String x:Key="plugin_circletosearch_qr_wifi_network">Сеть Wi-Fi {0}</system:String>
     <system:String x:Key="plugin_circletosearch_qr_password_copied">Пароль Wi-Fi скопирован</system:String>
+    <system:String x:Key="plugin_circletosearch_ink_undone">Отменено</system:String>
     <system:String x:Key="plugin_circletosearch_link_open_failed">Не удалось открыть ссылку.</system:String>
     <system:String x:Key="plugin_circletosearch_pinterest_copy_image">Копировать изображение</system:String>
     <system:String x:Key="plugin_circletosearch_pinterest_save_image">Сохранить изображение</system:String>

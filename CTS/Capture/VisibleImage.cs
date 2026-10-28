@@ -29,15 +29,18 @@ internal static class VisibleImage
         return output;
     }
 
-    internal static SelectionOutcome CreateSelection(BitmapSource source, GdiRectangle bounds)
+    internal static SelectionOutcome CreateSelection(BitmapSource source, GdiRectangle bounds) =>
+        CreateSelection(Crop(source, bounds));
+
+    internal static SelectionOutcome CreateSelection(BitmapSource image)
     {
         var encoder = new BmpBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(Crop(source, bounds)));
+        encoder.Frames.Add(BitmapFrame.Create(image));
         using var stream = new MemoryStream();
         encoder.Save(stream);
         stream.Position = 0;
         using var decoded = new System.Drawing.Bitmap(stream);
-        return new SelectionOutcome(new GdiRectangle(0, 0, bounds.Width, bounds.Height),
+        return new SelectionOutcome(new GdiRectangle(0, 0, image.PixelWidth, image.PixelHeight),
             new System.Drawing.Bitmap(decoded));
     }
 }

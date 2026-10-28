@@ -25,6 +25,8 @@ public sealed record AppSettings
 
     public bool OverlayZoom { get; init; } = true;
 
+    public bool OverlayPen { get; init; } = true;
+
     public int BrowserDataCleanupDays { get; init; } = 28;
 
     public bool SaveMusicHistory { get; init; } = true;

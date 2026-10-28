@@ -18,7 +18,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     private readonly SelectionOverlayController _selection;
     private readonly ScreenTranslationOverlayController _translation;
     private readonly ClipboardCopyService _clipboard;
-    private readonly Func<BitmapSource> _visibleImage;
+    private readonly Func<GdiRectangle, BitmapSource> _cropImage;
     private readonly Func<GdiRectangle, SelectionOutcome> _createSelection;
     private readonly Action<GdiRectangle> _search;
     private readonly Action<IOverlayCommand> _publish;
@@ -36,7 +36,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     internal ImageSelectionOverlayController(ImageSelectionVisual visual, FrameworkElement root,
         OverlayCoordinateMapper mapper, SelectionOverlayController selection,
         ScreenTranslationOverlayController translation, ClipboardCopyService clipboard,
-        Func<BitmapSource> visibleImage, Func<GdiRectangle, SelectionOutcome> createSelection,
+        Func<GdiRectangle, BitmapSource> cropImage, Func<GdiRectangle, SelectionOutcome> createSelection,
         Action<GdiRectangle> search, Action<IOverlayCommand> publish, Action close, UiStrings strings,
         SelectionToolbarAction hiddenActions = SelectionToolbarAction.None,
         Action? askPromptOpened = null, Action? askPromptClosed = null, Func<Rect, Rect>? toViewport = null)
@@ -50,7 +50,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         _selection = selection;
         _translation = translation;
         _clipboard = clipboard;
-        _visibleImage = visibleImage;
+        _cropImage = cropImage;
         _createSelection = createSelection;
         _search = search;
         _publish = publish;
@@ -79,6 +79,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
 
     internal GdiRectangle? Bounds { get; private set; }
     internal bool IsCompleting { get; private set; }
+    internal bool IsPromptOpen => _visual.Toolbar.IsPromptOpen;
 
     internal void Select(GdiRectangle bounds)
     {
@@ -188,7 +189,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     private void OnCopy(object sender, RoutedEventArgs e)
     {
         if (!CanAct) return;
-        if (_clipboard.TryCopyImage(VisibleImage.Crop(_visibleImage(), Bounds!.Value)))
+        if (_clipboard.TryCopyImage(_cropImage(Bounds!.Value)))
         {
             IsCompleting = true;
             _visual.Toolbar.Surface.IsEnabled = false;
@@ -200,7 +201,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     private void OnSave(object sender, RoutedEventArgs e)
     {
         if (!CanAct) return;
-        var image = VisibleImage.Crop(_visibleImage(), Bounds!.Value);
+        var image = _cropImage(Bounds!.Value);
         IsCompleting = true;
         _visual.Toolbar.Hide();
         _publish(new SaveSelectedImage(image));

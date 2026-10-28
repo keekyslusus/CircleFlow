@@ -74,6 +74,7 @@ public static class OverlayVisualFactory
         root.Children.Add(selection.Halo);
         root.Children.Add(selection.Accent);
         root.Children.Add(selection.SelectionFrame);
+        root.Children.Add(selection.Ink);
         root.Children.Add(textSelection.HighlightLayer);
         root.Children.Add(selection.InputSurface);
         root.Children.Add(effects.SceneRippleLayer);

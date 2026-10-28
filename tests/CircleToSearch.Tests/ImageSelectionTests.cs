@@ -734,6 +734,178 @@ public sealed class ImageSelectionTests
         Assert.True(h.Actions.Toolbar.IsOpen);
     });
 
+    [Fact]
+    public void Ctrl_drag_draws_around_an_open_selection_without_searching() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+
+        h.Draw(new Point(60, 70), new Point(100, 70), new Point(140, 70));
+
+        Assert.True(h.Actions.Toolbar.IsOpen);
+        Assert.Equal(1, h.Controllers!.Pen!.StrokeCount);
+        Assert.Equal(2, h.Window.VisualState.Selection.Ink.Children.Count);
+        Assert.Empty(h.Commands);
+    });
+
+    [Fact]
+    public void Copy_includes_the_ink_with_its_white_outline() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Draw(new Point(60, 70), new Point(140, 70));
+        var bounds = h.Controllers!.ImageSelection.Bounds!.Value;
+
+        Click(h.Actions.CopyButton);
+
+        Assert.NotNull(h.Copied);
+        Assert.Equal(bounds.Width, h.Copied!.PixelWidth);
+        AssertInk(Pixel(h.Copied, 100 - bounds.X, 70 - bounds.Y));
+        AssertOutline(Pixel(h.Copied, 100 - bounds.X, 72 - bounds.Y));
+        AssertBlack(Pixel(h.Copied, 100 - bounds.X, 76 - bounds.Y));
+    });
+
+    [Fact]
+    public void Ink_lands_on_screen_pixels_under_scaling_and_overscan() => Run(() =>
+    {
+        using var h = new Harness(scale: 1.5, overscan: true);
+        h.Select(new Point(40, 40), new Point(160, 120));
+        h.Draw(new Point(60, 70), new Point(140, 70));
+        var bounds = h.Controllers!.ImageSelection.Bounds!.Value;
+
+        Click(h.Actions.CopyButton);
+
+        // Dip 70 maps to pixel (70 - 1) * 1.5 = 103.5, and the 4-dip ink spans 6 pixels around it.
+        AssertInk(Pixel(h.Copied!, 148 - bounds.X, 103 - bounds.Y));
+        AssertOutline(Pixel(h.Copied!, 148 - bounds.X, 107 - bounds.Y));
+        AssertBlack(Pixel(h.Copied!, 148 - bounds.X, 112 - bounds.Y));
+    });
+
+    [Fact]
+    public void Ask_attaches_the_ink() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Draw(new Point(60, 70), new Point(140, 70));
+        var bounds = h.Controllers!.ImageSelection.Bounds!.Value;
+
+        h.Type("w");
+
+        var attached = Assert.Single(h.Commands.OfType<AskImageAttached>());
+        var pixel = attached.Selection.FrozenFrame.GetPixel(100 - bounds.X, 70 - bounds.Y);
+        AssertInk([pixel.B, pixel.G, pixel.R, pixel.A]);
+    });
+
+    [Fact]
+    public void Search_reads_the_screen_without_ink() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Draw(new Point(60, 70), new Point(140, 70));
+
+        Click(h.Actions.SearchButton);
+
+        var search = Assert.Single(h.Commands.OfType<VisualSelection>());
+        var pixel = search.Selection.FrozenFrame.GetPixel(100, 70);
+        AssertBlack([pixel.B, pixel.G, pixel.R, pixel.A]);
+    });
+
+    [Fact]
+    public void Ctrl_z_removes_the_last_stroke() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Draw(new Point(60, 70), new Point(140, 70));
+        h.Draw(new Point(60, 90), new Point(140, 90));
+
+        Assert.True(h.Window.TryHandleShortcut(Key.Z, ModifierKeys.Control));
+
+        Assert.Equal(1, h.Controllers!.Pen!.StrokeCount);
+        Assert.Equal(2, h.Window.VisualState.Selection.Ink.Children.Count);
+        Assert.True(h.Window.TryHandleShortcut(Key.Z, ModifierKeys.Control));
+        Assert.False(h.Window.TryHandleShortcut(Key.Z, ModifierKeys.Control));
+        Assert.Empty(h.Window.VisualState.Selection.Ink.Children);
+        // Both undos share one toast rather than stacking.
+        Assert.Equal([TestUiStrings.English.InkUndone], h.ToastTexts());
+    });
+
+    [Fact]
+    public void An_undone_stroke_fades_out_but_leaves_the_picture_at_once() => Run(() =>
+    {
+        using var time = ManualAnimationClock.Install();
+        using var h = new Harness(animations: true);
+        h.Select();
+        h.Draw(new Point(60, 70), new Point(140, 70));
+        var bounds = h.Controllers!.ImageSelection.Bounds!.Value;
+        var strokes = h.Window.VisualState.Selection.Ink.Children.Cast<UIElement>().ToArray();
+
+        Assert.True(h.Window.TryHandleShortcut(Key.Z, ModifierKeys.Control));
+
+        Assert.False(h.Controllers.Pen!.HasInk);
+        AssertBlack(Pixel(h.Controllers.Pen!.Crop(bounds), 100 - bounds.X, 70 - bounds.Y));
+        time.Advance(90);
+        Assert.All(strokes, stroke => Assert.InRange(stroke.Opacity, 0.01, 0.99));
+        time.Advance(200);
+        Assert.Empty(h.Window.VisualState.Selection.Ink.Children);
+    });
+
+    [Fact]
+    public void Pen_cursor_shows_only_while_ctrl_is_held() => Run(() =>
+    {
+        using var h = new Harness();
+
+        h.Move(new Point(300, 200), ModifierKeys.Control);
+        Assert.Same(Cursors.Pen, h.Window.Cursor);
+
+        h.Move(new Point(310, 200), ModifierKeys.None);
+        Assert.Same(Cursors.Cross, h.Window.Cursor);
+
+        // Leaving onto the toolbars produces no further move over the screen, so the pen must go on leave.
+        h.Move(new Point(300, 200), ModifierKeys.Control);
+        var input = h.Window.VisualState.Selection.InputSurface;
+        input.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = UIElement.MouseLeaveEvent, Source = input });
+        Assert.Same(Cursors.Cross, h.Window.Cursor);
+    });
+
+    [Fact]
+    public void An_open_question_keeps_its_image_so_the_pen_is_off() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Type("w");
+
+        h.Move(new Point(300, 200), ModifierKeys.Control);
+
+        Assert.False(h.Controllers!.Pen!.CanDraw);
+        Assert.False(h.Controllers.Pen!.Begin(new Point(60, 70)));
+        Assert.NotSame(Cursors.Pen, h.Window.Cursor);
+        Assert.True(h.Actions.Toolbar.IsPromptOpen);
+    });
+
+    [Fact]
+    public void Turned_off_pen_leaves_ctrl_with_its_old_meaning() => Run(() =>
+    {
+        using var h = new Harness(pen: false);
+        h.Select();
+
+        h.Move(new Point(300, 200), ModifierKeys.Control);
+
+        Assert.Null(h.Controllers!.Pen);
+        Assert.NotSame(Cursors.Pen, h.Window.Cursor);
+        Assert.False(h.Window.TryHandleShortcut(Key.Z, ModifierKeys.Control));
+        Assert.Empty(h.Window.VisualState.Selection.Ink.Children);
+        Click(h.Actions.CopyButton);
+        Assert.NotNull(h.Copied);
+    });
+
+    private static void AssertInk(byte[] bgra) => Assert.True(bgra[2] > 200 && bgra[1] < 80 && bgra[0] < 80,
+        $"Expected ink, got B{bgra[0]} G{bgra[1]} R{bgra[2]}.");
+
+    private static void AssertOutline(byte[] bgra) => Assert.True(bgra.Take(3).All(channel => channel > 200),
+        $"Expected the white outline, got B{bgra[0]} G{bgra[1]} R{bgra[2]}.");
+
+    private static void AssertBlack(byte[] bgra) => Assert.True(bgra.Take(3).All(channel => channel < 20),
+        $"Expected the untouched screen, got B{bgra[0]} G{bgra[1]} R{bgra[2]}.");
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -805,17 +977,18 @@ public sealed class ImageSelectionTests
             .OfType<TextBlock>().Select(text => text.Text);
         internal BitmapSource? Copied;
         internal ScreenTranslationRequested? Request;
+        internal ModifierKeys Modifiers;
 
         internal Harness(string provider = SearchProviderIds.GoogleLens, bool copyFails = false,
             double scale = 1, bool overscan = false, bool consent = true,
             SelectionToolbarAction hiddenActions = SelectionToolbarAction.None, IOcrRecognizer? ocr = null,
-            KeyboardLanguageSnapshot inputLanguage = default)
+            KeyboardLanguageSnapshot inputLanguage = default, bool animations = false, bool pen = true)
         {
             Consent = consent;
             using (var graphics = System.Drawing.Graphics.FromImage(_frame)) graphics.Clear(System.Drawing.Color.Black);
             var monitor = new GdiRectangle(0, 0, 640, 400);
-            var factory = TestOverlayControllers.CreateFactory(animationsEnabled: () => false, pointerPosition: _ => _point,
-                translationConsentAccepted: () => Consent, ocrRecognizer: ocr,
+            var factory = TestOverlayControllers.CreateFactory(animationsEnabled: () => animations, pointerPosition: _ => _point,
+                translationConsentAccepted: () => Consent, ocrRecognizer: ocr, modifiers: () => Modifiers,
                 setImageClipboard: image =>
                 {
                     if (copyFails) throw new InvalidOperationException("clipboard busy");
@@ -823,7 +996,7 @@ public sealed class ImageSelectionTests
                 });
             Window = new OverlayWindow(_frame, monitor, monitor, scale,
                 new OverlayLaunchOptions(new OverlayOptions(0, 12), TestUiStrings.English,
-                    [new(provider, provider)], provider, new SearchSessionOptions(InputLanguage: inputLanguage, HiddenToolbarActions: hiddenActions)),
+                    [new(provider, provider)], provider, new SearchSessionOptions(InputLanguage: inputLanguage, HiddenToolbarActions: hiddenActions, Pen: pen)),
                 Commands.Add,
                 new OverlayControllerFactory(context => Controllers = factory.Create(context)), overscan: overscan);
             Window.Show();
@@ -861,6 +1034,28 @@ public sealed class ImageSelectionTests
             _point = end;
             input.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = UIElement.MouseMoveEvent, Source = input });
             Raise(UIElement.MouseLeftButtonUpEvent, MouseButton.Left);
+        }
+
+        internal void Draw(params Point[] points)
+        {
+            var input = Window.VisualState.Selection.InputSurface;
+            Modifiers = ModifierKeys.Control;
+            _point = points[0];
+            var press = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+            { RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent, Source = input };
+            input.RaiseEvent(press);
+            if (!press.Handled) Raise(UIElement.MouseLeftButtonDownEvent, MouseButton.Left);
+            foreach (var point in points.Skip(1)) Move(point, ModifierKeys.Control);
+            Raise(UIElement.MouseLeftButtonUpEvent, MouseButton.Left);
+            Modifiers = ModifierKeys.None;
+        }
+
+        internal void Move(Point point, ModifierKeys modifiers)
+        {
+            var input = Window.VisualState.Selection.InputSurface;
+            Modifiers = modifiers;
+            _point = point;
+            input.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = UIElement.MouseMoveEvent, Source = input });
         }
 
         // Hovering has no side effects, so it can be retried until the OCR document arrives.

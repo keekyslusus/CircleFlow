@@ -104,6 +104,7 @@ public sealed class UiStrings
     public string Copied => Get("plugin_circletosearch_music_copied");
     public string CopyFailed => Get("plugin_circletosearch_copy_failed");
     public string ImageCopied => Get("plugin_circletosearch_image_copied");
+    public string InkUndone => Get("plugin_circletosearch_ink_undone");
     public string ImageSave => Get("plugin_circletosearch_image_save");
     public string ImageSaveTitle => Get("plugin_circletosearch_image_save_title");
     public string ImageSaveFilter => Get("plugin_circletosearch_image_save_filter");

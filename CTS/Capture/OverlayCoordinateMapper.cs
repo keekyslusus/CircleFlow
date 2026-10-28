@@ -39,5 +39,7 @@ public sealed class OverlayCoordinateMapper
         rectangle.Width / _scale,
         rectangle.Height / _scale);
 
+    internal double Scale => _scale;
+
     public GdiRectangle CaptureBounds => new(0, 0, _captureSize.Width, _captureSize.Height);
 }

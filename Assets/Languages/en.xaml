@@ -4,6 +4,7 @@
 
     <system:String x:Key="plugin_circletosearch_plugin_name">CircleFlow</system:String>
     <system:String x:Key="plugin_circletosearch_image_copied">Image copied to clipboard</system:String>
+    <system:String x:Key="plugin_circletosearch_ink_undone">Undone</system:String>
     <system:String x:Key="plugin_circletosearch_image_save">Save</system:String>
     <system:String x:Key="plugin_circletosearch_image_save_title">Save image as</system:String>
     <system:String x:Key="plugin_circletosearch_image_save_filter">PNG image (*.png)|*.png|JPEG image (*.jpg;*.jpeg)|*.jpg;*.jpeg</system:String>
@@ -217,6 +218,8 @@
     <system:String x:Key="app_settings_ignore_fullscreen_sub">Games and other fullscreen apps. Browsers and video players are not affected</system:String>
     <system:String x:Key="app_settings_overlay_zoom">Zoom with Ctrl + Wheel</system:String>
     <system:String x:Key="app_settings_overlay_zoom_sub">Magnify the screen to circle small details</system:String>
+    <system:String x:Key="app_settings_overlay_pen">Draw with Ctrl</system:String>
+    <system:String x:Key="app_settings_overlay_pen_sub">Marks go into Ask, Copy and Save, but not into search</system:String>
     <system:String x:Key="app_settings_ui_sounds">Interface sounds</system:String>
     <system:String x:Key="app_settings_shortcut_hint">Shortcut works while CircleFlow is running. Esc closes selection or cancels the current action.</system:String>
     <system:String x:Key="app_settings_image_search">Image search</system:String>
