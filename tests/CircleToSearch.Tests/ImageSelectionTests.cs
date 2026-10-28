@@ -205,7 +205,7 @@ public sealed class ImageSelectionTests
         {
             h.Select();
             Assert.False(h.Window.TryHandleShortcut(Key.S, ModifierKeys.None));
-            Assert.False(h.Window.TryHandleShortcut(Key.A, ModifierKeys.Control));
+            Assert.False(h.Window.TryHandleShortcut(Key.B, ModifierKeys.Control));
             Assert.True(h.Window.TryHandleShortcut(Key.S, ModifierKeys.Control));
             Assert.Single(h.Commands.OfType<SaveSelectedImage>());
         }
@@ -881,6 +881,55 @@ public sealed class ImageSelectionTests
         Assert.True(h.Actions.Toolbar.IsPromptOpen);
     });
 
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(1.5, true)]
+    public void Ctrl_a_selects_the_whole_screen_and_copies_it(double scale, bool overscan) => Run(() =>
+    {
+        using var h = new Harness(scale: scale, overscan: overscan);
+        h.Sounds.Clear();
+
+        Assert.True(h.Window.TryHandleShortcut(Key.A, ModifierKeys.Control));
+
+        Assert.Equal(new GdiRectangle(0, 0, 640, 400), h.Controllers!.ImageSelection.Bounds);
+        Assert.Equal([CircleToSearch.Sounds.UiSound.SelectionDone], h.Sounds);
+        Assert.True(h.Actions.Toolbar.IsOpen);
+        Assert.False(h.Window.VisualState.Selection.SelectionFrame.Data.IsEmpty());
+        Assert.Empty(h.Commands);
+        Assert.True(h.Window.TryHandleShortcut(Key.C, ModifierKeys.Control));
+        Assert.Equal((640, 400), (h.Copied!.PixelWidth, h.Copied.PixelHeight));
+    });
+
+    [Fact]
+    public void Ctrl_a_replaces_an_open_selection_and_escape_goes_back_to_selecting() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+
+        Assert.True(h.Window.TryHandleShortcut(Key.A, ModifierKeys.Control));
+        Assert.Equal(new GdiRectangle(0, 0, 640, 400), h.Controllers!.ImageSelection.Bounds);
+
+        h.Escape();
+        Assert.Null(h.Controllers.ImageSelection.Bounds);
+        Assert.False(h.Actions.Toolbar.IsOpen);
+        Assert.Equal(OverlayInteractionMode.Selecting, h.Window.Mode);
+    });
+
+    [Fact]
+    public void Ctrl_a_keeps_an_open_question_and_its_selection() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Type("w");
+        var bounds = h.Controllers!.ImageSelection.Bounds;
+
+        Assert.False(h.Window.TryHandleShortcut(Key.A, ModifierKeys.Control));
+
+        Assert.Equal(bounds, h.Controllers.ImageSelection.Bounds);
+        Assert.True(h.Actions.Toolbar.IsPromptOpen);
+        Assert.Equal("w", h.Actions.AskPrompt.Input.Text);
+    });
+
     [Fact]
     public void Turned_off_pen_leaves_ctrl_with_its_old_meaning() => Run(() =>
     {
@@ -978,6 +1027,7 @@ public sealed class ImageSelectionTests
         internal BitmapSource? Copied;
         internal ScreenTranslationRequested? Request;
         internal ModifierKeys Modifiers;
+        internal List<CircleToSearch.Sounds.UiSound> Sounds { get; } = [];
 
         internal Harness(string provider = SearchProviderIds.GoogleLens, bool copyFails = false,
             double scale = 1, bool overscan = false, bool consent = true,
@@ -988,7 +1038,7 @@ public sealed class ImageSelectionTests
             using (var graphics = System.Drawing.Graphics.FromImage(_frame)) graphics.Clear(System.Drawing.Color.Black);
             var monitor = new GdiRectangle(0, 0, 640, 400);
             var factory = TestOverlayControllers.CreateFactory(animationsEnabled: () => animations, pointerPosition: _ => _point,
-                translationConsentAccepted: () => Consent, ocrRecognizer: ocr, modifiers: () => Modifiers,
+                translationConsentAccepted: () => Consent, ocrRecognizer: ocr, modifiers: () => Modifiers, playSound: Sounds.Add,
                 setImageClipboard: image =>
                 {
                     if (copyFails) throw new InvalidOperationException("clipboard busy");

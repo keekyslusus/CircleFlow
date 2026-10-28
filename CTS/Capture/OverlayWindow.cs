@@ -406,6 +406,7 @@ public sealed class OverlayWindow : Window
             Keyboard.FocusedElement is ButtonBase { IsHitTestVisible: true }) return false;
         if (_zoom?.TryHandleShortcut(key, modifiers) == true ||
             _pen?.TryHandleShortcut(key, modifiers) == true) return true;
+        if (OverlayShortcuts.SelectAll.Matches(key, modifiers)) return TrySelectWholeScreen();
         if (_imageSelection.Bounds is not null) return _imageSelection.TryHandleShortcut(key, modifiers);
         if (_textSelection.TryHandleShortcut(key, modifiers) ||
             _music.TryHandleShortcut(key, modifiers) ||
@@ -459,6 +460,16 @@ public sealed class OverlayWindow : Window
         // Zoom is undone last, after whatever was opened on the zoomed screen; mid-stroke Escape still cancels.
         return _pointer.ActiveGesture == ActivePointerGesture.None && !_pointer.IsActionSelection &&
                _zoom?.TryReset() == true;
+    }
+
+    private bool TrySelectWholeScreen()
+    {
+        // An open question already holds its image, so it is not swapped for another one under it.
+        if (!CanAcceptPointerInput() || _imageSelection.IsPromptOpen) return false;
+        _provider.SetOpen(false);
+        OnSelectionStarted();
+        _imageSelection.SelectWholeScreen();
+        return true;
     }
 
     private bool CanStartSelection(object? originalSource, Point point)

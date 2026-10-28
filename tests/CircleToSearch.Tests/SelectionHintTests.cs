@@ -20,11 +20,23 @@ public sealed class SelectionHintTests
 
         Assert.Equal(
             [
-                SelectionHint.RightDragActions, SelectionHint.LeftDragSearch, SelectionHint.EscapeCancel,
-                SelectionHint.RightDragActions,
+                SelectionHint.RightDragActions, SelectionHint.LeftDragSearch, SelectionHint.SelectAllWholeScreen,
+                SelectionHint.EscapeCancel, SelectionHint.RightDragActions,
             ],
-            Enumerable.Range(0, 4).Select(_ => rotation.Next()));
+            Enumerable.Range(0, 5).Select(_ => rotation.Next()));
     }
+
+    [Fact]
+    public void Whole_screen_hint_spells_out_the_select_all_keys() => RunSta(() =>
+    {
+        var hint = HintVisual();
+
+        SelectionHintVisualPresenter.Show(hint, SelectionHint.SelectAllWholeScreen, TestUiStrings.English, animate: false);
+
+        Assert.Equal(["Ctrl", "A"], hint.Keys.Children.OfType<Border>()
+            .Select(keycap => Assert.IsType<TextBlock>(keycap.Child).Text));
+        Assert.Equal(TestUiStrings.English.SelectionHintWholeScreen, hint.Action.Text);
+    });
 
     [Fact]
     public void Text_hover_shows_the_alt_hint_after_a_delay_and_restores_the_idle_hint_after_leaving()

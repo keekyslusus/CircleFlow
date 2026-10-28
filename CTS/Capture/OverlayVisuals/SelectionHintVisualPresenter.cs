@@ -31,6 +31,11 @@ internal static class SelectionHintVisualPresenter
                 AddKey(visual, MouseKeycap(visual, PluginIcons.MouseLeftButtonOutlined, strings.LeftMouseButton));
                 visual.Action.Text = strings.SelectionHintSearchOverText;
                 break;
+            case SelectionHint.SelectAllWholeScreen:
+                var gesture = ShortcutLabels.Gesture(OverlayShortcuts.SelectAll.Key, OverlayShortcuts.SelectAll.Modifiers);
+                foreach (var key in ShortcutLabels.For(gesture, strings)) AddKey(visual, TextKeycap(visual, key));
+                visual.Action.Text = strings.SelectionHintWholeScreen;
+                break;
             case SelectionHint.MiddleDragPan:
                 AddKey(visual, MouseKeycap(visual, PluginIcons.MouseWheelButtonOutlined, strings.MiddleMouseButton,
                     PluginIcons.MouseWithWheelOutlined));
