@@ -58,7 +58,8 @@ Just press a shortcut. No screenshots to save, no tabs to open.
 - Hold <kbd>RMB</kbd> and circle to ask, copy, save or translate
 - Hold <kbd>Alt</kbd>+<kbd>LMB</kbd> to circle over text instead of selecting it
 - Drag across text to select it like in a document, then copy or search it
-- <kbd>Esc</kbd> closes the selection or cancels the current action
+- <kbd>Ctrl</kbd>+<kbd>Wheel</kbd> zooms in/out, while zoomed <kbd>Wheel</kbd> scrolls and dragging with <kbd>MMB</kbd> pans
+- Hold <kbd>Ctrl</kbd>+<kbd>LMB</kbd> to draw with the pen (<kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo)
 
 ## Install
 
