@@ -43,6 +43,7 @@
     <system:String x:Key="plugin_circletosearch_selection_hint_pan">перемещение</system:String>
     <system:String x:Key="plugin_circletosearch_selection_hint_search">поиск</system:String>
     <system:String x:Key="plugin_circletosearch_selection_hint_actions">действия</system:String>
+    <system:String x:Key="plugin_circletosearch_selection_hint_whole_screen">весь экран</system:String>
     <system:String x:Key="plugin_circletosearch_selection_hint_search_over_text">поиск поверх текста</system:String>
     <system:String x:Key="app_onboarding_window_title">Добро пожаловать в CircleFlow</system:String>
     <system:String x:Key="app_onboarding_change_shortcut">Изменить сочетание</system:String>

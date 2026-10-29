@@ -14,6 +14,7 @@ internal static class OverlayShortcuts
     internal static readonly OverlayShortcut Save = new(Key.S, ModifierKeys.Control);
     internal static readonly OverlayShortcut Translate = new(Key.T, ModifierKeys.Control);
     internal static readonly OverlayShortcut UndoInk = new(Key.Z, ModifierKeys.Control);
+    internal static readonly OverlayShortcut SelectAll = new(Key.A, ModifierKeys.Control);
     internal static readonly OverlayShortcut ProviderMenu = new(Key.D2);
     internal static readonly OverlayShortcut ScreenTranslation = new(Key.D3);
     internal static readonly OverlayShortcut MusicRecognition = new(Key.D4);

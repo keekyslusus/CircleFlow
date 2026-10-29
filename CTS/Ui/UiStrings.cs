@@ -92,6 +92,7 @@ public sealed class UiStrings
     public string SelectionHintPan => Get("plugin_circletosearch_selection_hint_pan");
     public string SelectionHintSearch => Get("plugin_circletosearch_selection_hint_search");
     public string SelectionHintActions => Get("plugin_circletosearch_selection_hint_actions");
+    public string SelectionHintWholeScreen => Get("plugin_circletosearch_selection_hint_whole_screen");
     public string SelectionHintSearchOverText => Get("plugin_circletosearch_selection_hint_search_over_text");
     public string MusicRecognitionAction => Get("plugin_circletosearch_music_recognition_action");
     public string CancelMusicRecognition => Get("plugin_circletosearch_music_cancel_action");

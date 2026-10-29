@@ -766,7 +766,8 @@ public static class CompositionRoot
                 context.HiddenToolbarActions,
                 imageText.DeferInputLanguageChanges,
                 imageText.ApplyDeferredInputLanguage,
-                zoom is null ? null : zoom.ToViewport));
+                zoom is null ? null : zoom.ToViewport,
+                () => playSound(UiSound.SelectionDone)));
             if (zoom is not null)
             {
                 zoom.ViewChanged += () =>

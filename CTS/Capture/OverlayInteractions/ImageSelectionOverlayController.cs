@@ -29,6 +29,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     private readonly Action? _askPromptOpened;
     private readonly Action? _askPromptClosed;
     private readonly Func<Rect, Rect> _toViewport;
+    private readonly Action? _wholeScreenSelected;
     private bool _askDraftStarted;
     private bool _askImageAttached;
     private bool _disposed;
@@ -39,8 +40,10 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         Func<GdiRectangle, BitmapSource> cropImage, Func<GdiRectangle, SelectionOutcome> createSelection,
         Action<GdiRectangle> search, Action<IOverlayCommand> publish, Action close, UiStrings strings,
         SelectionToolbarAction hiddenActions = SelectionToolbarAction.None,
-        Action? askPromptOpened = null, Action? askPromptClosed = null, Func<Rect, Rect>? toViewport = null)
+        Action? askPromptOpened = null, Action? askPromptClosed = null, Func<Rect, Rect>? toViewport = null,
+        Action? wholeScreenSelected = null)
     {
+        _wholeScreenSelected = wholeScreenSelected;
         _toViewport = toViewport ?? (rect => rect);
         _askPromptOpened = askPromptOpened;
         _askPromptClosed = askPromptClosed;
@@ -88,6 +91,15 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         IsCompleting = false;
         _translation.SetRegion(bounds);
         Refresh(OverlayInteractionMode.Selecting);
+    }
+
+    // The whole monitor, taskbar included: a fullscreen game covers the taskbar without shrinking the work area,
+    // so the work area would cut a strip off the game.
+    internal void SelectWholeScreen()
+    {
+        if (_disposed) return;
+        Select(_mapper.CaptureBounds);
+        _wholeScreenSelected?.Invoke();
     }
 
     internal void Refresh(OverlayInteractionMode mode)

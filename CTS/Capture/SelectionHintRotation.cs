@@ -4,7 +4,8 @@ namespace CircleToSearch.Capture;
 public sealed class SelectionHintRotation
 {
     private static readonly SelectionHint[] Hints =
-        [SelectionHint.RightDragActions, SelectionHint.LeftDragSearch, SelectionHint.EscapeCancel];
+        [SelectionHint.RightDragActions, SelectionHint.LeftDragSearch, SelectionHint.SelectAllWholeScreen,
+         SelectionHint.EscapeCancel];
 
     private int _next = -1;
 
