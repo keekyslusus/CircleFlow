@@ -24,6 +24,7 @@ bing.com###id_rh_w
 bing.com##div[class*="b_siprov"]
 
 google.*###fbar
+google.*##g-bottom-sheet[aria-labelledby="promo_label_id"]
 
 qwant.com##footer
 qwant.com##[role="dialog"] a[href*="microsoftedge.microsoft.com/addons"]

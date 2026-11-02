@@ -9,7 +9,7 @@ namespace CircleToSearch.Search.Browser;
 
 internal static class SearchBrowserExtension
 {
-    internal const string PackageHash = "061A5DE7B1EEDF6C1FE0AFDA40D453C427EEFC2CBCDBB680C3EED37DC5CEF2C8";
+    internal const string PackageHash = "12A3BE6E4C24C932677208BD0B8FFF0689676EF2B0DB689CFE794B02E0ED69FC";
 
     // Cookie notice and social widget lists are left off: they hide consent prompts and embedded posts people may need.
     internal static readonly string[] AnnoyanceRulesets =
