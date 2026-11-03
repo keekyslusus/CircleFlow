@@ -78,7 +78,15 @@ public sealed class ShellTests
             Pump();
             Assert.True(menu.IsOpen);
         }
-        finally { menu.IsOpen = false; owner.Close(); }
+        finally
+        {
+            // The menu releases its mouse capture asynchronously; shutting the dispatcher down while it still holds
+            // the capture hangs, and real cursor movement at that moment crashes WPF's stylus input.
+            menu.IsOpen = false;
+            Pump();
+            Assert.Null(System.Windows.Input.Mouse.Captured);
+            owner.Close();
+        }
     });
 
     [Fact]
