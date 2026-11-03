@@ -181,15 +181,6 @@
     <system:String x:Key="app_settings_about">About</system:String>
     <system:String x:Key="app_settings_brand">CircleFlow</system:String>
     <system:String x:Key="app_settings_hero_description">One gesture opens search for anything you see on screen.</system:String>
-    <system:String x:Key="app_settings_feature_search">Visual Search</system:String>
-    <system:String x:Key="app_settings_feature_search_sub">Google Lens · Yandex · trace.moe</system:String>
-    <system:String x:Key="app_settings_feature_text">Text &amp; Translation</system:String>
-    <system:String x:Key="app_settings_feature_text_sub">Recognize, copy, translate</system:String>
-    <system:String x:Key="app_settings_feature_music">Music Recognition</system:String>
-    <system:String x:Key="app_settings_feature_music_sub">Find tracks from system audio</system:String>
-    <system:String x:Key="app_settings_feature_hotkeys">Shortcuts</system:String>
-    <system:String x:Key="app_settings_feature_hotkeys_sub">Quick access from any window</system:String>
-    <system:String x:Key="app_settings_features">Features</system:String>
     <system:String x:Key="app_settings_application">Application Settings</system:String>
     <system:String x:Key="app_settings_launch">Run at Windows startup</system:String>
     <system:String x:Key="app_settings_launch_sub">Ready to use after sign-in</system:String>

@@ -5,7 +5,6 @@
     <system:String x:Key="app_settings_general">Основные</system:String>
     <system:String x:Key="app_settings_general_title">Основные</system:String>
     <system:String x:Key="app_settings_hero_description">Один жест открывает поиск по всему, что вы видите на экране.</system:String>
-    <system:String x:Key="app_settings_features">Возможности</system:String>
     <system:String x:Key="app_settings_application">Настройки приложения</system:String>
     <system:String x:Key="app_settings_launch">Запускать вместе с Windows</system:String>
     <system:String x:Key="app_settings_launch_sub">Готово к работе сразу после входа в систему</system:String>

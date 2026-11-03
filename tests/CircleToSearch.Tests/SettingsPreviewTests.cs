@@ -445,7 +445,7 @@ public sealed class SettingsPreviewTests
         {
             window.Show();
             Find<RadioButton>(window, "Nav_general").IsChecked = true;
-            Click(window, "page:search");
+            Find<RadioButton>(window, "Nav_search").IsChecked = true;
             AssertPage("search");
             var combo = Find<ComboBox>(window, "TextSearch");
             combo.IsDropDownOpen = true;
@@ -640,10 +640,9 @@ public sealed class SettingsPreviewTests
             Assert.Equal(Top("general"), position.Y, 1);
             AssertLabel("general", true);
             AssertLabel("music", false);
-            Click(window, "page:music");
+            Find<RadioButton>(window, "Nav_music").IsChecked = true;
             time.Advance(320);
             Assert.Equal(Top("music"), position.Y, 1);
-            Assert.True(Find<RadioButton>(window, "Nav_music").IsChecked);
             AssertLabel("general", false);
             AssertLabel("music", true);
             if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")

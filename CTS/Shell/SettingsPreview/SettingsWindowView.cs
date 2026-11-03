@@ -233,13 +233,6 @@ internal sealed class SettingsWindowView
     private void OnClick(object sender, RoutedEventArgs e)
     {
         if (e.OriginalSource is not Button { Tag: string action }) return;
-        if (action.StartsWith("page:", StringComparison.Ordinal))
-        {
-            var nav = Element<RadioButton>("Nav_" + action[5..]);
-            nav.IsChecked = true;
-            nav.Focus();
-            return;
-        }
         switch (action)
         {
             case "edit": OpenDialog(SettingsDialog.Shortcut); break;
