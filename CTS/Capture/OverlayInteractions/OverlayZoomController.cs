@@ -101,9 +101,14 @@ internal sealed class OverlayZoomController : IDisposable
     }
 
     // Glides back to the unzoomed screen; false when it is not zoomed or already returning.
-    internal bool TryReset()
+    internal bool TryReset() => _canZoom() && Unzoom();
+
+    // Unlike TryReset, also works while the overlay refuses zoom input, e.g. once the screenshot has faded out.
+    internal bool Unzoom()
     {
-        if (_disposed || !_canZoom() || !_camera.Reset()) return false;
+        if (_disposed) return false;
+        EndDrag();
+        if (!_camera.Reset()) return false;
         StartAnimation();
         return true;
     }

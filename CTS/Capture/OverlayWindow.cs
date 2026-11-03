@@ -536,9 +536,17 @@ public sealed class OverlayWindow : Window
     private void OnSelectionHoldCompleted()
     {
         if (Mode is OverlayInteractionMode.WidgetLoading or OverlayInteractionMode.WidgetResult)
-            _selection.FadeSelectionVisuals();
+            FadeToDesktop();
         else if (Mode == OverlayInteractionMode.Closing)
             FinishShutdown();
+    }
+
+    // The screenshot fades out to the live desktop, which is never zoomed, so the dim and its cutout left over it
+    // glide back to where they belong on that desktop.
+    private void FadeToDesktop()
+    {
+        _selection.FadeSelectionVisuals();
+        _zoom?.Unzoom();
     }
 
     private void OnSelectionRejected()
@@ -660,7 +668,7 @@ public sealed class OverlayWindow : Window
                 _translation.SetActionEnabled(false);
                 if (target == OverlayInteractionMode.WidgetLoading)
                     RestoreSelectionChrome();
-                _selection.FadeSelectionVisuals();
+                FadeToDesktop();
                 Cursor = Cursors.Arrow;
                 break;
             case OverlayInteractionMode.Listening:
@@ -670,7 +678,7 @@ public sealed class OverlayWindow : Window
                 _translation.SetActionEnabled(false);
                 _music.ShowListening();
                 Cursor = Cursors.Arrow;
-                _selection.FadeSelectionVisuals();
+                FadeToDesktop();
                 break;
             case OverlayInteractionMode.MusicResult:
                 _pointer.Cancel();

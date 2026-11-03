@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -252,12 +253,62 @@ public sealed class OverlayZoomControllerTests
         });
     }
 
-    private static OverlayWindow ZoomOverlay(GdiBitmap frame, List<IOverlayCommand> commands)
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Fading_to_the_desktop_glides_the_zoomed_cutout_back_onto_it(bool music)
+    {
+        RunOnSta(time =>
+        {
+            using var frame = new GdiBitmap(640, 400);
+            var commands = new List<IOverlayCommand>();
+            var window = ZoomOverlay(frame, commands, SearchProviderIds.TraceMoe);
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var selection = window.VisualState.Selection;
+                Assert.True(window.TryHandleShortcut(Key.OemPlus, ModifierKeys.Control));
+                time.Advance(1000);
+                Assert.Equal(1.25, selection.DimRect.RenderTransform.Value.M11, 4);
+
+                if (music)
+                {
+                    window.VisualState.Music.Button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.Equal(OverlayInteractionMode.Listening, window.Mode);
+                }
+                else
+                {
+                    var lasso = (SelectionOverlayController)typeof(OverlayWindow)
+                        .GetField("_selection", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+                    Assert.True(lasso.Begin(new Point(100, 100)));
+                    lasso.Update(new Point(300, 100));
+                    lasso.Update(new Point(300, 300));
+                    lasso.Complete(new Point(100, 300));
+                    Assert.Equal(OverlayInteractionMode.WidgetLoading, window.Mode);
+                }
+                time.Advance(1000);
+
+                // The screenshot has faded to the live desktop, which is never zoomed.
+                foreach (UIElement layer in new UIElement[] { selection.Screenshot, selection.DimRect, selection.SelectionFrame })
+                    Assert.True(layer.RenderTransform.Value.IsIdentity);
+                Assert.False(window.TryHandleShortcut(Key.OemPlus, ModifierKeys.Control));
+            }
+            finally
+            {
+                window.CloseFromSession();
+                foreach (var command in commands) OverlayCommandOwnership.DisposePayload(command);
+            }
+        });
+    }
+
+    private static OverlayWindow ZoomOverlay(GdiBitmap frame, List<IOverlayCommand> commands,
+        string provider = SearchProviderIds.GoogleLens)
     {
         var monitor = new GdiRectangle(0, 0, frame.Width, frame.Height);
         return new OverlayWindow(frame, monitor, monitor, 1,
             new OverlayLaunchOptions(new OverlayOptions(0, 12), TestUiStrings.English,
-                [new(SearchProviderIds.GoogleLens, SearchProviderIds.GoogleLens)], SearchProviderIds.GoogleLens,
+                [new(provider, provider)], provider,
                 new SearchSessionOptions(Zoom: true)),
             commands.Add,
             TestOverlayControllers.CreateFactory(animationsEnabled: () => false,
