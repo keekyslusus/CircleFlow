@@ -199,7 +199,6 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
             var lightTheme = SystemTheme.IsLight();
             view.ApplyTheme(lightTheme);
             ApplyBrowserTheme(webView, lightTheme);
-            view.ShowLoading();
             webView.CoreWebView2.Stop();
             if (reveal is null)
             {
@@ -265,9 +264,8 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
                 !ReferenceEquals(_view, view))
                 status = SearchBrowserShowStatus.Canceled;
 
-            if (status == SearchBrowserShowStatus.Shown)
-                view.HideLoading();
-            else if (status != SearchBrowserShowStatus.Canceled || ReferenceEquals(_view, view))
+            if (status != SearchBrowserShowStatus.Shown &&
+                (status != SearchBrowserShowStatus.Canceled || ReferenceEquals(_view, view)))
                 CloseFailedShow(view);
             operation.SetOutcome(new SearchBrowserShowResult(status));
         }

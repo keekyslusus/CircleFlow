@@ -23,7 +23,7 @@ public sealed class SearchBrowserWindowViewTests
             dispatcher.Send(() =>
             {
                 var browser = new Grid();
-                view = CreateView(browser, false);
+                view = CreateView(browser);
                 var first = new SearchProviderDescriptor("first", "First");
                 view.SetProvider(first);
                 var content = (Grid)view.Window.Content;
@@ -44,67 +44,35 @@ public sealed class SearchBrowserWindowViewTests
                     Assert.Equal(palette.Roles.OnBackground, ((SolidColorBrush)title.Foreground).Color);
                     Assert.Equal(palette.Roles.OnBackground, ((SolidColorBrush)close.Foreground).Color);
                 }
-                view.ShowLoading();
-                view.HideLoading();
-                Assert.Equal(Visibility.Visible, browser.Visibility);
             });
         }
         finally { dispatcher.Send(() => view?.Window.Close()); }
     }
 
     [Fact]
-    public async Task Enabled_loading_overlay_ignores_stale_fade_and_close_button_closes_view()
+    public async Task Close_button_closes_only_its_own_view()
     {
-        using var dispatcher = new StaDispatcher("Search browser loading test");
+        using var dispatcher = new StaDispatcher("Search browser close test");
         SearchBrowserWindowView? first = null;
         SearchBrowserWindowView? second = null;
-        Grid? firstBrowser = null;
-        Grid? secondBrowser = null;
         try
         {
             Task? entrance = null;
             dispatcher.Send(() =>
             {
-                firstBrowser = new Grid();
-                first = CreateView(firstBrowser, true);
+                first = CreateView(new Grid());
                 first.SetProvider(new SearchProviderDescriptor("first", "First"));
-                var content = (Grid)first.Window.Content;
-                var overlay = (Grid)content.Children[1];
-                var loading = (TextBlock)((StackPanel)overlay.Children[0]).Children[1];
-                Assert.Equal(TestUiStrings.English.SearchBrowserLoading("First"), loading.Text);
                 entrance = first.ShowAsync();
             });
             await entrance!.WaitAsync(TimeSpan.FromSeconds(5));
             dispatcher.Send(() =>
             {
-                first!.ShowLoading();
-                Assert.Equal(Visibility.Hidden, firstBrowser!.Visibility);
-                first.HideLoading();
-                first.ShowLoading();
-            });
-            await Task.Delay(350);
-            dispatcher.Send(() => Assert.Equal(Visibility.Hidden, firstBrowser!.Visibility));
-            dispatcher.Send(() => first!.HideLoading());
-            await Task.Delay(350);
-            dispatcher.Send(() => Assert.Equal(Visibility.Visible, firstBrowser!.Visibility));
-
-            dispatcher.Send(() =>
-            {
-                first!.ShowLoading();
-                first.HideLoading();
-                secondBrowser = new Grid();
-                second = CreateView(secondBrowser, true);
-                second.ShowLoading();
-                var header = (DockPanel)((Grid)first.Window.Content).Children[2];
+                second = CreateView(new Grid());
+                var header = (DockPanel)((Grid)first!.Window.Content).Children[1];
                 var close = (Button)header.Children[0];
                 close.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
                 Assert.True(first.IsClosed);
-            });
-            await Task.Delay(350);
-            dispatcher.Send(() =>
-            {
-                Assert.False(second!.IsClosed);
-                Assert.Equal(Visibility.Hidden, secondBrowser!.Visibility);
+                Assert.False(second.IsClosed);
             });
         }
         finally
@@ -128,7 +96,7 @@ public sealed class SearchBrowserWindowViewTests
             {
                 var prefix = string.Empty;
                 var strings = new UiStrings(key => prefix + TestUiStrings.EnglishValues[key]);
-                view = CreateView(new Grid(), false, strings);
+                view = CreateView(new Grid(), strings);
                 var provider = new SearchProviderDescriptor(SearchProviderIds.YandexImages, () => strings.YandexImagesProviderName);
                 var close = (Button)((DockPanel)((Grid)view.Window.Content).Children[1]).Children[0];
                 view.SetProvider(provider);
@@ -144,10 +112,9 @@ public sealed class SearchBrowserWindowViewTests
         finally { dispatcher.Send(() => view?.Window.Close()); }
     }
 
-    private static SearchBrowserWindowView CreateView(Grid browser, bool loading, UiStrings? strings = null) => new(
+    private static SearchBrowserWindowView CreateView(Grid browser, UiStrings? strings = null) => new(
         strings ?? TestUiStrings.English,
         browser,
         lightTheme: false,
-        loading,
         window => new BottomResultsPanel(window, new POINT()));
 }

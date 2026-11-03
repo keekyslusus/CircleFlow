@@ -21,7 +21,7 @@ public sealed class AudioWaveformVisual : FrameworkElement, IDisposable
     private TimeSpan _previousRenderTime;
     private bool _rendering;
 
-    public AudioWaveformVisual(bool? lightTheme = null)
+    public AudioWaveformVisual()
     {
         Width = 170;
         Height = 40;

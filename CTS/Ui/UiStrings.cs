@@ -59,12 +59,9 @@ public sealed class UiStrings
     public string StorageSaveFailed => Get("app_storage_save_failed");
     public string StorageLoadFailed => Get("app_storage_load_failed");
     public string StorageRecovered => Get("app_storage_recovered");
-    public string StorageRecoveryFailed => Get("app_storage_recovery_failed");
     public string HotkeyConflict(string gesture) => Get("app_hotkey_conflict", gesture);
     public string HotkeyRollbackFailed => Get("app_hotkey_rollback_failed");
     public string ActivationFailed => Get("app_activation_failed");
-    public string ShutdownFailed => Get("app_shutdown_failed");
-    public string ShutdownTimedOut => Get("app_shutdown_timed_out");
     public string UpdateAvailableTitle => Get("app_update_available_title");
     public string UpdateAvailable(string version) => Get("app_update_available", version);
     public string UpdateReleaseLink(string version) => Get("app_update_release_link", version);
@@ -77,7 +74,6 @@ public sealed class UiStrings
     public string WebViewRuntimeMissing => Get("app_webview_runtime_missing");
     public string WebViewRuntimeDownload => Get("app_webview_runtime_download");
     public string BrowserProfileOutsideData => Get("app_browser_profile_outside_data");
-    public string PluginDescription => Get("plugin_circletosearch_plugin_description");
     public string GoogleLensProviderName => Get("plugin_circletosearch_google_lens_provider_name");
     public string GoogleAiModeProviderName => Get("plugin_circletosearch_google_ai_mode_provider_name");
     public string YandexImagesProviderName => Get("plugin_circletosearch_yandex_images_provider_name");
@@ -148,13 +144,6 @@ public sealed class UiStrings
     public string DebugPinterestLive => Get("plugin_circletosearch_debug_pinterest_live");
     public string DebugPinterestSimulated => Get("plugin_circletosearch_debug_pinterest_simulated");
     public string DebugPinterestPinTitle(int number) => Get("plugin_circletosearch_debug_pinterest_pin_title", number);
-    public string QueryTitle => Get("plugin_circletosearch_query_title");
-    public string SettingsHotkeyLabel => Get("plugin_circletosearch_settings_hotkey_label");
-    public string SettingsMaxImageSideLabel => Get("plugin_circletosearch_settings_max_image_side_label");
-    public string SettingsApply => Get("plugin_circletosearch_settings_apply");
-    public string HotkeyRegistered => Get("plugin_circletosearch_hotkey_registered");
-    public string HotkeyRegistrationFailed => Get("plugin_circletosearch_hotkey_registration_failed");
-    public string HotkeyStatusNone => Get("plugin_circletosearch_hotkey_status_none");
     public string SearchUnexpectedResponse => Get("plugin_circletosearch_search_unexpected_response");
     public string SearchUnexpectedResultsLocation => Get("plugin_circletosearch_search_unexpected_results_location");
     public string SearchTimedOut => Get("plugin_circletosearch_search_timed_out");
@@ -163,9 +152,6 @@ public sealed class UiStrings
     public string ResultsUrlOpenFailed => Get("plugin_circletosearch_results_url_open_failed");
     public string SearchBrowserWindowTitle(string providerName) =>
         Get("plugin_circletosearch_search_browser_window_title", providerName);
-
-    public string SearchBrowserLoading(string providerName) =>
-        Get("plugin_circletosearch_search_browser_loading", providerName);
 
     public string SearchBrowserShowFailed(string providerName) =>
         Get("plugin_circletosearch_search_browser_show_failed", providerName);
@@ -193,9 +179,6 @@ public sealed class UiStrings
     public string TranslationTimedOut => Get("plugin_circletosearch_translation_timed_out");
     public string TranslationRateLimited => Get("plugin_circletosearch_translation_rate_limited");
     public string TranslationFailed => Get("plugin_circletosearch_translation_failed");
-    public string SettingsOcrLanguageLabel => Get("plugin_circletosearch_settings_ocr_language_label");
-    public string SettingsTranslationTargetLabel => Get("plugin_circletosearch_settings_translation_target_label");
-    public string SystemDefaultLanguage => Get("plugin_circletosearch_system_default_language");
     public string OcrLanguageChanged(string language) => Get("plugin_circletosearch_ocr_language_changed", language);
     public string OcrProcessing => Get("plugin_circletosearch_ocr_processing");
     public string OcrLanguageUnavailable(string language) => Get("plugin_circletosearch_ocr_language_unavailable", language);
@@ -204,26 +187,10 @@ public sealed class UiStrings
     public string OcrFailed => Get("plugin_circletosearch_ocr_failed");
     public string OcrPlatformUnavailable => Get("plugin_circletosearch_ocr_platform_unavailable");
 
-    public string VisualSearchQuerySubtitle(string hotkeyStatus) =>
-        Get("plugin_circletosearch_query_subtitle", hotkeyStatus);
-
-    public string SearchProvider(string displayName) =>
-        Get("plugin_circletosearch_search_provider", displayName);
-
     public string SelectSearchProvider(string displayName) =>
         Get("plugin_circletosearch_select_search_provider", displayName);
 
-    public string SearchBrowserRuntime(string? version) => version is null
-        ? Get("plugin_circletosearch_search_browser_runtime_not_detected")
-        : Get("plugin_circletosearch_search_browser_runtime", version);
-
     public string SavingFailed(string detail) => Get("plugin_circletosearch_saving_failed", detail);
-
-    public string HotkeyStatusActive(string gesture) =>
-        Get("plugin_circletosearch_hotkey_status_active", gesture);
-
-    public string HotkeyStatusUnavailable(string gesture) =>
-        Get("plugin_circletosearch_hotkey_status_unavailable", gesture);
 
     public string SearchUnexpectedStatus(int? statusCode) =>
         Get("plugin_circletosearch_search_unexpected_status", statusCode);

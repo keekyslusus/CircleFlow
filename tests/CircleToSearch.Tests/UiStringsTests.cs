@@ -19,12 +19,8 @@ public sealed class UiStringsTests
         Assert.Equal("Could not copy to clipboard.", strings.CopyFailed);
         Assert.Equal("Google Lens", strings.GoogleLensProviderName);
         Assert.Equal("Google AI Mode", strings.GoogleAiModeProviderName);
-        Assert.Equal("Searching with Google Lens…", strings.SearchBrowserLoading("Google Lens"));
         Assert.Equal("CircleFlow: Google Lens", strings.SearchBrowserWindowTitle(strings.GoogleLensProviderName));
         Assert.Equal("CircleFlow: Yandex Images", strings.SearchBrowserWindowTitle("Yandex Images"));
-        Assert.Equal(
-            "Ctrl+Alt+Space active",
-            strings.HotkeyStatusActive("Ctrl+Alt+Space"));
         Assert.Equal(
             "The search service answered HTTP 503.",
             strings.SearchUnexpectedStatus(503));
@@ -73,19 +69,12 @@ public sealed class UiStringsTests
 
         Assert.NotEmpty(values);
         Assert.All(values, Assert.NotEmpty);
-        Assert.NotEmpty(strings.VisualSearchQuerySubtitle("status"));
-        Assert.NotEmpty(strings.SearchProvider("provider"));
         Assert.NotEmpty(strings.SelectSearchProvider("provider"));
-        Assert.NotEmpty(strings.SearchBrowserRuntime(null));
-        Assert.NotEmpty(strings.SearchBrowserRuntime("1.0"));
         Assert.NotEmpty(strings.SavingFailed("detail"));
-        Assert.NotEmpty(strings.HotkeyStatusActive("gesture"));
-        Assert.NotEmpty(strings.HotkeyStatusUnavailable("gesture"));
         Assert.NotEmpty(strings.SearchUnexpectedStatus(500));
         Assert.NotEmpty(strings.BrowserRuntimeRequired("provider"));
         Assert.NotEmpty(strings.BrowserImageAttachmentFailed("provider"));
         Assert.NotEmpty(strings.SearchBrowserWindowTitle("provider"));
-        Assert.NotEmpty(strings.SearchBrowserLoading("provider"));
         Assert.NotEmpty(strings.SearchBrowserShowFailed("provider"));
         Assert.NotEmpty(strings.StartingSelectionFailed("detail"));
         Assert.NotEmpty(strings.SearchFailed("detail"));

@@ -63,7 +63,7 @@ internal static class MusicOverlayVisualFactory
         AutomationProperties.SetName(button, strings.MusicRecognitionAction);
         OverlayShortcuts.MusicRecognition.AttachHint(button, strings);
 
-        var waveform = new AudioWaveformVisual(lightTheme);
+        var waveform = new AudioWaveformVisual();
         var resultHost = new Grid
         {
             Visibility = Visibility.Collapsed,

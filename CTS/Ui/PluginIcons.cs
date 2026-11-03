@@ -115,13 +115,6 @@ internal static class PluginIcons
         new EllipseGeometry(new Point(12, 12), 9, 9),
         Geometry.Parse("M12 7v6m0 4h.01"));
 
-    public static Geometry SunOutlined { get; } = Group(
-        new EllipseGeometry(new Point(12, 12), 4, 4),
-        Geometry.Parse("M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"));
-
-    public static Geometry MoonOutlined { get; } = Group(
-        Geometry.Parse("M20 14A8 8 0 0 1 10 4 8 8 0 1 0 20 14Z"));
-
     public static Geometry EditOutlined { get; } = Group(
         Geometry.Parse("m14 5 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14Z"));
 
@@ -129,9 +122,6 @@ internal static class PluginIcons
     public static Geometry DrawOutlined { get; } = Group(
         Geometry.Parse("M18 2.8a2 2 0 0 1 2.8 2.8L12.5 14l-3.5 1 1-3.5ZM16 4.8l2.8 2.8" +
                        "M3.5 6c2.5-1.5 4.5.5 2.5 3S2 14 4.5 15s3.5-2 5-1-2 4.5 0 6 4-.5 5-1.5"));
-
-    public static Geometry ChevronRightOutlined { get; } = Group(
-        Geometry.Parse("m9 5 7 7-7 7"));
 
     public static Geometry ArrowUpOutlined { get; } = Group(
         Geometry.Parse("M12 19V5m-6 6 6-6 6 6"));
@@ -145,11 +135,6 @@ internal static class PluginIcons
     public static Geometry WindowOutlined { get; } = Group(
         new RectangleGeometry(new Rect(3, 4, 18, 16), 2, 2),
         Geometry.Parse("M3 9h18m-14-2h.01M10 7h.01"));
-
-    public static Geometry ImageOutlined { get; } = Group(
-        new RectangleGeometry(new Rect(3, 3, 18, 18), 3, 3),
-        new EllipseGeometry(new Point(8, 8), 1.5, 1.5),
-        Geometry.Parse("m3 17 6-5 4 3 4-5 4 4"));
 
     public static Geometry ShieldOutlined { get; } = Group(
         Geometry.Parse("M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6Z"),
