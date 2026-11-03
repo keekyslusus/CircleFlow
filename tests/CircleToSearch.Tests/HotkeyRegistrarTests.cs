@@ -29,8 +29,8 @@ public sealed class HotkeyRegistrarTests
         var log = new PluginLog(directory);
         using var firstWindow = new HotkeyWindow(new StaDispatcher("CircleFlow hotkey rollback test 1"), log);
         using var secondWindow = new HotkeyWindow(new StaDispatcher("CircleFlow hotkey rollback test 2"), log);
-        var first = new HotkeyRegistrar(firstWindow, TestUiStrings.English, log);
-        var second = new HotkeyRegistrar(secondWindow, TestUiStrings.English, log);
+        var first = new HotkeyRegistrar(firstWindow, log);
+        var second = new HotkeyRegistrar(secondWindow, log);
         var candidates = Enumerable.Range(5, 8).Select(key => "Ctrl+Alt+Shift+F" + key).ToArray();
         var original = candidates.FirstOrDefault(gesture => first.TryApply(gesture).Success);
         Assert.NotNull(original);

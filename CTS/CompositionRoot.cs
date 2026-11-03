@@ -267,7 +267,7 @@ public static class CompositionRoot
         var hotkeyDispatcher = new StaDispatcher(HotkeyThreadName);
         rollback.Own(hotkeyDispatcher, hotkeyDispatcher.StopAsync);
         var hotkeyWindow = rollback.Replace(hotkeyDispatcher, new HotkeyWindow(hotkeyDispatcher, log));
-        var registrar = new HotkeyRegistrar(hotkeyWindow, strings, log);
+        var registrar = new HotkeyRegistrar(hotkeyWindow, log);
         var settings = new SettingsService(initialSettings, settingsStore.Save, registrar.TryApply, log);
         var sounds = rollback.Own(new UiSoundPlayer(LoadSounds(paths, log), () => settings.Snapshot.UiSounds, log: log));
         var environments = new WebViewEnvironmentFactory(paths, strings, notifier);
@@ -518,7 +518,6 @@ public static class CompositionRoot
             strings,
             content,
             lightTheme,
-            loadingOverlayEnabled: false,
             window => new BottomResultsPanel(window, anchor));
 
     internal static OverlayControllers CreateOverlayControllers(

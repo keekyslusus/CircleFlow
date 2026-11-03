@@ -352,7 +352,7 @@ public sealed class SearchBrowserHostLifecycleLiveTests
                 if (failFactory?.Invoke() == true) throw new InvalidOperationException("Factory failed.");
                 var view = closeDuringEntrance
                     ? new SearchBrowserWindowView(
-                        TestUiStrings.English, content, lightTheme, false,
+                        TestUiStrings.English, content, lightTheme,
                         window => new BottomResultsPanel(window, anchor, animationsEnabled: true))
                     : CompositionRoot.CreateSearchBrowserWindowView(
                         TestUiStrings.English, content, anchor, lightTheme);

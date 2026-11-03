@@ -20,7 +20,7 @@ public sealed class AppStartupTests
         AppDataDirectory.Initialize(paths);
         var log = new PluginLog(paths.LogsDirectory);
         using var probe = new HotkeyWindow(new StaDispatcher("CircleFlow startup cleanup test"), log);
-        var registrar = new HotkeyRegistrar(probe, TestUiStrings.English, log);
+        var registrar = new HotkeyRegistrar(probe, log);
         var gesture = Enumerable.Range(1, 11).Select(key => $"Ctrl+Alt+Shift+F{key}")
             .First(candidate => registrar.TryApply(candidate).Success);
         Assert.True(registrar.TryApply(null).Success);
@@ -66,7 +66,7 @@ public sealed class AppStartupTests
         AppDataDirectory.Initialize(paths);
         var log = new PluginLog(paths.LogsDirectory);
         using var probe = new HotkeyWindow(new StaDispatcher("CircleFlow startup language test"), log);
-        var registrar = new HotkeyRegistrar(probe, TestUiStrings.English, log);
+        var registrar = new HotkeyRegistrar(probe, log);
         var gesture = Enumerable.Range(1, 11).Select(key => $"Ctrl+Alt+Shift+F{key}")
             .First(candidate => registrar.TryApply(candidate).Success);
         Assert.True(registrar.TryApply(null).Success);

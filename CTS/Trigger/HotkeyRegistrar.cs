@@ -1,5 +1,4 @@
 using CircleToSearch.Interop;
-using CircleToSearch.Ui;
 
 namespace CircleToSearch.Trigger;
 
@@ -10,24 +9,22 @@ public sealed class HotkeyRegistrar
 {
     private readonly Func<uint, uint, (bool Success, int Error)> _register;
     private readonly Func<bool> _unregister;
-    private readonly UiStrings _strings;
     private readonly PluginLog _log;
     private readonly object _gate = new();
     private HotkeyRegistrationStatus _status = new(string.Empty, false);
 
-    public HotkeyRegistrar(HotkeyWindow window, UiStrings strings, PluginLog log)
+    public HotkeyRegistrar(HotkeyWindow window, PluginLog log)
         : this((modifiers, key) =>
         {
             var success = window.TryRegister(modifiers, key, out var error);
             return (success, error);
-        }, window.TryUnregister, strings, log) { }
+        }, window.TryUnregister, log) { }
 
     internal HotkeyRegistrar(Func<uint, uint, (bool Success, int Error)> register,
-        Func<bool> unregister, UiStrings strings, PluginLog log)
+        Func<bool> unregister, PluginLog log)
     {
         _register = register;
         _unregister = unregister;
-        _strings = strings;
         _log = log;
     }
 
@@ -88,13 +85,5 @@ public sealed class HotkeyRegistrar
             _log.SafeError(nameof(HotkeyRegistrar), "unregister-hotkey", exception);
             return false;
         }
-    }
-
-    public string DescribeStatus()
-    {
-        var status = Status;
-        return status.Gesture.Length == 0 ? _strings.HotkeyStatusNone
-            : status.IsActive ? _strings.HotkeyStatusActive(status.Gesture)
-            : _strings.HotkeyStatusUnavailable(status.Gesture);
     }
 }

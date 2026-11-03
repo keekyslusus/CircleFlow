@@ -163,14 +163,6 @@ internal static class PluginPalette
         Dim: SelectionDim,
         Shadow: OpaqueBlack);
 
-    public static IReadOnlyList<Color> SearchBrowserLoadingDots { get; } = Array.AsReadOnly(
-        new[]
-        {
-            Color.FromRgb(0x42, 0x85, 0xF4),
-            Color.FromRgb(0xA1, 0x42, 0xF4),
-            Color.FromRgb(0x0B, 0x57, 0xD0),
-        });
-
     public static Color WithAlpha(Color color, double alpha) =>
         Color.FromArgb((byte)Math.Round(255 * alpha), color.R, color.G, color.B);
 

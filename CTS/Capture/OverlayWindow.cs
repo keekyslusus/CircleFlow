@@ -55,7 +55,6 @@ public sealed class OverlayWindow : Window
     private readonly ImageSelectionOverlayController _imageSelection;
     private readonly TextSelectionOverlayController _textSelection;
     private readonly PointerGestureRouter _pointer;
-    private readonly OcrOverlayController _ocr;
     private readonly OverlayImageTextCoordinator _imageText;
     private readonly KeyboardInputLanguageSource _inputLanguage;
     private readonly KeyboardLanguageSnapshot _initialInputLanguage;
@@ -191,7 +190,6 @@ public sealed class OverlayWindow : Window
         _imageSelection = _controllers.ImageSelection;
         _textSelection = _controllers.TextSelection;
         _pointer = _controllers.Pointer;
-        _ocr = _controllers.Ocr;
         _imageText = _controllers.ImageText;
         _inputLanguage = _controllers.InputLanguage;
         _translation = _controllers.Translation;

@@ -21,7 +21,7 @@ internal sealed class TestHotkeyRegistration
             if (!UnregisterSucceeds) return false;
             Current = null;
             return true;
-        }, TestUiStrings.English, new PluginLog(directory));
+        }, new PluginLog(directory));
     }
 
     public HotkeyRegistrar Registrar { get; }

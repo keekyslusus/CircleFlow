@@ -15,7 +15,7 @@ public sealed class RuntimeActivationTests
         AppDataDirectory.Initialize(paths);
         var log = new PluginLog(paths.LogsDirectory);
         using var blocker = new HotkeyWindow(new StaDispatcher("CircleFlow hotkey conflict test"), log);
-        var registration = new HotkeyRegistrar(blocker, TestUiStrings.English, log);
+        var registration = new HotkeyRegistrar(blocker, log);
         var gesture = Enumerable.Range(1, 11).Select(key => $"Ctrl+Alt+Shift+F{key}")
             .First(candidate => registration.TryApply(candidate).Success);
         var notifier = new TestPluginNotifier();
