@@ -1,0 +1,205 @@
+file,song,level,stream,checkpoint,expected,matched_title,matched_artist,correct,num_matches,offset_s,reused
+s1_music_only,1,music_only,mono,cp4,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,5,50.400679687,1
+s1_music_only,1,music_only,side,cp4,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,5,56.977511718,0
+s1_music_only,1,music_only,vad,cp4,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,5,50.400679687,0
+s1_m-10,1,m-10,mono,cp4,Queen - Bohemian Rhapsody,,,0,0,,1
+s1_m-10,1,m-10,mono,cp8,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,5,50.41796875,1
+s1_m-10,1,m-10,side,cp4,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,5,56.977511718,0
+s1_m-10,1,m-10,vad,cp4,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-10,1,m-10,vad,cp8,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,5,50.41165625,0
+s1_m-15,1,m-15,mono,cp4,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-15,1,m-15,mono,cp8,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-15,1,m-15,mono,cp12,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,4,50.423015625,0
+s1_m-15,1,m-15,side,cp4,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,5,56.977511718,0
+s1_m-15,1,m-15,vad,cp4,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-15,1,m-15,vad,cp8,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-15,1,m-15,vad,cp12,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,3,50.336800781,0
+s1_m-20,1,m-20,mono,cp4,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-20,1,m-20,mono,cp8,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-20,1,m-20,mono,cp12,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-20,1,m-20,side,cp4,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,5,56.977511718,0
+s1_m-20,1,m-20,vad,cp4,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-20,1,m-20,vad,cp8,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-20,1,m-20,vad,cp12,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-25,1,m-25,mono,cp4,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-25,1,m-25,mono,cp8,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-25,1,m-25,mono,cp12,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-25,1,m-25,side,cp4,Queen - Bohemian Rhapsody,Bohemian Rhapsody,Queen,1,5,56.977511718,0
+s1_m-25,1,m-25,vad,cp4,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-25,1,m-25,vad,cp8,Queen - Bohemian Rhapsody,,,0,0,,0
+s1_m-25,1,m-25,vad,cp12,Queen - Bohemian Rhapsody,,,0,0,,0
+s2_music_only,2,music_only,mono,cp4,Michael Jackson - Billie Jean,Billie Jean,Michael Jackson,1,10,50.11909375,0
+s2_music_only,2,music_only,side,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_music_only,2,music_only,side,cp8,Michael Jackson - Billie Jean,,,0,0,,0
+s2_music_only,2,music_only,side,cp12,Michael Jackson - Billie Jean,,,0,0,,0
+s2_music_only,2,music_only,vad,cp4,Michael Jackson - Billie Jean,Billie Jean,Michael Jackson,1,10,50.11909375,0
+s2_m-10,2,m-10,mono,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-10,2,m-10,mono,cp8,Michael Jackson - Billie Jean,Billie Jean,Michael Jackson,1,11,50.15471875,0
+s2_m-10,2,m-10,side,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-10,2,m-10,side,cp8,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-10,2,m-10,side,cp12,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-10,2,m-10,vad,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-10,2,m-10,vad,cp8,Michael Jackson - Billie Jean,Billie Jean,Michael Jackson,1,11,49.998984375,0
+s2_m-15,2,m-15,mono,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-15,2,m-15,mono,cp8,Michael Jackson - Billie Jean,Billie Jean,Michael Jackson,1,9,50.159210937000005,0
+s2_m-15,2,m-15,side,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-15,2,m-15,side,cp8,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-15,2,m-15,side,cp12,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-15,2,m-15,vad,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-15,2,m-15,vad,cp8,Michael Jackson - Billie Jean,Billie Jean,Michael Jackson,1,6,50.000222656,0
+s2_m-20,2,m-20,mono,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-20,2,m-20,mono,cp8,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-20,2,m-20,mono,cp12,Michael Jackson - Billie Jean,Billie Jean (Single Version),Michael Jackson,1,1,50.25767968700001,0
+s2_m-20,2,m-20,side,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-20,2,m-20,side,cp8,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-20,2,m-20,side,cp12,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-20,2,m-20,vad,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-20,2,m-20,vad,cp8,Michael Jackson - Billie Jean,Billie Jean,Michael Jackson,1,2,49.998488281,0
+s2_m-25,2,m-25,mono,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-25,2,m-25,mono,cp8,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-25,2,m-25,mono,cp12,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-25,2,m-25,side,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-25,2,m-25,side,cp8,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-25,2,m-25,side,cp12,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-25,2,m-25,vad,cp4,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-25,2,m-25,vad,cp8,Michael Jackson - Billie Jean,,,0,0,,0
+s2_m-25,2,m-25,vad,cp12,Michael Jackson - Billie Jean,,,0,0,,0
+s3_music_only,3,music_only,mono,cp4,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,15,45.238351562000005,0
+s3_music_only,3,music_only,side,cp4,Ed Sheeran - Shape of You,,,0,0,,0
+s3_music_only,3,music_only,side,cp8,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,10,125.2325,0
+s3_music_only,3,music_only,vad,cp4,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,10,45.232765625,0
+s3_m-10,3,m-10,mono,cp4,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,12,125.231976562,0
+s3_m-10,3,m-10,side,cp4,Ed Sheeran - Shape of You,,,0,0,,0
+s3_m-10,3,m-10,side,cp8,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,10,125.2325,0
+s3_m-10,3,m-10,vad,cp4,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,11,45.235929687,0
+s3_m-15,3,m-15,mono,cp4,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,10,45.232898437,0
+s3_m-15,3,m-15,side,cp4,Ed Sheeran - Shape of You,,,0,0,,0
+s3_m-15,3,m-15,side,cp8,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,10,125.2325,0
+s3_m-15,3,m-15,vad,cp4,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,10,45.2371875,0
+s3_m-20,3,m-20,mono,cp4,Ed Sheeran - Shape of You,,,0,0,,0
+s3_m-20,3,m-20,mono,cp8,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,6,45.235683593000005,0
+s3_m-20,3,m-20,side,cp4,Ed Sheeran - Shape of You,,,0,0,,0
+s3_m-20,3,m-20,side,cp8,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,10,125.2325,0
+s3_m-20,3,m-20,vad,cp4,Ed Sheeran - Shape of You,,,0,0,,0
+s3_m-20,3,m-20,vad,cp8,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,8,45.236039062,0
+s3_m-25,3,m-25,mono,cp4,Ed Sheeran - Shape of You,,,0,0,,0
+s3_m-25,3,m-25,mono,cp8,Ed Sheeran - Shape of You,,,0,0,,0
+s3_m-25,3,m-25,mono,cp12,Ed Sheeran - Shape of You,,,0,0,,0
+s3_m-25,3,m-25,side,cp4,Ed Sheeran - Shape of You,,,0,0,,0
+s3_m-25,3,m-25,side,cp8,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,10,125.2325,0
+s3_m-25,3,m-25,vad,cp4,Ed Sheeran - Shape of You,,,0,0,,0
+s3_m-25,3,m-25,vad,cp8,Ed Sheeran - Shape of You,Shape of You,Ed Sheeran,1,2,125.231257812,0
+s4_music_only,4,music_only,mono,cp4,Dua Lipa - Levitating,Levitating (feat. DaBaby),Dua Lipa,1,5,40.788664062,0
+s4_music_only,4,music_only,side,cp4,Dua Lipa - Levitating,Levitating (feat. DaBaby),Dua Lipa,1,1,91.475226562,0
+s4_music_only,4,music_only,vad,cp4,Dua Lipa - Levitating,Levitating (feat. DaBaby),Dua Lipa,1,5,40.788664062,0
+s4_m-10,4,m-10,mono,cp4,Dua Lipa - Levitating,Levitating (feat. DaBaby),Dua Lipa,1,5,40.785304687,0
+s4_m-10,4,m-10,side,cp4,Dua Lipa - Levitating,Levitating (feat. DaBaby),Dua Lipa,1,1,91.475226562,0
+s4_m-10,4,m-10,vad,cp4,Dua Lipa - Levitating,,,0,0,,0
+s4_m-10,4,m-10,vad,cp8,Dua Lipa - Levitating,Levitating (feat. DaBaby),Dua Lipa,1,5,106.031429687,0
+s4_m-15,4,m-15,mono,cp4,Dua Lipa - Levitating,,,0,0,,0
+s4_m-15,4,m-15,mono,cp8,Dua Lipa - Levitating,Levitating (feat. DaBaby),Dua Lipa,1,5,40.795433593,0
+s4_m-15,4,m-15,side,cp4,Dua Lipa - Levitating,Levitating (feat. DaBaby),Dua Lipa,1,1,91.475226562,0
+s4_m-15,4,m-15,vad,cp4,Dua Lipa - Levitating,,,0,0,,0
+s4_m-15,4,m-15,vad,cp8,Dua Lipa - Levitating,,,0,0,,0
+s4_m-15,4,m-15,vad,cp12,Dua Lipa - Levitating,Lvtg,Black Dre,0,3,40.290027343,0
+s4_m-20,4,m-20,mono,cp4,Dua Lipa - Levitating,,,0,0,,0
+s4_m-20,4,m-20,mono,cp8,Dua Lipa - Levitating,Levitating,Dua Lipa,1,1,96.225601562,0
+s4_m-20,4,m-20,side,cp4,Dua Lipa - Levitating,Levitating (feat. DaBaby),Dua Lipa,1,1,91.475226562,0
+s4_m-20,4,m-20,vad,cp4,Dua Lipa - Levitating,,,0,0,,0
+s4_m-20,4,m-20,vad,cp8,Dua Lipa - Levitating,,,0,0,,0
+s4_m-20,4,m-20,vad,cp12,Dua Lipa - Levitating,,,0,0,,0
+s4_m-25,4,m-25,mono,cp4,Dua Lipa - Levitating,,,0,0,,0
+s4_m-25,4,m-25,mono,cp8,Dua Lipa - Levitating,,,0,0,,0
+s4_m-25,4,m-25,mono,cp12,Dua Lipa - Levitating,,,0,0,,0
+s4_m-25,4,m-25,side,cp4,Dua Lipa - Levitating,Levitating (feat. DaBaby),Dua Lipa,1,1,91.47759375,0
+s4_m-25,4,m-25,vad,cp4,Dua Lipa - Levitating,,,0,0,,0
+s4_m-25,4,m-25,vad,cp8,Dua Lipa - Levitating,,,0,0,,0
+s4_m-25,4,m-25,vad,cp12,Dua Lipa - Levitating,,,0,0,,0
+s5_music_only,5,music_only,mono,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,7,49.955414062,0
+s5_music_only,5,music_only,side,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_music_only,5,music_only,side,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_music_only,5,music_only,side,cp12,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,6,137.044109375,0
+s5_music_only,5,music_only,vad,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,7,49.955414062,0
+s5_m-10,5,m-10,mono,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,7,33.473753906,0
+s5_m-10,5,m-10,side,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-10,5,m-10,side,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-10,5,m-10,side,cp12,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,6,137.044109375,0
+s5_m-10,5,m-10,vad,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-10,5,m-10,vad,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,4,99.67460156199999,0
+s5_m-15,5,m-15,mono,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-15,5,m-15,mono,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,4,99.662890625,0
+s5_m-15,5,m-15,side,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-15,5,m-15,side,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-15,5,m-15,side,cp12,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,6,137.044109375,0
+s5_m-15,5,m-15,vad,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-15,5,m-15,vad,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,1,219.7793125,0
+s5_m-20,5,m-20,mono,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-20,5,m-20,mono,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-20,5,m-20,mono,cp12,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,1,33.475292968000005,0
+s5_m-20,5,m-20,side,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-20,5,m-20,side,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-20,5,m-20,side,cp12,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,6,137.044109375,0
+s5_m-20,5,m-20,vad,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-20,5,m-20,vad,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-20,5,m-20,vad,cp12,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,2,99.670109375,0
+s5_m-25,5,m-25,mono,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-25,5,m-25,mono,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-25,5,m-25,mono,cp12,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-25,5,m-25,side,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-25,5,m-25,side,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-25,5,m-25,side,cp12,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,6,49.945296875,0
+s5_m-25,5,m-25,vad,cp4,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-25,5,m-25,vad,cp8,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",,,0,0,,0
+s5_m-25,5,m-25,vad,cp12,"Daft Punk, Pharrell Williams & Nile Rodgers - Get Lucky",Get Lucky,"Daft Punk, Pharrell Williams & Nile Rodgers",1,3,33.477914062,0
+s6_music_only,6,music_only,mono,cp4,Adele - Rolling in the Deep,Rolling in the Deep,Adele,1,9,26.471595703,0
+s6_music_only,6,music_only,side,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_music_only,6,music_only,side,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_music_only,6,music_only,side,cp12,Adele - Rolling in the Deep,Rolling in the Deep,Adele,1,2,26.46825,0
+s6_music_only,6,music_only,vad,cp4,Adele - Rolling in the Deep,Rolling in the Deep,Adele,1,9,26.471595703,0
+s6_m-10,6,m-10,mono,cp4,Adele - Rolling in the Deep,Rolling in the Deep,Adele,1,1,31.639550781,0
+s6_m-10,6,m-10,side,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-10,6,m-10,side,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-10,6,m-10,side,cp12,Adele - Rolling in the Deep,Rolling in the Deep,Adele,1,2,26.46825,0
+s6_m-10,6,m-10,vad,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-10,6,m-10,vad,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-10,6,m-10,vad,cp12,Adele - Rolling in the Deep,Rolling in the Deep,Adele,1,2,31.544964843000002,0
+s6_m-15,6,m-15,mono,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-15,6,m-15,mono,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-15,6,m-15,mono,cp12,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-15,6,m-15,side,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-15,6,m-15,side,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-15,6,m-15,side,cp12,Adele - Rolling in the Deep,Rolling in the Deep,Adele,1,2,26.468865234,0
+s6_m-15,6,m-15,vad,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-15,6,m-15,vad,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-15,6,m-15,vad,cp12,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-20,6,m-20,mono,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-20,6,m-20,mono,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-20,6,m-20,mono,cp12,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-20,6,m-20,side,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-20,6,m-20,side,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-20,6,m-20,side,cp12,Adele - Rolling in the Deep,Rolling in the Deep,Adele,1,2,26.468248046,0
+s6_m-20,6,m-20,vad,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-20,6,m-20,vad,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-20,6,m-20,vad,cp12,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-25,6,m-25,mono,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-25,6,m-25,mono,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-25,6,m-25,mono,cp12,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-25,6,m-25,side,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-25,6,m-25,side,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-25,6,m-25,side,cp12,Adele - Rolling in the Deep,Rolling in the Deep,Adele,1,1,26.468632812,0
+s6_m-25,6,m-25,vad,cp4,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-25,6,m-25,vad,cp8,Adele - Rolling in the Deep,,,0,0,,0
+s6_m-25,6,m-25,vad,cp12,Adele - Rolling in the Deep,,,0,0,,0
+s7_music_only,7,music_only,mono,cp4,Imagine Dragons - Believer,Believer,Imagine Dragons,1,7,40.032550781,0
+s7_music_only,7,music_only,side,cp4,Imagine Dragons - Believer,,,0,0,,0
+s7_music_only,7,music_only,side,cp8,Imagine Dragons - Believer,,,0,0,,0
+s7_music_only,7,music_only,side,cp12,Imagine Dragons - Believer,,,0,0,,0
+s7_music_only,7,music_only,vad,cp4,Imagine Dragons - Believer,Believer,Imagine Dragons,1,7,40.0329375,0
+s7_m-10,7,m-10,mono,cp4,Imagine Dragons - Believer,Believer,Imagine Dragons,1,8,39.937375,0
+s7_m-10,7,m-10,side,cp4,Imagine Dragons - Believer,,,0,0,,0
+s7_m-10,7,m-10,side,cp8,Imagine Dragons - Believer,,,0,0,,0
+s7_m-10,7,m-10,side,cp12,Imagine Dragons - Believer,,,0,0,,0
+s7_m-10,7,m-10,vad,cp4,Imagine Dragons - Believer,Believer,Imagine Dragons,1,6,39.940078125,0
+s7_m-15,7,m-15,mono,cp4,Imagine Dragons - Believer,Believer,Imagine Dragons,1,4,39.938160155999995,0
+s7_m-15,7,m-15,side,cp4,Imagine Dragons - Believer,,,0,0,,0
+s7_m-15,7,m-15,side,cp8,Imagine Dragons - Believer,,,0,0,,0

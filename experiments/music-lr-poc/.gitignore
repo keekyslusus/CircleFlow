@@ -1,0 +1,6 @@
+songs/*.m4a
+speech/
+mixes/
+sig/*.wav
+win/
+venv/

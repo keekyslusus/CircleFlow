@@ -1,0 +1,242 @@
+{
+ "s1_music_only": {
+  "side_to_mid_db": -8.505837650402642,
+  "vad_speech_frac_cp4": 0.0,
+  "vad_speech_frac_cp8": 0.0,
+  "vad_speech_frac_cp12": 0.0
+ },
+ "s1_m-10": {
+  "side_to_mid_db": -19.427937089826287,
+  "vad_speech_frac_cp4": 0.895,
+  "vad_speech_frac_cp8": 0.91075,
+  "vad_speech_frac_cp12": 0.9056666666666666
+ },
+ "s1_m-15": {
+  "side_to_mid_db": -24.18410346678212,
+  "vad_speech_frac_cp4": 0.895,
+  "vad_speech_frac_cp8": 0.90275,
+  "vad_speech_frac_cp12": 0.8976666666666666
+ },
+ "s1_m-20": {
+  "side_to_mid_db": -29.10486398606864,
+  "vad_speech_frac_cp4": 0.911,
+  "vad_speech_frac_cp8": 0.90675,
+  "vad_speech_frac_cp12": 0.9003333333333333
+ },
+ "s1_m-25": {
+  "side_to_mid_db": -34.07995332305086,
+  "vad_speech_frac_cp4": 0.919,
+  "vad_speech_frac_cp8": 0.91075,
+  "vad_speech_frac_cp12": 0.903
+ },
+ "s2_music_only": {
+  "side_to_mid_db": -14.864531064531235,
+  "vad_speech_frac_cp4": 0.0,
+  "vad_speech_frac_cp8": 0.0,
+  "vad_speech_frac_cp12": 0.0
+ },
+ "s2_m-10": {
+  "side_to_mid_db": -25.71186842092674,
+  "vad_speech_frac_cp4": 0.8555,
+  "vad_speech_frac_cp8": 0.85075,
+  "vad_speech_frac_cp12": 0.9005
+ },
+ "s2_m-15": {
+  "side_to_mid_db": -30.46208118603367,
+  "vad_speech_frac_cp4": 0.8555,
+  "vad_speech_frac_cp8": 0.85875,
+  "vad_speech_frac_cp12": 0.8786666666666667
+ },
+ "s2_m-20": {
+  "side_to_mid_db": -35.380398924398854,
+  "vad_speech_frac_cp4": 0.8555,
+  "vad_speech_frac_cp8": 0.86675,
+  "vad_speech_frac_cp12": 0.8813333333333333
+ },
+ "s2_m-25": {
+  "side_to_mid_db": -40.35444828901969,
+  "vad_speech_frac_cp4": 0.8555,
+  "vad_speech_frac_cp8": 0.84675,
+  "vad_speech_frac_cp12": 0.8626666666666667
+ },
+ "s3_music_only": {
+  "side_to_mid_db": -12.924651140621236,
+  "vad_speech_frac_cp4": 0.7585,
+  "vad_speech_frac_cp8": 0.7785,
+  "vad_speech_frac_cp12": 0.556
+ },
+ "s3_m-10": {
+  "side_to_mid_db": -23.570536642748262,
+  "vad_speech_frac_cp4": 0.7985,
+  "vad_speech_frac_cp8": 0.86275,
+  "vad_speech_frac_cp12": 0.8841666666666667
+ },
+ "s3_m-15": {
+  "side_to_mid_db": -28.302290843896554,
+  "vad_speech_frac_cp4": 0.8225,
+  "vad_speech_frac_cp8": 0.87475,
+  "vad_speech_frac_cp12": 0.8921666666666667
+ },
+ "s3_m-20": {
+  "side_to_mid_db": -33.21274038505893,
+  "vad_speech_frac_cp4": 0.8065,
+  "vad_speech_frac_cp8": 0.86275,
+  "vad_speech_frac_cp12": 0.8815
+ },
+ "s3_m-25": {
+  "side_to_mid_db": -38.18341517133596,
+  "vad_speech_frac_cp4": 0.7985,
+  "vad_speech_frac_cp8": 0.85075,
+  "vad_speech_frac_cp12": 0.8628333333333333
+ },
+ "s4_music_only": {
+  "side_to_mid_db": -8.692645068800536,
+  "vad_speech_frac_cp4": 0.0,
+  "vad_speech_frac_cp8": 0.0,
+  "vad_speech_frac_cp12": 0.0
+ },
+ "s4_m-10": {
+  "side_to_mid_db": -19.667760912698277,
+  "vad_speech_frac_cp4": 0.9185,
+  "vad_speech_frac_cp8": 0.90625,
+  "vad_speech_frac_cp12": 0.9211666666666667
+ },
+ "s4_m-15": {
+  "side_to_mid_db": -24.419479119340988,
+  "vad_speech_frac_cp4": 0.9185,
+  "vad_speech_frac_cp8": 0.90225,
+  "vad_speech_frac_cp12": 0.9185
+ },
+ "s4_m-20": {
+  "side_to_mid_db": -29.33684815299501,
+  "vad_speech_frac_cp4": 0.9265,
+  "vad_speech_frac_cp8": 0.90625,
+  "vad_speech_frac_cp12": 0.9211666666666667
+ },
+ "s4_m-25": {
+  "side_to_mid_db": -34.30978270401931,
+  "vad_speech_frac_cp4": 0.9185,
+  "vad_speech_frac_cp8": 0.89825,
+  "vad_speech_frac_cp12": 0.9185
+ },
+ "s5_music_only": {
+  "side_to_mid_db": -14.710464339307393,
+  "vad_speech_frac_cp4": 0.0,
+  "vad_speech_frac_cp8": 0.0,
+  "vad_speech_frac_cp12": 0.0
+ },
+ "s5_m-10": {
+  "side_to_mid_db": -25.29274780764493,
+  "vad_speech_frac_cp4": 0.9255,
+  "vad_speech_frac_cp8": 0.93025,
+  "vad_speech_frac_cp12": 0.9075
+ },
+ "s5_m-15": {
+  "side_to_mid_db": -30.023863141187633,
+  "vad_speech_frac_cp4": 0.9505,
+  "vad_speech_frac_cp8": 0.94675,
+  "vad_speech_frac_cp12": 0.8995
+ },
+ "s5_m-20": {
+  "side_to_mid_db": -34.93492308330174,
+  "vad_speech_frac_cp4": 0.8765,
+  "vad_speech_frac_cp8": 0.90575,
+  "vad_speech_frac_cp12": 0.8695
+ },
+ "s5_m-25": {
+  "side_to_mid_db": -39.90614995555564,
+  "vad_speech_frac_cp4": 0.8685,
+  "vad_speech_frac_cp8": 0.89775,
+  "vad_speech_frac_cp12": 0.8615
+ },
+ "s6_music_only": {
+  "side_to_mid_db": -14.648838279486192,
+  "vad_speech_frac_cp4": 0.0,
+  "vad_speech_frac_cp8": 0.0,
+  "vad_speech_frac_cp12": 0.0
+ },
+ "s6_m-10": {
+  "side_to_mid_db": -25.224274821730827,
+  "vad_speech_frac_cp4": 0.8145,
+  "vad_speech_frac_cp8": 0.90725,
+  "vad_speech_frac_cp12": 0.9381666666666667
+ },
+ "s6_m-15": {
+  "side_to_mid_db": -29.95870339618285,
+  "vad_speech_frac_cp4": 0.8145,
+  "vad_speech_frac_cp8": 0.90725,
+  "vad_speech_frac_cp12": 0.9381666666666667
+ },
+ "s6_m-20": {
+  "side_to_mid_db": -34.87187114591424,
+  "vad_speech_frac_cp4": 0.7985,
+  "vad_speech_frac_cp8": 0.89925,
+  "vad_speech_frac_cp12": 0.9328333333333333
+ },
+ "s6_m-25": {
+  "side_to_mid_db": -39.84437268956587,
+  "vad_speech_frac_cp4": 0.7985,
+  "vad_speech_frac_cp8": 0.88675,
+  "vad_speech_frac_cp12": 0.9245
+ },
+ "s7_music_only": {
+  "side_to_mid_db": -5.509322758044918,
+  "vad_speech_frac_cp4": 0.9755,
+  "vad_speech_frac_cp8": 0.96725,
+  "vad_speech_frac_cp12": 0.9781666666666666
+ },
+ "s7_m-10": {
+  "side_to_mid_db": -16.957335439451423,
+  "vad_speech_frac_cp4": 0.8945,
+  "vad_speech_frac_cp8": 0.89875,
+  "vad_speech_frac_cp12": 0.9028333333333334
+ },
+ "s7_m-15": {
+  "side_to_mid_db": -21.731535503561844,
+  "vad_speech_frac_cp4": 0.8865,
+  "vad_speech_frac_cp8": 0.89475,
+  "vad_speech_frac_cp12": 0.8975
+ },
+ "s7_m-20": {
+  "side_to_mid_db": -26.655675949439825,
+  "vad_speech_frac_cp4": 0.8945,
+  "vad_speech_frac_cp8": 0.90275,
+  "vad_speech_frac_cp12": 0.9028333333333334
+ },
+ "s7_m-25": {
+  "side_to_mid_db": -31.630309238852078,
+  "vad_speech_frac_cp4": 0.9185,
+  "vad_speech_frac_cp8": 0.91475,
+  "vad_speech_frac_cp12": 0.9081666666666667
+ },
+ "s8_music_only": {
+  "side_to_mid_db": -5.851077934148645,
+  "vad_speech_frac_cp4": 0.1115,
+  "vad_speech_frac_cp8": 0.0755,
+  "vad_speech_frac_cp12": 0.050333333333333334
+ },
+ "s8_m-10": {
+  "side_to_mid_db": -17.20408189496347,
+  "vad_speech_frac_cp4": 0.9115,
+  "vad_speech_frac_cp8": 0.91525,
+  "vad_speech_frac_cp12": 0.8921666666666667
+ },
+ "s8_m-15": {
+  "side_to_mid_db": -21.97647511745911,
+  "vad_speech_frac_cp4": 0.9115,
+  "vad_speech_frac_cp8": 0.89925,
+  "vad_speech_frac_cp12": 0.8841666666666667
+ },
+ "s8_m-20": {
+  "side_to_mid_db": -26.900840215573254,
+  "vad_speech_frac_cp4": 0.9115,
+  "vad_speech_frac_cp8": 0.89925,
+  "vad_speech_frac_cp12": 0.8895
+ },
+ "s8_m-25": {
+  "side_to_mid_db": -31.8759643027402,
+  "vad_speech_frac_cp4": 0.9115,
+  "vad_speech_frac_cp8": 0.89925,
+  "vad_speech_frac_cp12": 0.8868333333333334
+ }
+}

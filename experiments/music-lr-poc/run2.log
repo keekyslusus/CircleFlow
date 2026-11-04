@@ -1,0 +1,243 @@
+s1_music_only mono cp4 -> Bohemian Rhapsody | Queen ok
+s1_music_only side cp4 -> Bohemian Rhapsody | Queen ok
+s1_music_only vad cp4 -> Bohemian Rhapsody | Queen ok
+s1_m-10 mono cp4 ->  |  -
+s1_m-10 mono cp8 -> Bohemian Rhapsody | Queen ok
+s1_m-10 side cp4 -> Bohemian Rhapsody | Queen ok
+s1_m-10 vad cp4 ->  |  -
+s1_m-10 vad cp8 -> Bohemian Rhapsody | Queen ok
+429, sleeping 60
+s1_m-15 mono cp4 ->  |  -
+s1_m-15 mono cp8 ->  |  -
+s1_m-15 mono cp12 -> Bohemian Rhapsody | Queen ok
+s1_m-15 side cp4 -> Bohemian Rhapsody | Queen ok
+s1_m-15 vad cp4 ->  |  -
+429, sleeping 60
+s1_m-15 vad cp8 ->  |  -
+s1_m-15 vad cp12 -> Bohemian Rhapsody | Queen ok
+s1_m-20 mono cp4 ->  |  -
+s1_m-20 mono cp8 ->  |  -
+s1_m-20 mono cp12 ->  |  -
+s1_m-20 side cp4 -> Bohemian Rhapsody | Queen ok
+429, sleeping 60
+s1_m-20 vad cp4 ->  |  -
+s1_m-20 vad cp8 ->  |  -
+s1_m-20 vad cp12 ->  |  -
+s1_m-25 mono cp4 ->  |  -
+s1_m-25 mono cp8 ->  |  -
+429, sleeping 60
+err 
+s1_m-25 mono cp12 ->  |  -
+s1_m-25 side cp4 -> Bohemian Rhapsody | Queen ok
+s1_m-25 vad cp4 ->  |  -
+s1_m-25 vad cp8 ->  |  -
+s1_m-25 vad cp12 ->  |  -
+429, sleeping 60
+s2_music_only mono cp4 -> Billie Jean | Michael Jackson ok
+s2_music_only side cp4 ->  |  -
+s2_music_only side cp8 ->  |  -
+s2_music_only side cp12 ->  |  -
+s2_music_only vad cp4 -> Billie Jean | Michael Jackson ok
+429, sleeping 60
+s2_m-10 mono cp4 ->  |  -
+s2_m-10 mono cp8 -> Billie Jean | Michael Jackson ok
+s2_m-10 side cp4 ->  |  -
+s2_m-10 side cp8 ->  |  -
+s2_m-10 side cp12 ->  |  -
+429, sleeping 60
+s2_m-10 vad cp4 ->  |  -
+s2_m-10 vad cp8 -> Billie Jean | Michael Jackson ok
+s2_m-15 mono cp4 ->  |  -
+s2_m-15 mono cp8 -> Billie Jean | Michael Jackson ok
+s2_m-15 side cp4 ->  |  -
+s2_m-15 side cp8 ->  |  -
+err 
+s2_m-15 side cp12 ->  |  -
+s2_m-15 vad cp4 ->  |  -
+s2_m-15 vad cp8 -> Billie Jean | Michael Jackson ok
+s2_m-20 mono cp4 ->  |  -
+s2_m-20 mono cp8 ->  |  -
+429, sleeping 60
+s2_m-20 mono cp12 -> Billie Jean (Single Version) | Michael Jackson ok
+s2_m-20 side cp4 ->  |  -
+s2_m-20 side cp8 ->  |  -
+s2_m-20 side cp12 ->  |  -
+s2_m-20 vad cp4 ->  |  -
+s2_m-20 vad cp8 -> Billie Jean | Michael Jackson ok
+429, sleeping 60
+s2_m-25 mono cp4 ->  |  -
+s2_m-25 mono cp8 ->  |  -
+s2_m-25 mono cp12 ->  |  -
+s2_m-25 side cp4 ->  |  -
+s2_m-25 side cp8 ->  |  -
+429, sleeping 60
+s2_m-25 side cp12 ->  |  -
+s2_m-25 vad cp4 ->  |  -
+s2_m-25 vad cp8 ->  |  -
+s2_m-25 vad cp12 ->  |  -
+s3_music_only mono cp4 -> Shape of You | Ed Sheeran ok
+429, sleeping 60
+s3_music_only side cp4 ->  |  -
+s3_music_only side cp8 -> Shape of You | Ed Sheeran ok
+s3_music_only vad cp4 -> Shape of You | Ed Sheeran ok
+s3_m-10 mono cp4 -> Shape of You | Ed Sheeran ok
+s3_m-10 side cp4 ->  |  -
+429, sleeping 60
+s3_m-10 side cp8 -> Shape of You | Ed Sheeran ok
+s3_m-10 vad cp4 -> Shape of You | Ed Sheeran ok
+s3_m-15 mono cp4 -> Shape of You | Ed Sheeran ok
+s3_m-15 side cp4 ->  |  -
+s3_m-15 side cp8 -> Shape of You | Ed Sheeran ok
+s3_m-15 vad cp4 -> Shape of You | Ed Sheeran ok
+429, sleeping 60
+s3_m-20 mono cp4 ->  |  -
+s3_m-20 mono cp8 -> Shape of You | Ed Sheeran ok
+s3_m-20 side cp4 ->  |  -
+s3_m-20 side cp8 -> Shape of You | Ed Sheeran ok
+s3_m-20 vad cp4 ->  |  -
+429, sleeping 60
+s3_m-20 vad cp8 -> Shape of You | Ed Sheeran ok
+s3_m-25 mono cp4 ->  |  -
+s3_m-25 mono cp8 ->  |  -
+s3_m-25 mono cp12 ->  |  -
+s3_m-25 side cp4 ->  |  -
+s3_m-25 side cp8 -> Shape of You | Ed Sheeran ok
+429, sleeping 60
+s3_m-25 vad cp4 ->  |  -
+s3_m-25 vad cp8 -> Shape of You | Ed Sheeran ok
+s4_music_only mono cp4 -> Levitating (feat. DaBaby) | Dua Lipa ok
+s4_music_only side cp4 -> Levitating (feat. DaBaby) | Dua Lipa ok
+s4_music_only vad cp4 -> Levitating (feat. DaBaby) | Dua Lipa ok
+429, sleeping 60
+s4_m-10 mono cp4 -> Levitating (feat. DaBaby) | Dua Lipa ok
+s4_m-10 side cp4 -> Levitating (feat. DaBaby) | Dua Lipa ok
+s4_m-10 vad cp4 ->  |  -
+s4_m-10 vad cp8 -> Levitating (feat. DaBaby) | Dua Lipa ok
+s4_m-15 mono cp4 ->  |  -
+429, sleeping 60
+s4_m-15 mono cp8 -> Levitating (feat. DaBaby) | Dua Lipa ok
+s4_m-15 side cp4 -> Levitating (feat. DaBaby) | Dua Lipa ok
+s4_m-15 vad cp4 ->  |  -
+s4_m-15 vad cp8 ->  |  -
+s4_m-15 vad cp12 -> Lvtg | Black Dre WRONG
+429, sleeping 60
+s4_m-20 mono cp4 ->  |  -
+s4_m-20 mono cp8 -> Levitating | Dua Lipa ok
+s4_m-20 side cp4 -> Levitating (feat. DaBaby) | Dua Lipa ok
+s4_m-20 vad cp4 ->  |  -
+s4_m-20 vad cp8 ->  |  -
+s4_m-20 vad cp12 ->  |  -
+s4_m-25 mono cp4 ->  |  -
+429, sleeping 60
+s4_m-25 mono cp8 ->  |  -
+s4_m-25 mono cp12 ->  |  -
+s4_m-25 side cp4 -> Levitating (feat. DaBaby) | Dua Lipa ok
+s4_m-25 vad cp4 ->  |  -
+s4_m-25 vad cp8 ->  |  -
+429, sleeping 60
+s4_m-25 vad cp12 ->  |  -
+s5_music_only mono cp4 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_music_only side cp4 ->  |  -
+s5_music_only side cp8 ->  |  -
+s5_music_only side cp12 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+429, sleeping 60
+s5_music_only vad cp4 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_m-10 mono cp4 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_m-10 side cp4 ->  |  -
+s5_m-10 side cp8 ->  |  -
+s5_m-10 side cp12 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+429, sleeping 60
+s5_m-10 vad cp4 ->  |  -
+s5_m-10 vad cp8 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_m-15 mono cp4 ->  |  -
+s5_m-15 mono cp8 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_m-15 side cp4 ->  |  -
+429, sleeping 60
+s5_m-15 side cp8 ->  |  -
+s5_m-15 side cp12 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_m-15 vad cp4 ->  |  -
+s5_m-15 vad cp8 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_m-20 mono cp4 ->  |  -
+429, sleeping 60
+s5_m-20 mono cp8 ->  |  -
+s5_m-20 mono cp12 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_m-20 side cp4 ->  |  -
+s5_m-20 side cp8 ->  |  -
+s5_m-20 side cp12 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_m-20 vad cp4 ->  |  -
+s5_m-20 vad cp8 ->  |  -
+429, sleeping 60
+s5_m-20 vad cp12 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_m-25 mono cp4 ->  |  -
+s5_m-25 mono cp8 ->  |  -
+s5_m-25 mono cp12 ->  |  -
+s5_m-25 side cp4 ->  |  -
+429, sleeping 60
+s5_m-25 side cp8 ->  |  -
+s5_m-25 side cp12 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+s5_m-25 vad cp4 ->  |  -
+s5_m-25 vad cp8 ->  |  -
+s5_m-25 vad cp12 -> Get Lucky | Daft Punk, Pharrell Williams & Nile Rodgers ok
+429, sleeping 60
+s6_music_only mono cp4 -> Rolling in the Deep | Adele ok
+s6_music_only side cp4 ->  |  -
+s6_music_only side cp8 ->  |  -
+s6_music_only side cp12 -> Rolling in the Deep | Adele ok
+s6_music_only vad cp4 -> Rolling in the Deep | Adele ok
+429, sleeping 60
+s6_m-10 mono cp4 -> Rolling in the Deep | Adele ok
+s6_m-10 side cp4 ->  |  -
+s6_m-10 side cp8 ->  |  -
+s6_m-10 side cp12 -> Rolling in the Deep | Adele ok
+s6_m-10 vad cp4 ->  |  -
+429, sleeping 60
+s6_m-10 vad cp8 ->  |  -
+s6_m-10 vad cp12 -> Rolling in the Deep | Adele ok
+s6_m-15 mono cp4 ->  |  -
+s6_m-15 mono cp8 ->  |  -
+s6_m-15 mono cp12 ->  |  -
+s6_m-15 side cp4 ->  |  -
+s6_m-15 side cp8 ->  |  -
+429, sleeping 60
+s6_m-15 side cp12 -> Rolling in the Deep | Adele ok
+s6_m-15 vad cp4 ->  |  -
+s6_m-15 vad cp8 ->  |  -
+s6_m-15 vad cp12 ->  |  -
+err 
+s6_m-20 mono cp4 ->  |  -
+s6_m-20 mono cp8 ->  |  -
+s6_m-20 mono cp12 ->  |  -
+s6_m-20 side cp4 ->  |  -
+s6_m-20 side cp8 ->  |  -
+429, sleeping 60
+s6_m-20 side cp12 -> Rolling in the Deep | Adele ok
+s6_m-20 vad cp4 ->  |  -
+s6_m-20 vad cp8 ->  |  -
+s6_m-20 vad cp12 ->  |  -
+s6_m-25 mono cp4 ->  |  -
+s6_m-25 mono cp8 ->  |  -
+s6_m-25 mono cp12 ->  |  -
+429, sleeping 60
+s6_m-25 side cp4 ->  |  -
+s6_m-25 side cp8 ->  |  -
+s6_m-25 side cp12 -> Rolling in the Deep | Adele ok
+s6_m-25 vad cp4 ->  |  -
+s6_m-25 vad cp8 ->  |  -
+429, sleeping 60
+s6_m-25 vad cp12 ->  |  -
+s7_music_only mono cp4 -> Believer | Imagine Dragons ok
+s7_music_only side cp4 ->  |  -
+s7_music_only side cp8 ->  |  -
+err 
+s7_music_only side cp12 ->  |  -
+s7_music_only vad cp4 -> Believer | Imagine Dragons ok
+s7_m-10 mono cp4 -> Believer | Imagine Dragons ok
+s7_m-10 side cp4 ->  |  -
+s7_m-10 side cp8 ->  |  -
+429, sleeping 60
+s7_m-10 side cp12 ->  |  -
+s7_m-10 vad cp4 -> Believer | Imagine Dragons ok
+s7_m-15 mono cp4 -> Believer | Imagine Dragons ok
+s7_m-15 side cp4 ->  |  -
+s7_m-15 side cp8 ->  |  -
+429, sleeping 60
