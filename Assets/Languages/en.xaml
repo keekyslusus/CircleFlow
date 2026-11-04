@@ -190,7 +190,7 @@
     <system:String x:Key="app_settings_overlay_zoom">Zoom with Ctrl + Wheel</system:String>
     <system:String x:Key="app_settings_overlay_zoom_sub">Magnify the screen to circle small details</system:String>
     <system:String x:Key="app_settings_overlay_pen">Draw with Ctrl</system:String>
-    <system:String x:Key="app_settings_overlay_pen_sub">Marks go into Ask, Copy and Save, but not into search</system:String>
+    <system:String x:Key="app_settings_overlay_pen_sub">Marks go into Ask, Copy, and Save, but not into search</system:String>
     <system:String x:Key="app_settings_ui_sounds">Interface sounds</system:String>
     <system:String x:Key="app_settings_shortcut_hint">Shortcut works while CircleFlow is running. Esc closes selection or cancels the current action.</system:String>
     <system:String x:Key="app_settings_image_search">Image search</system:String>
@@ -247,12 +247,12 @@
     <system:String x:Key="app_settings_history_days_7">7 days</system:String>
     <system:String x:Key="app_settings_history_days_28">28 days</system:String>
     <system:String x:Key="app_settings_history_days_90">90 days</system:String>
-    <system:String x:Key="app_settings_history_search">Search by title, artist or album</system:String>
+    <system:String x:Key="app_settings_history_search">Search by title, artist, or album</system:String>
     <system:String x:Key="app_settings_clear_history">Clear history</system:String>
     <system:String x:Key="app_settings_history_empty">No recognized tracks yet</system:String>
     <system:String x:Key="app_settings_history_empty_sub">Tracks you recognize will show up here, newest first.</system:String>
     <system:String x:Key="app_settings_history_no_match">Nothing matches "{0}"</system:String>
-    <system:String x:Key="app_settings_history_no_match_sub">Try a title, an artist or an album.</system:String>
+    <system:String x:Key="app_settings_history_no_match_sub">Try a title, an artist, or an album.</system:String>
     <system:String x:Key="app_settings_history_today">Today</system:String>
     <system:String x:Key="app_settings_history_yesterday">Yesterday</system:String>
     <system:String x:Key="app_settings_clear_history_title">Clear recognition history?</system:String>
@@ -323,7 +323,7 @@
     <system:String x:Key="app_settings_open">Open</system:String>
     <system:String x:Key="app_settings_developer_notifications">Notifications</system:String>
     <system:String x:Key="app_settings_test_notifications">Test notifications</system:String>
-    <system:String x:Key="app_settings_test_notifications_sub">Shows a message, an error and an update offer in the corner of the screen</system:String>
+    <system:String x:Key="app_settings_test_notifications_sub">Shows a message, an error, and an update offer in the corner of the screen</system:String>
     <system:String x:Key="app_settings_open_filters_failed">Could not open the filters file.</system:String>
     <system:String x:Key="app_test_browser_title">CircleFlow test browser</system:String>
     <system:String x:Key="app_test_browser_back">Back</system:String>
@@ -348,7 +348,7 @@
     <system:String x:Key="app_onboarding_left_click_hint">Left click - search</system:String>
     <system:String x:Key="app_onboarding_right_click_hint">Right click - actions</system:String>
     <system:String x:Key="app_onboarding_step2_title">Left click searches, right click acts</system:String>
-    <system:String x:Key="app_onboarding_step2_text">Circle something with the left button to search for it. Use the right button to ask AI, copy, save or translate.</system:String>
+    <system:String x:Key="app_onboarding_step2_text">Circle something with the left button to search for it. Use the right button to ask AI, copy, save, or translate.</system:String>
     <system:String x:Key="app_onboarding_sample_line">The best coffee spots</system:String>
     <system:String x:Key="app_onboarding_sample_prefix">downtown -</system:String>
     <system:String x:Key="app_onboarding_sample_selected">a full review</system:String>

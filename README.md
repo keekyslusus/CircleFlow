@@ -20,15 +20,15 @@ Just press a shortcut. No screenshots to save, no tabs to open.
 ### Visual Search
 <img src=".github/pinterest.gif" width="600">
 
-- Circle or select any area and search it with Google Lens ,Yandex Images, Pinterest or trace.moe
-- [trace.moe](https://trace.moe/) finds the anime, episode and timestamp of a scene
+- Circle or select any area and search it with Google Lens, Yandex Images, Pinterest, or trace.moe
+- [trace.moe](https://trace.moe/) finds the anime, episode, and timestamp of a scene
 - Switch the provider right from the selection toolbar
 
 
 ### Text & Translation
 <img src=".github/feature_text-translation.png" width="600">
 
-- Select text anywhere on screen to copy it or search it with [Google](https://www.google.com/), [Bing](https://www.bing.com/), [DuckDuckGo](https://duckduckgo.com/), [Kagi](https://kagi.com/), [Qwant](https://www.qwant.com/) or [Startpage](https://www.startpage.com/)
+- Select text anywhere on screen to copy it or search it with [Google](https://www.google.com/), [Bing](https://www.bing.com/), [DuckDuckGo](https://duckduckgo.com/), [Kagi](https://kagi.com/), [Qwant](https://www.qwant.com/), or [Startpage](https://www.startpage.com/)
 - Translate on-screen text with Google Translate
 - Text recognition uses the OCR languages installed in Windows
 - QR codes on screen get a chip to open the link, copy the content
@@ -55,7 +55,7 @@ Just press a shortcut. No screenshots to save, no tabs to open.
 
 - Opens with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> by default
 - Hold <kbd>LMB</kbd> and circle to search
-- Hold <kbd>RMB</kbd> and circle to ask, copy, save or translate
+- Hold <kbd>RMB</kbd> and circle to ask, copy, save, or translate
 - Hold <kbd>Alt</kbd>+<kbd>LMB</kbd> to circle over text instead of selecting it
 - Drag across text to select it like in a document, then copy or search it
 - <kbd>Ctrl</kbd>+<kbd>Wheel</kbd> zooms in/out, while zoomed <kbd>Wheel</kbd> scrolls and dragging with <kbd>MMB</kbd> pans
@@ -74,4 +74,4 @@ Download [`CircleFlow-win-Setup`](https://github.com/keekyslusus/CircleFlow/rele
 
 ## License
 
-GPL-3.0-or-later. See [`LICENSE`](./LICENSE), [`THIRD PARTY NOTICES`](./THIRD_PARTY_NOTICES.txt) and [`THIRD PARTY LICENSES`](./THIRD_PARTY_LICENSES).
+GPL-3.0-or-later. See [`LICENSE`](./LICENSE), [`THIRD PARTY NOTICES`](./THIRD_PARTY_NOTICES.txt), and [`THIRD PARTY LICENSES`](./THIRD_PARTY_LICENSES).
