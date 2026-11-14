@@ -712,6 +712,52 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
+    public void Long_dropdown_scrolls_smoothly_by_pixels_and_reveals_the_settings_scrollbar() => OnSta(time =>
+    {
+        var window = new TestSettingsWindow().CreateView(true).Window;
+        try
+        {
+            Find<RadioButton>(window, "Nav_text").IsChecked = true;
+            window.Show();
+            CompletePageTransition(window, time);
+            var combo = Find<ComboBox>(window, "TranslationLanguage");
+            var scroll = (ScrollViewer)combo.Template.FindName("DropdownScroll", combo);
+            combo.SelectedIndex = 0;
+            combo.IsDropDownOpen = true;
+            Pump();
+            time.Advance(300);
+            var bar = (ScrollBar)scroll.Template.FindName("PART_VerticalScrollBar", scroll);
+            Assert.False(scroll.CanContentScroll);
+            Assert.True(scroll.ScrollableHeight > 280);
+            Assert.Equal(0, scroll.VerticalOffset);
+            Assert.Equal(0, bar.Opacity);
+
+            var step = SystemParameters.WheelScrollLines < 0 ? scroll.ViewportHeight * 2 : SystemParameters.WheelScrollLines * 32.0;
+            var wheel = Wheel(scroll, -120);
+            if (!SystemParameters.ClientAreaAnimation || step == 0)
+            {
+                Assert.False(wheel.Handled);
+                return;
+            }
+            Assert.True(wheel.Handled);
+            time.Advance(70);
+            Assert.InRange(scroll.VerticalOffset, 0.1, step - 0.1);
+            Assert.Equal(0, Find<ScrollViewer>(window, "PageScroll").VerticalOffset);
+            time.Advance(650);
+            Pump();
+            Assert.InRange(scroll.VerticalOffset, step - 1, step + 1);
+            Assert.True(bar.Opacity > 0);
+            Assert.True(bar.IsHitTestVisible);
+            var thumb = ((Track)bar.Template.FindName("PART_Track", bar)).Thumb;
+            Assert.Null(LayoutInformation.GetLayoutClip(thumb));
+            Assert.True(thumb.RenderSize.Height >= thumb.MinHeight);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                SavePng((FrameworkElement)combo.Template.FindName("DropdownSurface", combo), "settings-light-dropdown-scroll.png");
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
     public void Wheel_scroll_moves_through_intermediate_positions_accumulates_and_reverses() => OnSta(time =>
     {
         var window = new TestSettingsWindow().CreateView(true).Window;
