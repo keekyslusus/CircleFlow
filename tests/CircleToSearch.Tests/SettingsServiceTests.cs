@@ -26,6 +26,9 @@ public sealed class SettingsServiceTests
         Assert.False(service.SetAppLanguage("not a language").Success);
         Assert.True(service.SetAppLanguage(" RU ").Success);
         Assert.Equal("ru", service.Snapshot.AppLanguageTag);
+        Assert.False(service.SetTranslationLanguage("klingon").Success);
+        Assert.True(service.SetTranslationLanguage(" ZH-tw ").Success);
+        Assert.Equal("zh-TW", service.Snapshot.TranslationLanguageTag);
         var editedCopy = service.Snapshot with { PaddingPx = 99 };
         Assert.Equal(20, service.Snapshot.PaddingPx);
         Assert.Equal(99, editedCopy.PaddingPx);

@@ -26,7 +26,8 @@ internal static class TestOverlayControllers
         Func<System.Windows.Media.Imaging.BitmapSource, CancellationToken,
             IReadOnlyList<CircleToSearch.QrCodes.QrCodeMatch>>? scanQrCodes = null,
         Func<ModifierKeys>? modifiers = null,
-        Action<CircleToSearch.Sounds.UiSound>? playSound = null) =>
+        Action<CircleToSearch.Sounds.UiSound>? playSound = null,
+        CircleToSearch.TextRecognition.OcrLanguageCatalog? ocrLanguages = null) =>
         new(context => CompositionRoot.CreateOverlayControllers(
             context,
             new CompositionRoot.OverlayControllerDependencies(
@@ -43,6 +44,7 @@ internal static class TestOverlayControllers
                 CompositionRoot.CreateWidgetVisuals(TestRemoteImages.Offline, createTraceVideo),
                 TestRemoteImages.Offline,
                 widgetTheme ?? (() => context.Visual.LightTheme),
+                OcrLanguages: ocrLanguages,
                 SetImageClipboard: setImageClipboard,
                 ScanQrCodes: scanQrCodes,
                 Modifiers: modifiers,

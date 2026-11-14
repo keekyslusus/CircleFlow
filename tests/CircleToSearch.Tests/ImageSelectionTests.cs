@@ -437,6 +437,49 @@ public sealed class ImageSelectionTests
     });
 
     [Fact]
+    public void Translation_into_a_language_windows_cannot_recognize_explains_why_its_text_is_not_selectable() => Run(() =>
+    {
+        using var h = new Harness(translationTarget: "rom",
+            ocrLanguages: new OcrLanguageCatalog([new("en-US", "English")]));
+        h.Select();
+
+        h.Translate();
+
+        var language = CircleToSearch.Translation.TranslationLanguages.DisplayName("rom", TestUiStrings.English);
+        Assert.Contains(TestUiStrings.English.TranslatedTextUnselectable(language), h.ToastTexts());
+        Assert.DoesNotContain(h.ToastTexts(), text => text.StartsWith("Text recognition is unavailable", StringComparison.Ordinal));
+    });
+
+    [Fact]
+    public void Translation_into_the_system_language_names_it_without_the_region() => Run(() =>
+    {
+        using var h = new Harness(translationTarget: "pt-BR",
+            ocrLanguages: new OcrLanguageCatalog([new("en-US", "English")]));
+        h.Select();
+
+        h.Translate();
+
+        var language = CircleToSearch.Translation.TranslationLanguages.DisplayName("pt", TestUiStrings.English);
+        Assert.Contains(TestUiStrings.English.TranslatedTextUnselectable(language), h.ToastTexts());
+    });
+
+    [Theory]
+    [InlineData("no", "nb-NO")]
+    [InlineData("sr", "sr-Cyrl-RS")]
+    [InlineData("iw", "he-IL")]
+    public void Translated_text_uses_the_installed_recognizer_for_a_google_code(string target, string installed) => Run(() =>
+    {
+        using var h = new Harness(translationTarget: target,
+            ocrLanguages: new OcrLanguageCatalog([new("en-US", "English"), new(installed, installed)]));
+        h.Select();
+
+        h.Translate();
+
+        var language = CircleToSearch.Translation.TranslationLanguages.DisplayName(target, TestUiStrings.English);
+        Assert.DoesNotContain(TestUiStrings.English.TranslatedTextUnselectable(language), h.ToastTexts());
+    });
+
+    [Fact]
     public void New_lasso_from_an_ask_prompt_with_a_switched_layout_still_completes() => Run(() =>
     {
         using var h = new Harness();
@@ -1032,13 +1075,15 @@ public sealed class ImageSelectionTests
         internal Harness(string provider = SearchProviderIds.GoogleLens, bool copyFails = false,
             double scale = 1, bool overscan = false, bool consent = true,
             SelectionToolbarAction hiddenActions = SelectionToolbarAction.None, IOcrRecognizer? ocr = null,
-            KeyboardLanguageSnapshot inputLanguage = default, bool animations = false, bool pen = true)
+            KeyboardLanguageSnapshot inputLanguage = default, bool animations = false, bool pen = true,
+            string translationTarget = "en", OcrLanguageCatalog? ocrLanguages = null)
         {
             Consent = consent;
             using (var graphics = System.Drawing.Graphics.FromImage(_frame)) graphics.Clear(System.Drawing.Color.Black);
             var monitor = new GdiRectangle(0, 0, 640, 400);
             var factory = TestOverlayControllers.CreateFactory(animationsEnabled: () => animations, pointerPosition: _ => _point,
                 translationConsentAccepted: () => Consent, ocrRecognizer: ocr, modifiers: () => Modifiers, playSound: Sounds.Add,
+                ocrLanguages: ocrLanguages,
                 setImageClipboard: image =>
                 {
                     if (copyFails) throw new InvalidOperationException("clipboard busy");
@@ -1046,7 +1091,8 @@ public sealed class ImageSelectionTests
                 });
             Window = new OverlayWindow(_frame, monitor, monitor, scale,
                 new OverlayLaunchOptions(new OverlayOptions(0, 12), TestUiStrings.English,
-                    [new(provider, provider)], provider, new SearchSessionOptions(InputLanguage: inputLanguage, HiddenToolbarActions: hiddenActions, Pen: pen)),
+                    [new(provider, provider)], provider, new SearchSessionOptions(TranslationTargetLanguageTag: translationTarget, InputLanguage: inputLanguage,
+                        HiddenToolbarActions: hiddenActions, Pen: pen)),
                 Commands.Add,
                 new OverlayControllerFactory(context => Controllers = factory.Create(context)), overscan: overscan);
             Window.Show();

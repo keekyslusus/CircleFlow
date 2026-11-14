@@ -10,6 +10,7 @@
     <system:String x:Key="app_settings_launch_sub">Готово к работе сразу после входа в систему</system:String>
     <system:String x:Key="app_settings_app_language">Язык приложения</system:String>
     <system:String x:Key="app_settings_match_system">Как в системе</system:String>
+    <system:String x:Key="app_settings_match_system_language">Как в системе ({0})</system:String>
     <system:String x:Key="app_settings_cleanup">Очищать данные браузера</system:String>
     <system:String x:Key="app_settings_cleanup_sub">Файлы cookie и кэш встроенных окон браузера</system:String>
     <system:String x:Key="app_settings_every_28">Каждые 28 дней</system:String>

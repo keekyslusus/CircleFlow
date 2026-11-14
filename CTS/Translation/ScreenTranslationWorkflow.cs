@@ -50,6 +50,7 @@ public sealed class ScreenTranslationWorkflow
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
         var tag = target.Trim().Replace('_', '-');
+        if (TranslationLanguages.Find(tag) is { } listed) return listed;
         if (tag.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
             return tag.Contains("TW", StringComparison.OrdinalIgnoreCase) || tag.Contains("Hant", StringComparison.OrdinalIgnoreCase)
                 || tag.Contains("HK", StringComparison.OrdinalIgnoreCase) ? "zh-TW" : "zh-CN";

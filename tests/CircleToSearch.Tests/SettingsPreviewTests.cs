@@ -1118,6 +1118,7 @@ public sealed class SettingsPreviewTests
             TextSearchInBuiltInBrowser = true,
             OcrLanguageTag = "de-DE",
             AppLanguageTag = "ru",
+            TranslationLanguageTag = "ja",
             IgnoreHotkeyInFullscreen = false,
             OverlayZoom = false,
             OverlayPen = false,
@@ -1171,6 +1172,8 @@ public sealed class SettingsPreviewTests
             Assert.Equal(28, harness.Settings.Snapshot.BrowserDataCleanupDays);
             Assert.Equal(0, Find<ComboBox>(window, "Cleanup").SelectedIndex);
             Assert.Equal(0, Find<ComboBox>(window, "OcrLanguage").SelectedIndex);
+            Assert.Equal(defaults.TranslationLanguageTag, harness.Settings.Snapshot.TranslationLanguageTag);
+            Assert.Equal(0, Find<ComboBox>(window, "TranslationLanguage").SelectedIndex);
             Assert.Equal(defaults.AppLanguageTag, harness.Settings.Snapshot.AppLanguageTag);
             Assert.Equal(0, Find<ComboBox>(window, "AppLanguage").SelectedIndex);
             Assert.Equal(defaults.HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
@@ -1215,11 +1218,28 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
-    public void Translation_language_shows_the_system_language_without_a_region() => OnSta(time =>
+    public void Translation_language_follows_the_system_until_another_one_is_chosen() => OnSta(time =>
     {
-        var window = new TestSettingsWindow(culture: CultureInfo.GetCultureInfo("de-AT")).CreateView().Window;
-        try { Assert.Equal(new Windows.Globalization.Language("de").DisplayName, Find<TextBlock>(window, "TranslationLanguage").Text); }
+        var harness = new TestSettingsWindow(culture: CultureInfo.GetCultureInfo("de-AT"));
+        var window = harness.CreateView().Window;
+        try
+        {
+            var target = Find<ComboBox>(window, "TranslationLanguage");
+            var items = target.Items.OfType<ComboBoxItem>().ToArray();
+            Assert.Equal(0, target.SelectedIndex);
+            Assert.Equal($"Match system ({new Windows.Globalization.Language("de").DisplayName})", items[0].Content);
+            Assert.Equal(193, items.Length);
+            Assert.All(items.Skip(1), item => Assert.NotEqual(item.Tag, item.Content));
+            Assert.Equal("Kurdish (Kurmanji)", items.Single(item => Equals(item.Tag, "ku")).Content);
+
+            target.SelectedItem = items.Single(item => Equals(item.Tag, "ja"));
+            Assert.Equal("ja", harness.Settings.Snapshot.TranslationLanguageTag);
+        }
         finally { window.Close(); }
+
+        var fresh = harness.CreateView().Window;
+        try { Assert.Equal("ja", ((ComboBoxItem)Find<ComboBox>(fresh, "TranslationLanguage").SelectedItem).Tag); }
+        finally { fresh.Close(); }
     });
 
     [Fact]

@@ -39,6 +39,8 @@ public sealed class UiStrings
     public string TrayExit => Get("app_tray_exit");
     public string SettingsWindowTitle => Get("app_settings_window_title");
     internal string SettingsPreviewText(string key) => Get("app_settings_" + key);
+    internal string SettingsMatchSystemLanguage(string language) => Get("app_settings_match_system_language", language);
+    internal string TranslationLanguageName(string code) => Get("app_translation_language_" + code);
     internal string OnboardingText(string key) => Get("app_onboarding_" + key);
     internal string TestBrowserText(string key) => Get("app_test_browser_" + key);
     internal string OnboardingStep(int step, int count) => Get("app_onboarding_step", step, count);
@@ -182,6 +184,7 @@ public sealed class UiStrings
     public string OcrLanguageChanged(string language) => Get("plugin_circletosearch_ocr_language_changed", language);
     public string OcrProcessing => Get("plugin_circletosearch_ocr_processing");
     public string OcrLanguageUnavailable(string language) => Get("plugin_circletosearch_ocr_language_unavailable", language);
+    public string TranslatedTextUnselectable(string language) => Get("plugin_circletosearch_translated_text_unselectable", language);
     public string OcrUnknownLanguage => Get("plugin_circletosearch_ocr_unknown_language");
     public string OcrNoText => Get("plugin_circletosearch_ocr_no_text");
     public string OcrFailed => Get("plugin_circletosearch_ocr_failed");

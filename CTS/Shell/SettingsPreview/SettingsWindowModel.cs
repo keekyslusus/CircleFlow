@@ -40,7 +40,9 @@ internal sealed class SettingsWindowModel(
     public bool RefreshOcrLanguages() => ocrLanguages.Refresh();
     // A saved language whose pack was removed falls back to the keyboard layout at runtime, so show that.
     public string OcrLanguageTag => ocrLanguages.Resolve(settings.Snapshot.OcrLanguageTag)?.Tag ?? string.Empty;
-    public string TranslationLanguageName => TranslationTargetLanguage.DisplayName(culture);
+    public string TranslationLanguageName => TranslationTargetLanguage.DisplayName(TranslationTargetLanguage.From(culture), strings);
+    public IReadOnlyList<TranslationLanguageOption> TranslationTargets => TranslationLanguages.Options(strings, culture);
+    public string TranslationLanguageTag => settings.Snapshot.TranslationLanguageTag;
     public IReadOnlyList<AppLanguageOption> AppLanguages => language.Catalog.Available;
     public string AppLanguageTag => language.Catalog.Find(settings.Snapshot.AppLanguageTag);
     public string HotkeyGesture => settings.Snapshot.HotkeyGesture;
@@ -90,6 +92,8 @@ internal sealed class SettingsWindowModel(
 
     public bool SelectOcrLanguage(string languageTag) =>
         settings.Apply(new SettingsEdits { OcrLanguageTag = languageTag }).Success;
+
+    public bool SelectTranslationLanguage(string languageTag) => settings.SetTranslationLanguage(languageTag).Success;
 
     public bool SelectAppLanguage(string languageTag)
     {
@@ -159,6 +163,7 @@ internal sealed class SettingsWindowModel(
         if (!SelectTextSearchEngine(defaults.TextSearchEngineId)) return strings.StorageSaveFailed;
         if (!SelectTextSearchInBuiltInBrowser(defaults.TextSearchInBuiltInBrowser)) return strings.StorageSaveFailed;
         if (!SelectOcrLanguage(defaults.OcrLanguageTag)) return strings.StorageSaveFailed;
+        if (!SelectTranslationLanguage(defaults.TranslationLanguageTag)) return strings.StorageSaveFailed;
         if (!SelectAppLanguage(defaults.AppLanguageTag)) return strings.StorageSaveFailed;
         if (!SelectIgnoreHotkeyInFullscreen(defaults.IgnoreHotkeyInFullscreen)) return strings.StorageSaveFailed;
         if (!SelectOverlayZoom(defaults.OverlayZoom)) return strings.StorageSaveFailed;

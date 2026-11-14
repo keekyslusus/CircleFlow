@@ -3,6 +3,7 @@ using CircleToSearch.Capture;
 using CircleToSearch.Interop;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
+using CircleToSearch.Translation;
 using CircleToSearch.Trigger;
 
 namespace CircleToSearch.Settings;
@@ -57,6 +58,13 @@ internal static class SettingsValidator
             ? settings.MusicHistoryRetentionDays
             : defaults.MusicHistoryRetentionDays;
         if (historyDays != settings.MusicHistoryRetentionDays) invalid.Add(nameof(AppSettings.MusicHistoryRetentionDays));
+        var translationLanguage = settings.TranslationLanguageTag switch
+        {
+            null => null,
+            var tag when string.IsNullOrWhiteSpace(tag) => string.Empty,
+            var tag => TranslationLanguages.Find(tag),
+        };
+        if (translationLanguage is null) invalid.Add(nameof(AppSettings.TranslationLanguageTag));
         if (engine is not null && !TextSearchEngines.IsAvailable(engine, settings.TextSearchInBuiltInBrowser,
             cleanupDays ?? defaults.BrowserDataCleanupDays)) engine = TextSearchEngines.MatchImageSearch;
         var gesture = defaults.HotkeyGesture;
@@ -78,6 +86,7 @@ internal static class SettingsValidator
             LassoMinDiagonalPx = Range(settings.LassoMinDiagonalPx, 1, 1000, defaults.LassoMinDiagonalPx, nameof(AppSettings.LassoMinDiagonalPx)),
             OcrLanguageTag = Language(settings.OcrLanguageTag, nameof(AppSettings.OcrLanguageTag)),
             AppLanguageTag = Language(settings.AppLanguageTag, nameof(AppSettings.AppLanguageTag)),
+            TranslationLanguageTag = translationLanguage ?? string.Empty,
         };
         invalidFields = invalid.AsReadOnly();
         return normalized;
