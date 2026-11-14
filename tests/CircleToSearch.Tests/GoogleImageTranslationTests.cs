@@ -54,6 +54,9 @@ public sealed class GoogleImageTranslationTests
     [InlineData("en-US", "en")]
     [InlineData("zh-Hant", "zh-TW")]
     [InlineData("zh-CN", "zh-CN")]
+    [InlineData("fr-CA", "fr-CA")]
+    [InlineData("pt-BR", "pt")]
+    [InlineData("MNI-mtei", "mni-Mtei")]
     public void Target_language_is_normalized_for_google(string input, string expected) =>
         Assert.Equal(expected, ScreenTranslationWorkflow.NormalizeTarget(input));
 

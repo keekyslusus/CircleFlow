@@ -712,6 +712,52 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
+    public void Long_dropdown_scrolls_smoothly_by_pixels_and_reveals_the_settings_scrollbar() => OnSta(time =>
+    {
+        var window = new TestSettingsWindow().CreateView(true).Window;
+        try
+        {
+            Find<RadioButton>(window, "Nav_text").IsChecked = true;
+            window.Show();
+            CompletePageTransition(window, time);
+            var combo = Find<ComboBox>(window, "TranslationLanguage");
+            var scroll = (ScrollViewer)combo.Template.FindName("DropdownScroll", combo);
+            combo.SelectedIndex = 0;
+            combo.IsDropDownOpen = true;
+            Pump();
+            time.Advance(300);
+            var bar = (ScrollBar)scroll.Template.FindName("PART_VerticalScrollBar", scroll);
+            Assert.False(scroll.CanContentScroll);
+            Assert.True(scroll.ScrollableHeight > 280);
+            Assert.Equal(0, scroll.VerticalOffset);
+            Assert.Equal(0, bar.Opacity);
+
+            var step = SystemParameters.WheelScrollLines < 0 ? scroll.ViewportHeight * 2 : SystemParameters.WheelScrollLines * 32.0;
+            var wheel = Wheel(scroll, -120);
+            if (!SystemParameters.ClientAreaAnimation || step == 0)
+            {
+                Assert.False(wheel.Handled);
+                return;
+            }
+            Assert.True(wheel.Handled);
+            time.Advance(70);
+            Assert.InRange(scroll.VerticalOffset, 0.1, step - 0.1);
+            Assert.Equal(0, Find<ScrollViewer>(window, "PageScroll").VerticalOffset);
+            time.Advance(650);
+            Pump();
+            Assert.InRange(scroll.VerticalOffset, step - 1, step + 1);
+            Assert.True(bar.Opacity > 0);
+            Assert.True(bar.IsHitTestVisible);
+            var thumb = ((Track)bar.Template.FindName("PART_Track", bar)).Thumb;
+            Assert.Null(LayoutInformation.GetLayoutClip(thumb));
+            Assert.True(thumb.RenderSize.Height >= thumb.MinHeight);
+            if (Environment.GetEnvironmentVariable("CTS_SETTINGS_PREVIEW") == "1")
+                SavePng((FrameworkElement)combo.Template.FindName("DropdownSurface", combo), "settings-light-dropdown-scroll.png");
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
     public void Wheel_scroll_moves_through_intermediate_positions_accumulates_and_reverses() => OnSta(time =>
     {
         var window = new TestSettingsWindow().CreateView(true).Window;
@@ -1118,6 +1164,7 @@ public sealed class SettingsPreviewTests
             TextSearchInBuiltInBrowser = true,
             OcrLanguageTag = "de-DE",
             AppLanguageTag = "ru",
+            TranslationLanguageTag = "ja",
             IgnoreHotkeyInFullscreen = false,
             OverlayZoom = false,
             OverlayPen = false,
@@ -1171,6 +1218,8 @@ public sealed class SettingsPreviewTests
             Assert.Equal(28, harness.Settings.Snapshot.BrowserDataCleanupDays);
             Assert.Equal(0, Find<ComboBox>(window, "Cleanup").SelectedIndex);
             Assert.Equal(0, Find<ComboBox>(window, "OcrLanguage").SelectedIndex);
+            Assert.Equal(defaults.TranslationLanguageTag, harness.Settings.Snapshot.TranslationLanguageTag);
+            Assert.Equal(0, Find<ComboBox>(window, "TranslationLanguage").SelectedIndex);
             Assert.Equal(defaults.AppLanguageTag, harness.Settings.Snapshot.AppLanguageTag);
             Assert.Equal(0, Find<ComboBox>(window, "AppLanguage").SelectedIndex);
             Assert.Equal(defaults.HotkeyGesture, harness.Settings.Snapshot.HotkeyGesture);
@@ -1215,11 +1264,28 @@ public sealed class SettingsPreviewTests
     });
 
     [Fact]
-    public void Translation_language_shows_the_system_language_without_a_region() => OnSta(time =>
+    public void Translation_language_follows_the_system_until_another_one_is_chosen() => OnSta(time =>
     {
-        var window = new TestSettingsWindow(culture: CultureInfo.GetCultureInfo("de-AT")).CreateView().Window;
-        try { Assert.Equal(new Windows.Globalization.Language("de").DisplayName, Find<TextBlock>(window, "TranslationLanguage").Text); }
+        var harness = new TestSettingsWindow(culture: CultureInfo.GetCultureInfo("de-AT"));
+        var window = harness.CreateView().Window;
+        try
+        {
+            var target = Find<ComboBox>(window, "TranslationLanguage");
+            var items = target.Items.OfType<ComboBoxItem>().ToArray();
+            Assert.Equal(0, target.SelectedIndex);
+            Assert.Equal($"Match system ({new Windows.Globalization.Language("de").DisplayName})", items[0].Content);
+            Assert.Equal(193, items.Length);
+            Assert.All(items.Skip(1), item => Assert.NotEqual(item.Tag, item.Content));
+            Assert.Equal("Kurdish (Kurmanji)", items.Single(item => Equals(item.Tag, "ku")).Content);
+
+            target.SelectedItem = items.Single(item => Equals(item.Tag, "ja"));
+            Assert.Equal("ja", harness.Settings.Snapshot.TranslationLanguageTag);
+        }
         finally { window.Close(); }
+
+        var fresh = harness.CreateView().Window;
+        try { Assert.Equal("ja", ((ComboBoxItem)Find<ComboBox>(fresh, "TranslationLanguage").SelectedItem).Tag); }
+        finally { fresh.Close(); }
     });
 
     [Fact]

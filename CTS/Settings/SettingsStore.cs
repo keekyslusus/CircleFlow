@@ -118,6 +118,7 @@ internal sealed class SettingsStore(AppPaths paths)
             LassoMinDiagonalPx = Number(nameof(AppSettings.LassoMinDiagonalPx), defaults.LassoMinDiagonalPx),
             OcrLanguageTag = Text(nameof(AppSettings.OcrLanguageTag), defaults.OcrLanguageTag),
             AppLanguageTag = Text(nameof(AppSettings.AppLanguageTag), defaults.AppLanguageTag),
+            TranslationLanguageTag = Text(nameof(AppSettings.TranslationLanguageTag), defaults.TranslationLanguageTag),
             ImageTranslationPrivacyConsentAccepted = Flag(nameof(AppSettings.ImageTranslationPrivacyConsentAccepted),
                 defaults.ImageTranslationPrivacyConsentAccepted),
             // A file saved before onboarding existed belongs to someone who already uses the app.

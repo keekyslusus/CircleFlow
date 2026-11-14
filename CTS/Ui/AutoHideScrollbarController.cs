@@ -29,6 +29,7 @@ internal sealed class AutoHideScrollbarController : IDisposable
             Interval = TimeSpan.FromMilliseconds(OverlayScrollbarPolicy.HideDelayMilliseconds),
         };
         _hideTimer.Tick += OnHideTimer;
+        _track.SizeChanged += OnTrackSizeChanged;
         scroll.ScrollChanged += OnScrollChanged;
         scroll.Unloaded += OnUnloaded;
         _bar.PreviewMouseLeftButtonDown += OnPointerDown;
@@ -37,9 +38,24 @@ internal sealed class AutoHideScrollbarController : IDisposable
         _bar.LostMouseCapture += OnLostCapture;
     }
 
+    // Track sizes the thumb from the viewport alone and clips it to that size, ignoring the thumb's MinHeight,
+    // so a long list gets a larger viewport that makes Track itself reserve the minimum height.
+    private void KeepThumbAtMinimumHeight()
+    {
+        var length = _track.ActualHeight;
+        var minimum = _track.Thumb.MinHeight;
+        var range = _scroll.ScrollableHeight;
+        _bar.ViewportSize = length > minimum && range > 0
+            ? Math.Max(_scroll.ViewportHeight, minimum * range / (length - minimum))
+            : _scroll.ViewportHeight;
+    }
+
+    private void OnTrackSizeChanged(object sender, SizeChangedEventArgs e) => KeepThumbAtMinimumHeight();
+
     private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (!ReferenceEquals(e.OriginalSource, _scroll)) return;
+        if (e.ExtentHeightChange != 0 || e.ViewportHeightChange != 0) KeepThumbAtMinimumHeight();
         if (_scroll.ScrollableHeight <= 1)
         {
             Reset();
@@ -138,6 +154,7 @@ internal sealed class AutoHideScrollbarController : IDisposable
         _disposed = true;
         Reset();
         _hideTimer.Tick -= OnHideTimer;
+        _track.SizeChanged -= OnTrackSizeChanged;
         _scroll.ScrollChanged -= OnScrollChanged;
         _scroll.Unloaded -= OnUnloaded;
         _bar.PreviewMouseLeftButtonDown -= OnPointerDown;

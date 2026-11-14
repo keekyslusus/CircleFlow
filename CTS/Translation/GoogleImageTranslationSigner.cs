@@ -13,6 +13,7 @@ internal sealed class GoogleImageTranslationSigner(
     HttpClient http, IStaDispatcher dispatcher, Func<Task<CoreWebView2Environment>> createEnvironment,
     TranslationMemoryProfiler? profiler = null) : IImageTranslationSigner, IDisposable, IAsyncDisposable
 {
+    private static readonly TimeSpan SessionLifetime = TimeSpan.FromSeconds(60);
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
     private Window? _window;
@@ -64,85 +65,106 @@ internal sealed class GoogleImageTranslationSigner(
         finally { _gate.Release(); }
     }
 
+    // Google's signing program stops answering about 80 seconds after it is loaded, and that is not documented,
+    // so a session is renewed before then and a failed signature from an older session gets one fresh retry.
     private async Task<ImageTranslationSignature> SignOnUiAsync(string request, string target, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
         _idle?.Stop();
-        if (_browser is null || _challenge is null || DateTime.UtcNow - _initialized > TimeSpan.FromMinutes(5))
+        var reused = await EnsureSessionAsync(target, cancellation);
+        var signature = await TrySignAsync(request, cancellation);
+        if (signature is null && reused)
         {
             Reset();
-            _window = new Window { Width = 64, Height = 64,
-                ShowInTaskbar = false, ShowActivated = false, WindowStyle = WindowStyle.None };
-            // WPF opacity does not hide WebView2's native child window. Never show the host HWND.
-            var handle = new WindowInteropHelper(_window).EnsureHandle();
-            var environment = await createEnvironment().WaitAsync(cancellation);
-            void TrackProcesses()
-            {
-                try { profiler?.TrackProcesses(environment.GetProcessInfos().Select(info => (info.ProcessId, info.Kind.ToString()))); }
-                catch (Exception e) when (e is InvalidOperationException or System.Runtime.InteropServices.COMException) { }
-            }
-            EventHandler<object> processChanged = (_, _) => TrackProcesses();
-            environment.ProcessInfosChanged += processChanged;
-            _stopTracking = () => environment.ProcessInfosChanged -= processChanged;
-            _controller = await environment.CreateCoreWebView2ControllerAsync(handle);
-            _controller.IsVisible = false;
-            _controller.Bounds = new System.Drawing.Rectangle(0, 0, 64, 64);
-            TrackProcesses();
-            profiler?.Mark("webview_created");
-            cancellation.ThrowIfCancellationRequested();
-            var browser = _controller.CoreWebView2;
-            _browser = browser;
-            browser.Settings.AreDefaultContextMenusEnabled = false;
-            browser.NewWindowRequested += (_, args) => args.Handled = true;
-            browser.DownloadStarting += (_, args) => args.Cancel = true;
-            browser.PermissionRequested += (_, args) => args.State = CoreWebView2PermissionState.Deny;
-            browser.ProcessFailed += (_, _) => _challenge = null;
-            browser.NavigationStarting += (_, args) =>
-            {
-                if (!string.Equals(args.Uri, GoogleImageTranslationProtocol.FrameUrl, StringComparison.Ordinal)) args.Cancel = true;
-            };
-            using var initialization = new HttpRequestMessage(HttpMethod.Get,
-                GoogleImageTranslationProtocol.Origin + "/?sl=auto&tl=" + Uri.EscapeDataString(target) + "&op=images");
-            initialization.Headers.TryAddWithoutValidation("User-Agent", browser.Settings.UserAgent);
-            using var response = await http.SendAsync(initialization, HttpCompletionOption.ResponseHeadersRead, cancellation);
-            response.EnsureSuccessStatusCode();
-            var html = await GoogleImageTranslationProtocol.ReadBoundedAsync(response.Content, 4 * 1024 * 1024, cancellation);
-            var challenge = GoogleImageTranslationProtocol.ReadChallenge(html);
-            var navigation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            void Navigated(object? sender, CoreWebView2NavigationCompletedEventArgs args)
-            {
-                if (args.IsSuccess) navigation.TrySetResult();
-                else navigation.TrySetException(new IOException("Image translation frame failed to load."));
-            }
-            browser.NavigationCompleted += Navigated;
-            try
-            {
-                browser.Navigate(GoogleImageTranslationProtocol.FrameUrl);
-                await navigation.Task.WaitAsync(TimeSpan.FromSeconds(15), cancellation);
-            }
-            finally { browser.NavigationCompleted -= Navigated; }
-            await browser.ExecuteScriptAsync(challenge.Interpreter).WaitAsync(cancellation);
-            await browser.ExecuteScriptAsync("window.ctsGenerator = new window.ridgeslice.gc(" + JsonSerializer.Serialize(challenge.Program) + ");")
-                .WaitAsync(cancellation);
-            _challenge = challenge;
-            _initialized = DateTime.UtcNow;
-            TrackProcesses();
-            profiler?.Mark("webview_ready");
+            await EnsureSessionAsync(target, cancellation);
+            signature = await TrySignAsync(request, cancellation);
         }
+        if (signature is null) throw new InvalidDataException("Image translation signing failed.");
+        _idle ??= new DispatcherTimer(TimeSpan.FromMinutes(2), DispatcherPriority.Background, (_, _) => Reset(), Dispatcher.CurrentDispatcher);
+        _idle.Start();
+        return signature;
+    }
+
+    private async Task<bool> EnsureSessionAsync(string target, CancellationToken cancellation)
+    {
+        if (_browser is not null && _challenge is not null && DateTime.UtcNow - _initialized <= SessionLifetime) return true;
+        Reset();
+        _window = new Window { Width = 64, Height = 64,
+            ShowInTaskbar = false, ShowActivated = false, WindowStyle = WindowStyle.None };
+        // WPF opacity does not hide WebView2's native child window. Never show the host HWND.
+        var handle = new WindowInteropHelper(_window).EnsureHandle();
+        var environment = await createEnvironment().WaitAsync(cancellation);
+        void TrackProcesses()
+        {
+            try { profiler?.TrackProcesses(environment.GetProcessInfos().Select(info => (info.ProcessId, info.Kind.ToString()))); }
+            catch (Exception e) when (e is InvalidOperationException or System.Runtime.InteropServices.COMException) { }
+        }
+        EventHandler<object> processChanged = (_, _) => TrackProcesses();
+        environment.ProcessInfosChanged += processChanged;
+        _stopTracking = () => environment.ProcessInfosChanged -= processChanged;
+        _controller = await environment.CreateCoreWebView2ControllerAsync(handle);
+        _controller.IsVisible = false;
+        _controller.Bounds = new System.Drawing.Rectangle(0, 0, 64, 64);
+        TrackProcesses();
+        profiler?.Mark("webview_created");
+        cancellation.ThrowIfCancellationRequested();
+        var browser = _controller.CoreWebView2;
+        _browser = browser;
+        browser.Settings.AreDefaultContextMenusEnabled = false;
+        browser.NewWindowRequested += (_, args) => args.Handled = true;
+        browser.DownloadStarting += (_, args) => args.Cancel = true;
+        browser.PermissionRequested += (_, args) => args.State = CoreWebView2PermissionState.Deny;
+        browser.ProcessFailed += (_, _) => _challenge = null;
+        browser.NavigationStarting += (_, args) =>
+        {
+            if (!string.Equals(args.Uri, GoogleImageTranslationProtocol.FrameUrl, StringComparison.Ordinal)) args.Cancel = true;
+        };
+        using var initialization = new HttpRequestMessage(HttpMethod.Get,
+            GoogleImageTranslationProtocol.Origin + "/?sl=auto&tl=" + Uri.EscapeDataString(target) + "&op=images");
+        initialization.Headers.TryAddWithoutValidation("User-Agent", browser.Settings.UserAgent);
+        using var response = await http.SendAsync(initialization, HttpCompletionOption.ResponseHeadersRead, cancellation);
+        response.EnsureSuccessStatusCode();
+        var html = await GoogleImageTranslationProtocol.ReadBoundedAsync(response.Content, 4 * 1024 * 1024, cancellation);
+        var challenge = GoogleImageTranslationProtocol.ReadChallenge(html);
+        var navigation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Navigated(object? sender, CoreWebView2NavigationCompletedEventArgs args)
+        {
+            if (args.IsSuccess) navigation.TrySetResult();
+            else navigation.TrySetException(new IOException("Image translation frame failed to load."));
+        }
+        browser.NavigationCompleted += Navigated;
+        try
+        {
+            browser.Navigate(GoogleImageTranslationProtocol.FrameUrl);
+            await navigation.Task.WaitAsync(TimeSpan.FromSeconds(15), cancellation);
+        }
+        finally { browser.NavigationCompleted -= Navigated; }
+        await browser.ExecuteScriptAsync(challenge.Interpreter).WaitAsync(cancellation);
+        await browser.ExecuteScriptAsync("window.ctsGenerator = new window.ridgeslice.gc(" + JsonSerializer.Serialize(challenge.Program) + ");")
+            .WaitAsync(cancellation);
+        _challenge = challenge;
+        _initialized = DateTime.UtcNow;
+        TrackProcesses();
+        profiler?.Mark("webview_ready");
+        return false;
+    }
+
+    private async Task<ImageTranslationSignature?> TrySignAsync(string request, CancellationToken cancellation)
+    {
+        var browser = _browser ?? throw new InvalidOperationException("Image translation session is not ready.");
         var expression = "new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Generator timeout')),15000);" +
             "try{const started=performance.now();window.ctsGenerator.ply(token=>{clearTimeout(timeout);" +
             "resolve({token,ms:performance.now()-started});},true,{mgGpzd:" + JsonSerializer.Serialize(request) +
             "});}catch(e){clearTimeout(timeout);reject(e);}})";
-        var evaluation = await _browser.CallDevToolsProtocolMethodAsync("Runtime.evaluate",
+        var evaluation = await browser.CallDevToolsProtocolMethodAsync("Runtime.evaluate",
             JsonSerializer.Serialize(new { expression, awaitPromise = true, returnByValue = true })).WaitAsync(cancellation);
         using var json = JsonDocument.Parse(evaluation);
-        if (json.RootElement.TryGetProperty("exceptionDetails", out _)) throw new InvalidDataException("Image translation signing failed.");
+        // A stale generator never answers, so it shows up as the script's timeout rather than as an error.
+        if (json.RootElement.TryGetProperty("exceptionDetails", out _)) return null;
         var value = json.RootElement.GetProperty("result").GetProperty("value");
         var header = JsonSerializer.Serialize(new object?[] { value.GetProperty("token").GetString(), null, null,
             (int)value.GetProperty("ms").GetDouble(), 0, null, 0, 0, _challenge?.State });
-        _idle ??= new DispatcherTimer(TimeSpan.FromMinutes(2), DispatcherPriority.Background, (_, _) => Reset(), Dispatcher.CurrentDispatcher);
-        _idle.Start();
-        return new(header, _browser.Settings.UserAgent);
+        return new(header, browser.Settings.UserAgent);
     }
 
     private void Reset()

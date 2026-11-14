@@ -14,6 +14,8 @@ internal sealed class SettingsDropdownMotion : IDisposable
     private readonly FrameworkElement _surface;
     private readonly RotateTransform _rotation;
     private readonly RectangleGeometry _reveal = new();
+    private readonly AutoHideScrollbarController _scrollbar;
+    private readonly SmoothScrollMotionController _scrollMotion;
     private int _rotationVersion;
 
     internal SettingsDropdownMotion(ComboBox combo)
@@ -26,6 +28,12 @@ internal sealed class SettingsDropdownMotion : IDisposable
         _rotation = ((RotateTransform)arrow.RenderTransform).Clone();
         arrow.RenderTransform = _rotation;
         _surface.Clip = _reveal;
+        var scroll = (ScrollViewer)combo.Template.FindName("DropdownScroll", combo);
+        var items = (FrameworkElement)combo.Template.FindName("DropdownItems", combo);
+        var translation = new TranslateTransform();
+        items.RenderTransform = translation;
+        _scrollbar = new AutoHideScrollbarController(scroll);
+        _scrollMotion = new SmoothScrollMotionController(scroll, translation);
         _popup.Opened += OnOpened;
         _popup.Closed += OnClosed;
         combo.IsVisibleChanged += OnVisibilityChanged;
@@ -58,6 +66,7 @@ internal sealed class SettingsDropdownMotion : IDisposable
     private void OnClosed(object? sender, EventArgs e)
     {
         ResetReveal();
+        _scrollMotion.Reset();
         RotateTo(0, UiAnimationPolicy.Enabled && _combo.IsVisible);
     }
 
@@ -107,6 +116,8 @@ internal sealed class SettingsDropdownMotion : IDisposable
         _popup.Closed -= OnClosed;
         _combo.IsVisibleChanged -= OnVisibilityChanged;
         _combo.Unloaded -= OnUnloaded;
+        _scrollbar.Dispose();
+        _scrollMotion.Dispose();
         Reset();
     }
 }

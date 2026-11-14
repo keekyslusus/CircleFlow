@@ -119,7 +119,12 @@ internal sealed class SettingsWindowView
         PopulateOcrLanguages();
         ocrLanguage.SelectionChanged += OnOcrLanguageChanged;
         AddDropdown(ocrLanguage);
-        Element<TextBlock>("TranslationLanguage").Text = model.TranslationLanguageName;
+        var translationLanguage = Element<ComboBox>("TranslationLanguage");
+        translationLanguage.Items.Add(new ComboBoxItem { Tag = string.Empty });
+        foreach (var language in model.TranslationTargets)
+            translationLanguage.Items.Add(new ComboBoxItem { Content = language.DisplayName, Tag = language.Code });
+        translationLanguage.SelectionChanged += OnTranslationLanguageChanged;
+        AddDropdown(translationLanguage);
         var textSearchBrowser = Element<CheckBox>("TextSearchBrowser");
         textSearchBrowser.Checked += OnTextSearchBrowserChanged;
         textSearchBrowser.Unchecked += OnTextSearchBrowserChanged;
@@ -406,6 +411,7 @@ internal sealed class SettingsWindowView
             Element<CheckBox>("TextSearchBrowser").IsChecked = _model.TextSearchInBuiltInBrowser;
             if (_model.RefreshOcrLanguages()) PopulateOcrLanguages();
             Select(Element<ComboBox>("OcrLanguage"), _model.OcrLanguageTag);
+            Select(Element<ComboBox>("TranslationLanguage"), _model.TranslationLanguageTag);
             Select(Element<ComboBox>("AppLanguage"), _model.AppLanguageTag);
             Element<CheckBox>("IgnoreFullscreen").IsChecked = _model.IgnoreHotkeyInFullscreen;
             Element<CheckBox>("OverlayZoom").IsChecked = _model.OverlayZoom;
@@ -458,6 +464,7 @@ internal sealed class SettingsWindowView
         foreach (var item in Items("Cleanup"))
             item.Content = _strings.SettingsPreviewText(Equals(item.Tag, BrowserDataCleanup.Never) ? "never" : "every_" + item.Tag);
         Items("AppLanguage")[0].Content = _strings.SettingsPreviewText("match_system");
+        Items("TranslationLanguage")[0].Content = _strings.SettingsMatchSystemLanguage(_model.TranslationLanguageName);
         foreach (var item in Items("HistoryRetention"))
             item.Content = _strings.SettingsPreviewText(Equals(item.Tag, MusicHistory.KeepForever)
                 ? "never" : "history_days_" + item.Tag);
@@ -493,6 +500,14 @@ internal sealed class SettingsWindowView
     {
         if (_loadingSettings || Element<ComboBox>("OcrLanguage").SelectedItem is not ComboBoxItem { Tag: string tag }) return;
         if (_model.SelectOcrLanguage(tag)) return;
+        LoadSettings();
+        ShowStatus(_strings.StorageSaveFailed);
+    }
+
+    private void OnTranslationLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSettings || Element<ComboBox>("TranslationLanguage").SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        if (_model.SelectTranslationLanguage(tag)) return;
         LoadSettings();
         ShowStatus(_strings.StorageSaveFailed);
     }

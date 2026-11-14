@@ -67,6 +67,18 @@ public sealed class SearchSessionOptionsTests
         Assert.Equal("en", SearchSessionOptions.From(settings, languages, CultureInfo.InvariantCulture).TranslationTargetLanguageTag);
     }
 
+    [Theory]
+    [InlineData("ja", "ja")]
+    [InlineData("PT-pt", "pt-PT")]
+    [InlineData("", "fr-CA")]
+    [InlineData("klingon", "fr-CA")]
+    public void Chosen_translation_language_overrides_the_system_culture(string chosen, string expected)
+    {
+        var settings = new AppSettings { TranslationLanguageTag = chosen };
+        var options = SearchSessionOptions.From(settings, new OcrLanguageCatalog([]), CultureInfo.GetCultureInfo("fr-CA"));
+        Assert.Equal(expected, options.TranslationTargetLanguageTag);
+    }
+
     [Fact]
     public void Saved_ocr_language_overrides_captured_input_language()
     {

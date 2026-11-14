@@ -25,7 +25,7 @@ public sealed record SearchSessionOptions(
         KeyboardLanguageSnapshot inputLanguage = default) =>
         new(settings.HideDelayMilliseconds, settings.PaddingPx, settings.LassoMinDiagonalPx, settings.MaxLongSidePx,
             languages.Resolve(settings.OcrLanguageTag)?.Tag ?? languages.Resolve(inputLanguage.Tag)?.Tag,
-            TranslationTargetLanguage.From(culture),
+            TranslationTargetLanguage.Resolve(settings.TranslationLanguageTag, culture),
             inputLanguage,
             settings.TextSearchEngineId,
             settings.HiddenToolbarActions,

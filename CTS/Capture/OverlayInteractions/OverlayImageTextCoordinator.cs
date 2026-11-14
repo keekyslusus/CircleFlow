@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.TextRecognition;
+using CircleToSearch.Translation;
 using CircleToSearch.Ui;
 using CircleToSearch.Ui.Effects;
 
@@ -32,6 +33,7 @@ internal sealed class OverlayImageTextCoordinator : IDisposable
     private string? _inputTag;
     private string? _effectiveTag;
     private string? _requestedTag;
+    private string? _translationTag;
     private DateTime _dueAt;
     private long _revision;
     private long _runningRevision;
@@ -140,7 +142,8 @@ internal sealed class OverlayImageTextCoordinator : IDisposable
     {
         if (_disposed) return;
         _image = image;
-        _requestedTag = language ?? _inputTag;
+        _translationTag = language;
+        _requestedTag = language is null ? _inputTag : TranslationLanguages.RecognitionTag(language);
         _effectiveTag = Resolve(_requestedTag);
         Invalidate();
         _switchFeedback = false;
@@ -277,6 +280,15 @@ internal sealed class OverlayImageTextCoordinator : IDisposable
     private void ShowUnavailable()
     {
         if (!_available) return;
+        // The translation itself succeeded, so this only explains why its text cannot be selected.
+        if (_translationTag is not null
+            && string.Equals(_requestedTag, TranslationLanguages.RecognitionTag(_translationTag), StringComparison.OrdinalIgnoreCase))
+        {
+            _toast?.ShowOrUpdate("ocr-language", new ToastNotification(
+                _strings.TranslatedTextUnselectable(TranslationTargetLanguage.DisplayName(_translationTag, _strings)),
+                ToastTone.Neutral));
+            return;
+        }
         var message = string.IsNullOrWhiteSpace(_requestedTag)
             ? _strings.OcrUnknownLanguage
             : _strings.OcrLanguageUnavailable(DisplayName(_requestedTag));
