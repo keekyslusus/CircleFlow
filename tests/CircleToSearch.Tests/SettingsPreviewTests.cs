@@ -69,6 +69,54 @@ public sealed class SettingsPreviewTests
         finally { window.Close(); }
     });
 
+    [Fact]
+    public void Closing_the_window_while_recording_resumes_the_hotkey() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView().Window;
+        window.Show();
+        Click(window, "edit");
+        CompleteDialogTransition(window, time, open: true);
+        Assert.True(harness.HotkeyPause.IsActive);
+
+        window.Close();
+
+        Assert.False(harness.HotkeyPause.IsActive);
+    });
+
+    [Fact]
+    public void Shortcut_dialog_pauses_the_hotkey_and_records_print_screen_alone_on_release() => OnSta(time =>
+    {
+        var harness = new TestSettingsWindow();
+        var window = harness.CreateView().Window;
+        try
+        {
+            window.Show();
+            Assert.False(harness.HotkeyPause.IsActive);
+            Click(window, "edit");
+            CompleteDialogTransition(window, time, open: true);
+            Assert.True(harness.HotkeyPause.IsActive);
+            var input = Find<Border>(window, "ShortcutInput");
+            var save = Find<Button>(window, "SaveShortcut");
+
+            PressKey(input, Key.A, ModifierKeys.None, release: true);
+            PressKey(input, Key.PrintScreen, ModifierKeys.None);
+            Assert.Empty(ShortcutLabels(window, "ShortcutDraftKeys"));
+            Assert.False(save.IsEnabled);
+
+            PressKey(input, Key.PrintScreen, ModifierKeys.None, release: true);
+            Assert.Equal(["PrtSc"], ShortcutLabels(window, "ShortcutDraftKeys"));
+            Assert.True(save.IsEnabled);
+
+            Click(window, "save");
+            CompleteDialogTransition(window, time, open: false);
+            Assert.Equal("PrintScreen", harness.Settings.Snapshot.HotkeyGesture);
+            Assert.Equal(["PrtSc"], ShortcutLabels(window, "ShortcutKeys"));
+            Assert.False(harness.HotkeyPause.IsActive);
+        }
+        finally { window.Close(); }
+    });
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -2006,10 +2054,10 @@ public sealed class SettingsPreviewTests
         text.RaiseEvent(args);
     }
 
-    private static void PressKey(UIElement target, Key key, ModifierKeys modifiers) =>
+    private static void PressKey(UIElement target, Key key, ModifierKeys modifiers, bool release = false) =>
         target.RaiseEvent(new KeyEventArgs(new TestKeyboard(modifiers), PresentationSource.FromVisual(target), 0, key)
         {
-            RoutedEvent = Keyboard.PreviewKeyDownEvent,
+            RoutedEvent = release ? Keyboard.PreviewKeyUpEvent : Keyboard.PreviewKeyDownEvent,
         });
 
     // Keyboard.PrimaryDevice reads the real keys, so a test could not hold Ctrl or Alt without it.

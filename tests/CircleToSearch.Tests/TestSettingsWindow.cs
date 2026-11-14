@@ -6,6 +6,7 @@ using CircleToSearch.Settings;
 using CircleToSearch.Shell;
 using CircleToSearch.Shell.SettingsPreview;
 using CircleToSearch.TextRecognition;
+using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
 using CircleToSearch.Updates;
 
@@ -69,9 +70,12 @@ internal sealed class TestSettingsWindow
     public int TestNotificationRequests { get; private set; }
     internal RemoteImageLoader Images { get; set; } = TestRemoteImages.Offline;
 
+    public HotkeyPause HotkeyPause { get; } = new();
+
     public SettingsWindowView CreateView(bool light = true) =>
         new(Strings, light, Paths.TrayIconPath, Model,
-            feedback => new ClipboardCopyService(Clipboard.Add, feedback, Strings), Images);
+            feedback => new ClipboardCopyService(Clipboard.Add, feedback, Strings), Images,
+            hotkeyPause: HotkeyPause.CreateSwitch());
 
     private static VisualSearchProviderRegistration Registration(string id, string name) =>
         new(new SearchProviderDescriptor(id, name), () => throw new InvalidOperationException("Not used by settings."));

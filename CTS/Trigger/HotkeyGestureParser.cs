@@ -16,6 +16,7 @@ public static class HotkeyGestureParser
         ["Windows"] = NativeMethods.MOD_WIN,
     };
 
+    private const uint PrintScreenKey = 0x2C;
     private static readonly Dictionary<string, uint> Keys = BuildKeys();
 
     public static bool TryParse(string? text, out uint modifiers, out uint virtualKey)
@@ -25,8 +26,6 @@ public static class HotkeyGestureParser
         if (string.IsNullOrWhiteSpace(text)) return false;
 
         var tokens = text.Split('+', StringSplitOptions.TrimEntries);
-        if (tokens.Length < 2) return false;
-
         var parsedModifiers = 0u;
         for (var i = 0; i < tokens.Length - 1; i++)
         {
@@ -34,9 +33,10 @@ public static class HotkeyGestureParser
             if ((parsedModifiers & modifier) != 0) return false;
             parsedModifiers |= modifier;
         }
-        if (parsedModifiers == 0) return false;
 
         if (!Keys.TryGetValue(tokens[^1], out var key)) return false;
+        // Print Screen types nothing, so taking it without a modifier does not break typing in other apps.
+        if (parsedModifiers == 0 && key != PrintScreenKey) return false;
 
         modifiers = parsedModifiers;
         virtualKey = key;
@@ -78,6 +78,7 @@ public static class HotkeyGestureParser
         keys["End"] = 0x23;
         keys["PageUp"] = 0x21;
         keys["PageDown"] = 0x22;
+        keys["PrintScreen"] = PrintScreenKey;
         return keys;
     }
 }

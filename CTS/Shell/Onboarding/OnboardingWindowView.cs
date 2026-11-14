@@ -9,6 +9,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using CircleToSearch.Interop;
 using CircleToSearch.Shell.SettingsPreview;
+using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
 
 namespace CircleToSearch.Shell.Onboarding;
@@ -27,13 +28,15 @@ internal sealed class OnboardingWindowView
     private readonly OnboardingSwapTransition _launchFailure;
     private readonly DispatcherTimer _statusTimer;
     private readonly Action _shortcutKeyPressed;
+    private readonly HotkeyPause.Switch? _hotkeyPause;
 
     internal OnboardingWindowView(UiStrings strings, bool lightTheme, string iconPath, OnboardingModel model,
-        TimeSpan? statusLifetime = null, Action? shortcutKeyPressed = null)
+        TimeSpan? statusLifetime = null, Action? shortcutKeyPressed = null, HotkeyPause.Switch? hotkeyPause = null)
     {
         _strings = strings;
         _model = model;
         _shortcutKeyPressed = shortcutKeyPressed ?? (() => { });
+        _hotkeyPause = hotkeyPause;
         Window = (Window)Application.LoadComponent(new Uri(
             "/CircleFlow;component/CTS/Shell/Onboarding/OnboardingWindow.xaml", UriKind.Relative));
         SettingsWindowTheme.Apply(Window, lightTheme, iconPath);
@@ -67,11 +70,16 @@ internal sealed class OnboardingWindowView
             Interval = statusLifetime ?? DefaultStatusLifetime,
         };
         _statusTimer.Tick += (_, _) => HideStatus();
-        Window.Closed += (_, _) => _statusTimer.Stop();
+        Window.Closed += (_, _) =>
+        {
+            _hotkeyPause?.Set(false);
+            _statusTimer.Stop();
+        };
         foreach (var (dot, index) in Dots().Select((dot, index) => (dot, index)))
             AutomationProperties.SetName(dot, strings.OnboardingStep(index + 1, LastStep + 1));
         Window.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnClick));
-        Window.PreviewKeyDown += OnPreviewKeyDown;
+        Window.PreviewKeyDown += RecordShortcut;
+        Window.PreviewKeyUp += RecordShortcut;
         ShowHotkey();
         ExplainInactiveHotkey();
         ShowStep(0);
@@ -161,6 +169,7 @@ internal sealed class OnboardingWindowView
     {
         _hotkeyEntry.Show(second: true);
         _shortcutAction.Show(second: true);
+        _hotkeyPause?.Set(true);
         HideStatus();
     }
 
@@ -169,6 +178,7 @@ internal sealed class OnboardingWindowView
         if (!_hotkeyEntry.ShowsSecond) return;
         _hotkeyEntry.Show(second: false);
         _shortcutAction.Show(second: false);
+        _hotkeyPause?.Set(false);
         ExplainInactiveHotkey();
     }
 
@@ -178,9 +188,10 @@ internal sealed class OnboardingWindowView
         if (!_model.HotkeyActive) ShowStatus(_strings.SettingsShortcutUnavailable(_model.HotkeyGesture), expires: false);
     }
 
-    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    private void RecordShortcut(object sender, KeyEventArgs e)
     {
-        if (!_hotkeyEntry.ShowsSecond || e.Key == Key.Tab || ShortcutText.ClosesWindow(e)) return;
+        if (!_hotkeyEntry.ShowsSecond || !ShortcutText.IsRecordedOn(e) || e.Key == Key.Tab || ShortcutText.ClosesWindow(e))
+            return;
         e.Handled = true;
         if (e.Key == Key.Escape)
         {
@@ -188,7 +199,7 @@ internal sealed class OnboardingWindowView
             return;
         }
         if (!e.IsRepeat) _shortcutKeyPressed();
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        var key = ShortcutText.KeyOf(e);
         if (ShortcutText.IsModifier(key)) return;
         if (ShortcutText.Gesture(key, Keyboard.Modifiers) is not { } gesture)
         {

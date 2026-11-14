@@ -16,6 +16,7 @@ internal static class ShortcutLabels
         {
             >= Key.D0 and <= Key.D9 => (key - Key.D0).ToString(CultureInfo.InvariantCulture),
             Key.Enter => "Enter",
+            Key.PrintScreen => "PrintScreen",
             _ => key.ToString(),
         });
         return string.Join('+', parts);
@@ -24,7 +25,7 @@ internal static class ShortcutLabels
     internal static IReadOnlyList<string> For(string gesture, UiStrings strings) =>
         gesture.Split('+').Select(token => token switch
         {
-            "Ctrl" or "Alt" or "Shift" or "Space" or "Win" or "Enter" =>
+            "Ctrl" or "Alt" or "Shift" or "Space" or "Win" or "Enter" or "PrintScreen" =>
                 strings.SettingsPreviewText(token.ToLowerInvariant()),
             _ => token,
         }).ToArray();

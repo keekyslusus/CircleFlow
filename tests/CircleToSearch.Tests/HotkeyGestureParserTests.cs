@@ -41,6 +41,17 @@ public sealed class HotkeyGestureParserTests
         }
     }
 
+    [Theory]
+    [InlineData("PrintScreen", 0u)]
+    [InlineData("Alt+PrintScreen", 0x1u)]
+    public void Print_screen_parses_with_or_without_modifiers(string gesture, uint expectedModifiers)
+    {
+        Assert.True(HotkeyGestureParser.TryParse(gesture, out var modifiers, out var virtualKey));
+        Assert.Equal(expectedModifiers, modifiers);
+        Assert.Equal(0x2Cu, virtualKey);
+        Assert.Equal(gesture, HotkeyGestureParser.Format(modifiers, virtualKey));
+    }
+
     [Fact]
     public void Parsing_is_case_insensitive()
     {
@@ -52,7 +63,9 @@ public sealed class HotkeyGestureParserTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("Space")]
+    [InlineData("A")]
     [InlineData("Ctrl")]
+    [InlineData("PrintScreen+A")]
     [InlineData("Ctrl+")]
     [InlineData("Ctrl+Nope")]
     [InlineData("Ctrl+Alt+Ctrl")]

@@ -8,10 +8,18 @@ internal static class ShortcutText
 {
     public static string? Gesture(Key key, ModifierKeys modifiers)
     {
-        var validKey = key is >= Key.A and <= Key.Z or >= Key.D0 and <= Key.D9 or Key.Space;
-        if (!validKey || modifiers == ModifierKeys.None || modifiers.HasFlag(ModifierKeys.Windows)) return null;
+        var validKey = key is >= Key.A and <= Key.Z or >= Key.D0 and <= Key.D9 or Key.Space or Key.PrintScreen;
+        var needsModifier = key != Key.PrintScreen;
+        if (!validKey || needsModifier && modifiers == ModifierKeys.None || modifiers.HasFlag(ModifierKeys.Windows))
+            return null;
         return ShortcutLabels.Gesture(key, modifiers);
     }
+
+    public static Key KeyOf(KeyEventArgs e) => e.Key == Key.System ? e.SystemKey : e.Key;
+
+    // Windows passes Print Screen to apps only on release, so that key is recorded on key up and the rest on key down.
+    public static bool IsRecordedOn(KeyEventArgs e) =>
+        (KeyOf(e) == Key.PrintScreen) == (e.RoutedEvent == Keyboard.PreviewKeyUpEvent);
 
     // Recording captures every key, but Alt+F4 must still close the window.
     public static bool ClosesWindow(KeyEventArgs e) => e.Key == Key.System && e.SystemKey == Key.F4;

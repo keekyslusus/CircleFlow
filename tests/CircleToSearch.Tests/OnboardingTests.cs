@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CircleToSearch.Settings;
 using CircleToSearch.Shell.Onboarding;
+using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
 using Xunit;
 using static CircleToSearch.Tests.WpfUi;
@@ -210,6 +211,31 @@ public sealed class OnboardingTests
             Press(window, Key.LeftCtrl);
             Press(window, Key.K);
             Assert.Equal(3, harness.ShortcutKeyPresses);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
+    public void Changing_the_shortcut_pauses_the_hotkey_and_accepts_print_screen_on_release() => OnSta(() =>
+    {
+        using var harness = new Harness();
+        var window = harness.CreateView(light: false).Window;
+        try
+        {
+            window.Show();
+            Pump();
+            Assert.False(harness.HotkeyPause.IsActive);
+            Click(window, "change-shortcut");
+            Assert.True(harness.HotkeyPause.IsActive);
+            window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(window), 0, Key.PrintScreen)
+            {
+                RoutedEvent = Keyboard.PreviewKeyUpEvent,
+            });
+            Time.Advance(520);
+
+            Assert.Equal(["PrtSc"], KeyLabels(window));
+            Assert.False(Find<TextBlock>(window, "RecordingPrompt").IsVisible);
+            Assert.False(harness.HotkeyPause.IsActive);
         }
         finally { window.Close(); }
     });
@@ -505,9 +531,11 @@ public sealed class OnboardingTests
         public OnboardingModel Model { get; }
 
         public int ShortcutKeyPresses { get; private set; }
+        public HotkeyPause HotkeyPause { get; } = new();
 
         public OnboardingWindowView CreateView(bool light, TimeSpan? statusLifetime = null) =>
-            new(Strings, light, new AppPaths().TrayIconPath, Model, statusLifetime, () => ShortcutKeyPresses++);
+            new(Strings, light, new AppPaths().TrayIconPath, Model, statusLifetime, () => ShortcutKeyPresses++,
+                HotkeyPause.CreateSwitch());
 
         public OnboardingWindowController CreateController() =>
             new(Dispatcher.CurrentDispatcher, Model, () => CreateView(light: false).Window);

@@ -27,7 +27,7 @@ public sealed class RuntimeActivationTests
             new AppSettings { HotkeyGesture = gesture, HideDelayMilliseconds = 2000 }, new SettingsStore(paths),
             TestUiStrings.English, notifier, urlOpening,
             new WebViewRuntimeNotice(() => "1.0", notifier, urlOpening, TestUiStrings.English),
-            () => { hides++; return hiding.Task; }, log, rollback);
+            () => { hides++; return hiding.Task; }, log, rollback, new HotkeyPause());
         Assert.False(runtime.Settings.HotkeyStatus.IsActive);
         Assert.Equal(TestUiStrings.English.HotkeyConflict(gesture), Assert.Single(notifier.Errors).Message);
         var open = runtime.OpenAsync();

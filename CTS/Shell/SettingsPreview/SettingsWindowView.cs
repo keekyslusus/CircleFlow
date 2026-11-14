@@ -8,6 +8,7 @@ using CircleToSearch.Capture;
 using CircleToSearch.Interop;
 using CircleToSearch.MusicRecognition;
 using CircleToSearch.Search;
+using CircleToSearch.Trigger;
 using CircleToSearch.Ui;
 using CircleToSearch.Updates;
 
@@ -35,6 +36,7 @@ internal sealed class SettingsWindowView
     private readonly SettingsCollapseMotion _historyContentMotion;
     private readonly SettingsNavigationHistory _navigation;
     private readonly Action _shortcutKeyPressed;
+    private readonly HotkeyPause.Switch? _hotkeyPause;
     private IInputElement? _dialogOwner;
     private string? _pendingShortcut;
     private bool _loadingSettings;
@@ -42,11 +44,12 @@ internal sealed class SettingsWindowView
 
     internal SettingsWindowView(UiStrings strings, bool lightTheme, string iconPath, SettingsWindowModel model,
         Func<Action<ToastNotification>, ClipboardCopyService> createClipboardCopy, RemoteImageLoader images,
-        Action? shortcutKeyPressed = null)
+        Action? shortcutKeyPressed = null, HotkeyPause.Switch? hotkeyPause = null)
     {
         _strings = strings;
         _model = model;
         _shortcutKeyPressed = shortcutKeyPressed ?? (() => { });
+        _hotkeyPause = hotkeyPause;
         Window = (Window)Application.LoadComponent(new Uri(
             "/CircleFlow;component/CTS/Shell/SettingsPreview/SettingsWindow.xaml", UriKind.Relative));
         SettingsWindowTheme.Apply(Window, lightTheme, iconPath);
@@ -78,6 +81,7 @@ internal sealed class SettingsWindowView
         model.MusicHistoryChanged += OnMusicHistoryChanged;
         Window.Closed += (_, _) =>
         {
+            _hotkeyPause?.Set(false);
             _statusTimer.Stop();
             scrolling.Dispose();
             navigationIndicator.Dispose();
@@ -94,6 +98,7 @@ internal sealed class SettingsWindowView
         Window.PreviewMouseUp += OnPreviewMouseUp;
         var shortcutInput = Element<Border>("ShortcutInput");
         shortcutInput.PreviewKeyDown += RecordShortcut;
+        shortcutInput.PreviewKeyUp += RecordShortcut;
         shortcutInput.MouseLeftButtonDown += (_, _) => shortcutInput.Focus();
         Element<TextBlock>("AppVersion").MouseLeftButtonDown += OnVersionClicked;
         if (model.DeveloperSettingsUnlocked) Element<RadioButton>("Nav_developer").Visibility = Visibility.Visible;
@@ -325,6 +330,7 @@ internal sealed class SettingsWindowView
         Element<Button>("SaveShortcut").IsEnabled = false;
         Element<Button>("ConfirmReset").Visibility = Visible(dialog == SettingsDialog.Reset);
         Element<Button>("ConfirmClearHistory").Visibility = Visible(dialog == SettingsDialog.ClearHistory);
+        _hotkeyPause?.Set(shortcut);
         _dialogMotion.Open();
         ShowShortcutPrompt(_strings.SettingsPreviewText("press_shortcut"));
         if (shortcut) Element<Border>("ShortcutInput").Focus();
@@ -334,6 +340,7 @@ internal sealed class SettingsWindowView
     private void CloseDialog()
     {
         _pendingShortcut = null;
+        _hotkeyPause?.Set(false);
         _dialogMotion.Close();
     }
 
@@ -356,11 +363,11 @@ internal sealed class SettingsWindowView
 
     private void RecordShortcut(object sender, KeyEventArgs e)
     {
-        if (!_dialogMotion.IsOpen) return;
+        if (!_dialogMotion.IsOpen || !ShortcutText.IsRecordedOn(e)) return;
         if (e.Key is Key.Tab or Key.Escape || ShortcutText.ClosesWindow(e)) return;
         e.Handled = true;
         if (!e.IsRepeat) _shortcutKeyPressed();
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        var key = ShortcutText.KeyOf(e);
         if (ShortcutText.IsModifier(key)) return;
         _pendingShortcut = ShortcutText.Gesture(key, e.KeyboardDevice.Modifiers);
         Element<Button>("SaveShortcut").IsEnabled = _pendingShortcut is not null;

@@ -159,12 +159,13 @@ public static class CompositionRoot
                 TrayIcon? tray = null;
                 var rollback = new ResourceRollbackScope(log);
                 lifetime.AddCleanup("stop-runtime", () => rollback.DisposeAsync().AsTask());
+                var hotkeyPause = new HotkeyPause();
                 var runtime = Create(paths, loaded.Settings, store, strings, notifier, urlOpening, runtimeNotice,
                     () => application.Dispatcher.InvokeAsync(() =>
                     {
                         tray?.CloseMenu();
                         notifications.CloseAll();
-                    }).Task, log, rollback);
+                    }).Task, log, rollback, hotkeyPause);
                 lifetime.AddCleanup("close-sounds", () => { runtime.Sounds.Dispose(); return Task.CompletedTask; });
                 lifetime.AddStop("stop-runtime-triggers", () => _ = runtime.StopAsync());
                 cancellation.ThrowIfCancellationRequested();
@@ -176,7 +177,8 @@ public static class CompositionRoot
                     () =>
                     {
                         var window = new OnboardingWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath,
-                            onboardingModel, shortcutKeyPressed: () => runtime.Sounds.Play(UiSound.Key)).Window;
+                            onboardingModel, shortcutKeyPressed: () => runtime.Sounds.Play(UiSound.Key),
+                            hotkeyPause: hotkeyPause.CreateSwitch()).Window;
                         UiClickSounds.Attach(window, runtime.Sounds.Play);
                         return window;
                     });
@@ -202,7 +204,7 @@ public static class CompositionRoot
                     {
                         var window = new SettingsWindowView(strings, SystemTheme.IsLight(), paths.TrayIconPath,
                             settingsModel, feedback => new ClipboardCopyService(Win32Clipboard.SetText, feedback, strings),
-                            runtime.Images, () => runtime.Sounds.Play(UiSound.Key)).Window;
+                            runtime.Images, () => runtime.Sounds.Play(UiSound.Key), hotkeyPause.CreateSwitch()).Window;
                         UiClickSounds.Attach(window, runtime.Sounds.Play);
                         return window;
                     });
@@ -262,7 +264,8 @@ public static class CompositionRoot
         WebViewRuntimeNotice runtimeNotice,
         Func<Task> hideOwnWindows,
         PluginLog log,
-        ResourceRollbackScope rollback)
+        ResourceRollbackScope rollback,
+        HotkeyPause hotkeyPause)
     {
         var hotkeyDispatcher = new StaDispatcher(HotkeyThreadName);
         rollback.Own(hotkeyDispatcher, hotkeyDispatcher.StopAsync);
@@ -473,7 +476,7 @@ public static class CompositionRoot
         var runtime = rollback.TransferAllTo(new AppRuntime(coordinator, lifetime, settings, providerSelection, ocrLanguages,
             musicHistory, musicResultPresenter, sounds, images));
 
-        hotkeyWindow.HotkeyPressed += () =>
+        hotkeyWindow.HotkeyPressed += hotkeyPause.Guard(() =>
         {
             try
             {
@@ -490,7 +493,7 @@ public static class CompositionRoot
             {
                 log.Error(nameof(CompositionRoot), "dispatching the hotkey failed", exception);
             }
-        };
+        }, log);
 
         if (!settings.InitializeHotkey().Success)
             notifier.ShowError(strings.PluginTitle, strings.HotkeyConflict(settings.Snapshot.HotkeyGesture));
