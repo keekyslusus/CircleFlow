@@ -111,6 +111,11 @@ public sealed class UiStrings
     public string Ask => Get("plugin_circletosearch_image_ask");
     public string AskPlaceholder => Get("plugin_circletosearch_image_ask_placeholder");
     public string AskSend => Get("plugin_circletosearch_image_ask_send");
+    public string AskPlaceholderTextOnly => Get("plugin_circletosearch_image_ask_placeholder_text_only");
+    public string AskAddScreen => Get("plugin_circletosearch_image_ask_add_screen");
+    public string AskAddScreenHint => Get("plugin_circletosearch_image_ask_add_screen_hint");
+    public string AskWholeScreen =>Get("plugin_circletosearch_image_ask_whole_screen");
+    public string AskRemoveScreen => Get("plugin_circletosearch_image_ask_remove_screen");
     public string Close => Get("plugin_circletosearch_close");
     public string MusicResultTitle => Get("plugin_circletosearch_music_result_title");
     public string MusicNoMatch => Get("plugin_circletosearch_music_no_match");

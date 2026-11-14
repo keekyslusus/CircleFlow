@@ -17,6 +17,7 @@ internal sealed class FakeBrowserSession : IVisualSearchBrowserSession
     public string? SentMessage => SentMessages.LastOrDefault();
     public Action? OnPostNavigation { get; set; }
     public Action? OnWait { get; set; }
+    public Action<Uri>? OnGetNavigation { get; set; }
     public Action? OnMessage { get; set; }
     public int PostNavigations { get; private set; }
     public int GetNavigations { get; private set; }
@@ -35,6 +36,7 @@ internal sealed class FakeBrowserSession : IVisualSearchBrowserSession
         Events.Add("GET");
         GetNavigations++;
         GetTargets.Add(target);
+        OnGetNavigation?.Invoke(target);
         return Task.FromResult(Navigations.Dequeue());
     }
 

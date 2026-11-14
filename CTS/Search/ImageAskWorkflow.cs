@@ -7,7 +7,7 @@ using GdiRectangle = System.Drawing.Rectangle;
 namespace CircleToSearch.Search;
 
 internal sealed class ImageAskWorkflow(
-    Func<Task<byte[]>, Task<string>, IVisualSearchBrowserOperation> createOperation,
+    Func<Task<byte[]?>, Task<string>, IVisualSearchBrowserOperation> createOperation,
     Func<GdiBitmap, GdiRectangle, int, byte[]> crop,
     VisualSearchResultPresenter presenter,
     UiStrings strings,
@@ -15,9 +15,10 @@ internal sealed class ImageAskWorkflow(
 {
     public byte[] Encode(SelectionOutcome selection, int maxLongSidePx) => selection.Encode(crop, maxLongSidePx);
 
-    public Task PresentAsync(Task<byte[]> image, Task<string> question, CancellationToken cancellationToken)
+    // A null image asks the question alone.
+    public Task PresentAsync(Task<byte[]?> image, Task<string> question, CancellationToken cancellationToken)
     {
-        log.Info(nameof(ImageAskWorkflow), "preparing Google AI Mode for a question about the selected image");
+        log.Info(nameof(ImageAskWorkflow), "preparing Google AI Mode for a question");
         // Only Google AI Mode accepts an image with a question, so Ask ignores the selected provider.
         var prepared = PreparedVisualSearch.ForBrowserOperation(
             createOperation(image, question), externalFallbackUrl: null, revealAfter: question);

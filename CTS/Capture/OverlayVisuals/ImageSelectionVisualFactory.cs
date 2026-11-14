@@ -7,7 +7,8 @@ internal static class ImageSelectionVisualFactory
 {
     internal static ImageSelectionVisual Create(bool lightTheme, UiStrings strings, Thickness toolbarSafeInsets = default)
     {
-        var toolbar = new FloatingToolbar(PluginPalette.For(lightTheme).FloatingToolbar, safeInsets: toolbarSafeInsets);
+        var palette = PluginPalette.For(lightTheme).FloatingToolbar;
+        var toolbar = new FloatingToolbar(palette, safeInsets: toolbarSafeInsets);
         var search = toolbar.AddAction(strings.TextSearch);
         toolbar.AddDivider();
         var ask = toolbar.AddAction(strings.Ask, PluginIcons.SparkleOutlined);
@@ -19,6 +20,7 @@ internal static class ImageSelectionVisualFactory
         OverlayShortcuts.Save.AttachHint(save, strings);
         OverlayShortcuts.Translate.AttachHint(translate, strings);
         return new ImageSelectionVisual(toolbar, search, copy, save, translate, ask,
-            toolbar.AddPrompt(strings.AskPlaceholder, strings.AskSend, PluginIcons.SparkleOutlined));
+            toolbar.AddPrompt(strings.AskPlaceholder, strings.AskSend, PluginIcons.SparkleOutlined,
+                new PromptAttachmentChip(palette, strings)));
     }
 }

@@ -8,7 +8,9 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using CircleToSearch.Ui;
 
-public sealed record FloatingToolbarPrompt(Grid Root, TextBox Input, Button SendButton, PromptLanguageTag LanguageTag);
+public sealed record FloatingToolbarPrompt(
+    Grid Root, TextBox Input, TextBlock Hint, Button SendButton, PromptLanguageTag LanguageTag,
+    PromptAttachmentChip? Attachment);
 
 public sealed class FloatingToolbar
 {
@@ -71,7 +73,8 @@ public sealed class FloatingToolbar
     internal bool IsOpen { get; private set; }
     internal bool IsPromptOpen => _prompt is not null && ReferenceEquals(Surface.Child, _prompt.Root);
 
-    internal FloatingToolbarPrompt AddPrompt(string placeholder, string sendLabel, Geometry icon)
+    internal FloatingToolbarPrompt AddPrompt(string placeholder, string sendLabel, Geometry icon,
+        PromptAttachmentChip? attachment = null)
     {
         if (_prompt is not null) throw new InvalidOperationException("The toolbar already has a prompt.");
         var text = OverlayVisualResources.Frozen(_palette.Text);
@@ -145,20 +148,33 @@ public sealed class FloatingToolbar
 
         var root = new Grid { VerticalAlignment = VerticalAlignment.Center };
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         root.Children.Add(leading);
-        Grid.SetColumn(input, 1);
+        if (attachment is not null)
+        {
+            Grid.SetColumn(attachment.Root, 1);
+            root.Children.Add(attachment.Root);
+        }
+        Grid.SetColumn(input, 2);
         root.Children.Add(input);
-        Grid.SetColumn(hint, 1);
+        Grid.SetColumn(hint, 2);
         root.Children.Add(hint);
-        Grid.SetColumn(language.Root, 2);
+        Grid.SetColumn(language.Root, 3);
         root.Children.Add(language.Root);
-        Grid.SetColumn(send, 3);
+        Grid.SetColumn(send, 4);
         root.Children.Add(send);
-        _prompt = new FloatingToolbarPrompt(root, input, send, language);
+        _prompt = new FloatingToolbarPrompt(root, input, hint, send, language, attachment);
         return _prompt;
+    }
+
+    internal void SetPromptPlaceholder(string placeholder)
+    {
+        if (_prompt is null) throw new InvalidOperationException("The toolbar has no prompt.");
+        _prompt.Hint.Text = placeholder;
+        AutomationProperties.SetName(_prompt.Input, placeholder);
     }
 
     internal void SetPromptLanguage(string? languageTag)

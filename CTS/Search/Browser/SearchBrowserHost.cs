@@ -241,6 +241,7 @@ public sealed class SearchBrowserHost : ISearchBrowserHost, IDisposable, IAsyncD
                     {
                         VisualSearchBrowserOperationStatus.Succeeded => SearchBrowserShowStatus.Shown,
                         VisualSearchBrowserOperationStatus.Canceled => SearchBrowserShowStatus.Canceled,
+                        VisualSearchBrowserOperationStatus.NavigationFailed => SearchBrowserShowStatus.NavigationFailed,
                         _ => SearchBrowserShowStatus.ProviderOperationFailed,
                     };
                 }

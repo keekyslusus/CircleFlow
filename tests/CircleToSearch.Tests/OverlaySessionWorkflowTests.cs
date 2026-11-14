@@ -134,6 +134,21 @@ public sealed class OverlaySessionWorkflowTests
     }
 
     [Fact]
+    public async Task Question_whose_screen_was_removed_goes_without_an_image()
+    {
+        using var harness = new Harness();
+        harness.Overlay.Enqueue(new AskDraftStarted());
+        harness.Overlay.Enqueue(AskAboutSelection.WithoutImage("What is this?"));
+
+        await harness.RunAsync().WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.Null(await Assert.Single(harness.AskedImages));
+        Assert.Equal("What is this?", await Assert.Single(harness.AskedQuestions));
+        Assert.Equal(0, harness.AskCrops);
+        Assert.Equal(1, Assert.Single(harness.CloseCallsWhenRevealed));
+    }
+
+    [Fact]
     public async Task Question_without_any_image_fails_the_draft_instead_of_waiting_forever()
     {
         using var harness = new Harness();
@@ -1316,7 +1331,7 @@ public sealed class OverlaySessionWorkflowTests
         public int LensCrops { get; private set; }
 
         public FakeBrowserHost AskHost { get; } = new();
-        public List<Task<byte[]>> AskedImages { get; } = [];
+        public List<Task<byte[]?>> AskedImages { get; } = [];
         public List<Task<string>> AskedQuestions { get; } = [];
         public List<int> CloseCallsWhenRevealed { get; } = [];
         public int AskCrops { get; private set; }

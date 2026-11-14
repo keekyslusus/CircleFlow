@@ -76,6 +76,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         visual.AskPrompt.SendButton.Click += OnSend;
         visual.AskPrompt.Input.KeyDown += OnPromptKeyDown;
         visual.AskPrompt.Input.TextChanged += OnPromptTextChanged;
+        if (visual.AskPrompt.Attachment is { } attachment) attachment.Root.Click += OnToggleScreen;
         _ripples = [.. OverlayVisualResources.AttachControlRipples(visual.Toolbar.Layer),
             ControlRippleHost.Attach(visual.AskPrompt.SendButton)];
     }
@@ -83,6 +84,19 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     internal GdiRectangle? Bounds { get; private set; }
     internal bool IsCompleting { get; private set; }
     internal bool IsPromptOpen => _visual.Toolbar.IsPromptOpen;
+    internal bool CanAsk => !_disposed && _visual.AskButton.Visibility == Visibility.Visible;
+    // The question was typed over the bare screen, so it goes alone until the user adds the screen to it.
+    internal bool IsBareQuestion { get; private set; }
+
+    // Opens the question without a selection, where the actions of a whole-screen selection would stand.
+    internal bool TryStartQuestion(string text)
+    {
+        if (!CanAsk || IsCompleting || Bounds is not null || _visual.Toolbar.IsOpen || !CanType(text)) return false;
+        IsBareQuestion = true;
+        ShowToolbar(_mapper.CaptureBounds);
+        OpenPrompt();
+        return TryTypeQuestion(text);
+    }
 
     internal void Select(GdiRectangle bounds)
     {
@@ -120,8 +134,10 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     // Keeps the actions beside the selection while the screen under them is zoomed or panned.
     internal void FollowView()
     {
-        if (!_disposed && Bounds is { } bounds && _visual.Toolbar.IsOpen) ShowToolbar(bounds);
+        if (!_disposed && _visual.Toolbar.IsOpen && QuestionAnchor is { } anchor) ShowToolbar(anchor);
     }
+
+    private GdiRectangle? QuestionAnchor => Bounds ?? (IsBareQuestion ? _mapper.CaptureBounds : null);
 
     private void ShowToolbar(GdiRectangle bounds) =>
         _visual.Toolbar.Show(_toViewport(_mapper.ToDips(bounds)), new Size(_root.ActualWidth, _root.ActualHeight));
@@ -156,7 +172,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     // open prompt that lost focus continues the question instead of being dropped.
     internal bool TryTypeQuestion(string text)
     {
-        if (!CanAct || text.Length == 0 || text.Any(char.IsControl)) return false;
+        if (!CanAct || !CanType(text)) return false;
         if (!_visual.Toolbar.IsPromptOpen &&
             (string.IsNullOrWhiteSpace(text) || !KeyboardShortcut.Press(_visual.AskButton) ||
              !_visual.Toolbar.IsPromptOpen)) return false;
@@ -167,6 +183,8 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         input.CaretIndex = input.Text.Length;
         return true;
     }
+
+    private static bool CanType(string text) => text.Length > 0 && !text.Any(char.IsControl);
 
     internal void SetInputLanguage(string? tag)
     {
@@ -182,17 +200,22 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         var canceled = _askDraftStarted && !_disposed;
         _askDraftStarted = false;
         _askImageAttached = false;
+        IsBareQuestion = false;
         _visual.Toolbar.SetPromptOpen(false);
         _visual.AskPrompt.Input.Clear();
+        UpdateScreenChip();
         if (closed) _askPromptClosed?.Invoke();
         if (canceled) _publish(new AskDraftCanceled());
     }
 
-    private bool CanAct => !_disposed && !IsCompleting && Bounds is not null && _visual.Toolbar.IsOpen;
+    private bool CanAct =>
+        !_disposed && !IsCompleting && (Bounds is not null || IsBareQuestion) && _visual.Toolbar.IsOpen;
+
+    private bool CanActOnSelection => CanAct && Bounds is not null;
 
     private void OnSearch(object sender, RoutedEventArgs e)
     {
-        if (!CanAct) return;
+        if (!CanActOnSelection) return;
         IsCompleting = true;
         _search(Bounds!.Value);
         e.Handled = true;
@@ -200,7 +223,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
 
     private void OnCopy(object sender, RoutedEventArgs e)
     {
-        if (!CanAct) return;
+        if (!CanActOnSelection) return;
         if (_clipboard.TryCopyImage(_cropImage(Bounds!.Value)))
         {
             IsCompleting = true;
@@ -212,7 +235,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
 
     private void OnSave(object sender, RoutedEventArgs e)
     {
-        if (!CanAct) return;
+        if (!CanActOnSelection) return;
         var image = _cropImage(Bounds!.Value);
         IsCompleting = true;
         _visual.Toolbar.Hide();
@@ -222,26 +245,37 @@ internal sealed class ImageSelectionOverlayController : IDisposable
 
     private void OnTranslate(object sender, RoutedEventArgs e)
     {
-        if (!CanAct) return;
+        if (!CanActOnSelection) return;
         _translation.Toggle();
         e.Handled = true;
     }
 
     private void OnAsk(object sender, RoutedEventArgs e)
     {
-        if (!CanAct) return;
+        if (!CanActOnSelection) return;
+        OpenPrompt();
+        e.Handled = true;
+    }
+
+    private void OpenPrompt()
+    {
+        UpdateScreenChip();
         _visual.Toolbar.SetPromptOpen(true);
         _askPromptOpened?.Invoke();
         // Warming the browser now hides its startup behind typing; the image waits for the first character.
         _askDraftStarted = true;
         _publish(new AskDraftStarted());
-        e.Handled = true;
     }
 
-    private void OnPromptTextChanged(object sender, TextChangedEventArgs e)
+    private void OnPromptTextChanged(object sender, TextChangedEventArgs e) => AttachImageOnceTyped();
+
+    // A screen added to a bare question waits for Send: once pasted, the page uploads it at once, and removing it
+    // again could not take it back from Google.
+    private void AttachImageOnceTyped()
     {
-        if (!_askDraftStarted || _askImageAttached || _visual.AskPrompt.Input.Text.Length == 0 || !CanAct) return;
-        var selection = _createSelection(Bounds!.Value);
+        if (!_askDraftStarted || _askImageAttached || IsBareQuestion || _visual.AskPrompt.Input.Text.Length == 0 ||
+            !CanAct || Bounds is not { } bounds) return;
+        var selection = _createSelection(bounds);
         _askImageAttached = true;
         try { _publish(new AskImageAttached(selection)); }
         catch
@@ -249,6 +283,34 @@ internal sealed class ImageSelectionOverlayController : IDisposable
             selection.Dispose();
             throw;
         }
+    }
+
+    private void OnToggleScreen(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (!CanAct || !IsBareQuestion) return;
+        if (Bounds is null) SelectWholeScreen();
+        else RemoveScreen();
+        UpdateScreenChip();
+        var input = _visual.AskPrompt.Input;
+        input.Focus();
+        input.CaretIndex = input.Text.Length;
+    }
+
+    private void RemoveScreen()
+    {
+        _translation.CommitVisibleImage();
+        Bounds = null;
+        _selection.Cancel();
+    }
+
+    private void UpdateScreenChip()
+    {
+        var withoutScreen = IsBareQuestion && Bounds is null;
+        _visual.Toolbar.SetPromptPlaceholder(withoutScreen ? _strings.AskPlaceholderTextOnly : _strings.AskPlaceholder);
+        if (_visual.AskPrompt.Attachment is not { } chip) return;
+        if (IsBareQuestion) chip.Show(attached: Bounds is not null);
+        else chip.Hide();
     }
 
     private void OnSend(object sender, RoutedEventArgs e)
@@ -268,11 +330,17 @@ internal sealed class ImageSelectionOverlayController : IDisposable
     {
         var question = _visual.AskPrompt.Input.Text.Trim();
         if (!CanAct || question.Length == 0) return;
-        var selection = _askImageAttached ? null : _createSelection(Bounds!.Value);
+        var bounds = Bounds;
+        var selection = _askImageAttached || bounds is null ? null : _createSelection(bounds.Value);
         IsCompleting = true;
         _askDraftStarted = false;
         _visual.Toolbar.Hide();
-        try { _publish(new AskAboutSelection(selection, question)); }
+        try
+        {
+            _publish(bounds is null
+                ? AskAboutSelection.WithoutImage(question)
+                : new AskAboutSelection(selection, question));
+        }
         catch
         {
             selection?.Dispose();
@@ -301,6 +369,7 @@ internal sealed class ImageSelectionOverlayController : IDisposable
         _visual.AskPrompt.SendButton.Click -= OnSend;
         _visual.AskPrompt.Input.KeyDown -= OnPromptKeyDown;
         _visual.AskPrompt.Input.TextChanged -= OnPromptTextChanged;
+        if (_visual.AskPrompt.Attachment is { } attachment) attachment.Root.Click -= OnToggleScreen;
         foreach (var ripple in _ripples) ripple.Dispose();
     }
 }

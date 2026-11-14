@@ -384,7 +384,21 @@ public sealed class OverlayWindow : Window
 
     private void OnPreviewTextInput(object sender, TextCompositionEventArgs e)
     {
-        if (CanUseShortcuts() && _imageSelection.TryTypeQuestion(e.Text)) e.Handled = true;
+        if (CanUseShortcuts() && (_imageSelection.TryTypeQuestion(e.Text) || TryStartBareQuestion(e.Text)))
+            e.Handled = true;
+    }
+
+    // Typing over the bare screen asks a question of its own; Ctrl+A first asks about the screen. Only a letter
+    // starts it: digits belong to the action tray, even one whose action is hidden and so leaves its key unhandled.
+    private bool TryStartBareQuestion(string text)
+    {
+        if (_imageSelection.Bounds is not null || !_imageSelection.CanAsk || _textSelection.IsActionMenuOpen ||
+            !CanAcceptPointerInput() || text.Length == 0 || !char.IsLetter(text[0])) return false;
+        _provider.SetOpen(false);
+        OnSelectionStarted();
+        if (_imageSelection.TryStartQuestion(text)) return true;
+        RestoreSelectionChrome();
+        return false;
     }
 
     private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e) => _focusMovedByKeyboard = false;
@@ -405,7 +419,8 @@ public sealed class OverlayWindow : Window
         if (_zoom?.TryHandleShortcut(key, modifiers) == true ||
             _pen?.TryHandleShortcut(key, modifiers) == true) return true;
         if (OverlayShortcuts.SelectAll.Matches(key, modifiers)) return TrySelectWholeScreen();
-        if (_imageSelection.Bounds is not null) return _imageSelection.TryHandleShortcut(key, modifiers);
+        if (_imageSelection.Bounds is not null || _imageSelection.IsPromptOpen)
+            return _imageSelection.TryHandleShortcut(key, modifiers);
         if (_textSelection.TryHandleShortcut(key, modifiers) ||
             _music.TryHandleShortcut(key, modifiers) ||
             _widget.TryHandleShortcut(key, modifiers)) return true;
@@ -443,7 +458,8 @@ public sealed class OverlayWindow : Window
             _provider.SetOpen(false);
             return true;
         }
-        if (_imageSelection.CloseAskPrompt())
+        // A question typed over the bare screen returns to it, even after the screen was added to the question.
+        if (_imageSelection.IsBareQuestion ? TryDismissImageSelection() : _imageSelection.CloseAskPrompt())
         {
             Keyboard.Focus(this);
             return true;
@@ -462,7 +478,8 @@ public sealed class OverlayWindow : Window
 
     private bool TrySelectWholeScreen()
     {
-        // An open question already holds its image, so it is not swapped for another one under it.
+        // An open question keeps what it asks about: a selection's question already holds its image, and a bare
+        // question adds the screen with its chip, since Ctrl+A in its text field selects the text instead.
         if (!CanAcceptPointerInput() || _imageSelection.IsPromptOpen) return false;
         _provider.SetOpen(false);
         OnSelectionStarted();
@@ -550,7 +567,7 @@ public sealed class OverlayWindow : Window
     private void OnSelectionRejected()
     {
         if (_interaction.IsFinished || Mode != OverlayInteractionMode.Selecting) return;
-        if (_imageSelection.Bounds is null) RestoreSelectionChrome();
+        if (_imageSelection.Bounds is null && !_imageSelection.IsBareQuestion) RestoreSelectionChrome();
         _toast.Show(new ToastNotification(_strings.SelectionTooSmall, ToastTone.Error));
     }
 
@@ -740,7 +757,7 @@ public sealed class OverlayWindow : Window
     {
         // Drawing marks up the screen around an open selection, so the selection stays for Ask, Copy and Save.
         // While a question is open its image is already taken, so a Ctrl press then neither draws nor dismisses.
-        if (_imageSelection.Bounds is not null &&
+        if ((_imageSelection.Bounds is not null || _imageSelection.IsBareQuestion) &&
             !IsOverlayChromeInteraction(e.OriginalSource, e.GetPosition(this)) &&
             (_pointer.PenHeld ? _pen?.CanDraw != true : !TryDismissImageSelection()))
         {
@@ -754,7 +771,8 @@ public sealed class OverlayWindow : Window
 
     private bool TryDismissImageSelection()
     {
-        if (_imageSelection.Bounds is null || !CanAcceptPointerInput()) return false;
+        if ((_imageSelection.Bounds is null && !_imageSelection.IsBareQuestion) || !CanAcceptPointerInput())
+            return false;
         _imageSelection.Dismiss();
         // Esc can arrive while a right press is still pending; the router must drop it along with the capture.
         _pointer.Cancel();

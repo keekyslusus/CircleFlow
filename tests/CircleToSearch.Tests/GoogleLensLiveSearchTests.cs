@@ -74,7 +74,7 @@ public sealed class GoogleLensLiveSearchTests
         var jpeg = CreateShapesJpeg();
         var fallback = new FallbackProbe(new GoogleLensBrowserOperation(jpeg, log, question, GoogleLens));
         var answer = new AnswerProbe(new GoogleAiModeBrowserOperation(
-            Task.FromResult(jpeg), Task.FromResult(question), (_, _) => fallback, log));
+            Task.FromResult<byte[]?>(jpeg), Task.FromResult(question), (_, _) => fallback, log));
 
         var shown = await host.ShowAsync(
             new SearchProviderDescriptor(SearchProviderIds.GoogleAiMode, "Google AI Mode"),
@@ -87,6 +87,52 @@ public sealed class GoogleLensLiveSearchTests
         Assert.False(fallback.Used, "The AI Mode page did not accept the question; the Lens fallback answered.");
         if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_PREVIEW") == "1")
             await Task.Delay(TimeSpan.FromSeconds(45));
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Live")]
+    public async Task Google_ai_mode_answers_a_question_without_an_image_typed_into_the_page()
+    {
+        TestSwitches.Require("CTS_WEBVIEW2_LIVE");
+
+        var paths = new AppPaths(Path.Combine(TestOutputPaths.TempDirectory, "CircleFlow.WebView2Live"));
+        AppDataDirectory.Initialize(paths);
+        var environments = new WebViewEnvironmentFactory(paths, TestUiStrings.English, new TestPluginNotifier());
+        var log = new PluginLog(paths.LogsDirectory);
+        using var host = new SearchBrowserHost(
+            new AppPaths().ExtensionArchivePath,
+            new AppPaths().CosmeticFiltersPath,
+            paths.SearchProfileDirectory,
+            log,
+            new StaDispatcher(CompositionRoot.SearchBrowserThreadName),
+            () => environments.CreateAsync(paths.SearchProfileDirectory, enableExtensions: true),
+            (content, anchor, lightTheme) => CompositionRoot.CreateSearchBrowserWindowView(
+                TestUiStrings.English, content, anchor, lightTheme));
+        var asked = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var operation = new GoogleAiModeBrowserOperation(
+            Task.FromResult<byte[]?>(null), asked.Task, (_, _) => throw new InvalidOperationException(), log);
+        var answer = new AnswerProbe(operation, "Canberra", "Канберр");
+        var logFile = Path.Combine(paths.LogsDirectory, "plugin.log");
+        var earlierLog = File.Exists(logFile) ? File.ReadAllText(logFile).Length : 0;
+
+        var show = host.ShowAsync(
+            new SearchProviderDescriptor(SearchProviderIds.GoogleAiMode, "Google AI Mode"),
+            PreparedVisualSearch.ForBrowserOperation(answer, externalFallbackUrl: null, revealAfter: asked.Task),
+            CancellationToken.None);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        asked.SetResult("What is the capital of Australia? Answer with one word.");
+        var shown = await show;
+        log.Info(nameof(GoogleLensLiveSearchTests), $"text question answered at {answer.FinalUri}");
+
+        Assert.Equal(SearchBrowserShowStatus.Shown, shown.Status);
+        Assert.True(answer.Answered, $"AI Mode did not answer the question; the page ended at {answer.FinalUri}.");
+        // A lost acknowledgement is recognized by this address alone.
+        Assert.True(GoogleAiModeBrowserOperation.IsAiModeTextAnswer(answer.FinalUri), $"Unexpected answer address {answer.FinalUri}.");
+        var logged = File.ReadAllText(logFile)[earlierLog..];
+        Assert.Contains("question submitted without an image", logged, StringComparison.Ordinal);
+        Assert.DoesNotContain("falling back to the Google AI Mode question address", logged, StringComparison.Ordinal);
+        if (Environment.GetEnvironmentVariable("CTS_WEBVIEW2_PREVIEW") == "1")
+            await Task.Delay(TimeSpan.FromSeconds(30));
     }
 
     [SkippableFact]
@@ -109,7 +155,7 @@ public sealed class GoogleLensLiveSearchTests
             (content, anchor, lightTheme) => CompositionRoot.CreateSearchBrowserWindowView(
                 TestUiStrings.English, content, anchor, lightTheme));
         const string question = "What color is the square? Answer with one word.";
-        var image = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var image = new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var asked = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         var fallback = new FallbackProbe(new GoogleLensBrowserOperation(CreateShapesJpeg(), log, question, GoogleLens));
         var chips = new AttachmentCountingOperation(
@@ -239,7 +285,9 @@ public sealed class GoogleLensLiveSearchTests
                     // A late duplicate would appear shortly after the acknowledged chip.
                     await Task.Delay(1500, cancel);
                     var name = JsonDocument.Parse(message).RootElement.GetProperty("name").GetString();
-                    var countScript = $"[...document.querySelectorAll('[title=\"{name}\"]')].filter(e => e.offsetParent).length";
+                    // Google has named the chip by title and by aria-label, and keeps a hidden copy of it.
+                    var countScript = "[...document.querySelectorAll('[title=\"" + name + "\"], [aria-label=\"" + name +
+                        "\"]')].filter(e => e.offsetParent).length";
                     counts.Add(int.Parse(await inner.ExecuteScriptAsync(countScript, cancel)));
                 }
                 return reply;

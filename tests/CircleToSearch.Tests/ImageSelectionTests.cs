@@ -60,6 +60,14 @@ public sealed class ImageSelectionTests
             h.Window.ShowTranslation(new ScreenTranslationResult(request.RequestId, request.Image));
             DispatcherPump.For(300);
             Capture(h, "image-selection-show-original.png");
+            h.Escape();
+            h.Escape();
+            h.Type("How many ounces in a cup?");
+            DispatcherPump.For(300);
+            Capture(h, "image-selection-ask-bare.png");
+            Click(h.Actions.AskPrompt.Attachment!.Root);
+            DispatcherPump.For(300);
+            Capture(h, "image-selection-ask-screen.png");
         });
     }
 
@@ -971,6 +979,184 @@ public sealed class ImageSelectionTests
         Assert.Equal(bounds, h.Controllers.ImageSelection.Bounds);
         Assert.True(h.Actions.Toolbar.IsPromptOpen);
         Assert.Equal("w", h.Actions.AskPrompt.Input.Text);
+    });
+
+    [Fact]
+    public void Typing_a_letter_over_the_bare_screen_asks_without_the_screen() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Type("5");
+        Assert.False(h.Actions.Toolbar.IsOpen);
+
+        h.Type("w");
+
+        var prompt = h.Actions.AskPrompt;
+        Assert.Null(h.Controllers!.ImageSelection.Bounds);
+        Assert.True(h.Actions.Toolbar.IsOpen);
+        Assert.True(h.Actions.Toolbar.IsPromptOpen);
+        Assert.Equal("w", prompt.Input.Text);
+        Assert.True(prompt.Attachment!.IsShown);
+        Assert.False(prompt.Attachment.IsAttached);
+        Assert.Equal(TestUiStrings.English.AskAddScreen, prompt.Attachment.Label);
+        Assert.Equal(TestUiStrings.English.AskPlaceholderTextOnly, prompt.Hint.Text);
+        Assert.True(h.Window.VisualState.Selection.SelectionFrame.Data?.IsEmpty() ?? true);
+        Assert.False(h.Window.VisualState.Actions.Tray.IsHitTestVisible);
+        Assert.Equal([typeof(AskDraftStarted)], h.Commands.Select(command => command.GetType()));
+
+        h.Key(prompt.Input, Key.Enter, Keyboard.KeyDownEvent);
+
+        var asked = h.Commands.OfType<AskAboutSelection>().Single();
+        Assert.False(asked.IncludesImage);
+        Assert.Equal("w", asked.Question);
+    });
+
+    [Fact]
+    public void Typing_over_the_bare_screen_does_nothing_while_ask_is_hidden() => Run(() =>
+    {
+        using var h = new Harness(hiddenActions: SelectionToolbarAction.Ask);
+
+        h.Type("w");
+
+        Assert.False(h.Actions.Toolbar.IsOpen);
+        Assert.True(h.Window.VisualState.Actions.Tray.IsHitTestVisible);
+        Assert.Empty(h.Commands);
+    });
+
+    [Fact]
+    public void Text_that_cannot_be_typed_leaves_the_bare_screen_untouched() => Run(() =>
+    {
+        using var h = new Harness();
+
+        h.Type("w\u0001");
+
+        Assert.False(h.Actions.Toolbar.IsOpen);
+        Assert.False(h.Actions.Toolbar.IsPromptOpen);
+        Assert.False(h.Controllers!.ImageSelection.IsBareQuestion);
+        Assert.True(h.Window.VisualState.Actions.Tray.IsHitTestVisible);
+        Assert.Empty(h.Commands);
+    });
+
+    [Fact]
+    public void Questions_about_a_lasso_or_ctrl_a_have_no_screen_chip() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Select();
+        h.Type("w");
+        Assert.False(h.Actions.AskPrompt.Attachment!.IsShown);
+        h.Escape();
+        h.Escape();
+
+        Assert.True(h.Window.TryHandleShortcut(Key.A, ModifierKeys.Control));
+        h.Type("w");
+
+        Assert.False(h.Actions.AskPrompt.Attachment.IsShown);
+        Assert.Equal(TestUiStrings.English.AskPlaceholder, h.Actions.AskPrompt.Hint.Text);
+        h.Escape();
+        Assert.NotNull(h.Controllers!.ImageSelection.Bounds);
+        Assert.True(h.Actions.Toolbar.IsOpen);
+    });
+
+    [Fact]
+    public void Plus_adds_the_whole_screen_and_sends_it_only_with_the_question() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Type("w");
+        var prompt = h.Actions.AskPrompt;
+
+        Click(prompt.Attachment!.Root);
+        prompt.Input.AppendText("x");
+
+        var screen = new GdiRectangle(0, 0, 640, 400);
+        Assert.Equal(screen, h.Controllers!.ImageSelection.Bounds);
+        Assert.True(prompt.Attachment.IsAttached);
+        Assert.Equal(TestUiStrings.English.AskWholeScreen, prompt.Attachment.Label);
+        Assert.Equal(TestUiStrings.English.AskPlaceholder, prompt.Hint.Text);
+        Assert.False(h.Window.VisualState.Selection.SelectionFrame.Data.IsEmpty());
+        Assert.True(prompt.Input.IsKeyboardFocused);
+        Assert.Empty(h.Commands.OfType<AskImageAttached>());
+
+        h.Key(prompt.Input, Key.Enter, Keyboard.KeyDownEvent);
+
+        var asked = h.Commands.OfType<AskAboutSelection>().Single();
+        Assert.True(asked.IncludesImage);
+        Assert.Equal(screen, asked.Selection!.Bounds);
+        Assert.Equal("wx", asked.Question);
+    });
+
+    [Fact]
+    public void Removing_the_added_screen_sends_the_question_alone() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Type("w");
+        var prompt = h.Actions.AskPrompt;
+        Click(prompt.Attachment!.Root);
+
+        Click(prompt.Attachment.Root);
+
+        Assert.Null(h.Controllers!.ImageSelection.Bounds);
+        Assert.False(prompt.Attachment.IsAttached);
+        Assert.True(h.Actions.Toolbar.IsPromptOpen);
+        Assert.True(h.Window.VisualState.Selection.SelectionFrame.Data.IsEmpty());
+        Assert.Equal(TestUiStrings.English.AskPlaceholderTextOnly, prompt.Hint.Text);
+        prompt.Input.Text = "what is a quark";
+        h.Key(prompt.Input, Key.Enter, Keyboard.KeyDownEvent);
+
+        Assert.Equal([typeof(AskDraftStarted), typeof(AskAboutSelection)], h.Commands.Select(command => command.GetType()));
+        var asked = h.Commands.OfType<AskAboutSelection>().Single();
+        Assert.False(asked.IncludesImage);
+        Assert.Equal("what is a quark", asked.Question);
+    });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Escape_from_a_bare_question_returns_to_the_bare_screen(bool screenAdded) => Run(() =>
+    {
+        using var h = new Harness();
+        h.Type("w");
+        if (screenAdded) Click(h.Actions.AskPrompt.Attachment!.Root);
+
+        h.Escape();
+
+        Assert.Null(h.Controllers!.ImageSelection.Bounds);
+        Assert.False(h.Actions.Toolbar.IsOpen);
+        Assert.False(h.Controllers.ImageSelection.IsBareQuestion);
+        Assert.True(h.Window.VisualState.Selection.SelectionFrame.Data.IsEmpty());
+        Assert.True(h.Window.VisualState.Actions.Tray.IsHitTestVisible);
+        Assert.Equal(OverlayInteractionMode.Selecting, h.Window.Mode);
+        Assert.Single(h.Commands.OfType<AskDraftCanceled>());
+        Assert.Empty(h.Commands.OfType<CancelSession>());
+        h.Type("w");
+        Assert.True(h.Actions.Toolbar.IsPromptOpen);
+        Assert.False(h.Actions.AskPrompt.Attachment!.IsAttached);
+    });
+
+    [Fact]
+    public void A_right_click_keeps_a_bare_question_open() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Type("w");
+
+        h.RightClick(EmptyPoint);
+
+        Assert.True(h.Actions.Toolbar.IsPromptOpen);
+        Assert.False(h.Window.VisualState.Actions.Tray.IsHitTestVisible);
+        Assert.Equal(TestUiStrings.English.SelectionTooSmall, h.ToastText());
+    });
+
+    [Fact]
+    public void A_lasso_drawn_during_a_bare_question_replaces_it() => Run(() =>
+    {
+        using var h = new Harness();
+        h.Type("w");
+
+        h.Select();
+
+        Assert.NotNull(h.Controllers!.ImageSelection.Bounds);
+        Assert.False(h.Controllers.ImageSelection.IsBareQuestion);
+        Assert.False(h.Actions.Toolbar.IsPromptOpen);
+        Assert.True(h.Actions.Toolbar.IsOpen);
+        Assert.Single(h.Commands.OfType<AskDraftCanceled>());
     });
 
     [Fact]

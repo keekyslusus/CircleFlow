@@ -12,6 +12,11 @@
     <system:String x:Key="plugin_circletosearch_image_ask">Ask</system:String>
     <system:String x:Key="plugin_circletosearch_image_ask_placeholder">Ask about this image</system:String>
     <system:String x:Key="plugin_circletosearch_image_ask_send">Send</system:String>
+    <system:String x:Key="plugin_circletosearch_image_ask_placeholder_text_only">Ask anything</system:String>
+    <system:String x:Key="plugin_circletosearch_image_ask_add_screen">Screen</system:String>
+    <system:String x:Key="plugin_circletosearch_image_ask_add_screen_hint">Ask about the screen too</system:String>
+    <system:String x:Key="plugin_circletosearch_image_ask_whole_screen">Whole screen</system:String>
+    <system:String x:Key="plugin_circletosearch_image_ask_remove_screen">Ask without the screen</system:String>
     <system:String x:Key="app_tray_open">Open</system:String>
     <system:String x:Key="app_tray_open_hotkey">Open ({0})</system:String>
     <system:String x:Key="app_tray_settings">Settings</system:String>

@@ -8,14 +8,14 @@ internal sealed class OverlayAskSession(
     CancellationToken sessionCancellation) : IOverlaySessionOperation
 {
     private readonly PendingPresentation _presentation = new(sessionCancellation);
-    private TaskCompletionSource<byte[]>? _image;
+    private TaskCompletionSource<byte[]?>? _image;
     private TaskCompletionSource<string>? _question;
 
     public Task? PendingTask => _presentation.Pending;
 
     public void Start() => _presentation.Start(cancellation =>
     {
-        _image = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _image = new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously);
         _question = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         return workflow.PresentAsync(_image.Task, _question.Task, cancellation);
     });
@@ -33,7 +33,8 @@ internal sealed class OverlayAskSession(
     public async Task SubmitAsync(AskAboutSelection asked, Action onUploadStarted)
     {
         Start();
-        if (asked.Selection is { } selection) AttachImage(selection);
+        if (!asked.IncludesImage) _image!.TrySetResult(null);
+        else if (asked.Selection is { } selection) AttachImage(selection);
         else if (!_image!.Task.IsCompleted)
             _image.TrySetException(new InvalidOperationException("The question arrived without an attached image."));
         _question!.TrySetResult(asked.Question);

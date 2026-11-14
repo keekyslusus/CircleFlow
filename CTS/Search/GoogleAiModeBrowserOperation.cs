@@ -10,26 +10,31 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
     // Longer than the page script's own worst case, so a timeout means the page stopped answering.
     private static readonly TimeSpan AttachTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan SubmitTimeout = TimeSpan.FromSeconds(40);
+    private static readonly TimeSpan AnswerPollInterval = TimeSpan.FromMilliseconds(100);
 
-    private readonly Task<byte[]> _image;
+    private readonly Task<byte[]?> _image;
     private readonly Task<string> _question;
     private readonly Func<byte[], string, IVisualSearchBrowserOperation> _createFallback;
     private readonly PluginLog _log;
+    private readonly TimeSpan _answerSettleTimeout;
     // One name per image: the page finds an earlier paste of it by name and so does not paste it twice.
     private readonly string _fileName = ImageUploadName.Create();
     private int _started;
     private int _nextRequestId;
 
+    // A null image asks the question alone.
     public GoogleAiModeBrowserOperation(
-        Task<byte[]> image,
+        Task<byte[]?> image,
         Task<string> question,
         Func<byte[], string, IVisualSearchBrowserOperation> createFallback,
-        PluginLog log)
+        PluginLog log,
+        TimeSpan? answerSettleTimeout = null)
     {
         _image = image;
         _question = question;
         _createFallback = createFallback;
         _log = log;
+        _answerSettleTimeout = answerSettleTimeout ?? TimeSpan.FromSeconds(3);
     }
 
     public async Task<VisualSearchBrowserOperationStatus> ExecuteAsync(
@@ -46,7 +51,9 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
         {
             // The page loads while the user is still typing; the image and question arrive later.
             var pageReady = await TryOpenPageAsync(session, cancel).ConfigureAwait(true);
-            jpeg = await _image.WaitAsync(cancel).ConfigureAwait(true);
+            if (await _image.WaitAsync(cancel).ConfigureAwait(true) is not { } image)
+                return await AskWithoutImageAsync(session, pageReady, cancel).ConfigureAwait(true);
+            jpeg = image;
             var attach = pageReady ? await AttachAsync(session, jpeg, cancel).ConfigureAwait(true) : null;
             question = await _question.WaitAsync(cancel).ConfigureAwait(true);
             // Another try helps only a page that was still starting or hidden behind a traffic check.
@@ -58,7 +65,8 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
                     : null;
             }
             var attached = IsAttached(attach);
-            submitted = attached && await TrySubmitAsync(session, question, cancel).ConfigureAwait(true);
+            submitted = attached &&
+                await TrySubmitAsync(session, question, IsAiModeAnswer, cancel).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -87,6 +95,41 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
         return false;
     }
 
+    // The question is typed into the open page, as with an image: Google answers a second navigation that carries
+    // the question in its address with a traffic check, so the address is only the fallback.
+    private async Task<VisualSearchBrowserOperationStatus> AskWithoutImageAsync(
+        IVisualSearchBrowserSession session, bool pageReady, CancellationToken cancel)
+    {
+        var question = await _question.WaitAsync(cancel).ConfigureAwait(true);
+        if (pageReady)
+        {
+            var submitted = await TrySubmitAsync(session, question, IsAiModeTextAnswer, cancel).ConfigureAwait(true) ||
+                (GoogleTrafficCheck.IsShown(session.CurrentUri) &&
+                 await GoogleTrafficCheck.WaitForUserAsync(session, cancel).ConfigureAwait(true) &&
+                 await TrySubmitAsync(session, question, IsAiModeTextAnswer, cancel).ConfigureAwait(true));
+            if (submitted)
+            {
+                _log.Info(nameof(GoogleAiModeBrowserOperation), "Google AI Mode question submitted without an image");
+                return VisualSearchBrowserOperationStatus.Succeeded;
+            }
+        }
+        if (cancel.IsCancellationRequested) return VisualSearchBrowserOperationStatus.Canceled;
+        _log.Info(nameof(GoogleAiModeBrowserOperation), "falling back to the Google AI Mode question address");
+        var navigation = await session.NavigateAsync(QuestionUri(question), NavigationTimeout, cancel)
+            .ConfigureAwait(true);
+        // A traffic check is shown in place of the answer, and it continues to the answer once the user solves it.
+        if (navigation.Status == BrowserNavigationStatus.Succeeded || GoogleTrafficCheck.IsShown(session.CurrentUri))
+            return VisualSearchBrowserOperationStatus.Succeeded;
+        if (navigation.Status == BrowserNavigationStatus.Canceled) return VisualSearchBrowserOperationStatus.Canceled;
+        _log.Warn(
+            nameof(GoogleAiModeBrowserOperation),
+            $"Google AI Mode question navigation failed: {navigation.Status} {navigation.Error}");
+        return VisualSearchBrowserOperationStatus.NavigationFailed;
+    }
+
+    internal static Uri QuestionUri(string question) =>
+        new($"{GoogleAiMode.AbsoluteUri}&q={Uri.EscapeDataString(question)}");
+
     private Task<string?> AttachAsync(IVisualSearchBrowserSession session, byte[] jpeg, CancellationToken cancel) =>
         RequestAsync(session, id => new { id, type = "attach", image = Convert.ToBase64String(jpeg), name = _fileName },
             AttachTimeout, cancel);
@@ -94,12 +137,21 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
     private static bool IsAttached(string? status) =>
         status is not null && (status == "attached" || status.StartsWith("attached:", StringComparison.Ordinal));
 
-    private async Task<bool> TrySubmitAsync(IVisualSearchBrowserSession session, string question, CancellationToken cancel)
+    private async Task<bool> TrySubmitAsync(
+        IVisualSearchBrowserSession session, string question, Func<Uri?, bool> isAnswer, CancellationToken cancel)
     {
         var status = await RequestAsync(session, id => new { id, type = "send", question }, SubmitTimeout, cancel)
             .ConfigureAwait(true);
-        // A full page load after sending drops the bridge before it can acknowledge.
-        return status == "submitted" || IsAiModeAnswer(session.CurrentUri);
+        if (status == "submitted") return true;
+        // A full page load after sending drops the bridge before it can acknowledge, and the address may change
+        // only a moment later. Falling back before then would ask the question a second time.
+        if (status is not null || GoogleTrafficCheck.IsShown(session.CurrentUri)) return isAnswer(session.CurrentUri);
+        for (var waited = TimeSpan.Zero; !isAnswer(session.CurrentUri); waited += AnswerPollInterval)
+        {
+            if (waited >= _answerSettleTimeout) return false;
+            await Task.Delay(AnswerPollInterval, cancel).ConfigureAwait(true);
+        }
+        return true;
     }
 
     // Returns the page's status for this request, or null when the page could not answer it.
@@ -146,6 +198,12 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
         GoogleSearchUrl.HasParameter(uri!, "udm", "50") &&
         GoogleSearchUrl.HasParameter(uri!, "vsrid");
 
+    // The empty page has no query, so a query proves the question reached Google.
+    internal static bool IsAiModeTextAnswer(Uri? uri) =>
+        GoogleSearchUrl.IsSearch(uri) &&
+        GoogleSearchUrl.HasParameter(uri!, "udm", "50") &&
+        GoogleSearchUrl.HasParameter(uri!, "q");
+
     internal const string AskBridgeScript = """
         (() => {
           if (window.__circleToSearchAskInstalled) return "ready";
@@ -174,8 +232,10 @@ public sealed class GoogleAiModeBrowserOperation : IVisualSearchBrowserOperation
               bytes[index] = binary.charCodeAt(index);
             }
             const file = new File([bytes], name, { type: "image/jpeg" });
-            // The page shows each attachment as a chip titled with its file name, possibly before it is visible.
-            const hasChip = () => document.querySelector(`[title="${CSS.escape(name)}"]`) !== null;
+            // The page shows each attachment as a chip labeled with its file name, possibly before it is visible.
+            // Google has named it by title and by aria-label, so either one counts.
+            const hasChip = () =>
+              document.querySelector(`[title="${CSS.escape(name)}"], [aria-label="${CSS.escape(name)}"]`) !== null;
             for (let wait = 0; wait < 100 && document.readyState !== "complete"; wait++) await sleep(100);
             // Pasting again duplicates the image, so repeat only when the page shows no sign of taking it.
             for (let pastes = 0; pastes < 6; pastes++) {

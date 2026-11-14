@@ -123,6 +123,9 @@ internal static class PluginIcons
         Geometry.Parse("M18 2.8a2 2 0 0 1 2.8 2.8L12.5 14l-3.5 1 1-3.5ZM16 4.8l2.8 2.8" +
                        "M3.5 6c2.5-1.5 4.5.5 2.5 3S2 14 4.5 15s3.5-2 5-1-2 4.5 0 6 4-.5 5-1.5"));
 
+    public static Geometry AddOutlined { get; } = Group(
+        Geometry.Parse("M12 5v14M5 12h14"));
+
     public static Geometry ArrowUpOutlined { get; } = Group(
         Geometry.Parse("M12 19V5m-6 6 6-6 6 6"));
 

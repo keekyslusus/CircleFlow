@@ -65,8 +65,14 @@ public sealed record AskAboutSelection : IOverlayCommand
         Question = question;
     }
 
+    private AskAboutSelection(string question) : this(null, question) => IncludesImage = false;
+
+    // The user removed the attached screen, so the question goes alone.
+    public static AskAboutSelection WithoutImage(string question) => new(question);
+
     public SelectionOutcome? Selection { get; }
     public string Question { get; }
+    public bool IncludesImage { get; } = true;
 }
 
 public sealed record AskDraftStarted : IOverlayCommand;
