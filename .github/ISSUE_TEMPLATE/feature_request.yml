@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest something CircleFlow could do
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        CircleFlow is meant to stay small: you notice something, press a shortcut, get your answer, and the overlay is gone. These are the things I look at before taking a request:
+
+        1. **It is about something you see or hear right now** - finding, understanding, translating or copying it, rather than creating or editing something new.
+        2. **It works with the defaults** - no account, API key or token to set up first. Settings can change how a feature works, but the default has to work on its own.
+        3. **You choose what to do, not how to do it** - picking an action or a provider is fine; adjusting parameters before each use is not.
+        4. **The overlay stays quick** - open, act, close. It is not a place to sit in and fine-tune things.
+        5. **It does not turn CircleFlow into a weaker copy of another app** - a screenshot editor, a screen recorder, a notes app.
+
+        For example, the pen draws in red while you hold <kbd>Ctrl</kbd>. A mark points at something for Ask or Copy, and red says "look here", so the pen fits. Pen sizes and colors would only change how the picture looks: that is editing, and it adds a choice to every stroke. Arrows, text boxes and blur are out for the same reason.
+
+        The same goes for providers: a service that only works once you paste your own API key, such as ChatGPT or DeepL, does not fit.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What were you trying to do
+      description: What was on your screen and what you wanted to find out or get done. Describe the goal rather than the solution.
+      placeholder: I was reading a recipe in Japanese and wanted to know the amounts in grams.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help
+      description: How it could work, starting from pressing the shortcut. Mention what it does by default and whether you would need to choose anything.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today instead
+      description: A workaround in CircleFlow, or another app you switch to.
