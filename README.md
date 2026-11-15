@@ -6,7 +6,14 @@
   </picture>
 </div>
 
-<h1 align="center">CircleFlow</h1>
+<h1 align="center">
+  CircleFlow
+  <br>
+  <img src="https://img.shields.io/github/downloads/keekyslusus/CircleFlow/total?style=flat-square&color=6750A4&labelColor=F2EFF9">
+  <img src="https://img.shields.io/github/stars/keekyslusus/CircleFlow?style=flat-square&color=6750A4&labelColor=F2EFF9">
+  <img src="https://img.shields.io/github/last-commit/keekyslusus/CircleFlow?style=flat-square&color=6750A4&labelColor=F2EFF9">
+  <img src="https://img.shields.io/github/v/release/keekyslusus/CircleFlow?style=flat-square&color=6750A4&labelColor=F2EFF9">
+</h1>
 
 <h3 align="center">Circle anything on screen. Results are ready before you let go.</h3>
 
