@@ -9,7 +9,6 @@
 <h1 align="center">
   CircleFlow
   <br>
-  <img src="https://img.shields.io/github/downloads/keekyslusus/CircleFlow/total?style=flat-square&color=6750A4&labelColor=F2EFF9">
   <img src="https://img.shields.io/github/stars/keekyslusus/CircleFlow?style=flat-square&color=6750A4&labelColor=F2EFF9">
   <img src="https://img.shields.io/github/last-commit/keekyslusus/CircleFlow?style=flat-square&color=6750A4&labelColor=F2EFF9">
   <img src="https://img.shields.io/github/v/release/keekyslusus/CircleFlow?style=flat-square&color=6750A4&labelColor=F2EFF9">
